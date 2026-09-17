@@ -33,6 +33,10 @@ a:hover { color: var(--zh-blue); }
 .brand { display: inline-block; color: var(--zh-black); font-size: 28px; font-weight: 800; line-height: 1.1; text-decoration: none; }
 .kicker { margin: 0 0 8px; color: var(--zh-blue); font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .environment { margin: 0; color: var(--zh-black-60); font-size: 14px; }
+.header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
+.user-chip { padding: 4px 8px; background: var(--zh-black-10); font-size: 13px; }
+.link-button { padding: 0; border: 0; background: transparent; color: var(--zh-black); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.link-button:hover { color: var(--zh-blue); }
 .page-head { padding: 48px 0 32px; border-bottom: 1px solid var(--zh-black-20); }
 .page-head--compact { padding-top: 24px; }
 h1, h2, h3 { margin-top: 0; line-height: 1.15; font-weight: 800; }
@@ -44,6 +48,7 @@ h2 { font-size: clamp(22px, 3.2vw, 28px); }
 .security-note p { max-width: 88ch; margin: 0; }
 .action-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; padding: 32px 0 8px; }
 .panel { grid-column: span 4; padding: 20px; border: 1px solid var(--zh-black-20); border-radius: 4px; }
+.panel--wide { grid-column: span 6; }
 .panel h2 { margin-bottom: 12px; font-size: 21px; }
 .panel p { min-height: 80px; color: var(--zh-black-80); }
 form { margin: 0; }
@@ -92,6 +97,9 @@ tbody tr:nth-child(even) { background: var(--zh-black-5); }
 .breadcrumb { display: flex; gap: 8px; padding-top: 24px; color: var(--zh-black-60); font-size: 14px; }
 code { padding: 2px 5px; background: var(--zh-black-10); font-family: Consolas, monospace; font-size: .9em; }
 .app-footer { margin-top: 64px; padding: 24px 0 40px; border-top: 1px solid var(--zh-black-20); color: var(--zh-black-60); font-size: 14px; }
+.auth-card { width: min(560px, 100%); margin: 64px auto; padding: 28px; border: 1px solid var(--zh-black-20); }
+.inline-form { display: flex; align-items: center; gap: 8px; }
+.inline-form input { min-width: 220px; }
 
 @media (max-width: 900px) {
   .panel { grid-column: 1 / -1; }

@@ -97,10 +97,13 @@
     {% if imports %}
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Import</th><th>Datei</th><th>Zeitpunkt</th><th>Personen</th><th>Führungslinien</th><th>Hinweise</th></tr></thead>
+          <thead><tr><th>Import</th><th>Datei</th><th>Zeitpunkt</th><th>Personen</th><th>Führungslinien</th><th>Prüfung</th></tr></thead>
           <tbody>
           {% for item in imports %}
-            <tr><td>{{ item.id }}</td><td>{{ item.original_filename }}</td><td>{{ item.imported_at }}</td><td>{{ item.employee_count }}</td><td>{{ item.reporting_line_count }}</td><td>{{ item.warning_count }}</td></tr>
+            <tr><td>{{ item.id }}</td><td>{{ item.original_filename }}</td><td>{{ item.imported_at }}</td><td>{{ item.employee_count }}</td><td>{{ item.reporting_line_count }}</td><td>
+              {% if item.blocking_issue_count %}<span class="status status--danger">{{ item.blocking_issue_count }} Konflikt(e)</span>{% elif item.issue_count %}<span class="status status--warning">{{ item.issue_count }} Hinweis(e)</span>{% else %}<span class="status status--staged">Eindeutig</span>{% endif %}
+              <a href="{{ url_for('main.import_detail', import_id=item.id) }}">Prüfliste</a>
+            </td></tr>
           {% endfor %}
           </tbody>
         </table>

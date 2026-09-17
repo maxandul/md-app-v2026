@@ -48,6 +48,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "SECRET_KEY": "test-secret",
                 "DATABASE": str(root / "test.sqlite3"),
                 "STORAGE_ROOT": str(root / "data"),
+                "AUTH_DISABLED": True,
             }
         )
         self.client = self.app.test_client()

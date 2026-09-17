@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}SAP-Import {{ imported.id }} · MD-Verwaltung{% endblock %}
+{% block content %}
+<nav class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span>›</span><span>SAP-Import {{ imported.id }}</span></nav>
+<section class="page-head page-head--compact">
+  <p class="kicker">SAP-Prüfliste</p><h1>{{ imported.original_filename }}</h1>
+  <p class="lead">{{ imported.employee_count }} Personen · {{ imported.reporting_line_count }} Führungslinien · importiert {{ imported.imported_at }}</p>
+</section>
+<section class="content-section"><h2>Auffälligkeiten</h2>
+{% if issues %}<div class="table-wrap"><table><thead><tr><th>Priorität</th><th>Typ</th><th>Personalnummer</th><th>Ans.</th><th>Excel-Zeilen</th><th>Status</th></tr></thead><tbody>
+{% for item in issues %}<tr><td><span class="status status--{{ 'danger' if item.severity == 'blocking' else 'warning' if item.severity == 'warning' else 'staged' }}">{{ item.severity }}</span></td><td>{{ item.issue_type }}</td><td>{{ item.person_number or '–' }}</td><td>{{ item.employment_assignment or '–' }}</td><td>{{ item.row_numbers_json }}</td><td>{{ item.status }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty-state">Keine Auffälligkeiten erkannt.</div>{% endif %}
+</section>
+{% endblock %}

@@ -84,7 +84,16 @@ def create_cycle(
 
 def dashboard_data(connection: sqlite3.Connection) -> dict:
     imports = connection.execute(
-        "SELECT * FROM sap_imports ORDER BY imported_at DESC, id DESC"
+        """
+        SELECT si.*,
+               SUM(CASE WHEN sii.severity = 'blocking' AND sii.status = 'open' THEN 1 ELSE 0 END) AS blocking_issue_count,
+               SUM(CASE WHEN sii.severity = 'warning' AND sii.status = 'open' THEN 1 ELSE 0 END) AS open_warning_count,
+               COUNT(sii.id) AS issue_count
+        FROM sap_imports si
+        LEFT JOIN sap_import_issues sii ON sii.sap_import_id = si.id
+        GROUP BY si.id
+        ORDER BY si.imported_at DESC, si.id DESC
+        """
     ).fetchall()
     cycles = connection.execute(
         """

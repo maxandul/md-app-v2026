@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Anmelden · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <p class="kicker">Geschützter HR-Bereich</p>
+  <h1>Anmelden</h1>
+  <p>Bitte mit dem persönlichen HR-Konto anmelden.</p>
+  <form method="post">
+    <label for="email">Geschäftliche E-Mail-Adresse</label>
+    <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+    <label for="password">Passwort</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button class="button button--primary" type="submit">Anmelden</button>
+  </form>
+</section>
+{% endblock %}

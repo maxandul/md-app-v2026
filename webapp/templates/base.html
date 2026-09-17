@@ -14,7 +14,14 @@
         <p class="kicker">Kanton Zürich · Human Resources &amp; Entwicklung</p>
         <a class="brand" href="{{ url_for('main.dashboard') }}">MD-Verwaltung</a>
       </div>
-      <p class="environment">Lokale Arbeitsumgebung</p>
+      <div class="header-actions">
+        <p class="environment">Geschützte HR-Arbeitsumgebung</p>
+        {% if g.user %}
+          <span class="user-chip">{{ g.user.email }}</span>
+          {% if g.user.role == 'system_admin' %}<a href="{{ url_for('auth.users') }}">Benutzerkonten</a>{% endif %}
+          <form action="{{ url_for('auth.logout') }}" method="post"><button class="link-button" type="submit">Abmelden</button></form>
+        {% endif %}
+      </div>
     </div>
   </header>
 

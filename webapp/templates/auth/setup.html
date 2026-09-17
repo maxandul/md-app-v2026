@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Ersteinrichtung · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <p class="kicker">Einmalige Ersteinrichtung</p>
+  <h1>Erstes Administrationskonto</h1>
+  <p>Diese Seite wird nach dem Anlegen des ersten Kontos dauerhaft gesperrt.</p>
+  <form method="post">
+    <label for="email">Geschäftliche E-Mail-Adresse</label>
+    <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+    <label for="password">Passwort (mindestens 12 Zeichen)</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
+    <label for="confirmation">Passwort wiederholen</label>
+    <input id="confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="12" required>
+    <button class="button button--primary" type="submit">Konto erstellen</button>
+  </form>
+</section>
+{% endblock %}

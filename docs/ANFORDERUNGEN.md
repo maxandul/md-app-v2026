@@ -1,6 +1,6 @@
 # Anforderungen MD-App v2026
 
-**Status:** Lebender Entwurf 0.1  
+**Status:** Lebender Entwurf 0.2
 **Stand:** 17. September 2026  
 **Verantwortung:** Human Resources  
 **Zweck:** Fachliche Grundlage für Konzeption, Umsetzung, Tests und Abnahme
@@ -8,6 +8,11 @@
 Dieses Dokument beschreibt das angestrebte Zielsystem. Neue Anforderungen werden
 ergänzt und bestehende Anforderungen versioniert. Technische Lösungsentscheide
 werden nur dort festgehalten, wo sie bereits fachlich notwendig sind.
+
+Die Anwendung ist als eigenständig betreibbare Übergangslösung zur administrativen
+Entlastung konzipiert. Das Repository `md-app-v2026` enthält sämtliche dafür
+benötigten Anwendungsteile, Installationshinweise und Migrationen. Andere Projekte
+sind keine Laufzeitabhängigkeit.
 
 ## 1. Zielbild
 
@@ -202,7 +207,11 @@ flowchart TD
 |---|---|---|
 | ANA-001 | MUSS | HR kann MD-Daten über mehrere Durchläufe auswerten, ohne personenbezogene Rohdaten manuell aus PDFs oder Excel-Dateien zusammenführen zu müssen. |
 | ANA-002 | MUSS | Analyse und Export berücksichtigen Berechtigungen und unterscheiden operative personenbezogene Auswertung von aggregierter/anonymisierter Berichterstattung. |
-| ANA-003 | OFFEN | Gewünschte Kennzahlen, Dimensionen, Filter, Zielgruppen, Mindestgruppengrössen und Ausgabeformate müssen fachlich ergänzt werden. |
+| ANA-003 | MUSS | HR kann auswerten, wann Rückblicke, Ausblicke und Standortgespräche stattfinden. Mindestens Kalenderwoche/Monat, Gesprächsart, Durchlauf und Organisationseinheit sind filterbar; personenbezogene Detaildaten bleiben berechtigten HR-Rollen vorbehalten. |
+| ANA-004 | MUSS | HR kann die Verteilung der Gesamtbeurteilungen A–E nach Durchlauf und auswählbaren Organisationseinheiten auswerten. Aggregierte Ansichten berücksichtigen eine konfigurierbare Mindestgruppengrösse. |
+| ANA-005 | MUSS | HR kann auswerten, welche Kompetenzen im Rückblick thematisiert und für welche Kompetenzen Entwicklungsziele vereinbart wurden. Freitexte werden dafür nicht automatisch semantisch interpretiert; die Arbeitsmappe erfasst die ausgewählten Kompetenzen strukturiert. |
+| ANA-006 | SOLL | HR kann Textumfang, Nutzung von Standortgesprächen sowie Gespräche mit nächsthöheren Führungskräften aggregiert auswerten. |
+| ANA-007 | MUSS | Die Muss-Auswertungen können mindestens als gefilterte Tabelle und als XLSX/CSV exportiert werden. Ein aufwendiges separates Analyse-Dashboard ist für den ersten produktiven Stand nicht erforderlich. |
 
 ## 15. Benutzerkonten und Sicherheit
 
@@ -329,26 +338,25 @@ Vorgang wird protokolliert.
 
 ## 20. Offene fachliche Entscheide
 
-1. Welche konkreten MD-Analysen, Kennzahlen, Filter und Exporte werden benötigt?
-2. Muss beim D/E-/Uneinigkeitsfall neben dem Scan immer auch das unveränderte
+1. Muss beim D/E-/Uneinigkeitsfall neben dem Scan immer auch das unveränderte
    digitale PDF an HR gesendet werden? Dieses Dokument nimmt dies wegen der
    maschinenlesbaren Datenübernahme vorläufig an.
-3. Welche Inhalte aus Rückblick, Ausblick und Standortgesprächen müssen vollständig
+2. Welche Inhalte aus Rückblick, Ausblick und Standortgesprächen müssen vollständig
    strukturiert in SQLite gespeichert werden und welche dürfen Dokumentinhalt bleiben?
-4. Wie werden Korrekturen nach bereits erfolgtem SAP-Upload fachlich an SAP gemeldet?
-5. Welches technische Anstellungsdatum und welche SAP-Gültigkeitsregeln sind für
+3. Wie werden Korrekturen nach bereits erfolgtem SAP-Upload fachlich an SAP gemeldet?
+4. Welches technische Anstellungsdatum und welche SAP-Gültigkeitsregeln sind für
    IT9075 verbindlich?
-6. Wie lange bleiben inaktive Personen, Arbeitsmappen, digitale PDFs, Scans,
+5. Wie lange bleiben inaktive Personen, Arbeitsmappen, digitale PDFs, Scans,
    E-Mails, Protokolle und Backups gespeichert?
-7. Wie erfolgt die Konfliktlösung, wenn eine Update-Datei Stammdaten oder
+6. Wie erfolgt die Konfliktlösung, wenn eine Update-Datei Stammdaten oder
    Dialogpflichten ändert, zu denen lokal bereits Eingaben bestehen?
-8. Soll die Arbeitsmappe dauerhaft pro Führungskraft oder neu pro Durchlauf geführt
+7. Soll die Arbeitsmappe dauerhaft pro Führungskraft oder neu pro Durchlauf geführt
    werden? Das aktuelle Zielbild nimmt eine längerlebige, aktualisierbare Mappe an.
-9. Welche zusätzlichen E-Mail-Anhänge dürfen automatisch klassifiziert werden und
+8. Welche zusätzlichen E-Mail-Anhänge dürfen automatisch klassifiziert werden und
    welche erfordern immer eine manuelle HR-Prüfung?
-10. Welche Erinnerungsstufen, Vorlaufzeiten und Textvorlagen werden verwendet?
-11. Wie meldet das RPA-System die erfolgreiche Übernahme ins Personaldossier zurück?
-12. Welches Mengengerüst und welche maximalen Dateigrössen sind zu erwarten?
+9. Welche Erinnerungsstufen, Vorlaufzeiten und Textvorlagen werden verwendet?
+10. Wie meldet das RPA-System die erfolgreiche Übernahme ins Personaldossier zurück?
+11. Welches Mengengerüst und welche maximalen Dateigrössen sind zu erwarten?
 
 ## 21. Bewusst nicht vorgesehen
 
@@ -363,4 +371,5 @@ Vorgang wird protokolliert.
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 0.2 | 17.09.2026 | Eigenständige Übergangslösung präzisiert; konkrete Muss-Analysen ergänzt; Wiederverwendung erprobter Muster aus Vorgängerprojekten eingeordnet |
 | 0.1 | 17.09.2026 | Erster konsolidierter Anforderungskatalog aus dem bisherigen Konzept und der ergänzten Muss-Liste |

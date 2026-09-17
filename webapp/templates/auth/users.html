@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Benutzerkonten · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="page-head page-head--compact">
+  <p class="kicker">Systemadministration</p><h1>Benutzerkonten</h1>
+</section>
+<div class="action-grid">
+  <section class="panel panel--wide">
+    <h2>Neues Konto</h2>
+    <form method="post">
+      <label for="email">E-Mail-Adresse</label><input id="email" name="email" type="email" required>
+      <label for="role">Rolle</label>
+      <select id="role" name="role"><option value="hr_admin">HR-Administration</option><option value="system_admin">HR-Systemadministration</option></select>
+      <label for="temporary_password">Temporäres Passwort</label><input id="temporary_password" name="temporary_password" type="password" minlength="12" required>
+      <button class="button button--primary" type="submit">Konto anlegen</button>
+    </form>
+  </section>
+</div>
+<section class="content-section"><h2>Bestehende Konten</h2>
+  <div class="table-wrap"><table><thead><tr><th>E-Mail</th><th>Rolle</th><th>Status</th><th>Passwort zurücksetzen</th></tr></thead><tbody>
+  {% for item in users %}<tr><td>{{ item.email }}</td><td>{{ item.role }}</td><td>{{ 'aktiv' if item.active else 'inaktiv' }}</td><td>
+    <form class="inline-form" action="{{ url_for('auth.reset_password', user_id=item.id) }}" method="post">
+      <input name="temporary_password" type="password" minlength="12" placeholder="Temporäres Passwort" required>
+      <button class="button button--small" type="submit">Zurücksetzen</button>
+    </form></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

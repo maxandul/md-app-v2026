@@ -12,6 +12,7 @@ from flask import (
     abort,
     current_app,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -20,6 +21,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
+from .auth import login_required
 from .db import get_db
 from .services.cycles import (
     create_cycle,
@@ -38,6 +40,15 @@ from .services.sap_export import create_sap_upload_file
 
 
 bp = Blueprint("main", __name__)
+
+
+@bp.before_request
+@login_required
+def protect_hr_cockpit():
+    """Alle fachlichen Routen verlangen ein persönliches HR-Konto."""
+    if not current_app.config.get("AUTH_DISABLED") and g.user and g.user["password_temporary"]:
+        return redirect(url_for("auth.change_password"))
+    return None
 
 
 def _storage_dir(name: str) -> Path:
@@ -96,10 +107,34 @@ def upload_sap_import():
         f"SAP-Import {result.import_id}: {result.employee_count} Personen und "
         f"{result.reporting_line_count} Führungslinien übernommen."
     )
+    if result.ignored_bg_zero_count:
+        message += f" {result.ignored_bg_zero_count} BG-0-Zeile(n) ignoriert."
+    if result.exact_duplicate_count:
+        message += f" {result.exact_duplicate_count} identische Dublette(n) dedupliziert."
+    if result.conflict_count:
+        message += f" {result.conflict_count} Konflikt(e) sind in der Prüfliste offen."
     if result.warnings:
         message += f" {len(result.warnings)} Hinweis(e) beachten."
     flash(message, "success")
     return redirect(url_for("main.dashboard"))
+
+
+@bp.get("/imports/<int:import_id>")
+def import_detail(import_id: int):
+    connection = get_db()
+    imported = connection.execute("SELECT * FROM sap_imports WHERE id = ?", (import_id,)).fetchone()
+    if not imported:
+        abort(404)
+    issues = connection.execute(
+        """
+        SELECT * FROM sap_import_issues
+        WHERE sap_import_id = ?
+        ORDER BY CASE severity WHEN 'blocking' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END,
+                 person_number, employment_assignment, id
+        """,
+        (import_id,),
+    ).fetchall()
+    return render_template("import_detail.html", imported=imported, issues=issues)
 
 
 @bp.post("/cycles")

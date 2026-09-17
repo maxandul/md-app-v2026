@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Übersicht · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <p class="kicker">Administration</p>
+    <h1>Mitarbeitenden-Dialoge verwalten</h1>
+    <p class="lead">SAP-Stammdaten importieren, Jahresprozesse eröffnen, HTML-Arbeitsmappen bereitstellen und unterzeichnete PDF-Rückläufe kontrolliert verarbeiten.</p>
+  </section>
+
+  <section class="security-note" aria-labelledby="security-title">
+    <h2 id="security-title">Schutz der Personaldaten</h2>
+    <p>Startdateien enthalten Vorjahresdaten. Erst- und Rückversand erfolgen ausschliesslich S/MIME-verschlüsselt. Die lokale Ablage ist durch das verwaltete Geschäftsgerät zu schützen.</p>
+  </section>
+
+  <div class="action-grid">
+    <section class="panel" aria-labelledby="import-title">
+      <h2 id="import-title">1. SAP-Export importieren</h2>
+      <p>Der Import wird als unveränderter Datenstand historisiert. Doppelte Führungslinien werden erkannt.</p>
+      <form action="{{ url_for('main.upload_sap_import') }}" method="post" enctype="multipart/form-data">
+        <label for="sap_file">SAP-Datei im Format XLSX</label>
+        <input id="sap_file" name="sap_file" type="file" accept=".xlsx" required>
+        <button class="button button--primary" type="submit">SAP-Export importieren</button>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="cycle-title">
+      <h2 id="cycle-title">2. Jahresprozess eröffnen</h2>
+      {% if imports %}
+        <form action="{{ url_for('main.add_cycle') }}" method="post">
+          <label for="review_year">Rückblickjahr</label>
+          <input id="review_year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year|default(2026) }}" required>
+          <label for="sap_import_id">Verwendeter SAP-Datenstand</label>
+          <select id="sap_import_id" name="sap_import_id" required>
+            {% for item in imports %}
+              <option value="{{ item.id }}">Import {{ item.id }} · {{ item.original_filename }} · {{ item.employee_count }} Personen</option>
+            {% endfor %}
+          </select>
+          <button class="button button--primary" type="submit">Jahresprozess eröffnen</button>
+        </form>
+      {% else %}
+        <p class="muted">Zuerst wird ein SAP-Export benötigt.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel" aria-labelledby="return-title">
+      <h2 id="return-title">3. PDF-Rückläufe einlesen</h2>
+      <p>Elektronische Rückblick-/Ausblick-PDFs und administrative Kein-MD-Bestätigungen werden über ihren MD-Datenblock zugeordnet.</p>
+      <form action="{{ url_for('main.upload_pdf_returns') }}" method="post" enctype="multipart/form-data">
+        <label for="pdf_files">PDF-Dateien</label>
+        <input id="pdf_files" name="pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
+        <button class="button button--primary" type="submit">PDFs prüfen und importieren</button>
+      </form>
+    </section>
+  </div>
+
+  <details class="legacy-box">
+    <summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary>
+    <form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data">
+      <label for="return_file">Bearbeitete HTML-Datei</label>
+      <input id="return_file" name="return_file" type="file" accept=".html,.htm" required>
+      <button class="button" type="submit">HTML-Rücklauf importieren</button>
+    </form>
+  </details>
+
+  <section class="content-section" aria-labelledby="processes-title">
+    <div class="section-heading">
+      <div>
+        <p class="kicker">Prozessübersicht</p>
+        <h2 id="processes-title">Jahresprozesse</h2>
+      </div>
+    </div>
+    {% if cycles %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zeitraum</th><th>Status</th><th>Führungslinien</th><th>Fälle</th><th>Abgeschlossen</th><th></th></tr></thead>
+          <tbody>
+          {% for cycle in cycles %}
+            <tr>
+              <td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td>
+              <td><span class="status">{{ cycle.status }}</span></td>
+              <td>{{ cycle.manager_count }}</td>
+              <td>{{ cycle.case_count }}</td>
+              <td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td>
+              <td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Noch kein Jahresprozess angelegt.</div>
+    {% endif %}
+  </section>
+
+  <section class="content-section" aria-labelledby="imports-title">
+    <div class="section-heading"><div><p class="kicker">Datenstände</p><h2 id="imports-title">SAP-Importe</h2></div></div>
+    {% if imports %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Import</th><th>Datei</th><th>Zeitpunkt</th><th>Personen</th><th>Führungslinien</th><th>Hinweise</th></tr></thead>
+          <tbody>
+          {% for item in imports %}
+            <tr><td>{{ item.id }}</td><td>{{ item.original_filename }}</td><td>{{ item.imported_at }}</td><td>{{ item.employee_count }}</td><td>{{ item.reporting_line_count }}</td><td>{{ item.warning_count }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Noch kein SAP-Datenstand importiert.</div>
+    {% endif %}
+  </section>
+{% endblock %}

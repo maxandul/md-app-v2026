@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Mitarbeitenden-Dialog</title>
+  <style>
+    :root {
+      --blue: #0070b4;
+      --blue-dark: #00407c;
+      --blue-soft: #edf5fa;
+      --ink: #000000;
+      --muted: #666666;
+      --line: #cccccc;
+      --surface: #ffffff;
+      --canvas: #f7f7f7;
+      --success: #1a7f1f;
+      --success-soft: #ebf6eb;
+      --warning: #7a4b00;
+      --warning-soft: #fff6df;
+      --danger: #d93c1a;
+      --danger-soft: #fff0ec;
+      --radius: 4px;
+      --shadow: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 16px/1.55 "Inter", "Helvetica Now Text", "Helvetica Neue", Arial, sans-serif;
+      font-feature-settings: "ss07", "ss08", "cv03", "cv04", "cv10";
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid #009ee0;
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 24px 18px;
+      color: #fff;
+      background: var(--blue-dark);
+    }
+
+    .brand-kicker {
+      margin: 0 0 4px;
+      color: #bcd9f2;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .cycle-label {
+      margin: 8px 0 20px;
+      color: #d9e9f7;
+    }
+
+    .progress-panel {
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 4px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .progress-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .progress-track {
+      height: 8px;
+      margin-top: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.2);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: #79d3aa;
+      transition: width .2s ease;
+    }
+
+    .sidebar-tools { margin: 18px 0 12px; }
+
+    .search {
+      width: 100%;
+      padding: 10px 12px;
+      color: var(--ink);
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .filter-button {
+      padding: 6px 9px;
+      color: #dceafa;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 4px;
+      background: transparent;
+      font-size: 12px;
+    }
+
+    .filter-button.active {
+      color: var(--blue-dark);
+      background: #fff;
+      border-color: #fff;
+    }
+
+    .employee-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .employee-card {
+      width: 100%;
+      padding: 12px;
+      color: #fff;
+      text-align: left;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .employee-card:hover { background: rgba(255,255,255,.12); }
+
+    .employee-card.active {
+      color: var(--ink);
+      background: #fff;
+      box-shadow: none;
+    }
+
+    .employee-name { display: block; font-weight: 700; }
+
+    .employee-meta {
+      display: block;
+      margin-top: 2px;
+      color: #c7ddef;
+      font-size: 12px;
+    }
+
+    .employee-card.active .employee-meta { color: var(--muted); }
+
+    .employee-status-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .mini-track {
+      flex: 1;
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.2);
+    }
+
+    .employee-card.active .mini-track { background: #e2e8f0; }
+
+    .mini-fill { height: 100%; background: #79d3aa; }
+
+    .main { min-width: 0; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 74px;
+      padding: 12px 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.96);
+      backdrop-filter: none;
+    }
+
+    .package-title { margin: 0; font-size: 18px; }
+    .package-meta { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 14px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      font-weight: 700;
+    }
+
+    .button:hover { background: #f8fafc; }
+
+    .button.primary {
+      color: #fff;
+      border-color: var(--blue);
+      background: var(--blue);
+    }
+
+    .button.primary:hover { background: var(--blue-dark); }
+
+    .button.danger { color: var(--danger); border-color: #f1b8b2; }
+    .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
+    .button:disabled { cursor: not-allowed; opacity: .45; }
+
+    .save-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .save-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); }
+    .save-state.dirty .save-dot { background: var(--warning); }
+
+    .content { max-width: 1160px; margin: 0 auto; padding: 24px 28px 80px; }
+
+    .security-banner {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      border: 1px solid #eac879;
+      border-radius: var(--radius);
+      background: var(--warning-soft);
+    }
+
+    .security-label { color: #65430b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .security-banner strong { display: block; margin-bottom: 2px; }
+    .security-banner p { margin: 0; color: #65430b; }
+
+    .person-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      margin: 0 0 3px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+
+    .person-title { margin: 0; font-size: 28px; line-height: 1.2; }
+    .person-subtitle { margin: 6px 0 0; color: var(--muted); }
+
+    .person-facts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 7px 18px;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      padding: 5px 9px;
+      border-radius: 4px;
+      color: var(--muted);
+      background: #eef1f5;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status-badge.complete { color: var(--success); background: var(--success-soft); }
+    .status-badge.progress { color: var(--warning); background: var(--warning-soft); }
+    .status-badge.none { color: #5f3dc4; background: #f1edff; }
+
+    .suggestion {
+      margin-top: 14px;
+      padding: 11px 13px;
+      border-left: 4px solid var(--blue);
+      border-radius: 4px;
+      background: var(--blue-soft);
+      color: #174a77;
+      font-size: 13px;
+    }
+
+    .scan-warning {
+      margin-top: 12px;
+      padding: 12px 14px;
+      color: #65430b;
+      border: 1px solid #eac879;
+      border-radius: 4px;
+      background: var(--warning-soft);
+    }
+
+    .scan-warning strong { display: block; margin-bottom: 3px; }
+
+    .competency-help {
+      margin: 12px 0 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--blue);
+      background: var(--blue-soft);
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .competency-help summary { cursor: pointer; font-weight: 700; }
+    .competency-help h5 { margin: 12px 0 3px; font-size: 13px; }
+    .competency-help ul { margin: 3px 0 0; padding-left: 20px; }
+
+    .scope-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .scope-option {
+      position: relative;
+      display: block;
+      min-height: 95px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .scope-option:has(input:checked) {
+      border-color: var(--blue);
+      outline: 2px solid #009ee0;
+      background: var(--blue-soft);
+    }
+
+    .scope-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .scope-option strong { display: block; margin-bottom: 4px; }
+    .scope-option span { color: var(--muted); font-size: 12px; }
+
+    .section {
+      margin-top: 20px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .section-title { margin: 0; font-size: 20px; }
+    .section-intro { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+    .subsection {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .subsection:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    .subsection h3 { margin: 0 0 10px; font-size: 16px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .field.full { grid-column: 1 / -1; }
+
+    .field label,
+    .field-label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .required-mark { color: var(--danger); }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px 11px;
+      color: var(--ink);
+      border: 1px solid #b9c2cf;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .field textarea { min-height: 94px; resize: vertical; }
+    .field textarea.tall { min-height: 180px; }
+    .field-hint { margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .goal-card,
+    .repeat-card {
+      margin-top: 12px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fbfcfd;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-head h4 { margin: 0; font-size: 15px; }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 18px;
+      margin-bottom: 14px;
+      padding: 12px;
+      border-radius: 4px;
+      background: #f0f3f6;
+    }
+
+    .source-item { font-size: 13px; }
+    .source-item strong { display: block; margin-bottom: 2px; }
+    .source-item.full { grid-column: 1 / -1; }
+
+    .empty-state {
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed #b9c2cf;
+      border-radius: 4px;
+      background: #fafbfc;
+    }
+
+    .completion-panel {
+      display: grid;
+      grid-template-columns: minmax(180px, .8fr) minmax(0, 2fr);
+      gap: 20px;
+      align-items: start;
+      margin-top: 20px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .completion-number { font-size: 36px; font-weight: 700; line-height: 1; }
+    .completion-label { margin-top: 5px; color: var(--muted); }
+    .missing-list { margin: 0; padding-left: 20px; }
+    .missing-list li + li { margin-top: 4px; }
+    .complete-message { color: var(--success); font-weight: 700; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 50;
+      max-width: 460px;
+      padding: 14px 16px;
+      color: #fff;
+      border-radius: 4px;
+      background: #243244;
+      box-shadow: none;
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: .2s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .mobile-notice {
+      display: none;
+      padding: 12px 16px;
+      color: #65430b;
+      border-bottom: 1px solid #eac879;
+      background: var(--warning-soft);
+      font-weight: 700;
+    }
+
+    #print-root { display: none; }
+
+    @media (max-width: 900px) {
+      .mobile-notice { display: block; }
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; max-height: 420px; }
+      .topbar { position: static; align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: flex-start; }
+      .scope-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .form-grid, .form-grid.three, .completion-panel { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 16mm 15mm 18mm; }
+      body { color: #000; background: #fff; font: 10.5pt/1.42 Arial, Helvetica, sans-serif; }
+      body.printing #app, body.printing .mobile-notice, body.printing .toast { display: none !important; }
+      body.printing #print-root { display: block !important; }
+      .print-header { padding-bottom: 10mm; border-bottom: 1.5pt solid #1f4e79; }
+      .print-kicker { color: #1f4e79; font-size: 8.5pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .print-title { margin: 2mm 0 0; font-size: 20pt; line-height: 1.2; }
+      .print-subtitle { margin: 2mm 0 0; color: #444; }
+      .print-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 8mm; margin: 7mm 0; padding: 4mm; background: #f1f4f7; }
+      .print-meta-item strong { display: block; font-size: 8.5pt; }
+      .print-admin-data { margin: -3mm 0 6mm; color: #555; font-size: 6.8pt; line-height: 1.35; overflow-wrap: anywhere; }
+      .print-section { margin-top: 7mm; orphans: 3; widows: 3; }
+      .print-section h2 { margin: 0 0 3mm; padding-bottom: 1.5mm; color: #1f4e79; border-bottom: .7pt solid #9fbad2; font-size: 14pt; break-after: avoid-page; page-break-after: avoid; }
+      .print-section h3 { margin: 5mm 0 2mm; font-size: 11pt; break-after: avoid-page; page-break-after: avoid; }
+      .print-block { break-inside: avoid; margin: 0 0 4mm; padding: 3.5mm; border: .7pt solid #c9d1da; border-radius: 2mm; }
+      .print-row { display: grid; grid-template-columns: 38mm 1fr; gap: 4mm; margin-top: 2mm; }
+      .print-row:first-child { margin-top: 0; }
+      .print-label { font-weight: 700; }
+      .print-value { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .print-signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14mm; margin-top: 18mm; break-inside: avoid; }
+      .signature-line { padding-top: 2mm; border-top: .8pt solid #000; }
+      .print-footer { display: flex; justify-content: space-between; gap: 8mm; margin-top: 12mm; padding-top: 2mm; color: #666; border-top: .5pt solid #c9d1da; font-size: 8pt; break-inside: avoid; }
+      .print-empty { color: #666; font-style: italic; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-notice">Dieses Arbeitsinstrument ist für die Bearbeitung auf dem persönlichen Geschäftsgerät optimiert. Bitte nicht auf private oder mobile Geräte übertragen.</div>
+
+  <div id="app" class="app-shell">
+    <aside class="sidebar" aria-label="Mitarbeitenden-Navigation">
+      <p class="brand-kicker">VD · Mitarbeitenden-Dialog</p>
+      <h1 class="brand-title">Mein Team</h1>
+      <p id="cycle-label" class="cycle-label"></p>
+
+      <div class="progress-panel" aria-label="Gesamtfortschritt">
+        <div class="progress-row"><span>Gesamtfortschritt</span><strong id="overall-progress-text">0 von 0</strong></div>
+        <div class="progress-track"><div id="overall-progress-fill" class="progress-fill"></div></div>
+      </div>
+
+      <div class="sidebar-tools">
+        <label for="employee-search" class="field-label">Mitarbeitende suchen</label>
+        <input id="employee-search" class="search" type="search" placeholder="Name oder Personalnummer">
+        <div class="filter-row" aria-label="Statusfilter">
+          <button class="filter-button active" type="button" data-filter="all">Alle</button>
+          <button class="filter-button" type="button" data-filter="open">Offen</button>
+          <button class="filter-button" type="button" data-filter="complete">Vollständig</button>
+          <button class="filter-button" type="button" data-filter="none">Kein MD</button>
+        </div>
+      </div>
+
+      <div id="employee-list" class="employee-list"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="package-title" class="package-title"></h2>
+          <p id="package-meta" class="package-meta"></p>
+        </div>
+        <div class="toolbar">
+          <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Änderungen</span></span>
+          <button id="next-open-button" class="button" type="button">Nächste offene Person</button>
+          <button id="save-button" class="button primary" type="button">Zwischenstand speichern</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="security-banner">
+          <div class="security-label" aria-hidden="true">Hinweis</div>
+          <div>
+            <strong>Vertrauliche Personaldaten – nur auf dem persönlichen Geschäftsgerät bearbeiten</strong>
+            <p>Diese Datei darf nicht auf private Geräte oder private Cloudspeicher übertragen werden. Versand und Rückversand erfolgen ausschliesslich S/MIME-verschlüsselt.</p>
+          </div>
+        </div>
+        <div id="editor"></div>
+        <div id="completion-panel"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="print-root" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script id="md-data" type="application/json">__MD_PACKAGE_JSON__</script>
+  <script>
+    (() => {
+      'use strict';
+
+      const dataNode = document.getElementById('md-data');
+      let state = JSON.parse(dataNode.textContent);
+      state.employees.forEach(employee => {
+        employee.review = employee.review || {};
+        if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
+        employee.employee = employee.employee || {};
+        if (typeof employee.employee.employment_assignment !== 'string') employee.employee.employment_assignment = '';
+      });
+      let selectedCaseId = state.employees[0] ? state.employees[0].case_id : '';
+      let activeFilter = 'all';
+      let searchText = '';
+      let dirty = false;
+      let previousTitle = document.title;
+      let toastTimer = null;
+
+      const scopeLabels = {
+        full: 'Rückblick und Ausblick',
+        review_only: 'Nur Rückblick',
+        outlook_only: 'Nur Ausblick',
+        none: 'Kein MD'
+      };
+
+      const achievementOptions = [
+        'Erreicht', 'Teilweise erreicht', 'Nicht erreicht', 'Entfallen', 'Noch offen'
+      ];
+
+      const ratingOptions = [
+        'A – vorzüglich',
+        'B – sehr gut',
+        'C – gut',
+        'D – genügend',
+        'E – ungenügend'
+      ];
+
+      const editor = document.getElementById('editor');
+      const completionPanel = document.getElementById('completion-panel');
+      const employeeList = document.getElementById('employee-list');
+      const printRoot = document.getElementById('print-root');
+
+      function h(value) {
+        return String(value == null ? '' : value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function safeJson(value) {
+        return JSON.stringify(value)
+          .replaceAll('<', '\\u003c')
+          .replaceAll('>', '\\u003e')
+          .replaceAll('&', '\\u0026');
+      }
+
+      function formatDate(value) {
+        if (!value) return '–';
+        const parts = String(value).slice(0, 10).split('-');
+        return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : String(value);
+      }
+
+      function nowIso() {
+        return new Date().toISOString();
+      }
+
+      function uid(prefix) {
+        if (window.crypto && window.crypto.randomUUID) return `${prefix}-${window.crypto.randomUUID()}`;
+        return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function selectedEmployee() {
+        return state.employees.find(item => item.case_id === selectedCaseId) || null;
+      }
+
+      function hasReview(scope) {
+        return scope === 'full' || scope === 'review_only';
+      }
+
+      function hasOutlook(scope) {
+        return scope === 'full' || scope === 'outlook_only';
+      }
+
+      function overallRatingCode(employee) {
+        const match = String(employee.review.overall_rating || '').trim().match(/^([A-E])\b/);
+        return match ? match[1] : '';
+      }
+
+      function requiresHandwrittenScan(employee) {
+        return ['D', 'E'].includes(overallRatingCode(employee)) || employee.review.agreement === 'Nein';
+      }
+
+      function addRequirement(list, label, complete) {
+        list.push({ label, complete: Boolean(complete) });
+      }
+
+      function reviewRequirements(employee, includeDialogDate = true) {
+        const list = [];
+        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum', employee.dialog_date);
+        employee.previous_goals.forEach((goal, index) => {
+          addRequirement(list, `Zielerreichung für Vorjahresziel ${index + 1}`, goal.achievement);
+          addRequirement(list, `Rückblick für Vorjahresziel ${index + 1}`, goal.review && goal.review.trim());
+        });
+        addRequirement(list, 'Allgemeiner Leistungsrückblick', employee.review.performance && employee.review.performance.trim());
+        addRequirement(list, 'Gesamteindruck', employee.review.overall_rating);
+        addRequirement(list, 'Einigkeit zur Gesamtbeurteilung', employee.review.agreement);
+        return list;
+      }
+
+      function outlookRequirements(employee, includeDialogDate = true) {
+        const list = [];
+        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum', employee.dialog_date);
+        const goals = employee.outlook.performance_goals || [];
+        addRequirement(list, 'Mindestens ein Leistungsziel', goals.length > 0);
+        goals.forEach((goal, index) => {
+          addRequirement(list, `Bezeichnung für Leistungsziel ${index + 1}`, goal.title && goal.title.trim());
+          addRequirement(list, `Messkriterien für Leistungsziel ${index + 1}`, goal.criteria && goal.criteria.trim());
+          addRequirement(list, `Termin für Leistungsziel ${index + 1}`, goal.target_date);
+        });
+        (employee.outlook.development_goals || []).forEach((goal, index) => {
+          addRequirement(list, `Kompetenz für Entwicklungsziel ${index + 1}`, goal.competency);
+          addRequirement(list, `Bezeichnung für Entwicklungsziel ${index + 1}`, goal.title && goal.title.trim());
+          addRequirement(list, `Messkriterien für Entwicklungsziel ${index + 1}`, goal.criteria && goal.criteria.trim());
+          addRequirement(list, `Termin für Entwicklungsziel ${index + 1}`, goal.target_date);
+        });
+        return list;
+      }
+
+      function completionFromRequirements(requirements) {
+        const total = requirements.length;
+        const done = requirements.filter(item => item.complete).length;
+        return {
+          requirements,
+          missing: requirements.filter(item => !item.complete).map(item => item.label),
+          done,
+          total,
+          percent: total ? Math.round((done / total) * 100) : 100,
+          complete: total === done
+        };
+      }
+
+      function getCompletion(employee) {
+        const requirements = [];
+        addRequirement(requirements, 'Umfang des MD festlegen', employee.scope);
+        if (!employee.scope) return completionFromRequirements(requirements);
+
+        if (employee.scope === 'none') {
+          addRequirement(requirements, 'Grund für «Kein MD»', employee.no_md_reason);
+          if (employee.no_md_reason === 'Anderer Grund') {
+            addRequirement(requirements, 'Erläuterung zum anderen Grund', employee.no_md_note && employee.no_md_note.trim());
+          }
+          return completionFromRequirements(requirements);
+        }
+
+        if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
+          addRequirement(requirements, 'Begründung für den abweichenden Umfang', employee.scope_reason && employee.scope_reason.trim());
+        }
+        addRequirement(requirements, 'Gesprächsdatum', employee.dialog_date);
+        if (hasReview(employee.scope)) requirements.push(...reviewRequirements(employee, false));
+        if (hasOutlook(employee.scope)) requirements.push(...outlookRequirements(employee, false));
+        return completionFromRequirements(requirements);
+      }
+
+      function getSectionCompletion(employee, section) {
+        if (section === 'review') return completionFromRequirements(reviewRequirements(employee));
+        return completionFromRequirements(outlookRequirements(employee));
+      }
+
+      function statusFor(employee) {
+        const completion = getCompletion(employee);
+        if (!employee.scope) return { key: 'open', label: 'Nicht begonnen', className: '' };
+        if (employee.scope === 'none' && completion.complete) return { key: 'none', label: 'Kein MD', className: 'none' };
+        if (completion.complete) return { key: 'complete', label: 'Vollständig', className: 'complete' };
+        return { key: 'open', label: 'In Bearbeitung', className: 'progress' };
+      }
+
+      function markDirty(employee) {
+        dirty = true;
+        if (employee) employee.meta.updated_at = nowIso();
+        updateSaveState();
+      }
+
+      function updateSaveState() {
+        const container = document.getElementById('save-state');
+        const label = document.getElementById('save-state-text');
+        container.classList.toggle('dirty', dirty);
+        label.textContent = dirty ? 'Ungespeicherte Änderungen' : 'Keine ungespeicherten Änderungen';
+      }
+
+      function optionList(options, selected, placeholder) {
+        const first = `<option value="">${h(placeholder || 'Bitte auswählen')}</option>`;
+        return first + options.map(option => (
+          `<option value="${h(option)}" ${option === selected ? 'selected' : ''}>${h(option)}</option>`
+        )).join('');
+      }
+
+      function renderHeader() {
+        const pkg = state.package;
+        if (!Number.isInteger(pkg.revision) || pkg.revision < 0) pkg.revision = 0;
+        document.getElementById('cycle-label').textContent = `Rückblick ${pkg.rb_year} · Ausblick ${pkg.ab_year}`;
+        document.getElementById('package-title').textContent = pkg.manager_name;
+        const saved = pkg.saved_at ? ` · gespeichert ${new Date(pkg.saved_at).toLocaleString('de-CH')}` : '';
+        const version = pkg.revision ? ` · Bearbeitungsstand v${String(pkg.revision).padStart(2, '0')}` : ' · Startdatei';
+        document.getElementById('package-meta').textContent = `VG-PN ${pkg.manager_pn} · Paket ${pkg.package_id}${version}${saved}`;
+        document.title = `MD ${pkg.rb_year}/${pkg.ab_year} – ${pkg.manager_name}`;
+        previousTitle = document.title;
+      }
+
+      function renderOverallProgress() {
+        const total = state.employees.length;
+        const complete = state.employees.filter(employee => getCompletion(employee).complete).length;
+        const percent = total ? Math.round((complete / total) * 100) : 0;
+        document.getElementById('overall-progress-text').textContent = `${complete} von ${total}`;
+        document.getElementById('overall-progress-fill').style.width = `${percent}%`;
+      }
+
+      function visibleEmployees() {
+        return state.employees.filter(employee => {
+          const status = statusFor(employee);
+          const searchHaystack = `${employee.employee.full_name} ${employee.employee.pn}`.toLowerCase();
+          const searchMatches = !searchText || searchHaystack.includes(searchText);
+          const filterMatches = activeFilter === 'all' || status.key === activeFilter;
+          return searchMatches && filterMatches;
+        });
+      }
+
+      function renderSidebar() {
+        const employees = visibleEmployees();
+        employeeList.innerHTML = employees.length ? employees.map(employee => {
+          const completion = getCompletion(employee);
+          const status = statusFor(employee);
+          return `
+            <button type="button" class="employee-card ${employee.case_id === selectedCaseId ? 'active' : ''}" data-case-id="${h(employee.case_id)}">
+              <span class="employee-name">${h(employee.employee.full_name)}</span>
+              <span class="employee-meta">${h(employee.employee.position || employee.employee.org_unit || 'Keine Funktion hinterlegt')} · PN ${h(employee.employee.pn)}</span>
+              <span class="employee-status-line">
+                <span class="status-badge ${status.className}">${h(status.label)}</span>
+                <span>${completion.percent}%</span>
+              </span>
+              <span class="mini-track"><span class="mini-fill" style="display:block;width:${completion.percent}%"></span></span>
+            </button>`;
+        }).join('') : '<div class="empty-state" style="color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.06)">Keine Personen in diesem Filter.</div>';
+        renderOverallProgress();
+      }
+
+      function field(label, bind, value, options = {}) {
+        const type = options.type || 'text';
+        const required = options.required ? '<span class="required-mark"> *</span>' : '';
+        const hint = options.hint ? `<div class="field-hint">${h(options.hint)}</div>` : '';
+        const readonly = options.readonly ? ' readonly aria-readonly="true"' : '';
+        let control;
+        if (type === 'textarea') {
+          control = `<textarea class="${options.tall ? 'tall' : ''}" data-bind="${h(bind)}" rows="${options.rows || 4}">${h(value)}</textarea>`;
+        } else if (type === 'select') {
+          control = `<select data-bind="${h(bind)}">${optionList(options.items || [], value, options.placeholder)}</select>`;
+        } else {
+          control = `<input type="${h(type)}" data-bind="${h(bind)}" value="${h(value)}"${readonly}>`;
+        }
+        return `<div class="field ${options.full ? 'full' : ''}"><label>${h(label)}${required}</label>${control}${hint}</div>`;
+      }
+
+      function arrayField(label, arrayName, index, key, value, options = {}) {
+        const required = options.required ? '<span class="required-mark"> *</span>' : '';
+        let control;
+        if (options.type === 'select') {
+          control = `<select data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}">${optionList(options.items || [], value, options.placeholder)}</select>`;
+        } else if (options.type === 'date') {
+          control = `<input type="date" data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}" value="${h(value)}">`;
+        } else if (options.type === 'text') {
+          control = `<input type="text" data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}" value="${h(value)}">`;
+        } else {
+          control = `<textarea data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}" rows="${options.rows || 3}">${h(value)}</textarea>`;
+        }
+        return `<div class="field ${options.full ? 'full' : ''}"><label>${h(label)}${required}</label>${control}</div>`;
+      }
+
+      function renderPreviousGoals(employee) {
+        if (!employee.previous_goals.length) return '<div class="empty-state">Keine Vorjahresziele hinterlegt.</div>';
+        return employee.previous_goals.map((goal, index) => `
+          <div class="goal-card">
+            <div class="card-head"><h4>Vorjahresziel ${index + 1}: ${h(goal.title)}</h4></div>
+            <div class="source-grid">
+              <div class="source-item full"><strong>Ziel</strong>${h(goal.title)}</div>
+              <div class="source-item"><strong>Messkriterien</strong>${h(goal.criteria || '–')}</div>
+              <div class="source-item"><strong>Termin</strong>${h(formatDate(goal.target_date))}</div>
+              <div class="source-item full"><strong>Vereinbarte Schritte</strong>${h(goal.steps || '–')}</div>
+            </div>
+            <div class="form-grid">
+              ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
+              ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
+            </div>
+          </div>`).join('');
+      }
+
+      function renderCompetencyHelp(name) {
+        if (!name || !Array.isArray(state.configuration.competency_model)) return '';
+        let match = null;
+        let categoryName = '';
+        for (const category of state.configuration.competency_model) {
+          const competency = (category.competencies || []).find(item => item.name === name);
+          if (competency) {
+            match = competency;
+            categoryName = category.category || '';
+            break;
+          }
+        }
+        if (!match) return '';
+        const parts = Object.entries(match.parts || {}).map(([part, descriptors]) => `
+          <div><h5>${h(part)}</h5><ul>${(descriptors || []).map(text => `<li>${h(text)}</li>`).join('')}</ul></div>`).join('');
+        return `<details class="competency-help"><summary>Teilkompetenzen und Formulierungshilfen anzeigen</summary><p>${h(categoryName)} · Die Hinweise können ausgewählt und an die konkrete Funktion angepasst werden.</p>${parts}</details>`;
+      }
+
+      function renderCompetencies(employee) {
+        const entries = employee.review.competencies || [];
+        const cards = entries.map((entry, index) => `
+          <div class="repeat-card">
+            <div class="card-head"><h4>Kompetenzbeobachtung ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="review.competencies" data-index="${index}">Entfernen</button></div>
+            <div class="form-grid">
+              ${arrayField('Kompetenz', 'review.competencies', index, 'competency', entry.competency, { type:'select', items: state.configuration.competencies, placeholder:'Kompetenz auswählen' })}
+              ${arrayField('Beobachtung und Rückmeldung', 'review.competencies', index, 'comment', entry.comment, { full:true, rows:4 })}
+            </div>
+            ${renderCompetencyHelp(entry.competency)}
+          </div>`).join('');
+        return `${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
+      }
+
+      function renderPerformanceGoals(employee) {
+        const goals = employee.outlook.performance_goals || [];
+        const cards = goals.map((goal, index) => `
+          <div class="repeat-card">
+            <div class="card-head"><h4>Leistungsziel ${index + 1}</h4>${goals.length > 1 ? `<button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button>` : ''}</div>
+            <div class="form-grid">
+              ${arrayField('Ziel', 'outlook.performance_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
+              ${arrayField('Messkriterien', 'outlook.performance_goals', index, 'criteria', goal.criteria, { required:true })}
+              ${arrayField('Schritte zum Ziel', 'outlook.performance_goals', index, 'steps', goal.steps)}
+              ${arrayField('Termin', 'outlook.performance_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
+            </div>
+          </div>`).join('');
+        return `${cards}<button class="button small" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
+      }
+
+      function renderDevelopmentGoals(employee) {
+        const goals = employee.outlook.development_goals || [];
+        const cards = goals.map((goal, index) => `
+          <div class="repeat-card">
+            <div class="card-head"><h4>Entwicklungsziel ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.development_goals" data-index="${index}">Entfernen</button></div>
+            <div class="form-grid">
+              ${arrayField('Kompetenz', 'outlook.development_goals', index, 'competency', goal.competency, { type:'select', items: state.configuration.competencies, placeholder:'Kompetenz auswählen', required:true })}
+              ${arrayField('Entwicklungsziel', 'outlook.development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
+              ${arrayField('Messkriterien', 'outlook.development_goals', index, 'criteria', goal.criteria, { required:true })}
+              ${arrayField('Schritte zum Ziel', 'outlook.development_goals', index, 'steps', goal.steps)}
+              ${arrayField('Termin', 'outlook.development_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
+            </div>
+            ${renderCompetencyHelp(goal.competency)}
+          </div>`).join('');
+        return `${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
+      }
+
+      function renderScope(employee) {
+        const options = [
+          ['full', 'Rückblick und Ausblick', 'Regulärer jährlicher Mitarbeitenden-Dialog'],
+          ['review_only', 'Nur Rückblick', 'Zum Beispiel bei einem bevorstehenden Austritt'],
+          ['outlook_only', 'Nur Ausblick', 'Zum Beispiel nach Abschluss der Probezeit'],
+          ['none', 'Kein MD', 'Der Dialog ist in diesem Durchlauf nicht erforderlich']
+        ];
+        return `
+          <section class="section">
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Bitte bestätige zuerst, welche Unterlagen für diese Person erforderlich sind.</p></div></div>
+            <div class="scope-grid">
+              ${options.map(option => `
+                <label class="scope-option">
+                  <input type="radio" name="scope" data-bind="scope" value="${option[0]}" ${employee.scope === option[0] ? 'checked' : ''}>
+                  <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
+                </label>`).join('')}
+            </div>
+            ${employee.suggestion ? `<div class="suggestion"><strong>Hinweis aus den SAP-Stammdaten:</strong> ${h(scopeLabels[employee.suggestion.scope])} – ${h(employee.suggestion.reason)} <button type="button" class="button small" style="margin-left:8px" data-action="apply-suggestion">Übernehmen</button></div>` : ''}
+            ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den abweichenden Umfang', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:'Diese Angabe wird für HR und die Prozessauswertung übernommen.' })}</div>` : ''}
+          </section>`;
+      }
+
+      function renderNoMd(employee) {
+        return `
+          <section class="section">
+            <div class="section-head">
+              <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">Der Fall wird ohne Rückblick und Ausblick abgeschlossen.</p></div>
+              <button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>
+            </div>
+            <div class="form-grid">
+              ${field('Grund', 'no_md_reason', employee.no_md_reason, { type:'select', items:state.configuration.no_md_reasons, required:true })}
+              ${field('Ergänzende Bemerkung', 'no_md_note', employee.no_md_note, { type:'textarea', full:true, required:employee.no_md_reason === 'Anderer Grund' })}
+            </div>
+          </section>`;
+      }
+
+      function renderDialogDetails(employee) {
+        return `
+          <section class="section">
+            <div class="section-head"><div><h2 class="section-title">Gesprächsdaten</h2><p class="section-intro">Das Gesprächsdatum wird in Rückblick und Ausblick übernommen.</p></div></div>
+            <div class="form-grid three">
+              ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Eintrittsdatum vorgegeben.' })}
+              ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Austrittsdatum vorgegeben.' })}
+              ${field('Datum des Gesprächs', 'dialog_date', employee.dialog_date, { type:'date', required:true })}
+            </div>
+          </section>`;
+      }
+
+      function renderReview(employee) {
+        const secondary = employee.employee.secondary_employment;
+        return `
+          <section class="section">
+            <div class="section-head">
+              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Die Textfelder wachsen beim Schreiben. Im PDF wird nur tatsächlich erfasster Inhalt ausgegeben.</p></div>
+              <button class="button" type="button" data-action="print-review">Rückblick als PDF</button>
+            </div>
+            <div class="subsection"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
+            <div class="subsection"><h3>2. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
+              ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
+              ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
+            </div></div>
+            <div class="subsection"><h3>3. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection"><h3>4. Gesamteindruck und Gespräch</h3><div class="form-grid">
+              ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
+              ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
+              ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
+              ${field('Bemerkung der mitarbeitenden Person', 'review.employee_comment', employee.review.employee_comment, { type:'textarea', full:true })}
+              ${field('Gespräch mit nächsthöherer Führungsperson', 'review.next_level_conversation', employee.review.next_level_conversation, { type:'select', items:['Nein','Ja'], placeholder:'Bitte auswählen' })}
+              ${employee.review.next_level_conversation === 'Ja' ? field('Bemerkungen zum Gespräch mit der nächsthöheren Führungsperson', 'review.next_level_comment', employee.review.next_level_comment, { type:'textarea', full:true }) : ''}
+            </div>
+              ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien die Dokumente zusätzlich handschriftlich unterzeichnen. Der Scan ist zusammen mit den elektronisch unterzeichneten PDFs an HR zu senden.</div>` : ''}
+            </div>
+            <div class="subsection"><h3>5. Nebenbeschäftigungen und öffentliche Ämter</h3>
+              ${secondary ? `<div class="suggestion"><strong>In SAP hinterlegt:</strong> ${h(secondary)}</div>` : ''}
+              <div class="form-grid" style="margin-top:12px">
+                ${field('Angaben aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein','Keine Angaben vorhanden'], placeholder:'Bitte auswählen' })}
+                ${field('Präzisierungen', 'review.secondary_employment_note', employee.review.secondary_employment_note, { type:'textarea', full:true })}
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function renderOutlook(employee) {
+        return `
+          <section class="section">
+            <div class="section-head">
+              <div><p class="eyebrow">Ausblick ${state.package.ab_year}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
+              <button class="button" type="button" data-action="print-outlook">Ausblick als PDF</button>
+            </div>
+            <div class="subsection"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
+            <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
+            <div class="subsection"><h3>3. Entwicklungsziele</h3><p class="section-intro">Die Kompetenz wird ausgewählt; dadurch entfallen die vielen dauerhaft leeren Kompetenzfelder.</p>${renderDevelopmentGoals(employee)}</div>
+            <div class="subsection"><h3>4. Entwicklungswunsch / NEP</h3><div class="form-grid">
+              ${field('Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
+              ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
+            </div></div>
+            <div class="subsection"><h3>5. Allgemeine Bemerkungen</h3><div class="form-grid">${field('Bemerkungen zum Ausblick', 'outlook.general_notes', employee.outlook.general_notes, { type:'textarea', full:true })}</div></div>
+          </section>`;
+      }
+
+      function renderEditor() {
+        const employee = selectedEmployee();
+        if (!employee) {
+          editor.innerHTML = '<div class="empty-state">Keine mitarbeitende Person ausgewählt.</div>';
+          completionPanel.innerHTML = '';
+          return;
+        }
+        const status = statusFor(employee);
+        const person = employee.employee;
+        editor.innerHTML = `
+          <section class="person-header">
+            <div>
+              <p class="eyebrow">Mitarbeitenden-Dialog</p>
+              <h1 class="person-title">${h(person.full_name)}</h1>
+              <p class="person-subtitle">${h(person.position || 'Keine Funktion hinterlegt')} · ${h(person.org_unit || 'Keine Organisationseinheit')}</p>
+              <div class="person-facts">
+                <span><strong>Personalnummer:</strong> ${h(person.pn)}</span>
+                <span><strong>Beschäftigungsgrad:</strong> ${h(person.employment_degree || '–')}%</span>
+                <span><strong>Eintritt:</strong> ${h(formatDate(person.entry_date))}</span>
+                <span><strong>Austritt:</strong> ${h(formatDate(person.exit_date))}</span>
+              </div>
+            </div>
+            <span class="status-badge ${status.className}">${h(status.label)}</span>
+          </section>
+          ${renderScope(employee)}
+          ${employee.scope === 'none' ? renderNoMd(employee) : ''}
+          ${employee.scope && employee.scope !== 'none' ? renderDialogDetails(employee) : ''}
+          ${hasReview(employee.scope) ? renderReview(employee) : ''}
+          ${hasOutlook(employee.scope) ? renderOutlook(employee) : ''}`;
+        renderCompletionPanel();
+      }
+
+      function renderCompletionPanel() {
+        const employee = selectedEmployee();
+        if (!employee) return;
+        const completion = getCompletion(employee);
+        const review = hasReview(employee.scope) ? getSectionCompletion(employee, 'review') : null;
+        const outlook = hasOutlook(employee.scope) ? getSectionCompletion(employee, 'outlook') : null;
+        const sectionText = [
+          review ? `Rückblick: ${review.percent}%` : '',
+          outlook ? `Ausblick: ${outlook.percent}%` : ''
+        ].filter(Boolean).join(' · ');
+        completionPanel.innerHTML = `
+          <section class="completion-panel">
+            <div><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit${sectionText ? `<br>${h(sectionText)}` : ''}</div></div>
+            <div>
+              ${completion.complete
+                ? '<div class="complete-message">Alle erforderlichen Angaben für den gewählten Umfang sind vorhanden.</div>'
+                : `<strong>Noch zu ergänzen:</strong><ul class="missing-list">${completion.missing.map(item => `<li>${h(item)}</li>`).join('')}</ul>`}
+            </div>
+          </section>`;
+      }
+
+      function getPath(object, path) {
+        return path.split('.').reduce((current, key) => current[key], object);
+      }
+
+      function setPath(object, path, value) {
+        const keys = path.split('.');
+        const final = keys.pop();
+        const parent = keys.reduce((current, key) => current[key], object);
+        parent[final] = value;
+      }
+
+      function refreshProgressOnly() {
+        renderSidebar();
+        renderCompletionPanel();
+      }
+
+      function handleEdit(event) {
+        const target = event.target;
+        const employee = selectedEmployee();
+        if (!employee) return;
+        let changed = false;
+        let rerender = false;
+        if (target.dataset.bind) {
+          setPath(employee, target.dataset.bind, target.value);
+          changed = true;
+          rerender = ['scope', 'no_md_reason', 'review.next_level_conversation'].includes(target.dataset.bind);
+        } else if (target.dataset.array) {
+          const array = getPath(employee, target.dataset.array);
+          const item = array[Number(target.dataset.index)];
+          if (item) {
+            item[target.dataset.key] = target.value;
+            changed = true;
+            rerender = target.dataset.key === 'competency';
+          }
+        }
+        if (!changed) return;
+        markDirty(employee);
+        if (rerender) renderEditor();
+        refreshProgressOnly();
+      }
+
+      function addItem(employee, action) {
+        if (action === 'add-competency') {
+          employee.review.competencies.push({ id: uid('competency'), competency: '', comment: '' });
+        } else if (action === 'add-performance-goal') {
+          employee.outlook.performance_goals.push({ id: uid('goal'), title: '', criteria: '', steps: '', target_date: '' });
+        } else if (action === 'add-development-goal') {
+          employee.outlook.development_goals.push({ id: uid('development'), competency: '', title: '', criteria: '', steps: '', target_date: '' });
+        }
+        markDirty(employee);
+        renderEditor();
+        renderSidebar();
+      }
+
+      function handleEditorClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const employee = selectedEmployee();
+        if (!employee) return;
+        const action = button.dataset.action;
+        if (action.startsWith('add-')) {
+          addItem(employee, action);
+          return;
+        }
+        if (action === 'remove-item') {
+          const array = getPath(employee, button.dataset.array);
+          array.splice(Number(button.dataset.index), 1);
+          markDirty(employee);
+          renderEditor();
+          renderSidebar();
+          return;
+        }
+        if (action === 'apply-suggestion') {
+          employee.scope = employee.suggestion.scope;
+          if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
+            employee.scope_reason = employee.suggestion.reason;
+          }
+          markDirty(employee);
+          renderEditor();
+          renderSidebar();
+          return;
+        }
+        if (action === 'print-review') printEmployee(employee, 'review');
+        if (action === 'print-outlook') printEmployee(employee, 'outlook');
+        if (action === 'print-no-md') printEmployee(employee, 'no_md');
+      }
+
+      function printValue(label, value) {
+        return `<div class="print-row"><div class="print-label">${h(label)}</div><div class="print-value">${value ? h(value) : '<span class="print-empty">Keine Angabe</span>'}</div></div>`;
+      }
+
+      function printHeader(employee, title, year) {
+        const person = employee.employee;
+        return `
+          <header class="print-header">
+            <div class="print-kicker">Volkswirtschaftsdirektion · Mitarbeitenden-Dialog</div>
+            <h1 class="print-title">${h(title)} ${h(year)}</h1>
+            <p class="print-subtitle">${h(person.full_name)} · ${h(person.position)}</p>
+          </header>
+          <div class="print-meta">
+            <div class="print-meta-item"><strong>Personalnummer</strong>${h(person.pn)}</div>
+            <div class="print-meta-item"><strong>Organisationseinheit</strong>${h(person.org_unit || '–')}</div>
+            <div class="print-meta-item"><strong>Vorgesetzte Person</strong>${h(state.package.manager_name)}</div>
+            <div class="print-meta-item"><strong>Gesprächsdatum</strong>${h(formatDate(employee.dialog_date))}</div>
+          </div>`;
+      }
+
+      function printAdminData(employee, documentType, year) {
+        const values = [
+          'MD-DATENBLOCK',
+          'version=1',
+          `document=${documentType}`,
+          `case_id=${employee.case_id}`,
+          `package_id=${state.package.package_id}`,
+          `pn=${employee.employee.pn}`,
+          `ans=${employee.employee.employment_assignment || ''}`,
+          `year=${year}`,
+          `scope=${employee.scope || ''}`,
+          `period_start=${employee.period_start}`,
+          `period_end=${employee.period_end}`,
+          `dialog_date=${employee.dialog_date}`,
+          `rating=${overallRatingCode(employee)}`,
+          `agreement=${employee.review.agreement === 'Ja' ? 'JA' : employee.review.agreement === 'Nein' ? 'NEIN' : ''}`,
+          `handwritten_scan_required=${requiresHandwrittenScan(employee) ? 'JA' : 'NEIN'}`,
+          `no_md_reason=${documentType === 'KEIN_MD' ? employee.no_md_reason : ''}`
+        ];
+        return `<div class="print-admin-data">${h(values.join(' ; '))}</div>`;
+      }
+
+      function signatures() {
+        return `
+          <div class="print-signatures">
+            <div class="signature-line">Datum und Unterschrift mitarbeitende Person</div>
+            <div class="signature-line">Datum und Unterschrift vorgesetzte Person</div>
+          </div>`;
+      }
+
+      function buildReviewPrint(employee) {
+        const previous = employee.previous_goals.map((goal, index) => `
+          <div class="print-block">
+            <h3>Ziel ${index + 1}: ${h(goal.title)}</h3>
+            ${printValue('Messkriterien', goal.criteria)}
+            ${printValue('Vereinbarte Schritte', goal.steps)}
+            ${printValue('Termin', formatDate(goal.target_date))}
+            ${printValue('Zielerreichung', goal.achievement)}
+            ${printValue('Rückblick', goal.review)}
+          </div>`).join('');
+        const competencies = employee.review.competencies.filter(item => item.competency || item.comment).map(item => `
+          <div class="print-block"><h3>${h(item.competency || 'Kompetenz')}</h3><div class="print-value">${item.comment ? h(item.comment) : '<span class="print-empty">Keine Bemerkung</span>'}</div></div>`).join('');
+        return `
+          ${printHeader(employee, 'Rückblick', state.package.rb_year)}
+          ${printAdminData(employee, 'RUECKBLICK', state.package.rb_year)}
+          <section class="print-section"><h2>Vereinbarte Ziele</h2>${previous || '<p class="print-empty">Keine Vorjahresziele hinterlegt.</p>'}</section>
+          <section class="print-section"><h2>Leistung und Aufgabenerfüllung</h2>
+            ${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}
+            ${printValue('Leistungsrückblick', employee.review.performance)}
+            ${printValue('Gesamteindruck', employee.review.overall_rating)}
+            ${printValue('Einigkeit zur Gesamtbeurteilung', employee.review.agreement)}
+            ${printValue('Zusätzlicher handschriftlicher Scan erforderlich', requiresHandwrittenScan(employee) ? 'Ja' : 'Nein')}
+          </section>
+          ${competencies ? `<section class="print-section"><h2>Kompetenzbezogene Beobachtungen</h2>${competencies}</section>` : ''}
+          <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>
+            ${printValue('Vorgesetzte Person', employee.review.manager_comment)}
+            ${printValue('Mitarbeitende Person', employee.review.employee_comment)}
+            ${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}
+          </section>
+          <section class="print-section"><h2>Nebenbeschäftigungen / öffentliche Ämter</h2>
+            ${printValue('In SAP hinterlegt', employee.employee.secondary_employment)}
+            ${printValue('Angaben aktuell', employee.review.secondary_employment_current)}
+            ${printValue('Präzisierungen', employee.review.secondary_employment_note)}
+          </section>
+          ${signatures()}`;
+      }
+
+      function buildOutlookPrint(employee) {
+        const goals = employee.outlook.performance_goals.map((goal, index) => `
+          <div class="print-block"><h3>Leistungsziel ${index + 1}: ${h(goal.title)}</h3>
+            ${printValue('Messkriterien', goal.criteria)}
+            ${printValue('Schritte zum Ziel', goal.steps)}
+            ${printValue('Termin', formatDate(goal.target_date))}
+          </div>`).join('');
+        const development = employee.outlook.development_goals.map((goal, index) => `
+          <div class="print-block"><h3>Entwicklungsziel ${index + 1}: ${h(goal.title)}</h3>
+            ${printValue('Kompetenz', goal.competency)}
+            ${printValue('Messkriterien', goal.criteria)}
+            ${printValue('Schritte zum Ziel', goal.steps)}
+            ${printValue('Termin', formatDate(goal.target_date))}
+          </div>`).join('');
+        return `
+          ${printHeader(employee, 'Ausblick', state.package.ab_year)}
+          ${printAdminData(employee, 'AUSBLICK', state.package.ab_year)}
+          <section class="print-section"><h2>Leistungsziele</h2>${goals}</section>
+          ${employee.outlook.open_goals_text ? `<section class="print-section"><h2>Ergänzende Zielvereinbarungen</h2>${printValue('Weitere Ziele', employee.outlook.open_goals_text)}</section>` : ''}
+          ${development ? `<section class="print-section"><h2>Entwicklungsziele</h2>${development}</section>` : ''}
+          <section class="print-section"><h2>Entwicklungswunsch / NEP</h2>
+            ${printValue('Entwicklungswunsch', employee.outlook.nep)}
+            ${printValue('Bemerkungen', employee.outlook.nep_notes)}
+          </section>
+          ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
+          ${signatures()}`;
+      }
+
+      function buildNoMdPrint(employee) {
+        return `
+          ${printHeader(employee, 'Kein Mitarbeitenden-Dialog', state.package.rb_year)}
+          ${printAdminData(employee, 'KEIN_MD', state.package.rb_year)}
+          <section class="print-section"><h2>Administrativer Abschluss</h2>
+            ${printValue('Grund', employee.no_md_reason)}
+            ${printValue('Ergänzende Bemerkung', employee.no_md_note)}
+          </section>
+          <section class="print-section"><h2>Verwendung</h2>
+            <p>Diese Bestätigung dient ausschliesslich der administrativen Prozesskontrolle durch HR. Sie wird nicht an das Personaldossier übergeben.</p>
+          </section>`;
+      }
+
+      function printEmployee(employee, section) {
+        const isNoMd = section === 'no_md';
+        const completion = isNoMd ? getCompletion(employee) : getSectionCompletion(employee, section);
+        if (!completion.complete) {
+          const preview = completion.missing.slice(0, 6).join('\n– ');
+          const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : 'Kein-MD-Fall';
+          const proceed = window.confirm(`Dieser ${sectionName} ist noch nicht vollständig.\n\nEs fehlt:\n– ${preview}\n\nTrotzdem PDF-Vorschau öffnen?`);
+          if (!proceed) return;
+        }
+        employee.meta.pdf_exported_at = nowIso();
+        markDirty(employee);
+        const isReview = section === 'review';
+        const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : buildOutlookPrint(employee);
+        printRoot.innerHTML = `${printContent}
+          <div class="print-footer"><span>Paket ${h(state.package.package_id)}</span><span>Erstellt aus der geschützten MD-Arbeitsdatei</span></div>`;
+        printRoot.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('printing');
+        const person = employee.employee;
+        const prefix = isReview ? `Rueckblick_${state.package.rb_year}` : isNoMd ? `Kein_MD_${state.package.rb_year}` : `Ausblick_${state.package.ab_year}`;
+        document.title = `${prefix}_${filenamePart(person.last_name)}_${filenamePart(person.first_name)}_${filenamePart(person.pn)}`;
+        window.setTimeout(() => window.print(), 60);
+      }
+
+      function cleanupPrint() {
+        document.body.classList.remove('printing');
+        printRoot.innerHTML = '';
+        printRoot.setAttribute('aria-hidden', 'true');
+        document.title = previousTitle;
+        renderSidebar();
+      }
+
+      function filenamePart(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Za-z0-9_-]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'Unbekannt';
+      }
+
+      function packageFilename() {
+        const pkg = state.package;
+        const managerLastName = filenamePart(pkg.manager_last_name || pkg.manager_name);
+        const managerFirstName = filenamePart(pkg.manager_first_name || '');
+        const manager = [managerLastName, managerFirstName].filter(part => part && part !== 'Unbekannt').join('_');
+        const savedAt = new Date(pkg.saved_at);
+        const stamp = [
+          savedAt.getFullYear(),
+          String(savedAt.getMonth() + 1).padStart(2, '0'),
+          String(savedAt.getDate()).padStart(2, '0')
+        ].join('') + '_' + String(savedAt.getHours()).padStart(2, '0') + String(savedAt.getMinutes()).padStart(2, '0');
+        const revision = `v${String(pkg.revision).padStart(2, '0')}`;
+        return `MD_Dialog_${pkg.rb_year}_${pkg.ab_year}_${manager}_${filenamePart(pkg.manager_pn)}_BEARBEITET_${revision}_${stamp}.html`;
+      }
+
+      function savePackage() {
+        state.package.revision = (Number.isInteger(state.package.revision) ? state.package.revision : 0) + 1;
+        state.package.saved_at = nowIso();
+        dataNode.textContent = safeJson(state);
+        renderHeader();
+
+        const clone = document.documentElement.cloneNode(true);
+        const cloneData = clone.querySelector('#md-data');
+        cloneData.textContent = safeJson(state);
+        const clonePrint = clone.querySelector('#print-root');
+        if (clonePrint) {
+          clonePrint.innerHTML = '';
+          clonePrint.setAttribute('aria-hidden', 'true');
+        }
+        clone.querySelector('body').classList.remove('printing');
+        const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = packageFilename();
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        dirty = false;
+        updateSaveState();
+        showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen. Für die weitere Bearbeitung oder den Rückversand bitte diese neue Datei verwenden.');
+      }
+
+      function selectNextOpen() {
+        if (!state.employees.length) return;
+        const currentIndex = state.employees.findIndex(item => item.case_id === selectedCaseId);
+        const ordered = state.employees.slice(currentIndex + 1).concat(state.employees.slice(0, currentIndex + 1));
+        const next = ordered.find(employee => !getCompletion(employee).complete);
+        if (!next) {
+          showToast('Alle Fälle sind vollständig.');
+          return;
+        }
+        selectedCaseId = next.case_id;
+        activeFilter = 'all';
+        document.querySelectorAll('.filter-button').forEach(button => button.classList.toggle('active', button.dataset.filter === 'all'));
+        renderSidebar();
+        renderEditor();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => toast.classList.remove('show'), 6500);
+      }
+
+      employeeList.addEventListener('click', event => {
+        const button = event.target.closest('[data-case-id]');
+        if (!button) return;
+        selectedCaseId = button.dataset.caseId;
+        renderSidebar();
+        renderEditor();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      document.getElementById('employee-search').addEventListener('input', event => {
+        searchText = event.target.value.trim().toLowerCase();
+        renderSidebar();
+      });
+
+      document.querySelector('.filter-row').addEventListener('click', event => {
+        const button = event.target.closest('[data-filter]');
+        if (!button) return;
+        activeFilter = button.dataset.filter;
+        document.querySelectorAll('.filter-button').forEach(item => item.classList.toggle('active', item === button));
+        renderSidebar();
+      });
+
+      editor.addEventListener('input', handleEdit);
+      editor.addEventListener('change', handleEdit);
+      editor.addEventListener('click', handleEditorClick);
+      document.getElementById('save-button').addEventListener('click', savePackage);
+      document.getElementById('next-open-button').addEventListener('click', selectNextOpen);
+      window.addEventListener('afterprint', cleanupPrint);
+      window.addEventListener('beforeunload', event => {
+        if (!dirty) return;
+        event.preventDefault();
+        event.returnValue = '';
+      });
+
+      renderHeader();
+      renderSidebar();
+      renderEditor();
+      updateSaveState();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ manager.manager_name }} · MD {{ cycle.review_year }}/{{ cycle.outlook_year }}{% endblock %}
+{% block content %}
+  <nav class="breadcrumb" aria-label="Brotkrumen">
+    <a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span>
+    <a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">{{ cycle.review_year }}/{{ cycle.outlook_year }}</a><span aria-hidden="true">/</span>
+    <span>{{ manager.manager_name }}</span>
+  </nav>
+  <section class="page-head page-head--compact">
+    <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
+    <h1>{{ manager.manager_name }}</h1>
+    <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Vorschläge aus den SAP-Daten bleiben Hinweise und werden in der HTML-Datei bestätigt.</p>
+    <form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post">
+      <button class="button button--primary" type="submit">Neue START-Datei erzeugen</button>
+    </form>
+  </section>
+
+  <section class="content-section" aria-labelledby="cases-title">
+    <div class="section-heading"><div><p class="kicker">Mitarbeitende</p><h2 id="cases-title">MD-Fälle</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Person</th><th>Funktion / OE</th><th>Umfang</th><th>Dokumentstatus und Aktionen</th><th>Fallstatus</th></tr></thead>
+        <tbody>
+        {% for case in cases %}
+          <tr>
+            <td><strong>{{ case.first_name }} {{ case.last_name }}</strong><br><span class="muted">PN {{ case.employee_pn }}</span></td>
+            <td>{{ case.position or '–' }}<br><span class="muted">{{ case.org_unit or '–' }}</span></td>
+            <td><strong>{{ case.scope_label }}</strong><br><span class="muted">Vorschlag: {{ case.suggested_scope }} · {{ case.suggestion_reason }}</span></td>
+            <td>
+              {% if case.document_states %}
+                {% for document in case.document_states %}
+                  <div class="document-state">
+                    <strong>{{ document.name }}</strong>
+                    <span class="status status--{{ document.key }}">{{ document.label }}</span>
+                    {% if document.digital and document.key == 'signature' %}
+                      <div class="muted">Adobe Fill &amp; Sign: {% if document.digital.fill_sign_detected %}erkannt ({{ document.digital.fill_sign_count }}){% else %}nicht erkannt{% endif %}</div>
+                      <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
+                        <button class="button button--small" type="submit">Unterschriften geprüft</button>
+                      </form>
+                    {% elif document.key == 'scan' %}
+                      <form class="scan-form" action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.kind) }}" method="post" enctype="multipart/form-data">
+                        <label for="scan-{{ case.case_id }}-{{ document.kind }}">Handschriftlicher PDF-Scan</label>
+                        <input id="scan-{{ case.case_id }}-{{ document.kind }}" name="scan_file" type="file" accept=".pdf,application/pdf" required>
+                        <button class="button button--small" type="submit">Prüfen und für RPA bereitstellen</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              {% else %}
+                <span class="muted">Noch kein offizieller PDF-Rücklauf. Der tatsächliche Umfang wird mit dem ersten PDF übernommen.</span>
+              {% endif %}
+            </td>
+            <td><span class="status">{{ case.status }}</span><br><span class="muted">{{ case.updated_at }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="content-section" aria-labelledby="history-title">
+    <div class="section-heading"><div><p class="kicker">Nachvollziehbarkeit</p><h2 id="history-title">Paketverlauf</h2></div></div>
+    {% if events %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Richtung</th><th>Version</th><th>Datei</th><th>Zeitpunkt</th><th>Prüfsumme</th></tr></thead>
+          <tbody>
+          {% for event in events %}
+            <tr><td>{{ event.direction }}</td><td>v{{ '%02d'|format(event.revision) }}</td><td>{{ event.filename }}</td><td>{{ event.created_at }}</td><td><code>{{ event.sha256[:12] }}…</code></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">Noch kein Paket erzeugt.</div>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}MD {{ cycle.review_year }}/{{ cycle.outlook_year }}{% endblock %}
+{% block content %}
+  <nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><span>{{ cycle.review_year }}/{{ cycle.outlook_year }}</span></nav>
+  <section class="page-head page-head--compact">
+    <p class="kicker">Jahresprozess</p>
+    <h1>Rückblick {{ cycle.review_year }} · Ausblick {{ cycle.outlook_year }}</h1>
+    <p class="lead">SAP-Datenstand «{{ cycle.original_filename }}» vom {{ cycle.imported_at }}.</p>
+  </section>
+
+  <section class="security-note" aria-labelledby="package-note-title">
+    <h2 id="package-note-title">Versandablauf</h2>
+    <p>Die HTML-Arbeitsmappe bleibt bei der vorgesetzten Person und kann versioniert gespeichert werden. An HR zurückgesendet werden ausschliesslich die daraus erzeugten PDFs - immer das elektronisch unterzeichnete PDF und bei D/E oder Uneinigkeit zusätzlich der handschriftlich unterzeichnete Scan.</p>
+  </section>
+
+  <section class="content-section" aria-labelledby="sap-export-title">
+    <div class="section-heading">
+      <div><p class="kicker">SAP</p><h2 id="sap-export-title">Massenupload erzeugen</h2></div>
+    </div>
+    <p>Der Export enthält ausschliesslich abgeschlossene Rückblicke. Zeitraum und IT9075-Gültigkeit werden automatisch auf Rückblickjahr sowie Ein- und Austrittsdatum begrenzt.</p>
+    <form action="{{ url_for('main.download_sap_export', cycle_id=cycle.id) }}" method="post">
+      <button class="button button--primary" type="submit">SAP-Massenupload herunterladen</button>
+    </form>
+  </section>
+
+  <section class="content-section" aria-labelledby="managers-title">
+    <div class="section-heading">
+      <div><p class="kicker">Führungslinien</p><h2 id="managers-title">Pakete und Rückläufe</h2></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Vorgesetzte Person</th><th>Fälle</th><th>Bearbeitungsstand</th><th>Letzter Versand</th><th>Letzter Rücklauf</th><th>Aktion</th></tr></thead>
+        <tbody>
+        {% for manager in managers %}
+          <tr>
+            <td><strong><a href="{{ url_for('main.manager_detail', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}">{{ manager.manager_name }}</a></strong><br><span class="muted">PN {{ manager.manager_pn }}{% if manager.manager_email %} · {{ manager.manager_email }}{% endif %}</span></td>
+            <td>{{ manager.case_count }}</td>
+            <td>
+              {{ manager.done_count or 0 }} abgeschlossen
+              {% if manager.progress_count %}<br><span class="muted">{{ manager.progress_count }} in Bearbeitung</span>{% endif %}
+              {% if manager.signature_check_count %}<br><span class="status status--warning">{{ manager.signature_check_count }} Unterschriftenprüfung(en)</span>{% endif %}
+              {% if manager.scan_pending_count %}<br><span class="status status--danger">{{ manager.scan_pending_count }} Scan(s) ausstehend</span>{% endif %}
+            </td>
+            <td>{{ manager.sent_at or '–' }}</td>
+            <td>{{ manager.returned_at or '–' }}</td>
+            <td>
+              <form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post">
+                <button class="button button--small" type="submit">START-Datei erzeugen</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

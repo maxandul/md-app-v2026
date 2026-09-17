@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MD-Verwaltung{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <div class="accent" aria-hidden="true"></div>
+  <header class="app-header">
+    <div class="app-shell header-inner">
+      <div>
+        <p class="kicker">Kanton Zürich · Human Resources &amp; Entwicklung</p>
+        <a class="brand" href="{{ url_for('main.dashboard') }}">MD-Verwaltung</a>
+      </div>
+      <p class="environment">Lokale Arbeitsumgebung</p>
+    </div>
+  </header>
+
+  <main class="app-shell" id="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="messages" aria-live="polite">
+          {% for category, message in messages %}
+            <div class="message message--{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    <div class="app-shell">
+      Personenbezogene Dateien nur auf dem verwalteten Geschäftsgerät bearbeiten und per S/MIME versenden.
+    </div>
+  </footer>
+</body>
+</html>

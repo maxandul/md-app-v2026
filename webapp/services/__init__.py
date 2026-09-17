@@ -1,0 +1,1 @@
+"""Fachservices der MD-Verwaltungsanwendung."""

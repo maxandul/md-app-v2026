@@ -1,6 +1,6 @@
 """Persönliche HR-Anmeldung und Benutzerverwaltung.
 
-Die Umsetzung übernimmt die im ABW-Tool bewährten Grundsätze: bcrypt-Hashes,
+Die Umsetzung übernimmt die im ABW-Tool bewährten Grundsätze: starke Passwort-Hashes,
 zeitkonstante Prüfung unbekannter Konten, temporäre Passwörter, Sitzungsentzug
 über eine Versionsnummer und eine kleine IP-basierte Anmeldesperre.
 """

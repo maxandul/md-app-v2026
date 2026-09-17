@@ -1,0 +1,86 @@
+# MD-App v2026
+
+Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
+Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für
+gemeinsame Tests und die schrittweise Weiterentwicklung.
+
+## Was bereits funktioniert
+
+- SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern
+- einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
+- pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
+- mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
+- Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
+- Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
+- elektronisch unterzeichnete PDFs einlesen und ihren MD-Datenblock übernehmen
+- bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
+  unterzeichneten Scan nachverfolgen
+- nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen
+- SAP-Massenupload aus abgeschlossenen Rückblicken erzeugen; der Zeitraum wird
+  auf Eintritts- und Austrittsdatum begrenzt
+
+## Lokal unter Windows starten
+
+Voraussetzung: Python 3.11 oder neuer.
+
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
+
+Anschliessend `MD-Web.bat` doppelklicken oder im aktivierten Terminal starten:
+
+```powershell
+python run_web.py
+```
+
+Die Anwendung ist danach unter <http://127.0.0.1:5050> erreichbar. Beim ersten
+Start wird die lokale SQLite-Datenbank automatisch unter `instance/` angelegt.
+
+## Erster Testlauf
+
+1. Die App starten.
+2. Den SAP-Export über die Startseite hochladen.
+3. Für diesen Import einen Jahresprozess eröffnen.
+4. In der Prozessübersicht eine vorgesetzte Person auswählen.
+5. Deren `_START.html` erzeugen und lokal im Browser testen.
+
+Das Repository enthält bewusst keine SAP-Exporte, Personendaten, ausgefüllten
+Dialoge, PDFs oder lokale Datenbank. Solche Dateien bleiben auf dem geschützten
+HR-Gerät und sind durch `.gitignore` vom Commit ausgeschlossen.
+
+## Wichtige Sicherheitsgrenze des MVP
+
+Der Server bindet absichtlich nur an `127.0.0.1` und ist für den Betrieb auf
+einem einzelnen HR-Laptop gedacht. Vor einem Zugriff weiterer Arbeitsplätze
+müssen mindestens Windows-Authentisierung, Rollen/Berechtigungen, TLS, Backup,
+Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
+Personaldaten nicht ungeschützt über `0.0.0.0` im Netzwerk freigeben.
+
+Der Versand und Rückversand von Dateien mit Personaldaten erfolgt gemäss dem
+vorgesehenen Prozess S/MIME-verschlüsselt.
+
+## Dateinamen
+
+- Versand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_START.html`
+- Zwischenstand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_BEARBEITET_v01_YYYYMMDD_HHMM.html`
+- Rückblick: `Rueckblick_2025_Nachname_Rufname_123456.pdf`
+- Ausblick: `Ausblick_2026_Nachname_Rufname_123456.pdf`
+- Handschriftlicher Scan: `Rueckblick_2025_Nachname_Rufname_HANDSCAN_123456.pdf`
+- Kein MD: `Kein_MD_2025_Nachname_Rufname_123456.pdf`
+
+Die Personalnummer steht bei dossierrelevanten PDFs am Ende des Dateinamens.
+
+## Tests
+
+Die Tests erzeugen ausschliesslich synthetische SAP-Daten in temporären Ordnern.
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
+python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
+```
+
+Weitere Architektur- und Prozesshinweise stehen in
+[`docs/FLASK_SQLITE_MVP.md`](docs/FLASK_SQLITE_MVP.md).

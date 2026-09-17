@@ -115,38 +115,7 @@
       transition: width .2s ease;
     }
 
-    .sidebar-tools { margin: 18px 0 12px; }
-
-    .search {
-      width: 100%;
-      padding: 10px 12px;
-      color: var(--ink);
-      border: 1px solid transparent;
-      border-radius: 4px;
-      background: #fff;
-    }
-
-    .filter-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .filter-button {
-      padding: 6px 9px;
-      color: #dceafa;
-      border: 1px solid rgba(255,255,255,.22);
-      border-radius: 4px;
-      background: transparent;
-      font-size: 12px;
-    }
-
-    .filter-button.active {
-      color: var(--blue-dark);
-      background: #fff;
-      border-color: #fff;
-    }
+    .cycle-select { width: 100%; margin: 8px 0 18px; padding: 9px 10px; border: 0; border-radius: 4px; background: #fff; }
 
     .employee-list {
       display: grid;
@@ -192,17 +161,8 @@
       font-size: 12px;
     }
 
-    .mini-track {
-      flex: 1;
-      height: 5px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: rgba(255,255,255,.2);
-    }
-
-    .employee-card.active .mini-track { background: #e2e8f0; }
-
-    .mini-fill { height: 100%; background: #79d3aa; }
+    .archive-list { margin-top: 18px; border-top: 1px solid rgba(255,255,255,.22); padding-top: 12px; }
+    .archive-list summary { color: #d9e9f7; font-weight: 700; cursor: pointer; }
 
     .main { min-width: 0; }
 
@@ -223,6 +183,7 @@
 
     .package-title { margin: 0; font-size: 18px; }
     .package-meta { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+    .package-meta summary { cursor: pointer; }
 
     .toolbar {
       display: flex;
@@ -474,12 +435,13 @@
     .section-intro { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 
     .subsection {
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid var(--line);
+      margin-top: 22px;
+      padding: 18px;
+      border-left: 4px solid #b7d7eb;
+      background: #f8fafc;
     }
 
-    .subsection:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+    .subsection:first-child { margin-top: 0; }
     .subsection h3 { margin: 0 0 10px; font-size: 16px; }
 
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -495,6 +457,7 @@
     }
 
     .required-mark { color: var(--danger); }
+    .field.required { padding: 10px; border-left: 4px solid var(--blue); background: var(--blue-soft); }
 
     .field input,
     .field select,
@@ -571,6 +534,8 @@
     .missing-list { margin: 0; padding-left: 20px; }
     .missing-list li + li { margin-top: 4px; }
     .complete-message { color: var(--success); font-weight: 700; }
+    .local-save { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; padding:14px 16px; border:1px solid #9fc8df; background:var(--blue-soft); }
+    .tracking-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
 
     .toast {
       position: fixed;
@@ -612,6 +577,7 @@
       .toolbar { justify-content: flex-start; }
       .scope-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .form-grid, .form-grid.three, .completion-panel { grid-template-columns: 1fr; }
+      .tracking-grid { grid-template-columns: 1fr; }
     }
 
     @media print {
@@ -648,38 +614,27 @@
     <aside class="sidebar" aria-label="Mitarbeitenden-Navigation">
       <p class="brand-kicker">VD · Mitarbeitenden-Dialog</p>
       <h1 class="brand-title">Mein Team</h1>
-      <p id="cycle-label" class="cycle-label"></p>
+      <label for="cycle-select" class="brand-kicker" style="margin-top:12px">Durchlauf</label>
+      <select id="cycle-select" class="cycle-select" aria-label="Durchlauf wählen"></select>
 
       <div class="progress-panel" aria-label="Gesamtfortschritt">
         <div class="progress-row"><span>Gesamtfortschritt</span><strong id="overall-progress-text">0 von 0</strong></div>
         <div class="progress-track"><div id="overall-progress-fill" class="progress-fill"></div></div>
       </div>
 
-      <div class="sidebar-tools">
-        <label for="employee-search" class="field-label">Mitarbeitende suchen</label>
-        <input id="employee-search" class="search" type="search" placeholder="Name oder Personalnummer">
-        <div class="filter-row" aria-label="Statusfilter">
-          <button class="filter-button active" type="button" data-filter="all">Alle</button>
-          <button class="filter-button" type="button" data-filter="open">Offen</button>
-          <button class="filter-button" type="button" data-filter="complete">Vollständig</button>
-          <button class="filter-button" type="button" data-filter="none">Kein MD</button>
-          <button class="filter-button" type="button" data-filter="archived">Archiv</button>
-        </div>
-      </div>
-
       <div id="employee-list" class="employee-list"></div>
+      <details id="archive-list" class="archive-list"><summary id="archive-summary">Archivierte Personen</summary><div id="archived-employee-list" class="employee-list"></div></details>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div>
           <h2 id="package-title" class="package-title"></h2>
-          <p id="package-meta" class="package-meta"></p>
+          <details class="package-meta"><summary>Technische Angaben</summary><span id="package-meta"></span></details>
         </div>
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Änderungen</span></span>
-          <button id="next-open-button" class="button" type="button">Nächste offene Person</button>
-          <button id="save-button" class="button primary" type="button">Zwischenstand speichern</button>
+          <button id="save-button" class="button primary" type="button">Arbeitsmappe speichern</button>
         </div>
       </header>
 
@@ -709,16 +664,23 @@
       let state = JSON.parse(dataNode.textContent);
       state.employees.forEach(employee => {
         employee.review = employee.review || {};
+        employee.outlook = employee.outlook || {};
+        employee.review.dialog_date = employee.review.dialog_date || employee.dialog_date || '';
+        employee.outlook.dialog_date = employee.outlook.dialog_date || employee.dialog_date || '';
         if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
+        employee.previous_goals = Array.isArray(employee.previous_goals) ? employee.previous_goals : [];
+        employee.previous_development_goals = Array.isArray(employee.previous_development_goals) ? employee.previous_development_goals : [];
         employee.employee = employee.employee || {};
         if (typeof employee.employee.employment_assignment !== 'string') employee.employee.employment_assignment = '';
         employee.checkpoint_notes = Array.isArray(employee.checkpoint_notes) ? employee.checkpoint_notes : [];
         employee.meta = employee.meta || {};
         employee.meta.archived = Boolean(employee.meta.archived);
+        employee.document_tracking = employee.document_tracking || {};
+        ['review', 'outlook', 'no_md'].forEach(section => {
+          employee.document_tracking[section] = employee.document_tracking[section] || { status: 'preparation', note: '' };
+        });
       });
       let selectedCaseId = state.employees[0] ? state.employees[0].case_id : '';
-      let activeFilter = 'all';
-      let searchText = '';
       let dirty = false;
       let previousTitle = document.title;
       let toastTimer = null;
@@ -746,6 +708,7 @@
       const editor = document.getElementById('editor');
       const completionPanel = document.getElementById('completion-panel');
       const employeeList = document.getElementById('employee-list');
+      const archivedEmployeeList = document.getElementById('archived-employee-list');
       const printRoot = document.getElementById('print-root');
 
       function h(value) {
@@ -806,20 +769,25 @@
 
       function reviewRequirements(employee, includeDialogDate = true) {
         const list = [];
-        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum', employee.dialog_date);
+        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum Rückblick', employee.review.dialog_date);
         employee.previous_goals.forEach((goal, index) => {
           addRequirement(list, `Zielerreichung für Vorjahresziel ${index + 1}`, goal.achievement);
           addRequirement(list, `Rückblick für Vorjahresziel ${index + 1}`, goal.review && goal.review.trim());
         });
+        employee.previous_development_goals.forEach((goal, index) => {
+          addRequirement(list, `Zielerreichung für Entwicklungsziel ${index + 1}`, goal.achievement);
+          addRequirement(list, `Rückblick für Entwicklungsziel ${index + 1}`, goal.review && goal.review.trim());
+        });
         addRequirement(list, 'Allgemeiner Leistungsrückblick', employee.review.performance && employee.review.performance.trim());
         addRequirement(list, 'Gesamteindruck', employee.review.overall_rating);
         addRequirement(list, 'Einigkeit zur Gesamtbeurteilung', employee.review.agreement);
+        addRequirement(list, 'Aktualität Nebenbeschäftigungen/öffentliche Ämter', employee.review.secondary_employment_current);
         return list;
       }
 
       function outlookRequirements(employee, includeDialogDate = true) {
         const list = [];
-        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum', employee.dialog_date);
+        if (includeDialogDate) addRequirement(list, 'Gesprächsdatum Ausblick', employee.outlook.dialog_date);
         const goals = employee.outlook.performance_goals || [];
         addRequirement(list, 'Mindestens ein Leistungsziel', goals.length > 0);
         goals.forEach((goal, index) => {
@@ -865,9 +833,10 @@
         if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
           addRequirement(requirements, 'Begründung für den abweichenden Umfang', employee.scope_reason && employee.scope_reason.trim());
         }
-        addRequirement(requirements, 'Gesprächsdatum', employee.dialog_date);
         if (hasReview(employee.scope)) requirements.push(...reviewRequirements(employee, false));
         if (hasOutlook(employee.scope)) requirements.push(...outlookRequirements(employee, false));
+        if (hasReview(employee.scope)) addRequirement(requirements, 'Gesprächsdatum Rückblick', employee.review.dialog_date);
+        if (hasOutlook(employee.scope)) addRequirement(requirements, 'Gesprächsdatum Ausblick', employee.outlook.dialog_date);
         return completionFromRequirements(requirements);
       }
 
@@ -908,7 +877,9 @@
       function renderHeader() {
         const pkg = state.package;
         if (!Number.isInteger(pkg.revision) || pkg.revision < 0) pkg.revision = 0;
-        document.getElementById('cycle-label').textContent = `Rückblick ${pkg.rb_year} · Ausblick ${pkg.ab_year}`;
+        const cycleSelect = document.getElementById('cycle-select');
+        const histories = Array.isArray(pkg.previous_cycles) ? pkg.previous_cycles : [];
+        cycleSelect.innerHTML = `<option value="current">Rückblick ${h(pkg.rb_year)} · Ausblick ${h(pkg.ab_year)}</option>${histories.map(cycle => `<option value="${h(cycle.file || '')}">${h(cycle.label)}</option>`).join('')}`;
         document.getElementById('package-title').textContent = pkg.manager_name;
         const saved = pkg.saved_at ? ` · gespeichert ${new Date(pkg.saved_at).toLocaleString('de-CH')}` : '';
         const version = pkg.revision ? ` · Bearbeitungsstand v${String(pkg.revision).padStart(2, '0')}` : ' · Startdatei';
@@ -926,32 +897,24 @@
         document.getElementById('overall-progress-fill').style.width = `${percent}%`;
       }
 
-      function visibleEmployees() {
-        return state.employees.filter(employee => {
-          const status = statusFor(employee);
-          const searchHaystack = `${employee.employee.full_name} ${employee.employee.pn}`.toLowerCase();
-          const searchMatches = !searchText || searchHaystack.includes(searchText);
-          const filterMatches = activeFilter === 'all' ? status.key !== 'archived' : status.key === activeFilter;
-          return searchMatches && filterMatches;
-        });
-      }
-
       function renderSidebar() {
-        const employees = visibleEmployees();
-        employeeList.innerHTML = employees.length ? employees.map(employee => {
-          const completion = getCompletion(employee);
+        const card = employee => {
           const status = statusFor(employee);
           return `
             <button type="button" class="employee-card ${employee.case_id === selectedCaseId ? 'active' : ''}" data-case-id="${h(employee.case_id)}">
               <span class="employee-name">${h(employee.employee.full_name)}</span>
-              <span class="employee-meta">${h(employee.employee.position || employee.employee.org_unit || 'Keine Funktion hinterlegt')} · PN ${h(employee.employee.pn)}</span>
+              <span class="employee-meta">${h(employee.employee.position || employee.employee.org_unit || 'Keine Funktion hinterlegt')}</span>
               <span class="employee-status-line">
                 <span class="status-badge ${status.className}">${h(status.label)}</span>
-                <span>${completion.percent}%</span>
               </span>
-              <span class="mini-track"><span class="mini-fill" style="display:block;width:${completion.percent}%"></span></span>
             </button>`;
-        }).join('') : '<div class="empty-state" style="color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.06)">Keine Personen in diesem Filter.</div>';
+        };
+        const employees = state.employees.filter(employee => !employee.meta.archived);
+        const archived = state.employees.filter(employee => employee.meta.archived);
+        employeeList.innerHTML = employees.length ? employees.map(card).join('') : '<div class="empty-state" style="color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.06)">Keine aktiven Personen.</div>';
+        archivedEmployeeList.innerHTML = archived.map(card).join('');
+        document.getElementById('archive-list').hidden = archived.length === 0;
+        document.getElementById('archive-summary').textContent = `Archivierte Personen (${archived.length})`;
         renderOverallProgress();
       }
 
@@ -960,15 +923,16 @@
         const required = options.required ? '<span class="required-mark"> *</span>' : '';
         const hint = options.hint ? `<div class="field-hint">${h(options.hint)}</div>` : '';
         const readonly = options.readonly ? ' readonly aria-readonly="true"' : '';
+        const requiredAttr = options.required ? ' required aria-required="true"' : '';
         let control;
         if (type === 'textarea') {
-          control = `<textarea class="${options.tall ? 'tall' : ''}" data-bind="${h(bind)}" rows="${options.rows || 4}">${h(value)}</textarea>`;
+          control = `<textarea class="${options.tall ? 'tall' : ''}" data-bind="${h(bind)}" rows="${options.rows || 4}"${requiredAttr}>${h(value)}</textarea>`;
         } else if (type === 'select') {
-          control = `<select data-bind="${h(bind)}">${optionList(options.items || [], value, options.placeholder)}</select>`;
+          control = `<select data-bind="${h(bind)}"${requiredAttr}>${optionList(options.items || [], value, options.placeholder)}</select>`;
         } else {
-          control = `<input type="${h(type)}" data-bind="${h(bind)}" value="${h(value)}"${readonly}>`;
+          control = `<input type="${h(type)}" data-bind="${h(bind)}" value="${h(value)}"${readonly}${requiredAttr}>`;
         }
-        return `<div class="field ${options.full ? 'full' : ''}"><label>${h(label)}${required}</label>${control}${hint}</div>`;
+        return `<div class="field ${options.full ? 'full' : ''} ${options.required ? 'required' : ''}"><label>${h(label)}${required}</label>${control}${hint}</div>`;
       }
 
       function arrayField(label, arrayName, index, key, value, options = {}) {
@@ -983,7 +947,7 @@
         } else {
           control = `<textarea data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}" rows="${options.rows || 3}">${h(value)}</textarea>`;
         }
-        return `<div class="field ${options.full ? 'full' : ''}"><label>${h(label)}${required}</label>${control}</div>`;
+        return `<div class="field ${options.full ? 'full' : ''} ${options.required ? 'required' : ''}"><label>${h(label)}${required}</label>${control}</div>`;
       }
 
       function renderPreviousGoals(employee) {
@@ -1000,6 +964,24 @@
             <div class="form-grid">
               ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
+            </div>
+          </div>`).join('');
+      }
+
+      function renderPreviousDevelopmentGoals(employee) {
+        if (!employee.previous_development_goals.length) return '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr hinterlegt.</div>';
+        return employee.previous_development_goals.map((goal, index) => `
+          <div class="goal-card">
+            <div class="card-head"><h4>Entwicklungsziel ${index + 1}: ${h(goal.title)}</h4></div>
+            <div class="source-grid">
+              <div class="source-item"><strong>Kompetenz</strong>${h(goal.competency || '–')}</div>
+              <div class="source-item"><strong>Termin</strong>${h(formatDate(goal.target_date))}</div>
+              <div class="source-item full"><strong>Messkriterien</strong>${h(goal.criteria || '–')}</div>
+              <div class="source-item full"><strong>Vereinbarte Schritte</strong>${h(goal.steps || '–')}</div>
+            </div>
+            <div class="form-grid">
+              ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
+              ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
           </div>`).join('');
       }
@@ -1080,7 +1062,7 @@
         const options = [
           ['full', 'Rückblick und Ausblick', 'Regulärer jährlicher Mitarbeitenden-Dialog'],
           ['review_only', 'Nur Rückblick', 'Zum Beispiel bei einem bevorstehenden Austritt'],
-          ['outlook_only', 'Nur Ausblick', 'Zum Beispiel nach Abschluss der Probezeit'],
+          ['outlook_only', 'Nur Ausblick', 'Zum Beispiel beim regulären Jahresende nach bereits erfolgtem Probezeitrückblick'],
           ['none', 'Kein MD', 'Der Dialog ist in diesem Durchlauf nicht erforderlich']
         ];
         return `
@@ -1093,7 +1075,7 @@
                   <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
                 </label>`).join('')}
             </div>
-            ${employee.suggestion ? `<div class="suggestion"><strong>Hinweis aus den SAP-Stammdaten:</strong> ${h(scopeLabels[employee.suggestion.scope])} – ${h(employee.suggestion.reason)} <button type="button" class="button small" style="margin-left:8px" data-action="apply-suggestion">Übernehmen</button></div>` : ''}
+            ${employee.suggestion && employee.suggestion.is_special ? `<div class="suggestion"><strong>Voreinstellung wegen Spezialfall:</strong> ${h(employee.suggestion.reason)} Der Umfang darf bei Bedarf angepasst werden.</div>` : ''}
             ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den abweichenden Umfang', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:'Diese Angabe wird für HR und die Prozessauswertung übernommen.' })}</div>` : ''}
           </section>`;
       }
@@ -1102,7 +1084,7 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">Der Fall wird ohne Rückblick und Ausblick abgeschlossen.</p></div>
+              <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">Bitte vor dem Abschluss mit deiner oder deinem HR-Verantwortlichen absprechen.</p></div>
               <button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>
             </div>
             <div class="form-grid">
@@ -1112,14 +1094,16 @@
           </section>`;
       }
 
-      function renderDialogDetails(employee) {
+      function renderDialogDetails(employee, section) {
+        const isReview = section === 'review';
+        const label = isReview ? 'Rückblick' : 'Ausblick';
         return `
           <section class="section">
-            <div class="section-head"><div><h2 class="section-title">Gesprächsdaten</h2><p class="section-intro">Das Gesprächsdatum wird in Rückblick und Ausblick übernommen.</p></div></div>
+            <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2><p class="section-intro">Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden.</p></div></div>
             <div class="form-grid three">
               ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Eintrittsdatum vorgegeben.' })}
               ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Austrittsdatum vorgegeben.' })}
-              ${field('Datum des Gesprächs', 'dialog_date', employee.dialog_date, { type:'date', required:true })}
+              ${field('Datum des Gesprächs', `${section}.dialog_date`, employee[section].dialog_date, { type:'date', required:true })}
             </div>
           </section>`;
       }
@@ -1134,12 +1118,13 @@
             </div>
             ${renderCheckpointNotes(employee)}
             <div class="subsection"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
-            <div class="subsection"><h3>2. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
+            <div class="subsection"><h3>2. Entwicklungsziele aus dem Vorjahr</h3>${renderPreviousDevelopmentGoals(employee)}</div>
+            <div class="subsection"><h3>3. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
             </div></div>
-            <div class="subsection"><h3>3. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll.</p>${renderCompetencies(employee)}</div>
-            <div class="subsection"><h3>4. Gesamteindruck und Gespräch</h3><div class="form-grid">
+            <div class="subsection"><h3>4. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection"><h3>5. Gesamteindruck und Gespräch</h3><div class="form-grid">
               ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
               ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
               ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
@@ -1149,10 +1134,10 @@
             </div>
               ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien die Dokumente zusätzlich handschriftlich unterzeichnen. Der Scan ist zusammen mit den elektronisch unterzeichneten PDFs an HR zu senden.</div>` : ''}
             </div>
-            <div class="subsection"><h3>5. Nebenbeschäftigungen und öffentliche Ämter</h3>
-              ${secondary ? `<div class="suggestion"><strong>In SAP hinterlegt:</strong> ${h(secondary)}</div>` : ''}
+            <div class="subsection"><h3>6. Nebenbeschäftigungen und öffentliche Ämter</h3>
+              <div class="suggestion"><strong>Aktueller SAP-Stand:</strong> ${h(secondary || 'Aktuell keine')}</div>
               <div class="form-grid" style="margin-top:12px">
-                ${field('Angaben aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein','Keine Angaben vorhanden'], placeholder:'Bitte auswählen' })}
+                ${field('Angaben aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
                 ${field('Präzisierungen', 'review.secondary_employment_note', employee.review.secondary_employment_note, { type:'textarea', full:true })}
               </div>
             </div>
@@ -1168,7 +1153,7 @@
             </div>
             <div class="subsection"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
-            <div class="subsection"><h3>3. Entwicklungsziele</h3><p class="section-intro">Die Kompetenz wird ausgewählt; dadurch entfallen die vielen dauerhaft leeren Kompetenzfelder.</p>${renderDevelopmentGoals(employee)}</div>
+            <div class="subsection"><h3>3. Entwicklungsziele</h3><p class="section-intro">Es können ein oder mehrere Entwicklungsziele formuliert werden; Human Resources &amp; Entwicklung empfiehlt ein bis zwei. Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p>${renderDevelopmentGoals(employee)}</div>
             <div class="subsection"><h3>4. Entwicklungswunsch / NEP</h3><div class="form-grid">
               ${field('Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
               ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
@@ -1202,22 +1187,34 @@
 
       function renderGuidance() {
         return `<details class="guidance"><summary>Kurzanleitung anzeigen</summary><ol>
-          <li>Prüfe zuerst den vorgeschlagenen Umfang und die Gesprächsdaten.</li>
-          <li>Bearbeite Rückblick und Ausblick unabhängig voneinander.</li>
-          <li>Ergänze Kompetenzbeobachtungen und Ziele nur, wenn sie tatsächlich benötigt werden.</li>
-          <li>Prüfe am Schluss die Vollständigkeit und speichere die neue HTML-Version.</li>
-          <li>Erzeuge die PDFs, lasse sie unterzeichnen und sende sie zusammen mit der bearbeiteten HTML-Datei S/MIME-verschlüsselt an HR.</li>
+          <li>Bereite Rückblick und Ausblick vor dem Gespräch aus deiner Sicht vor. Bitte die mitarbeitende Person, sich ebenfalls Gedanken zu machen; dafür kann das Reflexionsformular als Hilfe dienen.</li>
+          <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
+          <li>Speichere die Arbeitsmappe regelmässig. Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter.</li>
+          <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift.</li>
+          <li>Sende die unterzeichneten Dokumente ausschliesslich S/MIME-verschlüsselt an HR. Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
         </ol></details>`;
+      }
+
+      function renderLocalSave() {
+        return `<div class="local-save"><div><strong>Änderungen zwischenspeichern</strong><div class="field-hint">Es wird eine neue HTML-Datei erzeugt. Öffne beim nächsten Mal die Datei mit der höchsten Versionsnummer.</div></div><button class="button primary" type="button" data-action="save-package">Arbeitsmappe speichern</button></div>`;
+      }
+
+      function renderTracking(employee) {
+        const options = ['In Vorbereitung','Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt','In Korrektur'];
+        const block = (section, label) => hasReview(employee.scope) && section === 'review' || hasOutlook(employee.scope) && section === 'outlook' ? `<div class="field"><label>${label}</label><select data-bind="document_tracking.${section}.status">${optionList(options, employee.document_tracking[section].status === 'preparation' ? 'In Vorbereitung' : employee.document_tracking[section].status, 'Status wählen')}</select></div>` : '';
+        return `<div class="tracking-grid">${block('review', `Rückblick ${state.package.rb_year}`)}${block('outlook', `Ausblick ${state.package.ab_year}`)}</div>`;
       }
 
       function renderFinish(employee) {
         const completion = getCompletion(employee);
-        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2><p class="section-intro">Die PDFs können einzeln erstellt werden. Der HTML-Zwischenstand wird oben separat gespeichert.</p></div></div>
+        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2><p class="section-intro">Erzeuge die PDFs, sobald alle Pflichtangaben vorhanden sind, und führe den Versandstatus für dich nach.</p></div></div>
           ${completion.complete ? '<div class="complete-message">Alle Pflichtangaben für diesen Fall sind vorhanden.</div>' : `<div class="scan-warning"><strong>Noch nicht vollständig</strong>${h(completion.missing.slice(0, 5).join(' · '))}</div>`}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
             ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
             ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
           </div>
+          ${renderTracking(employee)}
+          ${renderLocalSave()}
           ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Bei D/E oder Uneinigkeit müssen beide Parteien zusätzlich handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan.</div>' : ''}
         </section>`;
       }
@@ -1236,11 +1233,11 @@
         selectedStepByCase[employee.case_id] = selectedStep;
         let stepContent = '';
         if (selectedStep === 'basics') {
-          stepContent = `${renderScope(employee)}${employee.scope && employee.scope !== 'none' ? renderDialogDetails(employee) : ''}${renderGuidance()}`;
+          stepContent = `${renderScope(employee)}${renderGuidance()}${renderLocalSave()}`;
         } else if (selectedStep === 'review') {
-          stepContent = `${renderDialogDetails(employee)}${renderReview(employee)}`;
+          stepContent = `${renderDialogDetails(employee, 'review')}${renderReview(employee)}${renderLocalSave()}`;
         } else if (selectedStep === 'outlook') {
-          stepContent = `${renderDialogDetails(employee)}${renderOutlook(employee)}`;
+          stepContent = `${renderDialogDetails(employee, 'outlook')}${renderOutlook(employee)}${renderLocalSave()}`;
         } else if (employee.scope === 'none') {
           stepContent = renderNoMd(employee);
         } else {
@@ -1249,15 +1246,14 @@
         editor.innerHTML = `
           <section class="person-header">
             <div>
-              <p class="eyebrow">Mitarbeitenden-Dialog</p>
               <h1 class="person-title">${h(person.full_name)}</h1>
               <p class="person-subtitle">${h(person.position || 'Keine Funktion hinterlegt')} · ${h(person.org_unit || 'Keine Organisationseinheit')}</p>
-              <div class="person-facts">
+              <details class="guidance"><summary>Stammdaten anzeigen</summary><div class="person-facts">
                 <span><strong>Personalnummer:</strong> ${h(person.pn)}</span>
                 <span><strong>Beschäftigungsgrad:</strong> ${h(person.employment_degree || '–')}%</span>
                 <span><strong>Eintritt:</strong> ${h(formatDate(person.entry_date))}</span>
                 <span><strong>Austritt:</strong> ${h(formatDate(person.exit_date))}</span>
-              </div>
+              </div></details>
             </div>
             <span class="status-badge ${status.className}">${h(status.label)}</span>
           </section>
@@ -1379,6 +1375,10 @@
           renderSidebar();
           return;
         }
+        if (action === 'save-package') {
+          savePackage();
+          return;
+        }
         if (action === 'print-review') printEmployee(employee, 'review');
         if (action === 'print-outlook') printEmployee(employee, 'outlook');
         if (action === 'print-no-md') printEmployee(employee, 'no_md');
@@ -1388,7 +1388,7 @@
         return `<div class="print-row"><div class="print-label">${h(label)}</div><div class="print-value">${value ? h(value) : '<span class="print-empty">Keine Angabe</span>'}</div></div>`;
       }
 
-      function printHeader(employee, title, year) {
+      function printHeader(employee, title, year, dialogDate) {
         const person = employee.employee;
         return `
           <header class="print-header">
@@ -1400,7 +1400,7 @@
             <div class="print-meta-item"><strong>Personalnummer</strong>${h(person.pn)}</div>
             <div class="print-meta-item"><strong>Organisationseinheit</strong>${h(person.org_unit || '–')}</div>
             <div class="print-meta-item"><strong>Vorgesetzte Person</strong>${h(state.package.manager_name)}</div>
-            <div class="print-meta-item"><strong>Gesprächsdatum</strong>${h(formatDate(employee.dialog_date))}</div>
+            <div class="print-meta-item"><strong>Gesprächsdatum</strong>${h(formatDate(dialogDate))}</div>
           </div>`;
       }
 
@@ -1417,7 +1417,7 @@
           `scope=${employee.scope || ''}`,
           `period_start=${employee.period_start}`,
           `period_end=${employee.period_end}`,
-          `dialog_date=${employee.dialog_date}`,
+          `dialog_date=${documentType === 'RUECKBLICK' ? employee.review.dialog_date : documentType === 'AUSBLICK' ? employee.outlook.dialog_date : ''}`,
           `rating=${overallRatingCode(employee)}`,
           `agreement=${employee.review.agreement === 'Ja' ? 'JA' : employee.review.agreement === 'Nein' ? 'NEIN' : ''}`,
           `handwritten_scan_required=${requiresHandwrittenScan(employee) ? 'JA' : 'NEIN'}`,
@@ -1426,8 +1426,12 @@
         return `<div class="print-admin-data">${h(values.join(' ; '))}</div>`;
       }
 
-      function signatures() {
+      function signatures(kind) {
+        const confirmation = kind === 'review'
+          ? 'Mit ihrer Unterschrift bestätigen beide Parteien, dass der Rückblick im Rahmen des Mitarbeitenden-Dialogs stattgefunden hat und dabei die Leistung, die Kompetenzen und der Gesamteindruck besprochen wurden.'
+          : 'Mit ihrer Unterschrift bestätigen beide Parteien, dass das Gespräch stattgefunden hat und dabei die Zielvereinbarungen sowie die persönliche Entwicklung besprochen wurden.';
         return `
+          <section class="print-section"><h2>Bestätigung und Unterschriften</h2><p>${h(confirmation)}</p><p>Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Bei einer Gesamtbewertung genügend oder ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.</p></section>
           <div class="print-signatures">
             <div class="signature-line">Datum und Unterschrift mitarbeitende Person</div>
             <div class="signature-line">Datum und Unterschrift vorgesetzte Person</div>
@@ -1446,10 +1450,14 @@
           </div>`).join('');
         const competencies = employee.review.competencies.filter(item => item.competency || item.comment).map(item => `
           <div class="print-block"><h3>${h(item.competency || 'Kompetenz')}</h3><div class="print-value">${item.comment ? h(item.comment) : '<span class="print-empty">Keine Bemerkung</span>'}</div></div>`).join('');
+        const previousDevelopment = employee.previous_development_goals.map((goal, index) => `
+          <div class="print-block"><h3>Entwicklungsziel ${index + 1}: ${h(goal.title)}</h3>
+            ${printValue('Kompetenz', goal.competency)}${printValue('Messkriterien', goal.criteria)}${printValue('Vereinbarte Schritte', goal.steps)}${printValue('Termin', formatDate(goal.target_date))}${printValue('Zielerreichung', goal.achievement)}${printValue('Rückblick', goal.review)}
+          </div>`).join('');
         return `
-          ${printHeader(employee, 'Rückblick', state.package.rb_year)}
-          ${printAdminData(employee, 'RUECKBLICK', state.package.rb_year)}
+          ${printHeader(employee, 'Rückblick', state.package.rb_year, employee.review.dialog_date)}
           <section class="print-section"><h2>Vereinbarte Ziele</h2>${previous || '<p class="print-empty">Keine Vorjahresziele hinterlegt.</p>'}</section>
+          <section class="print-section"><h2>Entwicklungsziele aus dem Vorjahr</h2>${previousDevelopment || '<p class="print-empty">Keine Entwicklungsziele aus dem Vorjahr hinterlegt.</p>'}</section>
           <section class="print-section"><h2>Leistung und Aufgabenerfüllung</h2>
             ${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}
             ${printValue('Leistungsrückblick', employee.review.performance)}
@@ -1468,7 +1476,8 @@
             ${printValue('Angaben aktuell', employee.review.secondary_employment_current)}
             ${printValue('Präzisierungen', employee.review.secondary_employment_note)}
           </section>
-          ${signatures()}`;
+          ${signatures('review')}
+          ${printAdminData(employee, 'RUECKBLICK', state.package.rb_year)}`;
       }
 
       function buildOutlookPrint(employee) {
@@ -1486,8 +1495,7 @@
             ${printValue('Termin', formatDate(goal.target_date))}
           </div>`).join('');
         return `
-          ${printHeader(employee, 'Ausblick', state.package.ab_year)}
-          ${printAdminData(employee, 'AUSBLICK', state.package.ab_year)}
+          ${printHeader(employee, 'Ausblick', state.package.ab_year, employee.outlook.dialog_date)}
           <section class="print-section"><h2>Leistungsziele</h2>${goals}</section>
           ${employee.outlook.open_goals_text ? `<section class="print-section"><h2>Ergänzende Zielvereinbarungen</h2>${printValue('Weitere Ziele', employee.outlook.open_goals_text)}</section>` : ''}
           ${development ? `<section class="print-section"><h2>Entwicklungsziele</h2>${development}</section>` : ''}
@@ -1496,20 +1504,21 @@
             ${printValue('Bemerkungen', employee.outlook.nep_notes)}
           </section>
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
-          ${signatures()}`;
+          ${signatures('outlook')}
+          ${printAdminData(employee, 'AUSBLICK', state.package.ab_year)}`;
       }
 
       function buildNoMdPrint(employee) {
         return `
-          ${printHeader(employee, 'Kein Mitarbeitenden-Dialog', state.package.rb_year)}
-          ${printAdminData(employee, 'KEIN_MD', state.package.rb_year)}
+          ${printHeader(employee, 'Kein Mitarbeitenden-Dialog', state.package.rb_year, '')}
           <section class="print-section"><h2>Administrativer Abschluss</h2>
             ${printValue('Grund', employee.no_md_reason)}
             ${printValue('Ergänzende Bemerkung', employee.no_md_note)}
           </section>
           <section class="print-section"><h2>Verwendung</h2>
             <p>Diese Bestätigung dient ausschliesslich der administrativen Prozesskontrolle durch HR. Sie wird nicht an das Personaldossier übergeben.</p>
-          </section>`;
+          </section>
+          ${printAdminData(employee, 'KEIN_MD', state.package.rb_year)}`;
       }
 
       function printEmployee(employee, section) {
@@ -1596,23 +1605,6 @@
         showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen. Für die weitere Bearbeitung oder den Rückversand bitte diese neue Datei verwenden.');
       }
 
-      function selectNextOpen() {
-        if (!state.employees.length) return;
-        const currentIndex = state.employees.findIndex(item => item.case_id === selectedCaseId);
-        const ordered = state.employees.slice(currentIndex + 1).concat(state.employees.slice(0, currentIndex + 1));
-        const next = ordered.find(employee => !getCompletion(employee).complete);
-        if (!next) {
-          showToast('Alle Fälle sind vollständig.');
-          return;
-        }
-        selectedCaseId = next.case_id;
-        activeFilter = 'all';
-        document.querySelectorAll('.filter-button').forEach(button => button.classList.toggle('active', button.dataset.filter === 'all'));
-        renderSidebar();
-        renderEditor();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-
       function showToast(message) {
         const toast = document.getElementById('toast');
         toast.textContent = message;
@@ -1621,33 +1613,27 @@
         toastTimer = window.setTimeout(() => toast.classList.remove('show'), 6500);
       }
 
-      employeeList.addEventListener('click', event => {
+      function selectPerson(event) {
         const button = event.target.closest('[data-case-id]');
         if (!button) return;
         selectedCaseId = button.dataset.caseId;
         renderSidebar();
         renderEditor();
         window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+      }
 
-      document.getElementById('employee-search').addEventListener('input', event => {
-        searchText = event.target.value.trim().toLowerCase();
-        renderSidebar();
-      });
-
-      document.querySelector('.filter-row').addEventListener('click', event => {
-        const button = event.target.closest('[data-filter]');
-        if (!button) return;
-        activeFilter = button.dataset.filter;
-        document.querySelectorAll('.filter-button').forEach(item => item.classList.toggle('active', item === button));
-        renderSidebar();
+      employeeList.addEventListener('click', selectPerson);
+      archivedEmployeeList.addEventListener('click', selectPerson);
+      document.getElementById('cycle-select').addEventListener('change', event => {
+        if (event.target.value === 'current') return;
+        showToast('Frühere Durchläufe werden schreibgeschützt in einer eigenen Arbeitsmappe geöffnet. Die Verknüpfung wird mit dem nächsten Stammdaten-Update mitgeliefert.');
+        event.target.value = 'current';
       });
 
       editor.addEventListener('input', handleEdit);
       editor.addEventListener('change', handleEdit);
       editor.addEventListener('click', handleEditorClick);
       document.getElementById('save-button').addEventListener('click', savePackage);
-      document.getElementById('next-open-button').addEventListener('click', selectNextOpen);
       window.addEventListener('afterprint', cleanupPrint);
       window.addEventListener('beforeunload', event => {
         if (!dirty) return;

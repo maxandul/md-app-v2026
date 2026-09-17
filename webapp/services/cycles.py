@@ -13,10 +13,10 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
             return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}"
     if probation_end:
         parsed = date.fromisoformat(probation_end)
-        if date(review_year, 10, 1) <= parsed <= date(review_year + 1, 1, 31):
-            return "outlook_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}"
-        if date(review_year, 6, 1) <= parsed <= date(review_year, 9, 30):
-            return "outlook_only", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}"
+        if parsed.year == review_year:
+            if parsed <= date(review_year, 6, 30):
+                return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr"
+            return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger"
     return "full", "Standardfall gemäss SAP-Stammdaten"
 
 

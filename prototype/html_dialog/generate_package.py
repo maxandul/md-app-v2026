@@ -160,10 +160,10 @@ def _suggested_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
             return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}"
     if probation_end:
         parsed = date.fromisoformat(probation_end)
-        if date(rb_year, 10, 1) <= parsed <= date(rb_year + 1, 1, 31):
-            return "outlook_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}"
-        if date(rb_year, 6, 1) <= parsed <= date(rb_year, 9, 30):
-            return "outlook_only", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}"
+        if parsed.year == rb_year:
+            if parsed <= date(rb_year, 6, 30):
+                return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr"
+            return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger"
     return "full", "Standardfall gemäss SAP-Stammdaten"
 
 
@@ -230,6 +230,21 @@ def _empty_goal(goal_id: str) -> dict[str, str]:
     }
 
 
+def _sample_previous_development_goals(employee_no: int, rb_year: int) -> list[dict[str, str]]:
+    if employee_no % 2:
+        return []
+    return [{
+        "id": f"previous-development-{employee_no + 1}-1",
+        "competency": "Kooperationsfähigkeit",
+        "title": "Wissen im Team strukturiert weitergeben",
+        "criteria": "Zwei kurze Wissenstransfers wurden durchgeführt und dokumentiert.",
+        "steps": "Praxisfall auswählen, Austausch vorbereiten und Erkenntnisse festhalten.",
+        "target_date": f"{rb_year}-11-30",
+        "achievement": "",
+        "review": "",
+    }]
+
+
 def build_payload(
     manager_pn: str,
     manager_pack: dict[str, Any],
@@ -280,12 +295,14 @@ def build_payload(
                 "suggestion": {
                     "scope": suggested_scope,
                     "reason": suggestion_reason,
+                    "is_special": suggested_scope != "full" or "Probezeit" in suggestion_reason,
                 },
-                "dialog_date": "",
                 "period_start": period_start,
                 "period_end": period_end,
                 "previous_goals": _sample_previous_goals(employee_no, rb_year),
+                "previous_development_goals": _sample_previous_development_goals(employee_no, rb_year),
                 "review": {
+                    "dialog_date": "",
                     "general_notes": "",
                     "performance": "",
                     "competencies": [],
@@ -299,6 +316,7 @@ def build_payload(
                     "secondary_employment_note": "",
                 },
                 "outlook": {
+                    "dialog_date": "",
                     "performance_goals": [_empty_goal(f"goal-{employee_no + 1}-1")],
                     "open_goals_text": "",
                     "development_goals": [],
@@ -309,6 +327,11 @@ def build_payload(
                 "meta": {
                     "updated_at": "",
                     "pdf_exported_at": "",
+                },
+                "document_tracking": {
+                    "review": {"status": "preparation", "note": ""},
+                    "outlook": {"status": "preparation", "note": ""},
+                    "no_md": {"status": "preparation", "note": ""},
                 },
             }
         )

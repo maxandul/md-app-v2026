@@ -73,7 +73,9 @@ def _section_status(
     employee: dict[str, Any], section: str, include_dialog_date: bool = True
 ) -> tuple[bool, list[str]]:
     missing: list[str] = []
-    if include_dialog_date and not _filled(employee.get("dialog_date")):
+    section_data = employee.get(section, {})
+    dialog_date = section_data.get("dialog_date") or employee.get("dialog_date")
+    if include_dialog_date and not _filled(dialog_date):
         missing.append("Gesprächsdatum")
     if section == "review":
         for index, goal in enumerate(employee.get("previous_goals", []), start=1):
@@ -81,6 +83,11 @@ def _section_status(
                 missing.append(f"Zielerreichung Vorjahresziel {index}")
             if not _filled(goal.get("review")):
                 missing.append(f"Rückblick Vorjahresziel {index}")
+        for index, goal in enumerate(employee.get("previous_development_goals", []), start=1):
+            if not _filled(goal.get("achievement")):
+                missing.append(f"Zielerreichung Entwicklungsziel {index}")
+            if not _filled(goal.get("review")):
+                missing.append(f"Rückblick Entwicklungsziel {index}")
         review = employee.get("review", {})
         if not _filled(review.get("performance")):
             missing.append("Leistungsrückblick")
@@ -88,6 +95,8 @@ def _section_status(
             missing.append("Gesamteindruck")
         if not _filled(review.get("agreement")):
             missing.append("Einigkeit zur Gesamtbeurteilung")
+        if not _filled(review.get("secondary_employment_current")):
+            missing.append("Aktualität Nebenbeschäftigungen/öffentliche Ämter")
     else:
         outlook = employee.get("outlook", {})
         goals = outlook.get("performance_goals", [])
@@ -125,13 +134,11 @@ def employee_status(employee: dict[str, Any]) -> tuple[str, list[str]]:
         return ("kein_md" if not missing else "offen"), missing
     if scope in {"review_only", "outlook_only"} and not _filled(employee.get("scope_reason")):
         missing.append("Begründung für abweichenden Umfang")
-    if not _filled(employee.get("dialog_date")):
-        missing.append("Gesprächsdatum")
     if scope in {"full", "review_only"}:
-        _, section_missing = _section_status(employee, "review", include_dialog_date=False)
+        _, section_missing = _section_status(employee, "review")
         missing.extend(section_missing)
     if scope in {"full", "outlook_only"}:
-        _, section_missing = _section_status(employee, "outlook", include_dialog_date=False)
+        _, section_missing = _section_status(employee, "outlook")
         missing.extend(section_missing)
     return ("vollstaendig" if not missing else "offen"), missing
 

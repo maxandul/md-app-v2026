@@ -53,7 +53,7 @@ def bounded_review_period(
 
 def _prior_goals(
     connection: sqlite3.Connection, *, employee_pn: str, review_year: int
-) -> list[dict[str, str]]:
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     previous = connection.execute(
         """
         SELECT dc.data_json
@@ -66,24 +66,25 @@ def _prior_goals(
         (employee_pn, review_year),
     ).fetchone()
     if not previous:
-        return []
+        return [], []
     try:
         old_case = json.loads(previous["data_json"])
     except (TypeError, json.JSONDecodeError):
-        return []
+        return [], []
 
-    goals: list[dict[str, str]] = []
+    performance: list[dict[str, str]] = []
+    development: list[dict[str, str]] = []
     outlook = old_case.get("outlook") or {}
-    sources = list(outlook.get("performance_goals") or []) + list(
-        outlook.get("development_goals") or []
-    )
-    for index, goal in enumerate(sources, start=1):
-        title = str(goal.get("title", "")).strip()
-        if not title:
-            continue
-        goals.append(
-            {
-                "id": f"previous-{employee_pn}-{index}",
+    for destination, prefix, sources in (
+        (performance, "previous", outlook.get("performance_goals") or []),
+        (development, "previous-development", outlook.get("development_goals") or []),
+    ):
+        for index, goal in enumerate(sources, start=1):
+            title = str(goal.get("title", "")).strip()
+            if not title:
+                continue
+            destination.append({
+                "id": f"{prefix}-{employee_pn}-{index}",
                 "title": title,
                 "criteria": str(goal.get("criteria", "")),
                 "steps": str(goal.get("steps", "")),
@@ -91,9 +92,8 @@ def _prior_goals(
                 "competency": str(goal.get("competency", "")),
                 "achievement": "",
                 "review": "",
-            }
-        )
-    return goals
+            })
+    return performance, development
 
 
 def _new_case(
@@ -105,6 +105,9 @@ def _new_case(
 ) -> dict[str, Any]:
     period_start, period_end = bounded_review_period(
         review_year, row["entry_date"], row["exit_date"]
+    )
+    previous_goals, previous_development_goals = _prior_goals(
+        connection, employee_pn=row["employee_pn"], review_year=review_year
     )
     return {
         "case_id": row["case_id"],
@@ -131,14 +134,14 @@ def _new_case(
         "suggestion": {
             "scope": row["suggested_scope"],
             "reason": row["suggestion_reason"],
+            "is_special": row["suggested_scope"] != "full",
         },
-        "dialog_date": "",
         "period_start": period_start,
         "period_end": period_end,
-        "previous_goals": _prior_goals(
-            connection, employee_pn=row["employee_pn"], review_year=review_year
-        ),
+        "previous_goals": previous_goals,
+        "previous_development_goals": previous_development_goals,
         "review": {
+            "dialog_date": "",
             "general_notes": "",
             "performance": "",
             "competencies": [],
@@ -152,6 +155,7 @@ def _new_case(
             "secondary_employment_note": "",
         },
         "outlook": {
+            "dialog_date": "",
             "performance_goals": [_empty_goal(f"goal-{employee_number}-1")],
             "open_goals_text": "",
             "development_goals": [],
@@ -160,6 +164,11 @@ def _new_case(
             "general_notes": "",
         },
         "meta": {"updated_at": "", "pdf_exported_at": ""},
+        "document_tracking": {
+            "review": {"status": "preparation", "note": ""},
+            "outlook": {"status": "preparation", "note": ""},
+            "no_md": {"status": "preparation", "note": ""},
+        },
     }
 
 

@@ -101,9 +101,13 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         for goal in employee["previous_goals"]:
             goal["achievement"] = "Erreicht"
             goal["review"] = "Ziel wurde erreicht."
+        for goal in employee["previous_development_goals"]:
+            goal["achievement"] = "Erreicht"
+            goal["review"] = "Entwicklungsziel wurde erreicht."
         employee["review"]["performance"] = "Die Leistung war sehr gut."
         employee["review"]["overall_rating"] = "B – sehr gut"
         employee["review"]["agreement"] = "Ja"
+        employee["review"]["secondary_employment_current"] = "Ja"
         goal = employee["outlook"]["performance_goals"][0]
         goal.update(
             {
@@ -124,11 +128,12 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertTrue(any(item["meta"]["archived"] for item in demo["employees"]))
         self.assertTrue(any(item["review"]["agreement"] == "Nein" for item in demo["employees"]))
 
-    def test_template_has_guided_steps_and_archive_filter(self) -> None:
+    def test_template_has_guided_steps_and_collapsed_archive(self) -> None:
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
         self.assertIn("1 · Grundlagen", template)
         self.assertIn("Prüfen und PDF", template)
-        self.assertIn('data-filter="archived"', template)
+        self.assertIn('id="archive-list"', template)
+        self.assertNotIn('id="employee-search"', template)
         self.assertEqual(template.count("const sectionName ="), 1)
 
 

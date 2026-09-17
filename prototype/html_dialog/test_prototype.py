@@ -16,6 +16,7 @@ from generate_package import (
     render_html,
 )
 from validate_package import extract_payload, validate_payload
+from create_demo import build_demo
 from tests.sample_data import create_sap_sample
 
 
@@ -114,6 +115,21 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         result = validate_payload(self.payload)
         self.assertEqual(result.summary["status_counts"]["vollstaendig"], 1)
         self.assertEqual(result.summary["status_counts"]["offen"], 2)
+
+    def test_demo_covers_required_usability_scenarios(self) -> None:
+        demo = build_demo()
+        scopes = {item["scope"] for item in demo["employees"]}
+        self.assertTrue({"", "full", "outlook_only", "review_only", "none"}.issubset(scopes))
+        self.assertTrue(any(item["checkpoint_notes"] for item in demo["employees"]))
+        self.assertTrue(any(item["meta"]["archived"] for item in demo["employees"]))
+        self.assertTrue(any(item["review"]["agreement"] == "Nein" for item in demo["employees"]))
+
+    def test_template_has_guided_steps_and_archive_filter(self) -> None:
+        template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
+        self.assertIn("1 · Grundlagen", template)
+        self.assertIn("Prüfen und PDF", template)
+        self.assertIn('data-filter="archived"', template)
+        self.assertEqual(template.count("const sectionName ="), 1)
 
 
 if __name__ == "__main__":

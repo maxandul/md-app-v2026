@@ -32,6 +32,30 @@ Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
 
 ## Prototyp erzeugen
 
+### Direkt verfügbare Demo
+
+Die Datei `demo/MD_Arbeitsmappe_Demo.html` kann ohne Installation direkt im
+Browser geöffnet werden. Sie enthält ausschliesslich synthetische Fälle:
+
+- regulärer MD in Bearbeitung
+- vollständiger MD mit D-Beurteilung und Uneinigkeit
+- Probezeitfall mit nur Ausblick
+- Pensionierung mit «Kein MD»
+- interner Übertritt mit vorgeschlagenem Rückblick
+- unterjährige Standortnotizen
+- archivierte Person
+
+Die Demo wird reproduzierbar neu erzeugt mit:
+
+```powershell
+python prototype/html_dialog/create_demo.py
+```
+
+Die Arbeitsmappe führt pro Person über die Schritte `Grundlagen`, `Rückblick`,
+`Ausblick` und `Prüfen und PDF`. Nicht benötigte Schritte werden ausgeblendet.
+
+### Arbeitsmappe aus SAP-Beispieldaten erzeugen
+
 Im Projektordner:
 
 ```powershell

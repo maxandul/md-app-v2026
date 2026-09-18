@@ -162,9 +162,19 @@ def _suggested_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
         parsed = date.fromisoformat(probation_end)
         if parsed.year == rb_year:
             if parsed <= date(rb_year, 6, 30):
-                return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr"
-            return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger"
+                return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende"
+            return "outlook_only", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; zum Jahresende ist nur der Ausblick auf das neue Jahr vorgesehen"
     return "full", "Standardfall gemäss SAP-Stammdaten"
+
+
+def _suggested_probation_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
+    probation_end = _iso_date(row.get("Ende Probezeit"))
+    if not probation_end:
+        return "review_only", "Probezeitrückblick; Ende der Probezeit ist nicht in den Stammdaten hinterlegt"
+    parsed = date.fromisoformat(probation_end)
+    if parsed <= date(parsed.year, 6, 30):
+        return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr"
+    return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger"
 
 
 def _bounded_review_period(row: pd.Series, rb_year: int) -> tuple[str, str]:
@@ -250,8 +260,11 @@ def build_payload(
     manager_pack: dict[str, Any],
     rb_year: int,
     created_at: datetime | None = None,
+    dialog_type: str = "annual",
 ) -> dict[str, Any]:
     """Erstellt das fachliche Paket, das später in SQLite importiert werden kann."""
+    if dialog_type not in {"annual", "probation"}:
+        raise ValueError("dialog_type muss 'annual' oder 'probation' sein.")
     created_at = created_at or datetime.now().astimezone()
     manager = manager_pack["manager"]
     if manager is None:
@@ -269,11 +282,15 @@ def build_payload(
         pn = _clean(row.get("_pn"))
         first_name = _clean(row.get("Rufname"))
         last_name = _clean(row.get("Nachname"))
-        suggested_scope, suggestion_reason = _suggested_scope(row, rb_year)
+        suggested_scope, suggestion_reason = (
+            _suggested_probation_scope(row, rb_year)
+            if dialog_type == "probation"
+            else _suggested_scope(row, rb_year)
+        )
         period_start, period_end = _bounded_review_period(row, rb_year)
         employees.append(
             {
-                "case_id": f"{rb_year}-{manager_pn}-{pn}",
+                "case_id": f"{rb_year}-{manager_pn}-{pn}{'-probezeit' if dialog_type == 'probation' else ''}",
                 "employee": {
                     "pn": pn,
                     "first_name": first_name,
@@ -289,6 +306,7 @@ def build_payload(
                     "secondary_employment": _clean(row.get("Bewilligung für")),
                 },
                 "scope": "",
+                "dialog_type": dialog_type,
                 "scope_reason": "",
                 "no_md_reason": "",
                 "no_md_note": "",
@@ -303,6 +321,7 @@ def build_payload(
                 "previous_development_goals": _sample_previous_development_goals(employee_no, rb_year),
                 "review": {
                     "dialog_date": "",
+                    "employment_continued": "",
                     "general_notes": "",
                     "performance": "",
                     "competencies": [],
@@ -351,6 +370,7 @@ def build_payload(
             "created_at": created_at.isoformat(timespec="seconds"),
             "saved_at": "",
             "revision": 0,
+            "dialog_type": dialog_type,
             "s_mime_required": True,
             "business_device_only": True,
         },
@@ -392,8 +412,9 @@ def output_filename(payload: dict[str, Any]) -> str:
     safe_name = "_".join(part for part in (safe_last_name, safe_first_name) if part)
     if not safe_name:
         safe_name = filename_part(package["manager_name"])
+    prefix = "MD_Probezeit" if package.get("dialog_type") == "probation" else "MD_Dialog"
     return (
-        f"MD_Dialog_{package['rb_year']}_{package['ab_year']}_"
+        f"{prefix}_{package['rb_year']}_{package['ab_year']}_"
         f"{safe_name}_{package['manager_pn']}_START.html"
     )
 
@@ -403,10 +424,11 @@ def generate(
     rb_year: int,
     manager_pn: str | None = None,
     output_path: Path | None = None,
+    dialog_type: str = "annual",
 ) -> tuple[Path, dict[str, Any]]:
     frame = load_sap_data(sap_path)
     selected_pn, selected_pack = choose_manager(manager_index(frame), manager_pn)
-    payload = build_payload(selected_pn, selected_pack, rb_year)
+    payload = build_payload(selected_pn, selected_pack, rb_year, dialog_type=dialog_type)
     target = output_path or (PROTOTYPE_DIR / "output" / output_filename(payload))
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(render_html(payload), encoding="utf-8")
@@ -419,6 +441,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--manager-pn", help="Personalnummer der vorgesetzten Person")
     parser.add_argument("--rb-year", type=int, default=date.today().year, help="Rückblickjahr")
     parser.add_argument("--output", type=Path, help="Optionale HTML-Zieldatei")
+    parser.add_argument("--dialog-type", choices=("annual", "probation"), default="annual", help="Gesprächsart")
     return parser.parse_args()
 
 
@@ -429,6 +452,7 @@ def main() -> int:
         rb_year=args.rb_year,
         manager_pn=args.manager_pn,
         output_path=args.output,
+        dialog_type=args.dialog_type,
     )
     print(f"Erstellt: {target}")
     print(

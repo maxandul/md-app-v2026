@@ -41,10 +41,28 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertEqual(personal_numbers, ["111111", "111112", "111113"])
         self.assertEqual(len(personal_numbers), len(set(personal_numbers)))
 
+    def test_probation_package_uses_its_own_dialog_type_and_scope(self) -> None:
+        payload = build_payload(
+            self.manager_pn,
+            self.pack,
+            2025,
+            created_at=datetime(2025, 9, 17, 12, 0, tzinfo=timezone.utc),
+            dialog_type="probation",
+        )
+        employee = next(item for item in payload["employees"] if item["employee"]["pn"] == "111112")
+        self.assertEqual(employee["dialog_type"], "probation")
+        self.assertEqual(employee["suggestion"]["scope"], "review_only")
+        self.assertTrue(employee["case_id"].endswith("-probezeit"))
+
     def test_html_is_self_contained_and_roundtrips(self) -> None:
         html = render_html(self.payload)
         self.assertNotIn("__MD_PACKAGE_JSON__", html)
-        self.assertNotRegex(html, re.compile(r"(?:src|href)=[\"']https?://", re.I))
+        self.assertNotRegex(html, re.compile(r"src=[\"']https?://", re.I))
+        external_links = re.findall(r"href=[\"'](https?://[^\"']+)", html, re.I)
+        self.assertEqual(
+            external_links,
+            ["https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle"],
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "package.html"
             path.write_text(html, encoding="utf-8")
@@ -90,7 +108,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
     def test_no_md_can_be_exported_as_administrative_pdf(self) -> None:
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
         self.assertIn('data-action="print-no-md"', template)
-        self.assertIn("printAdminData(employee, 'KEIN_MD'", template)
+        self.assertIn("isNoMd ? 'KEIN_MD'", template)
         self.assertIn("Sie wird nicht an das Personaldossier übergeben.", template)
         self.assertIn("`scope=${employee.scope || ''}`", template)
 

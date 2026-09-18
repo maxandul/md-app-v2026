@@ -128,13 +128,14 @@ def _new_case(
             "secondary_employment": row["secondary_employment"],
         },
         "scope": "",
+        "dialog_type": "annual",
         "scope_reason": "",
         "no_md_reason": "",
         "no_md_note": "",
         "suggestion": {
             "scope": row["suggested_scope"],
             "reason": row["suggestion_reason"],
-            "is_special": row["suggested_scope"] != "full",
+            "is_special": row["suggested_scope"] != "full" or "Probezeit" in row["suggestion_reason"],
         },
         "period_start": period_start,
         "period_end": period_end,
@@ -142,6 +143,7 @@ def _new_case(
         "previous_development_goals": previous_development_goals,
         "review": {
             "dialog_date": "",
+            "employment_continued": "",
             "general_notes": "",
             "performance": "",
             "competencies": [],

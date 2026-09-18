@@ -10,25 +10,29 @@ Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
 ## Enthaltene Funktionen
 
 - Teamübersicht und Gesamtfortschritt
-- Suche und Filter nach Bearbeitungsstand
+- kompakte Teamübersicht mit eingeklapptem Archiv
 - vier mögliche Fallumfänge:
   - Rückblick und Ausblick
   - nur Rückblick
   - nur Ausblick
   - kein MD
-- Hinweis auf einen aus SAP abgeleiteten Umfang
+- Hinweise auf erkennbare Spezialfälle sowie Link zur vollständigen Dokumentation
 - Vorjahresziele mit Zielerreichung und Rückblick
+- manuelles Ergänzen fehlender Leistungs- und Entwicklungsziele des Vorjahres
 - dynamisch ergänzbare Kompetenzbeobachtungen
 - dynamisch ergänzbare Leistungs- und Entwicklungsziele
 - getrennte Vollständigkeitsprüfung für Rückblick und Ausblick
 - Druckansichten für ein Rückblick- oder Ausblick-PDF je Person
+- eigener Rückblick auf die Probezeit mit Anstellungsentscheid
+- administratives PDF für «Kein MD» und einen abweichenden Umfang
 - Speichern als neue, aktualisierte HTML-Datei
 - eindeutige Dateistände: Versanddatei mit `_START`, gespeicherte Rücksendungen
   mit `_BEARBEITET_vNN_YYYYMMDD_HHMM`
 - PDF-Namen mit dem fachlich passenden Jahr und der Personalnummer am Schluss
 - maschinenlesbarer JSON-Datenblock für den späteren SQLite-Import
 - Prüfung einer zurückgesendeten HTML-Datei
-- keine externen Schriften, Skripte, Bilder oder Netzwerkaufrufe
+- keine externen Schriften, Skripte, Bilder oder Datenabrufe; einzig der Link zur
+  internen Dokumentation der Spezialfälle führt ins ZHub
 
 ## Prototyp erzeugen
 
@@ -39,7 +43,7 @@ Browser geöffnet werden. Sie enthält ausschliesslich synthetische Fälle:
 
 - regulärer MD in Bearbeitung
 - vollständiger MD mit D-Beurteilung und Uneinigkeit
-- Probezeitfall mit nur Ausblick
+- Probezeitfall mit Probezeitrückblick und Anstellungsentscheid
 - Pensionierung mit «Kein MD»
 - interner Übertritt mit vorgeschlagenem Rückblick
 - unterjährige Standortnotizen
@@ -81,13 +85,31 @@ Die im Prototyp angezeigten Vorjahresziele sind synthetische Platzhalter. In
 der späteren Anwendung werden sie aus SQLite beziehungsweise aus dem Rücklauf
 des Vorjahres übernommen.
 
+### Probezeit-Arbeitsmappe erzeugen
+
+Der Probezeitrückblick ist eine eigene Gesprächsart innerhalb desselben
+Kalenderjahres. Dadurch kann für dieselbe Person zusätzlich ein regulärer MD
+bestehen. Für einen Probezeit-Test kann eine entsprechende Arbeitsmappe erzeugt
+werden:
+
+```powershell
+python prototype/html_dialog/generate_package.py `
+  --rb-year 2026 `
+  --manager-pn 123456 `
+  --dialog-type probation
+```
+
+Die Probezeit-Arbeitsmappe verwendet den abweichenden Aufbau der bestehenden
+Vorlage: Leistung und Einführungsziele, ausgewählte Kompetenzen, Bemerkungen zum
+Gespräch und Anstellungsentscheid. Sie enthält keine reguläre Gesamtbeurteilung.
+
 ## Empfohlener Funktionstest in Microsoft Edge
 
 1. Die erzeugte HTML-Datei auf dem persönlichen Geschäftsgerät öffnen.
 2. Für eine Person den vorgeschlagenen Umfang übernehmen.
 3. Pflichtfelder ausfüllen und den Fortschritt beobachten.
 4. Eine Kompetenzbeobachtung und ein zusätzliches Ziel ergänzen.
-5. `Zwischenstand speichern` wählen.
+5. `Arbeitsmappe speichern` wählen.
 6. Die neu heruntergeladene HTML-Datei schliessen und erneut öffnen.
 7. Prüfen, ob Eingaben und Fortschritt erhalten geblieben sind.
 8. `Rückblick als PDF` beziehungsweise `Ausblick als PDF` wählen.
@@ -104,7 +126,7 @@ nicht überschrieben.
 Da die Arbeitsdatei Vorjahresdaten enthält, gelten für den produktiven Prozess:
 
 - Erstversand durch HR ausschliesslich S/MIME-verschlüsselt
-- Rückversand ebenfalls ausschliesslich S/MIME-verschlüsselt
+- Rückversand der unterzeichneten PDFs ebenfalls ausschliesslich S/MIME-verschlüsselt
 - Bearbeitung nur auf dem persönlichen Geschäftsgerät
 - keine Übertragung auf private oder mobile Geräte
 
@@ -114,9 +136,9 @@ Für den technischen Test werden ausschliesslich die Beispieldaten verwendet:
 2. Vor dem Versand prüfen, ob Outlook die Nachricht tatsächlich verschlüsselt.
 3. Anhang direkt aus Outlook und nach lokalem Speichern öffnen.
 4. Prüfen, ob Skriptfunktionen, Download und Druckansicht verfügbar bleiben.
-5. Gespeicherte HTML-Datei erneut S/MIME-verschlüsselt zurücksenden.
-6. Prüfen, ob Outlook oder die Sicherheitsinfrastruktur den HTML-Anhang
-   blockiert, umbenennt oder inhaltlich verändert.
+5. Ein Test-PDF S/MIME-verschlüsselt an das HR-Testpostfach zurücksenden.
+6. Prüfen, ob Outlook oder die Sicherheitsinfrastruktur die versandte
+   Arbeitsmappe oder die zurückgesendeten PDFs blockiert oder verändert.
 
 S/MIME schützt den E-Mail-Transport und die Nachricht im Postfach. Eine lokal
 gespeicherte HTML-Datei ist dadurch nicht zusätzlich verschlüsselt. Dafür sind

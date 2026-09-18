@@ -182,8 +182,8 @@
     }
 
     .package-title { margin: 0; font-size: 18px; }
-    .package-meta { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-    .package-meta summary { cursor: pointer; }
+    .package-meta { margin-top: 14px; color: #d9e9f7; font-size: 12px; }
+    .package-meta summary { cursor: pointer; font-weight: 700; }
 
     .toolbar {
       display: flex;
@@ -228,25 +228,10 @@
       font-size: 12px;
     }
 
-    .save-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); }
-    .save-state.dirty .save-dot { background: var(--warning); }
+    .save-dot { width: 9px; height: 9px; border-radius: 50%; background: #9aa3ab; }
+    .save-state.dirty .save-dot { background: var(--danger); }
 
     .content { max-width: 1160px; margin: 0 auto; padding: 24px 28px 80px; }
-
-    .security-banner {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-      padding: 14px 16px;
-      border: 1px solid #eac879;
-      border-radius: var(--radius);
-      background: var(--warning-soft);
-    }
-
-    .security-label { color: #65430b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-    .security-banner strong { display: block; margin-bottom: 2px; }
-    .security-banner p { margin: 0; color: #65430b; }
 
     .person-header {
       display: flex;
@@ -350,6 +335,8 @@
     .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
     .guidance summary { cursor: pointer; font-weight: 700; }
     .guidance ol { margin-bottom: 0; }
+    .master-data { margin-top: 12px; padding: 0; border: 0; background: transparent; }
+    .master-data summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
 
     .suggestion {
@@ -437,7 +424,8 @@
     .subsection {
       margin-top: 22px;
       padding: 18px;
-      border-left: 4px solid #b7d7eb;
+      border: 1px solid var(--line);
+      border-top: 4px solid #d7e5ef;
       background: #f8fafc;
     }
 
@@ -534,7 +522,6 @@
     .missing-list { margin: 0; padding-left: 20px; }
     .missing-list li + li { margin-top: 4px; }
     .complete-message { color: var(--success); font-weight: 700; }
-    .local-save { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; padding:14px 16px; border:1px solid #9fc8df; background:var(--blue-soft); }
     .tracking-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
 
     .toast {
@@ -591,7 +578,7 @@
       .print-subtitle { margin: 2mm 0 0; color: #444; }
       .print-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 8mm; margin: 7mm 0; padding: 4mm; background: #f1f4f7; }
       .print-meta-item strong { display: block; font-size: 8.5pt; }
-      .print-admin-data { margin: -3mm 0 6mm; color: #555; font-size: 6.8pt; line-height: 1.35; overflow-wrap: anywhere; }
+      .print-admin-data { flex: 1; color: #666; font-size: 5.8pt; line-height: 1.2; overflow-wrap: anywhere; }
       .print-section { margin-top: 7mm; orphans: 3; widows: 3; }
       .print-section h2 { margin: 0 0 3mm; padding-bottom: 1.5mm; color: #1f4e79; border-bottom: .7pt solid #9fbad2; font-size: 14pt; break-after: avoid-page; page-break-after: avoid; }
       .print-section h3 { margin: 5mm 0 2mm; font-size: 11pt; break-after: avoid-page; page-break-after: avoid; }
@@ -602,7 +589,7 @@
       .print-value { white-space: pre-wrap; overflow-wrap: anywhere; }
       .print-signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14mm; margin-top: 18mm; break-inside: avoid; }
       .signature-line { padding-top: 2mm; border-top: .8pt solid #000; }
-      .print-footer { display: flex; justify-content: space-between; gap: 8mm; margin-top: 12mm; padding-top: 2mm; color: #666; border-top: .5pt solid #c9d1da; font-size: 8pt; break-inside: avoid; }
+      .print-footer { display: flex; margin-top: 12mm; padding-top: 2mm; color: #666; border-top: .5pt solid #c9d1da; break-inside: avoid; }
       .print-empty { color: #666; font-style: italic; }
     }
   </style>
@@ -624,28 +611,21 @@
 
       <div id="employee-list" class="employee-list"></div>
       <details id="archive-list" class="archive-list"><summary id="archive-summary">Archivierte Personen</summary><div id="archived-employee-list" class="employee-list"></div></details>
+      <details class="package-meta"><summary>Technische Angaben</summary><span id="package-meta"></span></details>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div>
           <h2 id="package-title" class="package-title"></h2>
-          <details class="package-meta"><summary>Technische Angaben</summary><span id="package-meta"></span></details>
         </div>
         <div class="toolbar">
-          <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Änderungen</span></span>
-          <button id="save-button" class="button primary" type="button">Arbeitsmappe speichern</button>
+          <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
+          <button id="save-button" class="button primary" type="button" disabled>Arbeitsmappe speichern</button>
         </div>
       </header>
 
       <div class="content">
-        <div class="security-banner">
-          <div class="security-label" aria-hidden="true">Hinweis</div>
-          <div>
-            <strong>Vertrauliche Personaldaten – nur auf dem persönlichen Geschäftsgerät bearbeiten</strong>
-            <p>Diese Datei darf nicht auf private Geräte oder private Cloudspeicher übertragen werden. Versand und Rückversand erfolgen ausschliesslich S/MIME-verschlüsselt.</p>
-          </div>
-        </div>
         <div id="editor"></div>
         <div id="completion-panel"></div>
       </div>
@@ -655,7 +635,7 @@
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script id="md-data" type="application/json">{"schema_version":"1.0","app_version":"0.3.0-demo","package":{"package_id":"MD-2025-990001-DEMO2026","manager_pn":"990001","manager_name":"Laura Muster","manager_first_name":"Laura","manager_last_name":"Muster","manager_email":"laura.muster@example.invalid","rb_year":2025,"ab_year":2026,"created_at":"2026-01-05T08:00:00+01:00","saved_at":"","revision":0,"s_mime_required":true,"business_device_only":true,"previous_cycles":[{"label":"Rückblick 2024 · Ausblick 2025 (Archiv)","file":"MD_Dialog_2024_2025_Archiv.html"},{"label":"Rückblick 2023 · Ausblick 2024 (Archiv)","file":"MD_Dialog_2023_2024_Archiv.html"}]},"configuration":{"competencies":["Entwicklungsfähigkeit","Selbstmanagement","Werteorientierung","Fach- und Spezialwissen","Planungs- und Organisationsfähigkeit","Problemlösefähigkeit","Ergebnisorientiertes Handeln","Leistungsorientierung","Leistungskonstanz","Gestaltungsfähigkeit","Kommunikationsfähigkeit","Beziehungsmanagement","Konfliktmanagement"],"competency_model":[{"category":"Persönlichkeit","motto":"Wir wissen, wer wir sind, und nehmen unsere Verantwortung wahr.","competencies":[{"name":"Entwicklungsfähigkeit","parts":{"Lernbereitschaft":["interessiert sich aktiv für Erfahrungen anderer und ist bereit, Neues zu lernen","lernt aus Erfolgen und Misserfolgen"],"Veränderungsfähigkeit":["begegnet Veränderungen mit Interesse und stellt sich auf neue Situationen ein","erkennt Möglichkeiten und Chancen von Veränderungen"],"Reflexionsfähigkeit":["reflektiert eigenes Verhalten und dessen Wirkung kritisch","holt Feedback ein und leitet Entwicklungsschritte ab"]}},{"name":"Werteorientierung","parts":{"Integrität":["handelt umsichtig entlang von Vorgaben, Gesetzen und Vereinbarungen","verhält sich loyal und trägt Entscheidungen mit"],"Ethisches Handeln":["setzt sich gegen Diskriminierung ein","spricht unprofessionelles oder unethisches Verhalten an"],"Inklusionsfähigkeit":["begegnet Vielfalt vorurteilsfrei und respektvoll","zeigt Interesse und Offenheit gegenüber unterschiedlichen Lebensformen und Kulturen"]}},{"name":"Selbstmanagement","parts":{"Eigenverantwortung":["überprüft den eigenen Arbeitsfortschritt und übernimmt Verantwortung","nutzt den persönlichen Handlungs- und Entscheidungsspielraum"],"Resilienz":["erkennt eigene Belastungsgrenzen und fordert bei Bedarf Unterstützung an","achtet auf angemessene Erholung und Ausgleich"]}}]},{"category":"Expertise","motto":"Wir kennen uns aus und wissen wie.","competencies":[{"name":"Fach- und Spezialwissen","parts":{"Funktionsbezogenes Wissen":["verfügt über funktionsspezifisches Fachwissen und Berufserfahrung","versteht interne Abläufe und die Zusammenarbeit mit Kontaktpersonen"],"Projektmanagement":["kennt die eigene Rolle und den Beitrag zur Zielerreichung im Projekt","unterstützt die erfolgreiche Umsetzung aktiv"],"Verwaltungs- und Politikwissen":["kennt die politischen und rechtlichen Rahmenbedingungen","bewegt sich souverän in komplexen politischen Situationen"],"Wissensmanagement":["teilt Wissen und fördert den Informationsaustausch","stellt Wissenserhalt und Wissensausbau sicher"]}},{"name":"Problemlösefähigkeit","parts":{"Analysefähigkeit":["erkennt Problemstellungen und geht sie methodisch und strukturiert an","analysiert Ursachen und Wechselwirkungen"],"Konzeptionsfähigkeit":["erarbeitet situations- und stufengerechte Konzepte","berücksichtigt verschiedene Perspektiven und denkt in Szenarien"],"Umsetzungsfähigkeit":["steuert das Vorgehen und berücksichtigt Vorgaben sowie Ressourcen","erkennt Risiken frühzeitig und initiiert Massnahmen"]}},{"name":"Planungs- und Organisationsfähigkeit","parts":{"Prozesskompetenz":["definiert und setzt relevante Prozesse um","prüft Prozesse auf Effizienz und zukünftige Anforderungen"],"Ressourcenmanagement":["setzt Zeit, Geld und Materialien zweckmässig ein","organisiert vorausschauend und setzt Prioritäten"],"Delegationsfähigkeit":["überträgt Aufgaben, Verantwortung und Entscheidungskompetenz","fördert Eigeninitiative und Selbstorganisation"],"Kreativitäts- und Innovationstechnik":["wendet innovative Arbeits- und Kollaborationstechniken an","entwickelt kreative und unübliche Lösungen"]}}]},{"category":"Tatkraft","motto":"Wir gestalten Leistung und erzielen Wirkung.","competencies":[{"name":"Ergebnisorientiertes Handeln","parts":{"Strategisches Denken und Handeln":["erkennt wesentliche Entwicklungen und zieht Schlussfolgerungen","bewertet Chancen und Risiken mit Blick auf das grosse Ganze"],"Entscheidungsfähigkeit":["trifft Entscheidungen fundiert und zeitgerecht","bezieht Betroffene sinnvoll in die Entscheidungsfindung ein"],"Vernetztes Denken und Handeln":["betrachtet Situationen aus verschiedenen Perspektiven","handelt bereichsübergreifend und im Interesse der Gesamtorganisation"]}},{"name":"Leistungskonstanz","parts":{"Durchhaltevermögen":["bleibt am Thema, auch wenn Schwierigkeiten auftreten","behält bei hohen Anforderungen eine gleichbleibende Qualität"],"Belastbarkeit":["handelt auch unter erschwerten Bedingungen zielorientiert","verhält sich in Stresssituationen adäquat und verantwortungsbewusst"]}},{"name":"Leistungsorientierung","parts":{"Dienstleistungsorientierung":["nimmt das Gegenüber und seine Anliegen ernst","findet tragfähige Lösungen für verschiedene Anspruchsgruppen"],"Qualitätsbewusstsein":["strebt hochwertige Ergebnisse an und arbeitet genau","sucht kontinuierlich nach Verbesserungsmöglichkeiten"],"Wirtschaftliches Denken und Handeln":["achtet auf ein optimales Aufwand-Nutzen-Verhältnis","fokussiert auf Aktivitäten mit dem grössten Mehrwert"],"Mitarbeitendenförderung":["nutzt Stärken und Potenziale der Mitarbeitenden","gibt konkrete, zeitnahe und wertschätzende Rückmeldungen"]}},{"name":"Gestaltungsfähigkeit","parts":{"Innovationsfähigkeit":["sucht und entwickelt neue Lösungen","sieht Fehler als Chance für Weiterentwicklung und Innovation"],"Transformationsfähigkeit":["sieht und nutzt Chancen von Veränderungen","beteiligt sich aktiv an Veränderungsprozessen"]}}]},{"category":"Soziabilität","motto":"Wir gestalten Beziehungen und kommunizieren bewusst.","competencies":[{"name":"Kommunikationsfähigkeit","parts":{"Auftrittskompetenz":["tritt glaubwürdig, selbstsicher und überzeugend auf","verhält sich situationsgerecht und schafft Vertrauen"],"Ausdrucksfähigkeit":["drückt sich mündlich und schriftlich klar aus","kommuniziert kontext- und adressatengerecht"],"Informationsmanagement":["filtert und hinterfragt Informationen kritisch","gibt Informationen zeitnah und gezielt weiter"]}},{"name":"Konfliktmanagement","parts":{"Kritikfähigkeit":["gibt Kritik konstruktiv und nimmt sie offen entgegen","zeigt Bereitschaft, das eigene Verhalten zu verändern"],"Konfliktlösungsfähigkeit":["nimmt Spannungen frühzeitig wahr und spricht sie an","löst Unstimmigkeiten auf sachlicher und zwischenmenschlicher Ebene"],"Widerstandsfähigkeit":["findet einen konstruktiven Umgang mit Widerständen","reagiert gelassen auf unveränderbare Rahmenbedingungen"]}},{"name":"Beziehungsmanagement","parts":{"Empathie":["erkennt emotionale Gefühlslagen und kann sich in andere hineinversetzen","nimmt den Stimmungsgehalt einer Situation wahr und agiert adäquat"],"Integrationsfähigkeit":["integriert sich aktiv in eine Gruppe","hilft Kolleginnen und Kollegen, sich ins Team zu integrieren"],"Teamfähigkeit":["arbeitet gerne mit anderen zusammen und ist kompromissfähig","trägt zu gegenseitiger Wertschätzung und zum Teamerfolg bei"],"Kollaborationsfähigkeit":["erarbeitet mit unterschiedlichen Personen Lösungen für komplexe Aufgaben","nutzt in interdisziplinären Teams das Wissen aller Beteiligten"],"Netzwerkfähigkeit":["kennt wichtige interne und externe Ansprechpersonen","baut tragfähige Beziehungen und Netzwerke auf und pflegt sie"]}}]}],"no_md_reasons":["Austritt","Pensionierung","Wechsel der vorgesetzten Person","Neueintritt","Längere Abwesenheit","Anderer Grund"]},"employees":[{"case_id":"2025-990001-700001","employee":{"pn":"700001","first_name":"Anna","last_name":"Keller","full_name":"Anna Keller","position":"Fachspezialistin Personal","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"full","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Teilweise erreicht","review":"Ein erster Verbesserungsschritt ist umgesetzt; die Wirkung wird im ersten Quartal weiter beobachtet."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[{"id":"previous-development-anna-1","competency":"Kooperationsfähigkeit","title":"Wissen im Team strukturierter weitergeben","criteria":"Zwei Wissenstransfers wurden durchgeführt.","steps":"Praxisfälle auswählen, Austausch vorbereiten und Erkenntnisse dokumentieren.","target_date":"2025-11-30","achievement":"","review":""}],"review":{"dialog_date":"2026-01-16","general_notes":"","performance":"Anna hat die Jahresziele mit hoher Eigenständigkeit bearbeitet.","competencies":[{"id":"competency-anna","competency":"Planungs- und Organisationsfähigkeit","comment":"Priorisiert auch bei hoher Auslastung nachvollziehbar und hält Zusagen zuverlässig ein."}],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700001-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700002","employee":{"pn":"700002","first_name":"Beat","last_name":"Meier","full_name":"Beat Meier","position":"Projektleiter Digitalisierung","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"full","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."}],"previous_development_goals":[],"review":{"dialog_date":"2026-01-09","general_notes":"","performance":"Die vereinbarten Aufgaben wurden zuverlässig und in guter Qualität erfüllt.","competencies":[],"overall_rating":"D – genügend","agreement":"Nein","manager_comment":"Die Gesamtbeurteilung wurde ausführlich besprochen.","employee_comment":"Die mitarbeitende Person ist mit der Gesamtbeurteilung nicht einverstanden.","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"Ja","secondary_employment_note":""},"outlook":{"dialog_date":"2026-01-09","performance_goals":[{"id":"goal-700002-1","title":"Digitale Fallbearbeitung vereinfachen","criteria":"Zwei priorisierte Verbesserungen sind bis Ende Jahr umgesetzt.","steps":"Ablauf aufnehmen, Varianten testen und im Team auswerten.","target_date":"2026-12-31"}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700003","employee":{"pn":"700003","first_name":"Céline","last_name":"Frei","full_name":"Céline Frei","position":"Sachbearbeiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2025-08-01","exit_date":"","probation_end":"2025-10-31","employment_assignment":"1","secondary_employment":""},"scope":"review_only","scope_reason":"Probezeit beendet; bis Jahresende verbleiben sechs Monate oder weniger.","no_md_reason":"","no_md_note":"","suggestion":{"scope":"review_only","reason":"Probezeit endete am 31.10.2025","is_special":true},"period_start":"2025-08-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"2025-11-03","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700003-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700004","employee":{"pn":"700004","first_name":"David","last_name":"Roth","full_name":"David Roth","position":"Fachspezialist","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"2025-06-30","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"none","scope_reason":"","no_md_reason":"Pensionierung","no_md_note":"Austritt per 30. Juni; kein weiterer MD erforderlich.","suggestion":{"scope":"none","reason":"Pensionierung im ersten Halbjahr","is_special":true},"period_start":"2025-01-01","period_end":"2025-06-30","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700004-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700005","employee":{"pn":"700005","first_name":"Eva","last_name":"Bühler","full_name":"Eva Bühler","position":"Teamleiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"review_only","reason":"Interner Übertritt per 30.09.2025; abschliessende Standortbestimmung empfohlen","is_special":true},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700005-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700006","employee":{"pn":"700006","first_name":"Farid","last_name":"Yilmaz","full_name":"Farid Yilmaz","position":"Controller","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"outlook_only","scope_reason":"Der Probezeitrückblick wurde unterjährig bereits abgeschlossen; am Jahresende folgt der Ausblick.","no_md_reason":"","no_md_note":"","suggestion":{"scope":"outlook_only","reason":"Probezeitrückblick wurde unterjährig bereits durchgeführt","is_special":true},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[{"date":"2025-05-14","title":"Standortgespräch","text":"Priorisierung bei parallelen Aufträgen besprochen; wöchentliche Planung als Massnahme vereinbart."},{"date":"2025-09-18","title":"Zwischenstand","text":"Die neue Planungsroutine funktioniert gut. Nächster Fokus: frühzeitige Abstimmung mit Schnittstellen."}],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700006-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700007","employee":{"pn":"700007","first_name":"Gina","last_name":"Schmid","full_name":"Gina Schmid","position":"Ehemalige Fachmitarbeiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"2025-03-31","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"review_only","scope_reason":"Abschluss vor Austritt","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-03-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."}],"previous_development_goals":[],"review":{"dialog_date":"2025-03-14","general_notes":"","performance":"Die vereinbarten Aufgaben wurden zuverlässig und in guter Qualität erfüllt.","competencies":[],"overall_rating":"B – sehr gut","agreement":"Ja","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"Ja","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700007-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":true},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}}]}</script>
+  <script id="md-data" type="application/json">{"schema_version":"1.0","app_version":"0.3.0-demo","package":{"package_id":"MD-2025-990001-DEMO2026","manager_pn":"990001","manager_name":"Laura Muster","manager_first_name":"Laura","manager_last_name":"Muster","manager_email":"laura.muster@example.invalid","rb_year":2025,"ab_year":2026,"created_at":"2026-01-05T08:00:00+01:00","saved_at":"","revision":0,"s_mime_required":true,"business_device_only":true,"previous_cycles":[{"label":"Rückblick 2024 · Ausblick 2025 (Archiv)","file":"MD_Dialog_2024_2025_Archiv.html"},{"label":"Rückblick 2023 · Ausblick 2024 (Archiv)","file":"MD_Dialog_2023_2024_Archiv.html"}]},"configuration":{"competencies":["Entwicklungsfähigkeit","Selbstmanagement","Werteorientierung","Fach- und Spezialwissen","Planungs- und Organisationsfähigkeit","Problemlösefähigkeit","Ergebnisorientiertes Handeln","Leistungsorientierung","Leistungskonstanz","Gestaltungsfähigkeit","Kommunikationsfähigkeit","Beziehungsmanagement","Konfliktmanagement"],"competency_model":[{"category":"Persönlichkeit","motto":"Wir wissen, wer wir sind, und nehmen unsere Verantwortung wahr.","competencies":[{"name":"Entwicklungsfähigkeit","parts":{"Lernbereitschaft":["interessiert sich aktiv für Erfahrungen anderer und ist bereit, Neues zu lernen","lernt aus Erfolgen und Misserfolgen"],"Veränderungsfähigkeit":["begegnet Veränderungen mit Interesse und stellt sich auf neue Situationen ein","erkennt Möglichkeiten und Chancen von Veränderungen"],"Reflexionsfähigkeit":["reflektiert eigenes Verhalten und dessen Wirkung kritisch","holt Feedback ein und leitet Entwicklungsschritte ab"]}},{"name":"Werteorientierung","parts":{"Integrität":["handelt umsichtig entlang von Vorgaben, Gesetzen und Vereinbarungen","verhält sich loyal und trägt Entscheidungen mit"],"Ethisches Handeln":["setzt sich gegen Diskriminierung ein","spricht unprofessionelles oder unethisches Verhalten an"],"Inklusionsfähigkeit":["begegnet Vielfalt vorurteilsfrei und respektvoll","zeigt Interesse und Offenheit gegenüber unterschiedlichen Lebensformen und Kulturen"]}},{"name":"Selbstmanagement","parts":{"Eigenverantwortung":["überprüft den eigenen Arbeitsfortschritt und übernimmt Verantwortung","nutzt den persönlichen Handlungs- und Entscheidungsspielraum"],"Resilienz":["erkennt eigene Belastungsgrenzen und fordert bei Bedarf Unterstützung an","achtet auf angemessene Erholung und Ausgleich"]}}]},{"category":"Expertise","motto":"Wir kennen uns aus und wissen wie.","competencies":[{"name":"Fach- und Spezialwissen","parts":{"Funktionsbezogenes Wissen":["verfügt über funktionsspezifisches Fachwissen und Berufserfahrung","versteht interne Abläufe und die Zusammenarbeit mit Kontaktpersonen"],"Projektmanagement":["kennt die eigene Rolle und den Beitrag zur Zielerreichung im Projekt","unterstützt die erfolgreiche Umsetzung aktiv"],"Verwaltungs- und Politikwissen":["kennt die politischen und rechtlichen Rahmenbedingungen","bewegt sich souverän in komplexen politischen Situationen"],"Wissensmanagement":["teilt Wissen und fördert den Informationsaustausch","stellt Wissenserhalt und Wissensausbau sicher"]}},{"name":"Problemlösefähigkeit","parts":{"Analysefähigkeit":["erkennt Problemstellungen und geht sie methodisch und strukturiert an","analysiert Ursachen und Wechselwirkungen"],"Konzeptionsfähigkeit":["erarbeitet situations- und stufengerechte Konzepte","berücksichtigt verschiedene Perspektiven und denkt in Szenarien"],"Umsetzungsfähigkeit":["steuert das Vorgehen und berücksichtigt Vorgaben sowie Ressourcen","erkennt Risiken frühzeitig und initiiert Massnahmen"]}},{"name":"Planungs- und Organisationsfähigkeit","parts":{"Prozesskompetenz":["definiert und setzt relevante Prozesse um","prüft Prozesse auf Effizienz und zukünftige Anforderungen"],"Ressourcenmanagement":["setzt Zeit, Geld und Materialien zweckmässig ein","organisiert vorausschauend und setzt Prioritäten"],"Delegationsfähigkeit":["überträgt Aufgaben, Verantwortung und Entscheidungskompetenz","fördert Eigeninitiative und Selbstorganisation"],"Kreativitäts- und Innovationstechnik":["wendet innovative Arbeits- und Kollaborationstechniken an","entwickelt kreative und unübliche Lösungen"]}}]},{"category":"Tatkraft","motto":"Wir gestalten Leistung und erzielen Wirkung.","competencies":[{"name":"Ergebnisorientiertes Handeln","parts":{"Strategisches Denken und Handeln":["erkennt wesentliche Entwicklungen und zieht Schlussfolgerungen","bewertet Chancen und Risiken mit Blick auf das grosse Ganze"],"Entscheidungsfähigkeit":["trifft Entscheidungen fundiert und zeitgerecht","bezieht Betroffene sinnvoll in die Entscheidungsfindung ein"],"Vernetztes Denken und Handeln":["betrachtet Situationen aus verschiedenen Perspektiven","handelt bereichsübergreifend und im Interesse der Gesamtorganisation"]}},{"name":"Leistungskonstanz","parts":{"Durchhaltevermögen":["bleibt am Thema, auch wenn Schwierigkeiten auftreten","behält bei hohen Anforderungen eine gleichbleibende Qualität"],"Belastbarkeit":["handelt auch unter erschwerten Bedingungen zielorientiert","verhält sich in Stresssituationen adäquat und verantwortungsbewusst"]}},{"name":"Leistungsorientierung","parts":{"Dienstleistungsorientierung":["nimmt das Gegenüber und seine Anliegen ernst","findet tragfähige Lösungen für verschiedene Anspruchsgruppen"],"Qualitätsbewusstsein":["strebt hochwertige Ergebnisse an und arbeitet genau","sucht kontinuierlich nach Verbesserungsmöglichkeiten"],"Wirtschaftliches Denken und Handeln":["achtet auf ein optimales Aufwand-Nutzen-Verhältnis","fokussiert auf Aktivitäten mit dem grössten Mehrwert"],"Mitarbeitendenförderung":["nutzt Stärken und Potenziale der Mitarbeitenden","gibt konkrete, zeitnahe und wertschätzende Rückmeldungen"]}},{"name":"Gestaltungsfähigkeit","parts":{"Innovationsfähigkeit":["sucht und entwickelt neue Lösungen","sieht Fehler als Chance für Weiterentwicklung und Innovation"],"Transformationsfähigkeit":["sieht und nutzt Chancen von Veränderungen","beteiligt sich aktiv an Veränderungsprozessen"]}}]},{"category":"Soziabilität","motto":"Wir gestalten Beziehungen und kommunizieren bewusst.","competencies":[{"name":"Kommunikationsfähigkeit","parts":{"Auftrittskompetenz":["tritt glaubwürdig, selbstsicher und überzeugend auf","verhält sich situationsgerecht und schafft Vertrauen"],"Ausdrucksfähigkeit":["drückt sich mündlich und schriftlich klar aus","kommuniziert kontext- und adressatengerecht"],"Informationsmanagement":["filtert und hinterfragt Informationen kritisch","gibt Informationen zeitnah und gezielt weiter"]}},{"name":"Konfliktmanagement","parts":{"Kritikfähigkeit":["gibt Kritik konstruktiv und nimmt sie offen entgegen","zeigt Bereitschaft, das eigene Verhalten zu verändern"],"Konfliktlösungsfähigkeit":["nimmt Spannungen frühzeitig wahr und spricht sie an","löst Unstimmigkeiten auf sachlicher und zwischenmenschlicher Ebene"],"Widerstandsfähigkeit":["findet einen konstruktiven Umgang mit Widerständen","reagiert gelassen auf unveränderbare Rahmenbedingungen"]}},{"name":"Beziehungsmanagement","parts":{"Empathie":["erkennt emotionale Gefühlslagen und kann sich in andere hineinversetzen","nimmt den Stimmungsgehalt einer Situation wahr und agiert adäquat"],"Integrationsfähigkeit":["integriert sich aktiv in eine Gruppe","hilft Kolleginnen und Kollegen, sich ins Team zu integrieren"],"Teamfähigkeit":["arbeitet gerne mit anderen zusammen und ist kompromissfähig","trägt zu gegenseitiger Wertschätzung und zum Teamerfolg bei"],"Kollaborationsfähigkeit":["erarbeitet mit unterschiedlichen Personen Lösungen für komplexe Aufgaben","nutzt in interdisziplinären Teams das Wissen aller Beteiligten"],"Netzwerkfähigkeit":["kennt wichtige interne und externe Ansprechpersonen","baut tragfähige Beziehungen und Netzwerke auf und pflegt sie"]}}]}],"no_md_reasons":["Austritt","Pensionierung","Wechsel der vorgesetzten Person","Neueintritt","Längere Abwesenheit","Anderer Grund"]},"employees":[{"case_id":"2025-990001-700001","employee":{"pn":"700001","first_name":"Anna","last_name":"Keller","full_name":"Anna Keller","position":"Fachspezialistin Personal","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"full","dialog_type":"annual","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Teilweise erreicht","review":"Ein erster Verbesserungsschritt ist umgesetzt; die Wirkung wird im ersten Quartal weiter beobachtet."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[{"id":"previous-development-anna-1","competency":"Kooperationsfähigkeit","title":"Wissen im Team strukturierter weitergeben","criteria":"Zwei Wissenstransfers wurden durchgeführt.","steps":"Praxisfälle auswählen, Austausch vorbereiten und Erkenntnisse dokumentieren.","target_date":"2025-11-30","achievement":"","review":""}],"review":{"dialog_date":"2026-01-16","employment_continued":"","general_notes":"","performance":"Anna hat die Jahresziele mit hoher Eigenständigkeit bearbeitet.","competencies":[{"id":"competency-anna","competency":"Planungs- und Organisationsfähigkeit","comment":"Priorisiert auch bei hoher Auslastung nachvollziehbar und hält Zusagen zuverlässig ein."}],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700001-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700002","employee":{"pn":"700002","first_name":"Beat","last_name":"Meier","full_name":"Beat Meier","position":"Projektleiter Digitalisierung","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"full","dialog_type":"annual","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."}],"previous_development_goals":[],"review":{"dialog_date":"2026-01-09","employment_continued":"","general_notes":"","performance":"Die vereinbarten Aufgaben wurden zuverlässig und in guter Qualität erfüllt.","competencies":[],"overall_rating":"D – genügend","agreement":"Nein","manager_comment":"Die Gesamtbeurteilung wurde ausführlich besprochen.","employee_comment":"Die mitarbeitende Person ist mit der Gesamtbeurteilung nicht einverstanden.","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"Ja","secondary_employment_note":""},"outlook":{"dialog_date":"2026-01-09","performance_goals":[{"id":"goal-700002-1","title":"Digitale Fallbearbeitung vereinfachen","criteria":"Zwei priorisierte Verbesserungen sind bis Ende Jahr umgesetzt.","steps":"Ablauf aufnehmen, Varianten testen und im Team auswerten.","target_date":"2026-12-31"}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700003","employee":{"pn":"700003","first_name":"Céline","last_name":"Frei","full_name":"Céline Frei","position":"Sachbearbeiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2025-08-01","exit_date":"","probation_end":"2025-10-31","employment_assignment":"1","secondary_employment":""},"scope":"review_only","dialog_type":"probation","scope_reason":"Probezeit beendet; bis Jahresende verbleiben sechs Monate oder weniger.","no_md_reason":"","no_md_note":"","suggestion":{"scope":"review_only","reason":"Probezeit endete am 31.10.2025","is_special":true},"period_start":"2025-08-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"2025-11-03","employment_continued":"Ja","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700003-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700004","employee":{"pn":"700004","first_name":"David","last_name":"Roth","full_name":"David Roth","position":"Fachspezialist","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"2025-06-30","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"none","dialog_type":"annual","scope_reason":"","no_md_reason":"Pensionierung","no_md_note":"Austritt per 30. Juni; kein weiterer MD erforderlich.","suggestion":{"scope":"none","reason":"Pensionierung im ersten Halbjahr","is_special":true},"period_start":"2025-01-01","period_end":"2025-06-30","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","employment_continued":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700004-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700005","employee":{"pn":"700005","first_name":"Eva","last_name":"Bühler","full_name":"Eva Bühler","position":"Teamleiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"","dialog_type":"annual","scope_reason":"","no_md_reason":"","no_md_note":"","suggestion":{"scope":"review_only","reason":"Interner Übertritt per 30.09.2025; abschliessende Standortbestimmung empfohlen","is_special":true},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","employment_continued":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700005-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700006","employee":{"pn":"700006","first_name":"Farid","last_name":"Yilmaz","full_name":"Farid Yilmaz","position":"Controller","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"outlook_only","dialog_type":"annual","scope_reason":"Der Probezeitrückblick wurde unterjährig bereits abgeschlossen; am Jahresende folgt der Ausblick.","no_md_reason":"","no_md_note":"","suggestion":{"scope":"outlook_only","reason":"Probezeitrückblick wurde unterjährig bereits durchgeführt","is_special":true},"period_start":"2025-01-01","period_end":"2025-12-31","checkpoint_notes":[{"date":"2025-05-14","title":"Standortgespräch","text":"Priorisierung bei parallelen Aufträgen besprochen; wöchentliche Planung als Massnahme vereinbart."},{"date":"2025-09-18","title":"Zwischenstand","text":"Die neue Planungsroutine funktioniert gut. Nächster Fokus: frühzeitige Abstimmung mit Schnittstellen."}],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"","review":""},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"","review":""}],"previous_development_goals":[],"review":{"dialog_date":"","employment_continued":"","general_notes":"","performance":"","competencies":[],"overall_rating":"","agreement":"","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700006-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":false},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}},{"case_id":"2025-990001-700007","employee":{"pn":"700007","first_name":"Gina","last_name":"Schmid","full_name":"Gina Schmid","position":"Ehemalige Fachmitarbeiterin","org_unit":"Demoorganisation · Fachbereich Services","employment_degree":"100","entry_date":"2020-01-01","exit_date":"2025-03-31","probation_end":"","employment_assignment":"1","secondary_employment":""},"scope":"review_only","dialog_type":"annual","scope_reason":"Abschluss vor Austritt","no_md_reason":"","no_md_note":"","suggestion":{"scope":"full","reason":"Regulärer jährlicher Mitarbeitenden-Dialog","is_special":false},"period_start":"2025-01-01","period_end":"2025-03-31","checkpoint_notes":[],"previous_goals":[{"id":"previous-1","title":"Bearbeitungszeiten im Fachprozess reduzieren","criteria":"Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.","steps":"Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."},{"id":"previous-2","title":"Wissenstransfer im Team stärken","criteria":"Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.","steps":"Themen sammeln, Termine planen und Unterlagen zentral ablegen.","target_date":"2025-12-31","achievement":"Erreicht","review":"Das Ziel wurde erreicht; die Wirkung ist im Arbeitsalltag sichtbar."}],"previous_development_goals":[],"review":{"dialog_date":"2025-03-14","employment_continued":"","general_notes":"","performance":"Die vereinbarten Aufgaben wurden zuverlässig und in guter Qualität erfüllt.","competencies":[],"overall_rating":"B – sehr gut","agreement":"Ja","manager_comment":"","employee_comment":"","next_level_conversation":"Nein","next_level_comment":"","secondary_employment_current":"Ja","secondary_employment_note":""},"outlook":{"dialog_date":"","performance_goals":[{"id":"goal-700007-1","title":"","criteria":"","steps":"","target_date":""}],"open_goals_text":"","development_goals":[],"nep":"","nep_notes":"","general_notes":""},"meta":{"updated_at":"","pdf_exported_at":"","archived":true},"document_tracking":{"review":{"status":"preparation","note":""},"outlook":{"status":"preparation","note":""},"no_md":{"status":"preparation","note":""}}}]}</script>
   <script>
     (() => {
       'use strict';
@@ -665,8 +645,10 @@
       state.employees.forEach(employee => {
         employee.review = employee.review || {};
         employee.outlook = employee.outlook || {};
+        employee.dialog_type = employee.dialog_type || 'annual';
         employee.review.dialog_date = employee.review.dialog_date || employee.dialog_date || '';
         employee.outlook.dialog_date = employee.outlook.dialog_date || employee.dialog_date || '';
+        employee.review.employment_continued = employee.review.employment_continued || '';
         if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
         employee.previous_goals = Array.isArray(employee.previous_goals) ? employee.previous_goals : [];
         employee.previous_development_goals = Array.isArray(employee.previous_development_goals) ? employee.previous_development_goals : [];
@@ -760,6 +742,9 @@
       }
 
       function requiresHandwrittenScan(employee) {
+        if (employee.dialog_type === 'probation') {
+          return employee.review.employment_continued === 'Nein' || employee.review.agreement === 'Nein';
+        }
         return ['D', 'E'].includes(overallRatingCode(employee)) || employee.review.agreement === 'Nein';
       }
 
@@ -770,11 +755,22 @@
       function reviewRequirements(employee, includeDialogDate = true) {
         const list = [];
         if (includeDialogDate) addRequirement(list, 'Gesprächsdatum Rückblick', employee.review.dialog_date);
+        if (employee.dialog_type === 'probation') {
+          addRequirement(list, 'Rückblick auf Leistung und Einführungsziele', employee.review.performance && employee.review.performance.trim());
+          addRequirement(list, 'Anstellungsentscheid', employee.review.employment_continued);
+          addRequirement(list, 'Einigkeit zum Anstellungsentscheid', employee.review.agreement);
+          return list;
+        }
         employee.previous_goals.forEach((goal, index) => {
+          addRequirement(list, `Bezeichnung für Vorjahresziel ${index + 1}`, goal.title && goal.title.trim());
+          addRequirement(list, `Messkriterien für Vorjahresziel ${index + 1}`, goal.criteria && goal.criteria.trim());
           addRequirement(list, `Zielerreichung für Vorjahresziel ${index + 1}`, goal.achievement);
           addRequirement(list, `Rückblick für Vorjahresziel ${index + 1}`, goal.review && goal.review.trim());
         });
         employee.previous_development_goals.forEach((goal, index) => {
+          addRequirement(list, `Kompetenz für Entwicklungsziel ${index + 1}`, goal.competency);
+          addRequirement(list, `Bezeichnung für Entwicklungsziel ${index + 1}`, goal.title && goal.title.trim());
+          addRequirement(list, `Messkriterien für Entwicklungsziel ${index + 1}`, goal.criteria && goal.criteria.trim());
           addRequirement(list, `Zielerreichung für Entwicklungsziel ${index + 1}`, goal.achievement);
           addRequirement(list, `Rückblick für Entwicklungsziel ${index + 1}`, goal.review && goal.review.trim());
         });
@@ -833,6 +829,8 @@
         if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
           addRequirement(requirements, 'Begründung für den abweichenden Umfang', employee.scope_reason && employee.scope_reason.trim());
         }
+        addRequirement(requirements, 'Zeitraum von', employee.period_start);
+        addRequirement(requirements, 'Zeitraum bis', employee.period_end);
         if (hasReview(employee.scope)) requirements.push(...reviewRequirements(employee, false));
         if (hasOutlook(employee.scope)) requirements.push(...outlookRequirements(employee, false));
         if (hasReview(employee.scope)) addRequirement(requirements, 'Gesprächsdatum Rückblick', employee.review.dialog_date);
@@ -863,8 +861,10 @@
       function updateSaveState() {
         const container = document.getElementById('save-state');
         const label = document.getElementById('save-state-text');
+        const saveButton = document.getElementById('save-button');
         container.classList.toggle('dirty', dirty);
-        label.textContent = dirty ? 'Ungespeicherte Änderungen' : 'Keine ungespeicherten Änderungen';
+        label.textContent = dirty ? 'Ungespeicherte Angaben' : 'Keine ungespeicherten Angaben';
+        saveButton.disabled = !dirty;
       }
 
       function optionList(options, selected, placeholder) {
@@ -872,6 +872,15 @@
         return first + options.map(option => (
           `<option value="${h(option)}" ${option === selected ? 'selected' : ''}>${h(option)}</option>`
         )).join('');
+      }
+
+      function competencyOptionList(selected) {
+        const first = '<option value="">Kompetenz auswählen</option>';
+        const groups = (state.configuration.competency_model || []).map(category => {
+          const options = (category.competencies || []).map(item => `<option value="${h(item.name)}" ${item.name === selected ? 'selected' : ''}>${h(item.name)}</option>`).join('');
+          return `<optgroup label="${h(category.category || 'Weitere Kompetenzen')}">${options}</optgroup>`;
+        }).join('');
+        return first + groups;
       }
 
       function renderHeader() {
@@ -903,7 +912,7 @@
           return `
             <button type="button" class="employee-card ${employee.case_id === selectedCaseId ? 'active' : ''}" data-case-id="${h(employee.case_id)}">
               <span class="employee-name">${h(employee.employee.full_name)}</span>
-              <span class="employee-meta">${h(employee.employee.position || employee.employee.org_unit || 'Keine Funktion hinterlegt')}</span>
+              ${employee.dialog_type === 'probation' ? '<span class="employee-meta">Rückblick Probezeit</span>' : ''}
               <span class="employee-status-line">
                 <span class="status-badge ${status.className}">${h(status.label)}</span>
               </span>
@@ -928,7 +937,7 @@
         if (type === 'textarea') {
           control = `<textarea class="${options.tall ? 'tall' : ''}" data-bind="${h(bind)}" rows="${options.rows || 4}"${requiredAttr}>${h(value)}</textarea>`;
         } else if (type === 'select') {
-          control = `<select data-bind="${h(bind)}"${requiredAttr}>${optionList(options.items || [], value, options.placeholder)}</select>`;
+          control = `<select data-bind="${h(bind)}"${requiredAttr}>${options.groupedCompetencies ? competencyOptionList(value) : optionList(options.items || [], value, options.placeholder)}</select>`;
         } else {
           control = `<input type="${h(type)}" data-bind="${h(bind)}" value="${h(value)}"${readonly}${requiredAttr}>`;
         }
@@ -939,7 +948,7 @@
         const required = options.required ? '<span class="required-mark"> *</span>' : '';
         let control;
         if (options.type === 'select') {
-          control = `<select data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}">${optionList(options.items || [], value, options.placeholder)}</select>`;
+          control = `<select data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}">${options.groupedCompetencies ? competencyOptionList(value) : optionList(options.items || [], value, options.placeholder)}</select>`;
         } else if (options.type === 'date') {
           control = `<input type="date" data-array="${h(arrayName)}" data-index="${index}" data-key="${h(key)}" value="${h(value)}">`;
         } else if (options.type === 'text') {
@@ -951,39 +960,40 @@
       }
 
       function renderPreviousGoals(employee) {
-        if (!employee.previous_goals.length) return '<div class="empty-state">Keine Vorjahresziele hinterlegt.</div>';
-        return employee.previous_goals.map((goal, index) => `
+        const cards = employee.previous_goals.map((goal, index) => `
           <div class="goal-card">
-            <div class="card-head"><h4>Vorjahresziel ${index + 1}: ${h(goal.title)}</h4></div>
+            <div class="card-head"><h4>Vorjahresziel ${index + 1}${goal.title ? `: ${h(goal.title)}` : ''}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></div>
             <div class="source-grid">
-              <div class="source-item full"><strong>Ziel</strong>${h(goal.title)}</div>
-              <div class="source-item"><strong>Messkriterien</strong>${h(goal.criteria || '–')}</div>
-              <div class="source-item"><strong>Termin</strong>${h(formatDate(goal.target_date))}</div>
-              <div class="source-item full"><strong>Vereinbarte Schritte</strong>${h(goal.steps || '–')}</div>
+              ${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
+              ${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria, { required:true })}
+              ${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}
+              ${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}
             </div>
             <div class="form-grid">
               ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
           </div>`).join('');
+        return `${cards || '<div class="empty-state">Keine Leistungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-goal">+ Leistungsziel aus dem Vorjahr ergänzen</button>`;
       }
 
       function renderPreviousDevelopmentGoals(employee) {
-        if (!employee.previous_development_goals.length) return '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr hinterlegt.</div>';
-        return employee.previous_development_goals.map((goal, index) => `
+        const cards = employee.previous_development_goals.map((goal, index) => `
           <div class="goal-card">
-            <div class="card-head"><h4>Entwicklungsziel ${index + 1}: ${h(goal.title)}</h4></div>
+            <div class="card-head"><h4>Entwicklungsziel ${index + 1}${goal.title ? `: ${h(goal.title)}` : ''}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></div>
             <div class="source-grid">
-              <div class="source-item"><strong>Kompetenz</strong>${h(goal.competency || '–')}</div>
-              <div class="source-item"><strong>Termin</strong>${h(formatDate(goal.target_date))}</div>
-              <div class="source-item full"><strong>Messkriterien</strong>${h(goal.criteria || '–')}</div>
-              <div class="source-item full"><strong>Vereinbarte Schritte</strong>${h(goal.steps || '–')}</div>
+              ${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}
+              ${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
+              ${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria, { required:true })}
+              ${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}
+              ${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}
             </div>
             <div class="form-grid">
               ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
           </div>`).join('');
+        return `${cards || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen</button>`;
       }
 
       function renderCheckpointNotes(employee) {
@@ -1009,7 +1019,7 @@
         if (!match) return '';
         const parts = Object.entries(match.parts || {}).map(([part, descriptors]) => `
           <div><h5>${h(part)}</h5><ul>${(descriptors || []).map(text => `<li>${h(text)}</li>`).join('')}</ul></div>`).join('');
-        return `<details class="competency-help"><summary>Teilkompetenzen und Formulierungshilfen anzeigen</summary><p>${h(categoryName)} · Die Hinweise können ausgewählt und an die konkrete Funktion angepasst werden.</p>${parts}</details>`;
+        return `<details class="competency-help"><summary>Teilkompetenzen und Formulierungshilfen</summary>${parts}</details>`;
       }
 
       function renderCompetencies(employee) {
@@ -1017,11 +1027,11 @@
         const cards = entries.map((entry, index) => `
           <div class="repeat-card">
             <div class="card-head"><h4>Kompetenzbeobachtung ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="review.competencies" data-index="${index}">Entfernen</button></div>
-            <div class="form-grid">
-              ${arrayField('Kompetenz', 'review.competencies', index, 'competency', entry.competency, { type:'select', items: state.configuration.competencies, placeholder:'Kompetenz auswählen' })}
+            ${arrayField('Kompetenz', 'review.competencies', index, 'competency', entry.competency, { type:'select', groupedCompetencies:true })}
+            ${renderCompetencyHelp(entry.competency)}
+            <div class="form-grid" style="margin-top:12px">
               ${arrayField('Beobachtung und Rückmeldung', 'review.competencies', index, 'comment', entry.comment, { full:true, rows:4 })}
             </div>
-            ${renderCompetencyHelp(entry.competency)}
           </div>`).join('');
         return `${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
       }
@@ -1046,20 +1056,24 @@
         const cards = goals.map((goal, index) => `
           <div class="repeat-card">
             <div class="card-head"><h4>Entwicklungsziel ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.development_goals" data-index="${index}">Entfernen</button></div>
-            <div class="form-grid">
-              ${arrayField('Kompetenz', 'outlook.development_goals', index, 'competency', goal.competency, { type:'select', items: state.configuration.competencies, placeholder:'Kompetenz auswählen', required:true })}
+            ${arrayField('Kompetenz', 'outlook.development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}
+            ${renderCompetencyHelp(goal.competency)}
+            <div class="form-grid" style="margin-top:12px">
               ${arrayField('Entwicklungsziel', 'outlook.development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
               ${arrayField('Messkriterien', 'outlook.development_goals', index, 'criteria', goal.criteria, { required:true })}
               ${arrayField('Schritte zum Ziel', 'outlook.development_goals', index, 'steps', goal.steps)}
               ${arrayField('Termin', 'outlook.development_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
             </div>
-            ${renderCompetencyHelp(goal.competency)}
           </div>`).join('');
         return `${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
       }
 
       function renderScope(employee) {
-        const options = [
+        const options = employee.dialog_type === 'probation' ? [
+          ['full', 'Probezeitrückblick und Ausblick', 'Ausblick auf das restliche Jahr'],
+          ['review_only', 'Nur Probezeitrückblick', 'Wenn bis zum Jahresende sechs Monate oder weniger verbleiben'],
+          ['none', 'Kein Gespräch', 'Nur nach Rücksprache mit HR']
+        ] : [
           ['full', 'Rückblick und Ausblick', 'Regulärer jährlicher Mitarbeitenden-Dialog'],
           ['review_only', 'Nur Rückblick', 'Zum Beispiel bei einem bevorstehenden Austritt'],
           ['outlook_only', 'Nur Ausblick', 'Zum Beispiel beim regulären Jahresende nach bereits erfolgtem Probezeitrückblick'],
@@ -1067,7 +1081,7 @@
         ];
         return `
           <section class="section">
-            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Bitte bestätige zuerst, welche Unterlagen für diese Person erforderlich sind.</p></div></div>
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2></div></div>
             <div class="scope-grid">
               ${options.map(option => `
                 <label class="scope-option">
@@ -1076,6 +1090,7 @@
                 </label>`).join('')}
             </div>
             ${employee.suggestion && employee.suggestion.is_special ? `<div class="suggestion"><strong>Voreinstellung wegen Spezialfall:</strong> ${h(employee.suggestion.reason)} Der Umfang darf bei Bedarf angepasst werden.</div>` : ''}
+            ${!employee.suggestion || !employee.suggestion.is_special ? `<div class="suggestion">Interne Übertritte und weitere Spezialfälle sind aus den Stammdaten nicht zuverlässig erkennbar. Bitte prüfe bei Bedarf die <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Dokumentation der Spezialfälle</a>.</div>` : ''}
             ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den abweichenden Umfang', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:'Diese Angabe wird für HR und die Prozessauswertung übernommen.' })}</div>` : ''}
           </section>`;
       }
@@ -1101,20 +1116,44 @@
           <section class="section">
             <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2><p class="section-intro">Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden.</p></div></div>
             <div class="form-grid three">
-              ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Eintrittsdatum vorgegeben.' })}
-              ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', readonly:true, hint:'Wird aus Rückblickjahr und Austrittsdatum vorgegeben.' })}
+              ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', required:true })}
+              ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', required:true })}
               ${field('Datum des Gesprächs', `${section}.dialog_date`, employee[section].dialog_date, { type:'date', required:true })}
             </div>
           </section>`;
       }
 
+      function renderProbationReview(employee) {
+        return `
+          <section class="section">
+            <div class="section-head"><div><p class="eyebrow">Rückblick auf die Probezeit</p><h2 class="section-title">Leistung, Kompetenzen und Anstellungsentscheid</h2></div></div>
+            <div class="subsection"><h3>1. Leistung</h3><div class="form-grid">
+              ${field('Allgemeine Bemerkungen', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
+              ${field('Wie wird die bisherige Leistung eingeschätzt? Konnten die wesentlichen Ziele des Einführungsprogramms erreicht werden?', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
+            </div></div>
+            <div class="subsection"><h3>2. Kompetenzen und Zusammenarbeit</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection"><h3>3. Bemerkungen zum Gespräch</h3><div class="form-grid">
+              ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
+              ${field('Bemerkung der mitarbeitenden Person', 'review.employee_comment', employee.review.employee_comment, { type:'textarea', full:true })}
+              ${field('Gespräch mit nächsthöherer Führungsperson', 'review.next_level_conversation', employee.review.next_level_conversation, { type:'select', items:['Nein','Ja'], placeholder:'Bitte auswählen' })}
+              ${employee.review.next_level_conversation === 'Ja' ? field('Bemerkungen zum Gespräch mit der nächsthöheren Führungsperson', 'review.next_level_comment', employee.review.next_level_comment, { type:'textarea', full:true }) : ''}
+            </div></div>
+            <div class="subsection"><h3>4. Anstellungsentscheid</h3><p class="section-intro">Die ersten drei Monate des Arbeitsverhältnisses gelten in der Regel als Probezeit. Bei einer Verlängerung oder einem negativen Entscheid ist HR frühzeitig beizuziehen.</p><div class="form-grid">
+              ${field('Wird das Arbeitsverhältnis weitergeführt?', 'review.employment_continued', employee.review.employment_continued, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
+              ${field('Einigkeit zum Anstellungsentscheid', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
+            </div>
+            ${requiresHandwrittenScan(employee) ? '<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Bei einem negativen Anstellungsentscheid oder bei Uneinigkeit müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.</div>' : ''}
+            </div>
+          </section>`;
+      }
+
       function renderReview(employee) {
+        if (employee.dialog_type === 'probation') return renderProbationReview(employee);
         const secondary = employee.employee.secondary_employment;
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Die Textfelder wachsen beim Schreiben. Im PDF wird nur tatsächlich erfasster Inhalt ausgegeben.</p></div>
-              <button class="button" type="button" data-action="print-review">Rückblick als PDF</button>
+              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2></div>
             </div>
             ${renderCheckpointNotes(employee)}
             <div class="subsection"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
@@ -1123,7 +1162,7 @@
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
             </div></div>
-            <div class="subsection"><h3>4. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection"><h3>4. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
             <div class="subsection"><h3>5. Gesamteindruck und Gespräch</h3><div class="form-grid">
               ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
               ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
@@ -1132,12 +1171,12 @@
               ${field('Gespräch mit nächsthöherer Führungsperson', 'review.next_level_conversation', employee.review.next_level_conversation, { type:'select', items:['Nein','Ja'], placeholder:'Bitte auswählen' })}
               ${employee.review.next_level_conversation === 'Ja' ? field('Bemerkungen zum Gespräch mit der nächsthöheren Führungsperson', 'review.next_level_comment', employee.review.next_level_comment, { type:'textarea', full:true }) : ''}
             </div>
-              ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien die Dokumente zusätzlich handschriftlich unterzeichnen. Der Scan ist zusammen mit den elektronisch unterzeichneten PDFs an HR zu senden.</div>` : ''}
+              ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien das Dokument handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan; das digitale PDF muss in diesem Fall nicht zusätzlich elektronisch unterschrieben sein.</div>` : ''}
             </div>
             <div class="subsection"><h3>6. Nebenbeschäftigungen und öffentliche Ämter</h3>
-              <div class="suggestion"><strong>Aktueller SAP-Stand:</strong> ${h(secondary || 'Aktuell keine')}</div>
+              <div class="suggestion"><strong>Aktueller SAP-Stand:</strong> ${h(secondary || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div>
               <div class="form-grid" style="margin-top:12px">
-                ${field('Angaben aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
+                ${field('SAP-Stand aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
                 ${field('Präzisierungen', 'review.secondary_employment_note', employee.review.secondary_employment_note, { type:'textarea', full:true })}
               </div>
             </div>
@@ -1149,7 +1188,6 @@
           <section class="section">
             <div class="section-head">
               <div><p class="eyebrow">Ausblick ${state.package.ab_year}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
-              <button class="button" type="button" data-action="print-outlook">Ausblick als PDF</button>
             </div>
             <div class="subsection"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
@@ -1171,9 +1209,10 @@
       }
 
       function workflowSteps(employee) {
+        const reviewLabel = employee.dialog_type === 'probation' ? '2 · Rückblick Probezeit' : `2 · Rückblick ${state.package.rb_year}`;
         return [
           { key: 'basics', label: '1 · Grundlagen', available: true },
-          { key: 'review', label: `2 · Rückblick ${state.package.rb_year}`, available: hasReview(employee.scope) },
+          { key: 'review', label: reviewLabel, available: hasReview(employee.scope) },
           { key: 'outlook', label: `3 · Ausblick ${state.package.ab_year}`, available: hasOutlook(employee.scope) },
           { key: 'finish', label: employee.scope === 'none' ? '2 · Kein MD abschliessen' : '4 · Prüfen und PDF', available: Boolean(employee.scope) }
         ];
@@ -1191,18 +1230,15 @@
           <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
           <li>Speichere die Arbeitsmappe regelmässig. Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter.</li>
           <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift.</li>
-          <li>Sende die unterzeichneten Dokumente ausschliesslich S/MIME-verschlüsselt an HR. Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
+          <li>Sende die unterzeichneten Dokumente in einer S/MIME-verschlüsselten E-Mail an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
         </ol></details>`;
-      }
-
-      function renderLocalSave() {
-        return `<div class="local-save"><div><strong>Änderungen zwischenspeichern</strong><div class="field-hint">Es wird eine neue HTML-Datei erzeugt. Öffne beim nächsten Mal die Datei mit der höchsten Versionsnummer.</div></div><button class="button primary" type="button" data-action="save-package">Arbeitsmappe speichern</button></div>`;
       }
 
       function renderTracking(employee) {
         const options = ['In Vorbereitung','Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt','In Korrektur'];
         const block = (section, label) => hasReview(employee.scope) && section === 'review' || hasOutlook(employee.scope) && section === 'outlook' ? `<div class="field"><label>${label}</label><select data-bind="document_tracking.${section}.status">${optionList(options, employee.document_tracking[section].status === 'preparation' ? 'In Vorbereitung' : employee.document_tracking[section].status, 'Status wählen')}</select></div>` : '';
-        return `<div class="tracking-grid">${block('review', `Rückblick ${state.package.rb_year}`)}${block('outlook', `Ausblick ${state.package.ab_year}`)}</div>`;
+        const reviewLabel = employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
+        return `<div class="tracking-grid">${block('review', reviewLabel)}${block('outlook', `Ausblick ${state.package.ab_year}`)}</div>`;
       }
 
       function renderFinish(employee) {
@@ -1212,9 +1248,10 @@
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
             ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
             ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
+            ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? '<button class="button" type="button" data-action="print-scope-deviation">Begründung für abweichenden Umfang als PDF</button>' : ''}
           </div>
+          ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? '<div class="suggestion"><strong>Hinweis an HR:</strong> Bitte auch die PDF-Begründung für den abweichenden Umfang zusammen mit den übrigen Unterlagen an HR senden.</div>' : ''}
           ${renderTracking(employee)}
-          ${renderLocalSave()}
           ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Bei D/E oder Uneinigkeit müssen beide Parteien zusätzlich handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan.</div>' : ''}
         </section>`;
       }
@@ -1233,11 +1270,11 @@
         selectedStepByCase[employee.case_id] = selectedStep;
         let stepContent = '';
         if (selectedStep === 'basics') {
-          stepContent = `${renderScope(employee)}${renderGuidance()}${renderLocalSave()}`;
+          stepContent = `${renderScope(employee)}${renderGuidance()}`;
         } else if (selectedStep === 'review') {
-          stepContent = `${renderDialogDetails(employee, 'review')}${renderReview(employee)}${renderLocalSave()}`;
+          stepContent = `${renderDialogDetails(employee, 'review')}${renderReview(employee)}`;
         } else if (selectedStep === 'outlook') {
-          stepContent = `${renderDialogDetails(employee, 'outlook')}${renderOutlook(employee)}${renderLocalSave()}`;
+          stepContent = `${renderDialogDetails(employee, 'outlook')}${renderOutlook(employee)}`;
         } else if (employee.scope === 'none') {
           stepContent = renderNoMd(employee);
         } else {
@@ -1247,8 +1284,10 @@
           <section class="person-header">
             <div>
               <h1 class="person-title">${h(person.full_name)}</h1>
-              <p class="person-subtitle">${h(person.position || 'Keine Funktion hinterlegt')} · ${h(person.org_unit || 'Keine Organisationseinheit')}</p>
-              <details class="guidance"><summary>Stammdaten anzeigen</summary><div class="person-facts">
+              ${employee.dialog_type === 'probation' ? '<p class="person-subtitle">Rückblick auf die Probezeit</p>' : ''}
+              <details class="master-data"><summary>Stammdaten anzeigen</summary><div class="person-facts">
+                <span><strong>Funktion:</strong> ${h(person.position || '–')}</span>
+                <span><strong>Organisationseinheit:</strong> ${h(person.org_unit || '–')}</span>
                 <span><strong>Personalnummer:</strong> ${h(person.pn)}</span>
                 <span><strong>Beschäftigungsgrad:</strong> ${h(person.employment_degree || '–')}%</span>
                 <span><strong>Eintritt:</strong> ${h(formatDate(person.entry_date))}</span>
@@ -1282,7 +1321,7 @@
             <div>
               ${completion.complete
                 ? '<div class="complete-message">Alle erforderlichen Angaben für den gewählten Umfang sind vorhanden.</div>'
-                : `<strong>Noch zu ergänzen:</strong><ul class="missing-list">${completion.missing.map(item => `<li>${h(item)}</li>`).join('')}</ul>`}
+                : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${completion.missing.map(item => `<li>${h(item)}</li>`).join('')}</ul></details>`}
             </div>
           </section>`;
       }
@@ -1329,7 +1368,11 @@
       }
 
       function addItem(employee, action) {
-        if (action === 'add-competency') {
+        if (action === 'add-previous-goal') {
+          employee.previous_goals.push({ id: uid('previous'), title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+        } else if (action === 'add-previous-development-goal') {
+          employee.previous_development_goals.push({ id: uid('previous-development'), competency: '', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+        } else if (action === 'add-competency') {
           employee.review.competencies.push({ id: uid('competency'), competency: '', comment: '' });
         } else if (action === 'add-performance-goal') {
           employee.outlook.performance_goals.push({ id: uid('goal'), title: '', criteria: '', steps: '', target_date: '' });
@@ -1382,6 +1425,7 @@
         if (action === 'print-review') printEmployee(employee, 'review');
         if (action === 'print-outlook') printEmployee(employee, 'outlook');
         if (action === 'print-no-md') printEmployee(employee, 'no_md');
+        if (action === 'print-scope-deviation') printEmployee(employee, 'scope_deviation');
       }
 
       function printValue(label, value) {
@@ -1414,10 +1458,11 @@
           `pn=${employee.employee.pn}`,
           `ans=${employee.employee.employment_assignment || ''}`,
           `year=${year}`,
+          `dialog_type=${employee.dialog_type || 'annual'}`,
           `scope=${employee.scope || ''}`,
           `period_start=${employee.period_start}`,
           `period_end=${employee.period_end}`,
-          `dialog_date=${documentType === 'RUECKBLICK' ? employee.review.dialog_date : documentType === 'AUSBLICK' ? employee.outlook.dialog_date : ''}`,
+          `dialog_date=${documentType.startsWith('RUECKBLICK') ? employee.review.dialog_date : documentType === 'AUSBLICK' ? employee.outlook.dialog_date : ''}`,
           `rating=${overallRatingCode(employee)}`,
           `agreement=${employee.review.agreement === 'Ja' ? 'JA' : employee.review.agreement === 'Nein' ? 'NEIN' : ''}`,
           `handwritten_scan_required=${requiresHandwrittenScan(employee) ? 'JA' : 'NEIN'}`,
@@ -1427,11 +1472,16 @@
       }
 
       function signatures(kind) {
-        const confirmation = kind === 'review'
+        const confirmation = kind === 'probation'
+          ? 'Mit ihrer Unterschrift bestätigen beide Parteien, dass der Rückblick auf die Probezeit stattgefunden hat und dabei die Leistung, die Kompetenzen und der Anstellungsentscheid besprochen wurden.'
+          : kind === 'review'
           ? 'Mit ihrer Unterschrift bestätigen beide Parteien, dass der Rückblick im Rahmen des Mitarbeitenden-Dialogs stattgefunden hat und dabei die Leistung, die Kompetenzen und der Gesamteindruck besprochen wurden.'
           : 'Mit ihrer Unterschrift bestätigen beide Parteien, dass das Gespräch stattgefunden hat und dabei die Zielvereinbarungen sowie die persönliche Entwicklung besprochen wurden.';
+        const condition = kind === 'probation'
+          ? 'Bei einem negativen Anstellungsentscheid oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.'
+          : 'Bei einer Gesamtbewertung genügend oder ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.';
         return `
-          <section class="print-section"><h2>Bestätigung und Unterschriften</h2><p>${h(confirmation)}</p><p>Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Bei einer Gesamtbewertung genügend oder ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.</p></section>
+          <section class="print-section"><h2>Bestätigung und Unterschriften</h2><p>${h(confirmation)}</p><p>Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. ${h(condition)}</p></section>
           <div class="print-signatures">
             <div class="signature-line">Datum und Unterschrift mitarbeitende Person</div>
             <div class="signature-line">Datum und Unterschrift vorgesetzte Person</div>
@@ -1439,6 +1489,7 @@
       }
 
       function buildReviewPrint(employee) {
+        if (employee.dialog_type === 'probation') return buildProbationReviewPrint(employee);
         const previous = employee.previous_goals.map((goal, index) => `
           <div class="print-block">
             <h3>Ziel ${index + 1}: ${h(goal.title)}</h3>
@@ -1473,11 +1524,22 @@
           </section>
           <section class="print-section"><h2>Nebenbeschäftigungen / öffentliche Ämter</h2>
             ${printValue('In SAP hinterlegt', employee.employee.secondary_employment)}
-            ${printValue('Angaben aktuell', employee.review.secondary_employment_current)}
+            ${printValue('SAP-Stand aktuell', employee.review.secondary_employment_current)}
             ${printValue('Präzisierungen', employee.review.secondary_employment_note)}
           </section>
-          ${signatures('review')}
-          ${printAdminData(employee, 'RUECKBLICK', state.package.rb_year)}`;
+          ${signatures('review')}`;
+      }
+
+      function buildProbationReviewPrint(employee) {
+        const competencies = employee.review.competencies.filter(item => item.competency || item.comment).map(item => `
+          <div class="print-block"><h3>${h(item.competency || 'Kompetenz')}</h3><div class="print-value">${item.comment ? h(item.comment) : '<span class="print-empty">Keine Bemerkung</span>'}</div></div>`).join('');
+        return `
+          ${printHeader(employee, 'Rückblick auf die Probezeit', state.package.rb_year, employee.review.dialog_date)}
+          <section class="print-section"><h2>Leistung</h2>${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}${printValue('Bisherige Leistung und Ziele des Einführungsprogramms', employee.review.performance)}</section>
+          ${competencies ? `<section class="print-section"><h2>Kompetenzen und Zusammenarbeit</h2>${competencies}</section>` : ''}
+          <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>${printValue('Vorgesetzte Person', employee.review.manager_comment)}${printValue('Mitarbeitende Person', employee.review.employee_comment)}${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}</section>
+          <section class="print-section"><h2>Anstellungsentscheid</h2>${printValue('Wird das Arbeitsverhältnis weitergeführt?', employee.review.employment_continued)}${printValue('Einigkeit zum Anstellungsentscheid', employee.review.agreement)}</section>
+          ${signatures('probation')}`;
       }
 
       function buildOutlookPrint(employee) {
@@ -1504,8 +1566,7 @@
             ${printValue('Bemerkungen', employee.outlook.nep_notes)}
           </section>
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
-          ${signatures('outlook')}
-          ${printAdminData(employee, 'AUSBLICK', state.package.ab_year)}`;
+          ${signatures('outlook')}`;
       }
 
       function buildNoMdPrint(employee) {
@@ -1517,29 +1578,41 @@
           </section>
           <section class="print-section"><h2>Verwendung</h2>
             <p>Diese Bestätigung dient ausschliesslich der administrativen Prozesskontrolle durch HR. Sie wird nicht an das Personaldossier übergeben.</p>
+          </section>`;
+      }
+
+      function buildScopeDeviationPrint(employee) {
+        return `
+          ${printHeader(employee, 'Abweichender Umfang Mitarbeitenden-Dialog', `${state.package.rb_year}/${state.package.ab_year}`, '')}
+          <section class="print-section"><h2>Administrativer Hinweis an HR</h2>
+            ${printValue('Gewählter Umfang', scopeLabels[employee.scope] || employee.scope)}
+            ${printValue('Begründung', employee.scope_reason)}
           </section>
-          ${printAdminData(employee, 'KEIN_MD', state.package.rb_year)}`;
+          <section class="print-section"><p>Diese Bestätigung dient der administrativen Prozesskontrolle durch HR und wird nicht an das Personaldossier übergeben.</p></section>`;
       }
 
       function printEmployee(employee, section) {
         const isNoMd = section === 'no_md';
-        const completion = isNoMd ? getCompletion(employee) : getSectionCompletion(employee, section);
+        const isScopeDeviation = section === 'scope_deviation';
+        const completion = isNoMd ? getCompletion(employee) : isScopeDeviation ? completionFromRequirements([{ label:'Begründung für den abweichenden Umfang', complete:Boolean(employee.scope_reason && employee.scope_reason.trim()) }]) : getSectionCompletion(employee, section);
         if (!completion.complete) {
           const preview = completion.missing.slice(0, 6).join('\n– ');
-          const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : 'Kein-MD-Fall';
+          const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : isScopeDeviation ? 'Hinweis zum abweichenden Umfang' : 'Kein-MD-Fall';
           const proceed = window.confirm(`Dieser ${sectionName} ist noch nicht vollständig.\n\nEs fehlt:\n– ${preview}\n\nTrotzdem PDF-Vorschau öffnen?`);
           if (!proceed) return;
         }
         employee.meta.pdf_exported_at = nowIso();
         markDirty(employee);
         const isReview = section === 'review';
-        const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : buildOutlookPrint(employee);
+        const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : isScopeDeviation ? buildScopeDeviationPrint(employee) : buildOutlookPrint(employee);
+        const documentType = isReview ? (employee.dialog_type === 'probation' ? 'RUECKBLICK_PROBEZEIT' : 'RUECKBLICK') : isNoMd ? 'KEIN_MD' : isScopeDeviation ? 'ABWEICHENDER_UMFANG' : 'AUSBLICK';
+        const documentYear = section === 'outlook' ? state.package.ab_year : state.package.rb_year;
         printRoot.innerHTML = `${printContent}
-          <div class="print-footer"><span>Paket ${h(state.package.package_id)}</span><span>Erstellt aus der geschützten MD-Arbeitsdatei</span></div>`;
+          <div class="print-footer">${printAdminData(employee, documentType, documentYear)}</div>`;
         printRoot.setAttribute('aria-hidden', 'false');
         document.body.classList.add('printing');
         const person = employee.employee;
-        const prefix = isReview ? `Rueckblick_${state.package.rb_year}` : isNoMd ? `Kein_MD_${state.package.rb_year}` : `Ausblick_${state.package.ab_year}`;
+        const prefix = isReview ? (employee.dialog_type === 'probation' ? `Rueckblick_Probezeit_${state.package.rb_year}` : `Rueckblick_${state.package.rb_year}`) : isNoMd ? `Kein_MD_${state.package.rb_year}` : isScopeDeviation ? `Abweichender_Umfang_${state.package.rb_year}_${state.package.ab_year}` : `Ausblick_${state.package.ab_year}`;
         document.title = `${prefix}_${filenamePart(person.last_name)}_${filenamePart(person.first_name)}_${filenamePart(person.pn)}`;
         window.setTimeout(() => window.print(), 60);
       }

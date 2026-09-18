@@ -60,6 +60,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
             "secondary_employment": "",
         },
         "scope": "",
+        "dialog_type": "annual",
         "scope_reason": "",
         "no_md_reason": "",
         "no_md_note": "",
@@ -71,6 +72,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
         "previous_development_goals": [],
         "review": {
             "dialog_date": "",
+            "employment_continued": "",
             "general_notes": "",
             "performance": "",
             "competencies": [],
@@ -151,9 +153,11 @@ def build_demo() -> dict:
 
     celine = employee("700003", "Céline", "Frei", position="Sachbearbeiterin", entry="2025-08-01", probation="2025-10-31")
     celine["scope"] = "review_only"
+    celine["dialog_type"] = "probation"
     celine["scope_reason"] = "Probezeit beendet; bis Jahresende verbleiben sechs Monate oder weniger."
     celine["suggestion"] = {"scope": "review_only", "reason": "Probezeit endete am 31.10.2025", "is_special": True}
     celine["review"]["dialog_date"] = "2025-11-03"
+    celine["review"]["employment_continued"] = "Ja"
 
     david = employee("700004", "David", "Roth", position="Fachspezialist", exit_date="2025-06-30")
     david["scope"] = "none"

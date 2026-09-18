@@ -47,7 +47,7 @@ Browser geöffnet werden. Sie enthält ausschliesslich synthetische Fälle:
 - vollständiger MD mit D-Beurteilung und Uneinigkeit
 - Probezeitfall mit Probezeitrückblick und Anstellungsentscheid
 - Pensionierung mit «Kein MD»
-- interner Übertritt mit vorgeschlagenem Rückblick
+- freiwillig ergänzter regulärer Rückblick nach einem Probezeitdialog
 - unterjährige Standortnotizen
 - archivierte Person
 
@@ -108,6 +108,23 @@ Die aus den Stammdaten abgeleitete Vorgabe ist auch hier ein Mindestumfang. Ein
 zusätzlicher Ausblick kann freiwillig geführt werden. Nur wenn ein verpflichtender
 Probezeitrückblick oder Ausblick weggelassen wird, ist nach vorgängiger Absprache
 mit HR eine Begründung erforderlich.
+
+### Zusammenspiel von Probezeit und Jahresdialog
+
+- Ein Stammdaten-Update ergänzt für einen Neueintritt einen eigenständigen
+  Probezeitfall. Der Fall bleibt beim nächsten Update erhalten.
+- Der reguläre Jahresdurchlauf ergänzt später einen separaten Jahresfall und
+  ersetzt den Probezeitfall nicht.
+- Endet die Probezeit in der zweiten Jahreshälfte, ist im Jahresdialog nur der
+  Ausblick verpflichtend. Die vorgesetzte Person darf freiwillig auch einen
+  regulären Rückblick durchführen.
+- Fällt das Probezeitende in die Bearbeitungszeit des Jahresdialogs von November
+  bis Februar, dürfen beide Anlässe im selben Gespräch behandelt werden. In der
+  Arbeitsmappe bleiben sie als zwei Fälle erkennbar und erzeugen getrennte PDFs:
+  den Probezeitrückblick und den regulären Ausblick.
+- Die spätere SQLite-Umsetzung muss deshalb mehrere Fälle je Kombination aus
+  Person, vorgesetzter Person und Jahr erlauben und Updates fallbezogen
+  zusammenführen, statt bestehende Fälle zu überschreiben.
 
 ## Empfohlener Funktionstest in Microsoft Edge
 

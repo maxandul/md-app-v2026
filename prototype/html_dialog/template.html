@@ -335,6 +335,7 @@
     .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
     .guidance summary { cursor: pointer; font-weight: 700; }
     .guidance ol { margin-bottom: 0; }
+    .guidance-save-note { margin: 14px 0 0; }
     .master-data { margin-top: 12px; padding: 0; border: 0; background: transparent; }
     .master-data summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
@@ -716,6 +717,12 @@
         return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : String(value);
       }
 
+      function sentence(value) {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        return /[.!?]$/.test(text) ? text : `${text}.`;
+      }
+
       function nowIso() {
         return new Date().toISOString();
       }
@@ -739,6 +746,19 @@
 
       function mandatoryScope(employee) {
         return employee.suggestion && employee.suggestion.scope ? employee.suggestion.scope : 'full';
+      }
+
+      function scopeLabel(employee, scope) {
+        if (employee.dialog_type !== 'probation') return scopeLabels[scope] || scope;
+        if (scope === 'full') return 'Probezeitrückblick und Ausblick';
+        if (scope === 'review_only') return 'Probezeitrückblick';
+        return scopeLabels[scope] || scope;
+      }
+
+      function outlookYear(employee) {
+        if (employee.dialog_type !== 'probation') return state.package.ab_year;
+        const probationEnd = String(employee.employee.probation_end || '');
+        return /^\d{4}-/.test(probationEnd) ? probationEnd.slice(0, 4) : state.package.rb_year;
       }
 
       function omittedMandatoryParts(employee) {
@@ -1108,8 +1128,8 @@
                   <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
                 </label>`).join('')}
             </div>
-            ${employee.suggestion ? `<div class="suggestion"><strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabels[mandatoryScope(employee)] || mandatoryScope(employee))}. ${h(employee.suggestion.reason)} Zusätzliche Gesprächsteile sind jederzeit möglich.</div>` : ''}
-            ${!employee.suggestion || !employee.suggestion.is_special ? `<div class="suggestion">Interne Übertritte und weitere Spezialfälle sind aus den Stammdaten nicht zuverlässig erkennbar. Bitte prüfe bei Bedarf die <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Dokumentation der Spezialfälle</a>.</div>` : ''}
+            ${employee.suggestion ? `<div class="suggestion"><strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))} Zusätzliche Gesprächsteile sind jederzeit möglich.</div>` : ''}
+            ${!employee.suggestion || !employee.suggestion.is_special ? `<div class="suggestion">Weitere Regelungen findest du in der <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Dokumentation der Spezialfälle</a>.</div>` : ''}
             ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
           </section>`;
       }
@@ -1207,7 +1227,7 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Ausblick ${state.package.ab_year}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
+              <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
             </div>
             <div class="subsection"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
@@ -1233,7 +1253,7 @@
         return [
           { key: 'basics', label: '1 · Grundlagen', available: true },
           { key: 'review', label: reviewLabel, available: hasReview(employee.scope) },
-          { key: 'outlook', label: `3 · Ausblick ${state.package.ab_year}`, available: hasOutlook(employee.scope) },
+          { key: 'outlook', label: `3 · Ausblick ${outlookYear(employee)}`, available: hasOutlook(employee.scope) },
           { key: 'finish', label: employee.scope === 'none' ? '2 · Kein MD abschliessen' : '4 · Prüfen und PDF', available: Boolean(employee.scope) }
         ];
       }
@@ -1246,19 +1266,18 @@
 
       function renderGuidance() {
         return `<details class="guidance"><summary>Kurzanleitung anzeigen</summary><ol>
-          <li>Bereite Rückblick und Ausblick vor dem Gespräch aus deiner Sicht vor. Bitte die mitarbeitende Person, sich ebenfalls Gedanken zu machen; dafür kann das Reflexionsformular als Hilfe dienen.</li>
+          <li>Bereite Rückblick und Ausblick vor dem Gespräch aus deiner Sicht vor. Bitte die mitarbeitende Person, sich ebenfalls Gedanken zu machen; dafür kann das <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#unterlagen" target="_blank" rel="noopener">Reflexionsformular</a> als Hilfe dienen.</li>
           <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
-          <li>Speichere die Arbeitsmappe regelmässig. Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter.</li>
           <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift.</li>
           <li>Sende die unterzeichneten Dokumente in einer S/MIME-verschlüsselten E-Mail an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
-        </ol></details>`;
+        </ol><div class="suggestion guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
       }
 
       function renderTracking(employee) {
         const options = ['In Vorbereitung','Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt','In Korrektur'];
         const block = (section, label) => hasReview(employee.scope) && section === 'review' || hasOutlook(employee.scope) && section === 'outlook' ? `<div class="field"><label>${label}</label><select data-bind="document_tracking.${section}.status">${optionList(options, employee.document_tracking[section].status === 'preparation' ? 'In Vorbereitung' : employee.document_tracking[section].status, 'Status wählen')}</select></div>` : '';
         const reviewLabel = employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
-        return `<div class="tracking-grid">${block('review', reviewLabel)}${block('outlook', `Ausblick ${state.package.ab_year}`)}</div>`;
+        return `<div class="tracking-grid">${block('review', reviewLabel)}${block('outlook', `Ausblick ${outlookYear(employee)}`)}</div>`;
       }
 
       function renderFinish(employee) {
@@ -1578,7 +1597,7 @@
             ${printValue('Termin', formatDate(goal.target_date))}
           </div>`).join('');
         return `
-          ${printHeader(employee, 'Ausblick', state.package.ab_year, employee.outlook.dialog_date)}
+          ${printHeader(employee, 'Ausblick', outlookYear(employee), employee.outlook.dialog_date)}
           <section class="print-section"><h2>Leistungsziele</h2>${goals}</section>
           ${employee.outlook.open_goals_text ? `<section class="print-section"><h2>Ergänzende Zielvereinbarungen</h2>${printValue('Weitere Ziele', employee.outlook.open_goals_text)}</section>` : ''}
           ${development ? `<section class="print-section"><h2>Entwicklungsziele</h2>${development}</section>` : ''}
@@ -1621,13 +1640,13 @@
         const isReview = section === 'review';
         const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : buildOutlookPrint(employee);
         const documentType = isReview ? (employee.dialog_type === 'probation' ? 'RUECKBLICK_PROBEZEIT' : 'RUECKBLICK') : isNoMd ? 'KEIN_MD' : 'AUSBLICK';
-        const documentYear = section === 'outlook' ? state.package.ab_year : state.package.rb_year;
+        const documentYear = section === 'outlook' ? outlookYear(employee) : state.package.rb_year;
         printRoot.innerHTML = `${printContent}
           <div class="print-footer">${printAdminData(employee, documentType, documentYear)}</div>`;
         printRoot.setAttribute('aria-hidden', 'false');
         document.body.classList.add('printing');
         const person = employee.employee;
-        const prefix = isReview ? (employee.dialog_type === 'probation' ? `Rueckblick_Probezeit_${state.package.rb_year}` : `Rueckblick_${state.package.rb_year}`) : isNoMd ? `Kein_MD_${state.package.rb_year}` : `Ausblick_${state.package.ab_year}`;
+        const prefix = isReview ? (employee.dialog_type === 'probation' ? `Rueckblick_Probezeit_${state.package.rb_year}` : `Rueckblick_${state.package.rb_year}`) : isNoMd ? `Kein_MD_${state.package.rb_year}` : `Ausblick_${outlookYear(employee)}`;
         document.title = `${prefix}_${filenamePart(person.last_name)}_${filenamePart(person.first_name)}_${filenamePart(person.pn)}`;
         window.setTimeout(() => window.print(), 60);
       }

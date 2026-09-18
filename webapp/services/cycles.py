@@ -10,14 +10,15 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
     if exit_date:
         parsed = date.fromisoformat(exit_date)
         if date(review_year, 10, 1) <= parsed <= date(review_year + 1, 1, 31):
-            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}"
+            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}."
     if probation_end:
         parsed = date.fromisoformat(probation_end)
-        if parsed.year == review_year:
-            if parsed <= date(review_year, 6, 30):
-                return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende"
-            return "outlook_only", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; zum Jahresende ist nur der Ausblick auf das neue Jahr vorgesehen"
-    return "full", "Standardfall gemäss SAP-Stammdaten"
+        if parsed.year == review_year and parsed <= date(review_year, 6, 30):
+            return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende."
+        if date(review_year, 7, 1) <= parsed < date(review_year + 1, 3, 1):
+            tense = "endete" if parsed.year == review_year else "endet"
+            return "outlook_only", f"Probezeit {tense} am {parsed.strftime('%d.%m.%Y')}; im Jahresdialog ist nur der Ausblick auf das neue Jahr verpflichtend."
+    return "full", "Standardfall gemäss SAP-Stammdaten."
 
 
 def create_cycle(

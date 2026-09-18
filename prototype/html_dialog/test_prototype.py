@@ -6,6 +6,8 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pandas as pd
+
 from generate_package import (
     build_payload,
     choose_manager,
@@ -14,6 +16,7 @@ from generate_package import (
     manager_index,
     output_filename,
     render_html,
+    _suggested_scope,
 )
 from validate_package import employee_status, extract_payload, validate_payload
 from create_demo import build_demo
@@ -54,6 +57,14 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertEqual(employee["suggestion"]["scope"], "review_only")
         self.assertTrue(employee["case_id"].endswith("-probezeit"))
 
+    def test_probation_ending_during_annual_window_requires_only_outlook(self) -> None:
+        scope, reason = _suggested_scope(
+            pd.Series({"Austritt": None, "Ende Probezeit": "2026-01-31"}),
+            2025,
+        )
+        self.assertEqual(scope, "outlook_only")
+        self.assertIn("nur der Ausblick", reason)
+
     def test_only_omitting_a_mandatory_part_requires_a_reason(self) -> None:
         employee = self.payload["employees"][0]
         employee["suggestion"]["scope"] = "review_only"
@@ -81,7 +92,10 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         external_links = re.findall(r"href=[\"'](https?://[^\"']+)", html, re.I)
         self.assertEqual(
             external_links,
-            ["https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle"],
+            [
+                "https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle",
+                "https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#unterlagen",
+            ],
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "package.html"
@@ -122,7 +136,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
         self.assertIn("_BEARBEITET_${revision}_${stamp}.html", template)
         self.assertIn("`Rueckblick_${state.package.rb_year}`", template)
-        self.assertIn("`Ausblick_${state.package.ab_year}`", template)
+        self.assertIn("`Ausblick_${outlookYear(employee)}`", template)
         self.assertIn("_${filenamePart(person.pn)}`", template)
 
     def test_no_md_can_be_exported_as_administrative_pdf(self) -> None:
@@ -168,7 +182,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
     def test_demo_covers_required_usability_scenarios(self) -> None:
         demo = build_demo()
         scopes = {item["scope"] for item in demo["employees"]}
-        self.assertTrue({"", "full", "outlook_only", "review_only", "none"}.issubset(scopes))
+        self.assertTrue({"full", "outlook_only", "review_only", "none"}.issubset(scopes))
         self.assertTrue(any(item["checkpoint_notes"] for item in demo["employees"]))
         self.assertTrue(any(item["meta"]["archived"] for item in demo["employees"]))
         self.assertTrue(any(item["review"]["agreement"] == "Nein" for item in demo["employees"]))
@@ -179,6 +193,8 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("Prüfen und PDF", template)
         self.assertIn('id="archive-list"', template)
         self.assertNotIn('id="employee-search"', template)
+        self.assertNotIn("Interne Übertritte", template)
+        self.assertIn("Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.", template)
         self.assertEqual(template.count("const sectionName ="), 1)
 
 

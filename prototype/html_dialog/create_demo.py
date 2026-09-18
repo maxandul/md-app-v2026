@@ -64,7 +64,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
         "scope_reason": "",
         "no_md_reason": "",
         "no_md_note": "",
-        "suggestion": {"scope": "full", "reason": "Regulärer jährlicher Mitarbeitenden-Dialog", "is_special": False},
+        "suggestion": {"scope": "full", "reason": "Regulärer jährlicher Mitarbeitenden-Dialog.", "is_special": False},
         "period_start": max("2025-01-01", entry),
         "period_end": min("2025-12-31", exit_date) if exit_date else "2025-12-31",
         "checkpoint_notes": [],
@@ -155,7 +155,7 @@ def build_demo() -> dict:
     celine["scope"] = "review_only"
     celine["dialog_type"] = "probation"
     celine["scope_reason"] = "Probezeit beendet; bis Jahresende verbleiben sechs Monate oder weniger."
-    celine["suggestion"] = {"scope": "review_only", "reason": "Probezeit endete am 31.10.2025", "is_special": True}
+    celine["suggestion"] = {"scope": "review_only", "reason": "Probezeit endete am 31.10.2025.", "is_special": True}
     celine["review"]["dialog_date"] = "2025-11-03"
     celine["review"]["employment_continued"] = "Ja"
 
@@ -163,15 +163,16 @@ def build_demo() -> dict:
     david["scope"] = "none"
     david["no_md_reason"] = "Pensionierung"
     david["no_md_note"] = "Austritt per 30. Juni; kein weiterer MD erforderlich."
-    david["suggestion"] = {"scope": "none", "reason": "Pensionierung im ersten Halbjahr", "is_special": True}
+    david["suggestion"] = {"scope": "none", "reason": "Pensionierung im ersten Halbjahr.", "is_special": True}
 
-    eva = employee("700005", "Eva", "Bühler", position="Teamleiterin")
-    eva["suggestion"] = {"scope": "review_only", "reason": "Interner Übertritt per 30.09.2025; abschliessende Standortbestimmung empfohlen", "is_special": True}
+    eva = employee("700005", "Eva", "Bühler", position="Teamleiterin", entry="2025-08-01", probation="2025-10-31")
+    eva["scope"] = "full"
+    eva["suggestion"] = {"scope": "outlook_only", "reason": "Der Probezeitrückblick wurde unterjährig durchgeführt; im Jahresdialog ist nur der Ausblick verpflichtend.", "is_special": True}
 
     farid = employee("700006", "Farid", "Yilmaz", position="Controller")
     farid["scope"] = "outlook_only"
     farid["scope_reason"] = "Der Probezeitrückblick wurde unterjährig bereits abgeschlossen; am Jahresende folgt der Ausblick."
-    farid["suggestion"] = {"scope": "outlook_only", "reason": "Probezeitrückblick wurde unterjährig bereits durchgeführt", "is_special": True}
+    farid["suggestion"] = {"scope": "outlook_only", "reason": "Der Probezeitrückblick wurde unterjährig bereits durchgeführt; im Jahresdialog ist nur der Ausblick verpflichtend.", "is_special": True}
     farid["checkpoint_notes"] = [
         {"date": "2025-05-14", "title": "Standortgespräch", "text": "Priorisierung bei parallelen Aufträgen besprochen; wöchentliche Planung als Massnahme vereinbart."},
         {"date": "2025-09-18", "title": "Zwischenstand", "text": "Die neue Planungsroutine funktioniert gut. Nächster Fokus: frühzeitige Abstimmung mit Schnittstellen."},

@@ -157,24 +157,25 @@ def _suggested_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
     if exit_date:
         parsed = date.fromisoformat(exit_date)
         if date(rb_year, 10, 1) <= parsed <= date(rb_year + 1, 1, 31):
-            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}"
+            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}."
     if probation_end:
         parsed = date.fromisoformat(probation_end)
-        if parsed.year == rb_year:
-            if parsed <= date(rb_year, 6, 30):
-                return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende"
-            return "outlook_only", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; zum Jahresende ist nur der Ausblick auf das neue Jahr vorgesehen"
-    return "full", "Standardfall gemäss SAP-Stammdaten"
+        if parsed.year == rb_year and parsed <= date(rb_year, 6, 30):
+            return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende."
+        if date(rb_year, 7, 1) <= parsed < date(rb_year + 1, 3, 1):
+            tense = "endete" if parsed.year == rb_year else "endet"
+            return "outlook_only", f"Probezeit {tense} am {parsed.strftime('%d.%m.%Y')}; im Jahresdialog ist nur der Ausblick auf das neue Jahr verpflichtend."
+    return "full", "Standardfall gemäss SAP-Stammdaten."
 
 
 def _suggested_probation_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
     probation_end = _iso_date(row.get("Ende Probezeit"))
     if not probation_end:
-        return "review_only", "Probezeitrückblick; Ende der Probezeit ist nicht in den Stammdaten hinterlegt"
+        return "review_only", "Probezeitrückblick; Ende der Probezeit ist nicht in den Stammdaten hinterlegt."
     parsed = date.fromisoformat(probation_end)
     if parsed <= date(parsed.year, 6, 30):
-        return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr"
-    return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger"
+        return "full", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; Probezeitrückblick und Ausblick auf das restliche Jahr."
+    return "review_only", f"Probezeit endet am {parsed.strftime('%d.%m.%Y')}; bis zum Jahresende verbleiben sechs Monate oder weniger."
 
 
 def _bounded_review_period(row: pd.Series, rb_year: int) -> tuple[str, str]:

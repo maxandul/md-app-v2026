@@ -22,11 +22,17 @@ Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
 - dynamisch ergänzbare Kompetenzbeobachtungen
 - dynamisch ergänzbare Leistungs- und Entwicklungsziele
 - getrennte Vollständigkeitsprüfung für Rückblick und Ausblick
+- kompakte, dokumentbezogene Fortschrittsblöcke mit verlinkten offenen Punkten
+- freiwilliger Dokumentstand für die persönliche Arbeitsorganisation
+- manuelles Abschliessen und Wiedereröffnen eines Falls; abgeschlossene Fälle
+  werden schreibgeschützt am Ende der aktiven Liste angezeigt
 - Druckansichten für ein Rückblick- oder Ausblick-PDF je Person
 - eigener Rückblick auf die Probezeit mit Anstellungsentscheid
 - administratives PDF für «Kein MD», wenn dadurch ein Pflichtteil entfällt
 - Begründung für einen weggelassenen Pflichtteil direkt im verbleibenden PDF
 - Stammdaten bestimmen nur den Mindestumfang; zusätzliche Gesprächsteile bleiben möglich
+- übernommene Vorjahresziele werden als unveränderter Quelltext angezeigt; für
+  Korrekturen werden sie entfernt und bei Bedarf neu erfasst
 - Speichern als neue, aktualisierte HTML-Datei
 - eindeutige Dateistände: Versanddatei mit `_START`, gespeicherte Rücksendungen
   mit `_BEARBEITET_vNN_YYYYMMDD_HHMM`
@@ -125,6 +131,23 @@ mit HR eine Begründung erforderlich.
 - Die spätere SQLite-Umsetzung muss deshalb mehrere Fälle je Kombination aus
   Person, vorgesetzter Person und Jahr erlauben und Updates fallbezogen
   zusammenführen, statt bestehende Fälle zu überschreiben.
+
+### Verhalten bei Stammdaten-Updates
+
+Die Update-Funktion ist im selbständigen HTML-Prototyp noch nicht implementiert.
+Für die spätere Umsetzung gelten folgende Regeln:
+
+- Bestehende Fälle werden anhand ihrer Fall-ID aktualisiert und nie allein wegen
+  eines neuen SAP-Imports gelöscht.
+- Gehört eine Person gemäss dem neuen Import nicht mehr zur vorgesetzten Person,
+  werden ihre bisherigen Fälle mit allen Eingaben automatisch in den
+  Archivbereich verschoben.
+- Ein zukünftiges Ende der Probezeit führt nicht zur Archivierung. Der Fall bleibt
+  als noch nicht fälliger Fall erhalten und soll später in einem eingeklappten
+  Bereich «Später fällig» erscheinen.
+- Ein manuell abgeschlossener Fall bleibt abgeschlossen, bis die vorgesetzte
+  Person ihn wieder öffnet. Ein Stammdaten-Update darf diesen Zustand nicht
+  zurücksetzen.
 
 ## Empfohlener Funktionstest in Microsoft Edge
 

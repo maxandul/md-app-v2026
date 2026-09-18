@@ -23,6 +23,7 @@ def previous_goals() -> list[dict[str, str]]:
     return [
         {
             "id": "previous-1",
+            "imported": True,
             "title": "Bearbeitungszeiten im Fachprozess reduzieren",
             "criteria": "Die mittlere Bearbeitungszeit sinkt um mindestens zehn Prozent.",
             "steps": "Ist-Zustand messen, zwei Verbesserungen testen und Resultate dokumentieren.",
@@ -32,6 +33,7 @@ def previous_goals() -> list[dict[str, str]]:
         },
         {
             "id": "previous-2",
+            "imported": True,
             "title": "Wissenstransfer im Team stärken",
             "criteria": "Vier kurze Wissensaustausche sind durchgeführt und dokumentiert.",
             "steps": "Themen sammeln, Termine planen und Unterlagen zentral ablegen.",
@@ -94,7 +96,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
             "nep_notes": "",
             "general_notes": "",
         },
-        "meta": {"updated_at": "", "pdf_exported_at": "", "archived": False},
+        "meta": {"updated_at": "", "pdf_exported_at": "", "archived": False, "closed": False, "closed_at": ""},
         "document_tracking": {
             "review": {"status": "preparation", "note": ""},
             "outlook": {"status": "preparation", "note": ""},
@@ -131,6 +133,7 @@ def build_demo() -> dict:
     anna["previous_goals"][0].update({"achievement": "Teilweise erreicht", "review": "Ein erster Verbesserungsschritt ist umgesetzt; die Wirkung wird im ersten Quartal weiter beobachtet."})
     anna["previous_development_goals"] = [{
         "id": "previous-development-anna-1",
+        "imported": True,
         "competency": "Kooperationsfähigkeit",
         "title": "Wissen im Team strukturierter weitergeben",
         "criteria": "Zwei Wissenstransfers wurden durchgeführt.",
@@ -150,6 +153,10 @@ def build_demo() -> dict:
     complete_outlook(beat)
     beat["review"]["manager_comment"] = "Die Gesamtbeurteilung wurde ausführlich besprochen."
     beat["review"]["employee_comment"] = "Die mitarbeitende Person ist mit der Gesamtbeurteilung nicht einverstanden."
+    beat["document_tracking"]["review"]["status"] = "An HR zugestellt"
+    beat["document_tracking"]["outlook"]["status"] = "An HR zugestellt"
+    beat["meta"]["closed"] = True
+    beat["meta"]["closed_at"] = "2026-01-12T10:00:00+01:00"
 
     celine = employee("700003", "Céline", "Frei", position="Sachbearbeiterin", entry="2025-08-01", probation="2025-10-31")
     celine["scope"] = "review_only"

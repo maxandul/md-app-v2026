@@ -216,6 +216,9 @@
 
     .button.primary:hover { background: var(--blue-dark); }
 
+    .button.complete-action { color: #fff; border-color: var(--success); background: var(--success); }
+    .button.complete-action:hover { background: #126818; }
+
     .button.danger { color: var(--danger); border-color: #f1b8b2; }
     .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
     .button:disabled { cursor: not-allowed; opacity: .45; }
@@ -279,6 +282,7 @@
     }
 
     .status-badge.complete { color: var(--success); background: var(--success-soft); }
+    .status-badge.closed { color: #fff; background: var(--success); }
     .status-badge.progress { color: var(--warning); background: var(--warning-soft); }
     .status-badge.none { color: #5f3dc4; background: #f1edff; }
     .status-badge.archived { color: var(--muted); background: #e7e7e7; }
@@ -507,23 +511,35 @@
 
     .completion-panel {
       display: grid;
-      grid-template-columns: minmax(180px, .8fr) minmax(0, 2fr);
-      gap: 20px;
-      align-items: start;
-      margin-top: 20px;
-      padding: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+      padding: 12px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: #fff;
       box-shadow: var(--shadow);
     }
 
-    .completion-number { font-size: 36px; font-weight: 700; line-height: 1; }
-    .completion-label { margin-top: 5px; color: var(--muted); }
-    .missing-list { margin: 0; padding-left: 20px; }
+    .completion-panel.single { grid-template-columns: 1fr; }
+    .document-progress { min-width: 0; padding: 10px 12px; background: #f7f9fb; }
+    .document-progress-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .document-progress-title { font-weight: 700; }
+    .completion-number { color: var(--blue-dark); font-size: 22px; font-weight: 700; line-height: 1; }
+    .completion-label { margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .document-progress .field { margin-top: 9px; }
+    .document-progress .field label { margin-bottom: 3px; }
+    .document-progress .field select { padding: 7px 9px; }
+    .document-progress details { margin-top: 7px; font-size: 12px; }
+    .missing-list { margin: 5px 0 0; padding-left: 20px; }
     .missing-list li + li { margin-top: 4px; }
+    .missing-list a { color: var(--blue-dark); }
     .complete-message { color: var(--success); font-weight: 700; }
-    .tracking-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+    .closed-note { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .source-value { white-space: pre-wrap; }
+    .source-value.full { grid-column: 1 / -1; }
+    .source-value + .source-value { margin-top: 8px; }
+    .source-value strong { display:block; color:var(--muted); font-size:12px; }
 
     .toast {
       position: fixed;
@@ -607,7 +623,7 @@
       <select id="cycle-select" class="cycle-select" aria-label="Durchlauf wählen"></select>
 
       <div class="progress-panel" aria-label="Gesamtfortschritt">
-        <div class="progress-row"><span>Gesamtfortschritt</span><strong id="overall-progress-text">0 von 0</strong></div>
+        <div class="progress-row"><span>Abgeschlossen</span><strong id="overall-progress-text">0 von 0</strong></div>
         <div class="progress-track"><div id="overall-progress-fill" class="progress-fill"></div></div>
       </div>
 
@@ -654,14 +670,18 @@
         if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
         employee.previous_goals = Array.isArray(employee.previous_goals) ? employee.previous_goals : [];
         employee.previous_development_goals = Array.isArray(employee.previous_development_goals) ? employee.previous_development_goals : [];
+        employee.previous_goals.forEach(goal => { if (typeof goal.imported !== 'boolean') goal.imported = true; });
+        employee.previous_development_goals.forEach(goal => { if (typeof goal.imported !== 'boolean') goal.imported = true; });
         employee.employee = employee.employee || {};
         if (typeof employee.employee.employment_assignment !== 'string') employee.employee.employment_assignment = '';
         employee.checkpoint_notes = Array.isArray(employee.checkpoint_notes) ? employee.checkpoint_notes : [];
         employee.meta = employee.meta || {};
         employee.meta.archived = Boolean(employee.meta.archived);
+        employee.meta.closed = Boolean(employee.meta.closed);
         employee.document_tracking = employee.document_tracking || {};
         ['review', 'outlook', 'no_md'].forEach(section => {
-          employee.document_tracking[section] = employee.document_tracking[section] || { status: 'preparation', note: '' };
+          employee.document_tracking[section] = employee.document_tracking[section] || { status: '', note: '' };
+          if (employee.document_tracking[section].status === 'preparation') employee.document_tracking[section].status = '';
         });
       });
       let selectedCaseId = state.employees[0] ? state.employees[0].case_id : '';
@@ -882,8 +902,19 @@
         return completionFromRequirements(outlookRequirements(employee));
       }
 
+      function getDocumentCompletion(employee, section) {
+        const sectionCompletion = getSectionCompletion(employee, section);
+        return completionFromRequirements([
+          { label: 'Zeitraum von', complete: Boolean(employee.period_start) },
+          { label: 'Zeitraum bis', complete: Boolean(employee.period_end) },
+          ...sectionCompletion.requirements,
+          ...(needsScopeReason(employee) ? [{ label: 'Begründung für den weggelassenen Pflichtteil', complete: Boolean(employee.scope_reason && employee.scope_reason.trim()) }] : [])
+        ]);
+      }
+
       function statusFor(employee) {
         if (employee.meta.archived) return { key: 'archived', label: 'Archiviert', className: 'archived' };
+        if (employee.meta.closed) return { key: 'closed', label: 'Abgeschlossen', className: 'closed' };
         const completion = getCompletion(employee);
         if (!employee.scope) return { key: 'open', label: 'Nicht begonnen', className: '' };
         if (employee.scope === 'none' && completion.complete) return { key: 'none', label: 'Kein MD', className: 'none' };
@@ -939,7 +970,7 @@
       function renderOverallProgress() {
         const activeEmployees = state.employees.filter(employee => !employee.meta.archived);
         const total = activeEmployees.length;
-        const complete = activeEmployees.filter(employee => getCompletion(employee).complete).length;
+        const complete = activeEmployees.filter(employee => employee.meta.closed).length;
         const percent = total ? Math.round((complete / total) * 100) : 0;
         document.getElementById('overall-progress-text').textContent = `${complete} von ${total}`;
         document.getElementById('overall-progress-fill').style.width = `${percent}%`;
@@ -957,7 +988,9 @@
               </span>
             </button>`;
         };
-        const employees = state.employees.filter(employee => !employee.meta.archived);
+        const employees = state.employees
+          .filter(employee => !employee.meta.archived)
+          .sort((left, right) => Number(left.meta.closed) - Number(right.meta.closed));
         const archived = state.employees.filter(employee => employee.meta.archived);
         employeeList.innerHTML = employees.length ? employees.map(card).join('') : '<div class="empty-state" style="color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.06)">Keine aktiven Personen.</div>';
         archivedEmployeeList.innerHTML = archived.map(card).join('');
@@ -998,15 +1031,18 @@
         return `<div class="field ${options.full ? 'full' : ''} ${options.required ? 'required' : ''}"><label>${h(label)}${required}</label>${control}</div>`;
       }
 
+      function sourceValue(label, value, full = false) {
+        return `<div class="source-value ${full ? 'full' : ''}"><strong>${h(label)}</strong>${value ? h(value) : '–'}</div>`;
+      }
+
       function renderPreviousGoals(employee) {
         const cards = employee.previous_goals.map((goal, index) => `
           <div class="goal-card">
             <div class="card-head"><h4>Vorjahresziel ${index + 1}${goal.title ? `: ${h(goal.title)}` : ''}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></div>
             <div class="source-grid">
-              ${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
-              ${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria, { required:true })}
-              ${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}
-              ${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}
+              ${goal.imported
+                ? `${sourceValue('Ziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
+                : `${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria, { required:true })}${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}`}
             </div>
             <div class="form-grid">
               ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
@@ -1019,20 +1055,18 @@
       function renderPreviousDevelopmentGoals(employee) {
         const cards = employee.previous_development_goals.map((goal, index) => `
           <div class="goal-card">
-            <div class="card-head"><h4>Entwicklungsziel ${index + 1}${goal.title ? `: ${h(goal.title)}` : ''}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></div>
+            <div class="card-head"><h4>${h(goal.competency || `Entwicklungsziel ${index + 1}`)}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></div>
             <div class="source-grid">
-              ${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}
-              ${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
-              ${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria, { required:true })}
-              ${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}
-              ${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}
+              ${goal.imported
+                ? `${sourceValue('Entwicklungsziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
+                : `${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria, { required:true })}${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}`}
             </div>
             <div class="form-grid">
               ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
           </div>`).join('');
-        return `${cards || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen</button>`;
+        return `<div style="margin-bottom:18px"><h4>Entwicklungsziele aus dem Vorjahr</h4>${cards || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen</button></div>`;
       }
 
       function renderCheckpointNotes(employee) {
@@ -1063,6 +1097,7 @@
 
       function renderCompetencies(employee) {
         const entries = employee.review.competencies || [];
+        const previousDevelopment = employee.dialog_type === 'probation' ? '' : renderPreviousDevelopmentGoals(employee);
         const cards = entries.map((entry, index) => `
           <div class="repeat-card">
             <div class="card-head"><h4>Kompetenzbeobachtung ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="review.competencies" data-index="${index}">Entfernen</button></div>
@@ -1072,7 +1107,7 @@
               ${arrayField('Beobachtung und Rückmeldung', 'review.competencies', index, 'comment', entry.comment, { full:true, rows:4 })}
             </div>
           </div>`).join('');
-        return `${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
+        return `${previousDevelopment}<h4>${previousDevelopment ? 'Weitere Kompetenzbeobachtungen' : 'Kompetenzbeobachtungen'}</h4>${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
       }
 
       function renderPerformanceGoals(employee) {
@@ -1119,7 +1154,7 @@
           ['none', 'Kein MD', 'Der Dialog ist in diesem Durchlauf nicht erforderlich']
         ];
         return `
-          <section class="section">
+          <section class="section" id="scope-section">
             <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2></div></div>
             <div class="scope-grid">
               ${options.map(option => `
@@ -1137,7 +1172,7 @@
       function renderNoMd(employee) {
         const reasonRequired = needsScopeReason(employee);
         return `
-          <section class="section">
+          <section class="section" id="no-md-section">
             <div class="section-head">
               <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">${reasonRequired ? 'Damit wird ein gemäss Stammdaten verpflichtender Gesprächsteil weggelassen. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen.' : 'Gemäss Stammdaten ist kein Gespräch verpflichtend. Ein freiwilliger Rückblick oder Ausblick ist trotzdem möglich.'}</p></div>
               ${reasonRequired ? '<button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>' : ''}
@@ -1153,8 +1188,8 @@
         const isReview = section === 'review';
         const label = isReview ? 'Rückblick' : 'Ausblick';
         return `
-          <section class="section">
-            <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2><p class="section-intro">Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden.</p></div></div>
+          <section class="section" id="dialog-details-${section}">
+            <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2></div></div>
             <div class="form-grid three">
               ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', required:true })}
               ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', required:true })}
@@ -1167,18 +1202,18 @@
         return `
           <section class="section">
             <div class="section-head"><div><p class="eyebrow">Rückblick auf die Probezeit</p><h2 class="section-title">Leistung, Kompetenzen und Anstellungsentscheid</h2></div></div>
-            <div class="subsection"><h3>1. Leistung</h3><div class="form-grid">
+            <div class="subsection" id="review-performance"><h3>1. Leistung</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Wie wird die bisherige Leistung eingeschätzt? Konnten die wesentlichen Ziele des Einführungsprogramms erreicht werden?', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
             </div></div>
-            <div class="subsection"><h3>2. Kompetenzen und Zusammenarbeit</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection" id="review-competencies"><h3>2. Kompetenzen und Zusammenarbeit</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
             <div class="subsection"><h3>3. Bemerkungen zum Gespräch</h3><div class="form-grid">
               ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
               ${field('Bemerkung der mitarbeitenden Person', 'review.employee_comment', employee.review.employee_comment, { type:'textarea', full:true })}
               ${field('Gespräch mit nächsthöherer Führungsperson', 'review.next_level_conversation', employee.review.next_level_conversation, { type:'select', items:['Nein','Ja'], placeholder:'Bitte auswählen' })}
               ${employee.review.next_level_conversation === 'Ja' ? field('Bemerkungen zum Gespräch mit der nächsthöheren Führungsperson', 'review.next_level_comment', employee.review.next_level_comment, { type:'textarea', full:true }) : ''}
             </div></div>
-            <div class="subsection"><h3>4. Anstellungsentscheid</h3><p class="section-intro">Die ersten drei Monate des Arbeitsverhältnisses gelten in der Regel als Probezeit. Bei einer Verlängerung oder einem negativen Entscheid ist HR frühzeitig beizuziehen.</p><div class="form-grid">
+            <div class="subsection" id="review-employment"><h3>4. Anstellungsentscheid</h3><p class="section-intro">Die ersten drei Monate des Arbeitsverhältnisses gelten in der Regel als Probezeit. Bei einer Verlängerung oder einem negativen Entscheid ist HR frühzeitig beizuziehen.</p><div class="form-grid">
               ${field('Wird das Arbeitsverhältnis weitergeführt?', 'review.employment_continued', employee.review.employment_continued, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
               ${field('Einigkeit zum Anstellungsentscheid', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
             </div>
@@ -1196,14 +1231,13 @@
               <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2></div>
             </div>
             ${renderCheckpointNotes(employee)}
-            <div class="subsection"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
-            <div class="subsection"><h3>2. Entwicklungsziele aus dem Vorjahr</h3>${renderPreviousDevelopmentGoals(employee)}</div>
-            <div class="subsection"><h3>3. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
+            <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
+            <div class="subsection" id="review-performance"><h3>2. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
             </div></div>
-            <div class="subsection"><h3>4. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
-            <div class="subsection"><h3>5. Gesamteindruck und Gespräch</h3><div class="form-grid">
+            <div class="subsection" id="review-competencies"><h3>3. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection" id="review-overall"><h3>4. Gesamteindruck und Gespräch</h3><div class="form-grid">
               ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
               ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
               ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
@@ -1213,7 +1247,7 @@
             </div>
               ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien das Dokument handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan; das digitale PDF muss in diesem Fall nicht zusätzlich elektronisch unterschrieben sein.</div>` : ''}
             </div>
-            <div class="subsection"><h3>6. Nebenbeschäftigungen und öffentliche Ämter</h3>
+            <div class="subsection" id="review-secondary"><h3>5. Nebenbeschäftigungen und öffentliche Ämter</h3>
               <div class="suggestion"><strong>Aktueller SAP-Stand:</strong> ${h(secondary || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div>
               <div class="form-grid" style="margin-top:12px">
                 ${field('SAP-Stand aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
@@ -1229,9 +1263,9 @@
             <div class="section-head">
               <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
             </div>
-            <div class="subsection"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
+            <div class="subsection" id="outlook-performance-goals"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
-            <div class="subsection"><h3>3. Entwicklungsziele</h3><p class="section-intro">Es können ein oder mehrere Entwicklungsziele formuliert werden; Human Resources &amp; Entwicklung empfiehlt ein bis zwei. Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p>${renderDevelopmentGoals(employee)}</div>
+            <div class="subsection" id="outlook-development-goals"><h3>3. Entwicklungsziele</h3><p class="section-intro">Es können ein oder mehrere Entwicklungsziele formuliert werden; Human Resources &amp; Entwicklung empfiehlt ein bis zwei. Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p>${renderDevelopmentGoals(employee)}</div>
             <div class="subsection"><h3>4. Entwicklungswunsch / NEP</h3><div class="form-grid">
               ${field('Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
               ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
@@ -1273,22 +1307,70 @@
         </ol><div class="suggestion guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
       }
 
-      function renderTracking(employee) {
+      function progressDocumentLabel(employee, section) {
+        if (section === 'review') return employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
+        return `Ausblick ${outlookYear(employee)}`;
+      }
+
+      function requirementTarget(employee, section, label) {
+        if (label.startsWith('Zeitraum') || label.startsWith('Gesprächsdatum')) return { step: section, anchor: `dialog-details-${section}` };
+        if (label.startsWith('Begründung')) return { step: 'basics', anchor: 'scope-section' };
+        if (section === 'outlook') {
+          if (label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) return { step: 'outlook', anchor: 'outlook-development-goals' };
+          return { step: 'outlook', anchor: 'outlook-performance-goals' };
+        }
+        if (employee.dialog_type === 'probation') {
+          if (label.includes('Anstellungsentscheid')) return { step: 'review', anchor: 'review-employment' };
+          if (label.includes('Kompetenz') || label.includes('Entwicklungsziel')) return { step: 'review', anchor: 'review-competencies' };
+          return { step: 'review', anchor: 'review-performance' };
+        }
+        if (label.includes('Vorjahresziel')) return { step: 'review', anchor: 'review-performance-goals' };
+        if (label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) return { step: 'review', anchor: 'review-competencies' };
+        if (label.includes('Nebenbeschäftigungen')) return { step: 'review', anchor: 'review-secondary' };
+        if (label.includes('Gesamteindruck') || label.includes('Gesamtbeurteilung')) return { step: 'review', anchor: 'review-overall' };
+        return { step: 'review', anchor: 'review-performance' };
+      }
+
+      function renderDocumentProgress(employee, section) {
+        const completion = getDocumentCompletion(employee, section);
         const options = ['In Vorbereitung','Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt','In Korrektur'];
-        const block = (section, label) => hasReview(employee.scope) && section === 'review' || hasOutlook(employee.scope) && section === 'outlook' ? `<div class="field"><label>${label}</label><select data-bind="document_tracking.${section}.status">${optionList(options, employee.document_tracking[section].status === 'preparation' ? 'In Vorbereitung' : employee.document_tracking[section].status, 'Status wählen')}</select></div>` : '';
-        const reviewLabel = employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
-        return `<div class="tracking-grid">${block('review', reviewLabel)}${block('outlook', `Ausblick ${outlookYear(employee)}`)}</div>`;
+        const status = employee.document_tracking[section].status || '';
+        const missing = completion.missing.map(label => {
+          const target = requirementTarget(employee, section, label);
+          return `<li><a href="#${h(target.anchor)}" data-action="go-requirement" data-step="${h(target.step)}" data-anchor="${h(target.anchor)}">${h(label)}</a></li>`;
+        }).join('');
+        return `<div class="document-progress">
+          <div class="document-progress-head"><div><div class="document-progress-title">${h(progressDocumentLabel(employee, section))}</div><div class="completion-label">Vollständigkeit</div></div><div class="completion-number">${completion.percent}%</div></div>
+          <div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
+          ${completion.complete ? '<div class="complete-message" style="margin-top:7px;font-size:12px">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}
+        </div>`;
+      }
+
+      function progressPanelHtml(employee, selectedStep) {
+        let sections = [];
+        if (selectedStep === 'review' && hasReview(employee.scope)) sections = ['review'];
+        else if (selectedStep === 'outlook' && hasOutlook(employee.scope)) sections = ['outlook'];
+        else {
+          if (hasReview(employee.scope)) sections.push('review');
+          if (hasOutlook(employee.scope)) sections.push('outlook');
+        }
+        if (!sections.length) {
+          const completion = getCompletion(employee);
+          const target = employee.scope === 'none' ? { step: 'finish', anchor: 'no-md-section' } : { step: 'basics', anchor: 'scope-section' };
+          const missing = completion.missing.map(label => `<li><a href="#${target.anchor}" data-action="go-requirement" data-step="${target.step}" data-anchor="${target.anchor}">${h(label)}</a></li>`).join('');
+          return `<section class="completion-panel single"><div class="document-progress"><div class="document-progress-head"><div><div class="document-progress-title">Fall</div><div class="completion-label">Vollständigkeit</div></div><div class="completion-number">${completion.percent}%</div></div>${completion.complete ? '<div class="complete-message" style="margin-top:7px;font-size:12px">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}</div></section>`;
+        }
+        return `<section class="completion-panel ${sections.length === 1 ? 'single' : ''}">${sections.map(section => renderDocumentProgress(employee, section)).join('')}</section>`;
       }
 
       function renderFinish(employee) {
         const completion = getCompletion(employee);
-        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2><p class="section-intro">Erzeuge die PDFs, sobald alle Pflichtangaben vorhanden sind, und führe den Versandstatus für dich nach.</p></div></div>
-          ${completion.complete ? '<div class="complete-message">Alle Pflichtangaben für diesen Fall sind vorhanden.</div>' : `<div class="scan-warning"><strong>Noch nicht vollständig</strong>${h(completion.missing.slice(0, 5).join(' · '))}</div>`}
+        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2></div></div>
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
             ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
             ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
+            ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete ? '' : 'disabled title="Zuerst alle Pflichtangaben ergänzen"'}>Abschliessen</button>`}
           </div>
-          ${renderTracking(employee)}
           ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Bei D/E oder Uneinigkeit müssen beide Parteien zusätzlich handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan.</div>' : ''}
         </section>`;
       }
@@ -1334,10 +1416,12 @@
             <span class="status-badge ${status.className}">${h(status.label)}</span>
           </section>
           ${employee.meta.archived ? '<div class="archive-note"><strong>Archivierte Person:</strong> Die vorhandenen Angaben bleiben einsehbar, können aber nicht mehr bearbeitet werden.</div>' : ''}
+          ${employee.meta.closed && !employee.meta.archived ? '<div class="archive-note closed-note"><span><strong>Fall abgeschlossen:</strong> Die Angaben sind schreibgeschützt. Du kannst die PDFs weiterhin öffnen.</span><button class="button small" type="button" data-action="reopen-case">Wieder öffnen</button></div>' : ''}
           ${renderWorkflowNav(employee, selectedStep)}
+          ${selectedStep === 'basics' ? '' : '<div id="inline-completion-panel"></div>'}
           ${stepContent}`;
-        if (employee.meta.archived) {
-          editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"])').forEach(control => { control.disabled = true; });
+        if (employee.meta.archived || employee.meta.closed) {
+          editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
         }
         renderCompletionPanel();
       }
@@ -1345,22 +1429,18 @@
       function renderCompletionPanel() {
         const employee = selectedEmployee();
         if (!employee) return;
-        const completion = getCompletion(employee);
-        const review = hasReview(employee.scope) ? getSectionCompletion(employee, 'review') : null;
-        const outlook = hasOutlook(employee.scope) ? getSectionCompletion(employee, 'outlook') : null;
-        const sectionText = [
-          review ? `Rückblick: ${review.percent}%` : '',
-          outlook ? `Ausblick: ${outlook.percent}%` : ''
-        ].filter(Boolean).join(' · ');
-        completionPanel.innerHTML = `
-          <section class="completion-panel">
-            <div><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit${sectionText ? `<br>${h(sectionText)}` : ''}</div></div>
-            <div>
-              ${completion.complete
-                ? '<div class="complete-message">Alle erforderlichen Angaben für den gewählten Umfang sind vorhanden.</div>'
-                : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${completion.missing.map(item => `<li>${h(item)}</li>`).join('')}</ul></details>`}
-            </div>
-          </section>`;
+        const selectedStep = selectedStepByCase[employee.case_id] || recommendedStep(employee);
+        const html = progressPanelHtml(employee, selectedStep);
+        const inline = document.getElementById('inline-completion-panel');
+        if (inline) {
+          inline.innerHTML = html;
+          completionPanel.innerHTML = '';
+        } else {
+          completionPanel.innerHTML = html;
+        }
+        if (employee.meta.archived || employee.meta.closed) {
+          (inline || completionPanel).querySelectorAll('input, select, textarea').forEach(control => { control.disabled = true; });
+        }
       }
 
       function getPath(object, path) {
@@ -1406,9 +1486,9 @@
 
       function addItem(employee, action) {
         if (action === 'add-previous-goal') {
-          employee.previous_goals.push({ id: uid('previous'), title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+          employee.previous_goals.push({ id: uid('previous'), imported: false, title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
         } else if (action === 'add-previous-development-goal') {
-          employee.previous_development_goals.push({ id: uid('previous-development'), competency: '', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+          employee.previous_development_goals.push({ id: uid('previous-development'), imported: false, competency: '', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
         } else if (action === 'add-competency') {
           employee.review.competencies.push({ id: uid('competency'), competency: '', comment: '' });
         } else if (action === 'add-performance-goal') {
@@ -1422,11 +1502,18 @@
       }
 
       function handleEditorClick(event) {
-        const button = event.target.closest('button[data-action]');
+        const button = event.target.closest('[data-action]');
         if (!button) return;
         const employee = selectedEmployee();
         if (!employee) return;
         const action = button.dataset.action;
+        if (action === 'go-requirement') {
+          event.preventDefault();
+          selectedStepByCase[employee.case_id] = button.dataset.step;
+          renderEditor();
+          window.setTimeout(() => document.getElementById(button.dataset.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+          return;
+        }
         if (action === 'show-step') {
           selectedStepByCase[employee.case_id] = button.dataset.step;
           renderEditor();
@@ -1448,6 +1535,24 @@
         if (action === 'apply-suggestion') {
           employee.scope = employee.suggestion.scope;
           employee.scope_reason = '';
+          markDirty(employee);
+          renderEditor();
+          renderSidebar();
+          return;
+        }
+        if (action === 'close-case') {
+          if (!getCompletion(employee).complete) return;
+          if (!window.confirm('Fall abschliessen und gegen weitere Bearbeitung sperren?')) return;
+          employee.meta.closed = true;
+          employee.meta.closed_at = nowIso();
+          markDirty(employee);
+          renderEditor();
+          renderSidebar();
+          return;
+        }
+        if (action === 'reopen-case') {
+          employee.meta.closed = false;
+          employee.meta.closed_at = '';
           markDirty(employee);
           renderEditor();
           renderSidebar();
@@ -1547,7 +1652,6 @@
         return `
           ${printHeader(employee, 'Rückblick', state.package.rb_year, employee.review.dialog_date)}
           <section class="print-section"><h2>Vereinbarte Ziele</h2>${previous || '<p class="print-empty">Keine Vorjahresziele hinterlegt.</p>'}</section>
-          <section class="print-section"><h2>Entwicklungsziele aus dem Vorjahr</h2>${previousDevelopment || '<p class="print-empty">Keine Entwicklungsziele aus dem Vorjahr hinterlegt.</p>'}</section>
           <section class="print-section"><h2>Leistung und Aufgabenerfüllung</h2>
             ${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}
             ${printValue('Leistungsrückblick', employee.review.performance)}
@@ -1555,7 +1659,7 @@
             ${printValue('Einigkeit zur Gesamtbeurteilung', employee.review.agreement)}
             ${printValue('Zusätzlicher handschriftlicher Scan erforderlich', requiresHandwrittenScan(employee) ? 'Ja' : 'Nein')}
           </section>
-          ${competencies ? `<section class="print-section"><h2>Kompetenzbezogene Beobachtungen</h2>${competencies}</section>` : ''}
+          ${previousDevelopment || competencies ? `<section class="print-section"><h2>Kompetenzbezogene Beobachtungen</h2>${previousDevelopment}${competencies}</section>` : ''}
           <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>
             ${printValue('Vorgesetzte Person', employee.review.manager_comment)}
             ${printValue('Mitarbeitende Person', employee.review.employee_comment)}
@@ -1624,11 +1728,7 @@
 
       function printEmployee(employee, section) {
         const isNoMd = section === 'no_md';
-        const sectionCompletion = isNoMd ? null : getSectionCompletion(employee, section);
-        const completion = isNoMd ? getCompletion(employee) : completionFromRequirements([
-          ...sectionCompletion.requirements,
-          ...(needsScopeReason(employee) ? [{ label:'Begründung für den weggelassenen Pflichtteil', complete:Boolean(employee.scope_reason && employee.scope_reason.trim()) }] : [])
-        ]);
+        const completion = isNoMd ? getCompletion(employee) : getDocumentCompletion(employee, section);
         if (!completion.complete) {
           const preview = completion.missing.slice(0, 6).join('\n– ');
           const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : 'Kein-MD-Fall';
@@ -1740,6 +1840,9 @@
       editor.addEventListener('input', handleEdit);
       editor.addEventListener('change', handleEdit);
       editor.addEventListener('click', handleEditorClick);
+      completionPanel.addEventListener('input', handleEdit);
+      completionPanel.addEventListener('change', handleEdit);
+      completionPanel.addEventListener('click', handleEditorClick);
       document.getElementById('save-button').addEventListener('click', savePackage);
       window.addEventListener('afterprint', cleanupPrint);
       window.addEventListener('beforeunload', event => {

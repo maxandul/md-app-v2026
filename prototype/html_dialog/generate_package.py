@@ -220,6 +220,7 @@ def _sample_previous_goals(employee_no: int, rb_year: int) -> list[dict[str, str
         goals.append(
             {
                 "id": f"previous-{employee_no + 1}-{index}",
+                "imported": True,
                 "title": title,
                 "criteria": criteria,
                 "steps": steps,
@@ -246,6 +247,7 @@ def _sample_previous_development_goals(employee_no: int, rb_year: int) -> list[d
         return []
     return [{
         "id": f"previous-development-{employee_no + 1}-1",
+        "imported": True,
         "competency": "Kooperationsfähigkeit",
         "title": "Wissen im Team strukturiert weitergeben",
         "criteria": "Zwei kurze Wissenstransfers wurden durchgeführt und dokumentiert.",
@@ -347,6 +349,9 @@ def build_payload(
                 "meta": {
                     "updated_at": "",
                     "pdf_exported_at": "",
+                    "archived": False,
+                    "closed": False,
+                    "closed_at": "",
                 },
                 "document_tracking": {
                     "review": {"status": "preparation", "note": ""},

@@ -185,6 +185,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertTrue({"full", "outlook_only", "review_only", "none"}.issubset(scopes))
         self.assertTrue(any(item["checkpoint_notes"] for item in demo["employees"]))
         self.assertTrue(any(item["meta"]["archived"] for item in demo["employees"]))
+        self.assertTrue(any(item["meta"]["closed"] for item in demo["employees"]))
         self.assertTrue(any(item["review"]["agreement"] == "Nein" for item in demo["employees"]))
 
     def test_template_has_guided_steps_and_collapsed_archive(self) -> None:
@@ -195,7 +196,18 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertNotIn('id="employee-search"', template)
         self.assertNotIn("Interne Übertritte", template)
         self.assertIn("Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.", template)
+        self.assertIn('data-action="close-case"', template)
+        self.assertIn('data-action="reopen-case"', template)
+        self.assertIn('data-action="go-requirement"', template)
+        self.assertIn("Stand (optional)", template)
+        self.assertNotIn("Erzeuge die PDFs, sobald alle Pflichtangaben vorhanden sind", template)
+        self.assertNotIn("Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden", template)
         self.assertEqual(template.count("const sectionName ="), 1)
+
+    def test_transferred_previous_goals_are_marked_as_imported(self) -> None:
+        employee = self.payload["employees"][0]
+        self.assertTrue(all(goal["imported"] for goal in employee["previous_goals"]))
+        self.assertTrue(all(goal["imported"] for goal in employee["previous_development_goals"]))
 
 
 if __name__ == "__main__":

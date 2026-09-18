@@ -85,6 +85,7 @@ def _prior_goals(
                 continue
             destination.append({
                 "id": f"{prefix}-{employee_pn}-{index}",
+                "imported": True,
                 "title": title,
                 "criteria": str(goal.get("criteria", "")),
                 "steps": str(goal.get("steps", "")),
@@ -165,7 +166,7 @@ def _new_case(
             "nep_notes": "",
             "general_notes": "",
         },
-        "meta": {"updated_at": "", "pdf_exported_at": ""},
+        "meta": {"updated_at": "", "pdf_exported_at": "", "archived": False, "closed": False, "closed_at": ""},
         "document_tracking": {
             "review": {"status": "preparation", "note": ""},
             "outlook": {"status": "preparation", "note": ""},

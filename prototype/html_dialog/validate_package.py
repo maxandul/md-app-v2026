@@ -69,6 +69,22 @@ def _filled(value: Any) -> bool:
     return bool(str(value or "").strip())
 
 
+def _has_review(scope: str) -> bool:
+    return scope in {"full", "review_only"}
+
+
+def _has_outlook(scope: str) -> bool:
+    return scope in {"full", "outlook_only"}
+
+
+def _omits_mandatory_part(employee: dict[str, Any]) -> bool:
+    scope = employee.get("scope", "")
+    mandatory = employee.get("suggestion", {}).get("scope") or "full"
+    return (_has_review(mandatory) and not _has_review(scope)) or (
+        _has_outlook(mandatory) and not _has_outlook(scope)
+    )
+
+
 def _section_status(
     employee: dict[str, Any], section: str, include_dialog_date: bool = True
 ) -> tuple[bool, list[str]]:
@@ -145,13 +161,14 @@ def employee_status(employee: dict[str, Any]) -> tuple[str, list[str]]:
     if not scope:
         return "offen", ["Umfang"]
     if scope == "none":
-        if not _filled(employee.get("no_md_reason")):
-            missing.append("Grund für kein MD")
-        if employee.get("no_md_reason") == "Anderer Grund" and not _filled(employee.get("no_md_note")):
-            missing.append("Erläuterung zum anderen Grund")
+        if _omits_mandatory_part(employee):
+            if not _filled(employee.get("no_md_reason")):
+                missing.append("Grund für kein MD")
+            if employee.get("no_md_reason") == "Anderer Grund" and not _filled(employee.get("no_md_note")):
+                missing.append("Erläuterung zum anderen Grund")
         return ("kein_md" if not missing else "offen"), missing
-    if scope in {"review_only", "outlook_only"} and not _filled(employee.get("scope_reason")):
-        missing.append("Begründung für abweichenden Umfang")
+    if _omits_mandatory_part(employee) and not _filled(employee.get("scope_reason")):
+        missing.append("Begründung für weggelassenen Pflichtteil")
     if scope in {"full", "review_only"}:
         _, section_missing = _section_status(employee, "review")
         missing.extend(section_missing)

@@ -15,7 +15,7 @@ from generate_package import (
     output_filename,
     render_html,
 )
-from validate_package import extract_payload, validate_payload
+from validate_package import employee_status, extract_payload, validate_payload
 from create_demo import build_demo
 from tests.sample_data import create_sap_sample
 
@@ -53,6 +53,26 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertEqual(employee["dialog_type"], "probation")
         self.assertEqual(employee["suggestion"]["scope"], "review_only")
         self.assertTrue(employee["case_id"].endswith("-probezeit"))
+
+    def test_only_omitting_a_mandatory_part_requires_a_reason(self) -> None:
+        employee = self.payload["employees"][0]
+        employee["suggestion"]["scope"] = "review_only"
+        employee["scope"] = "full"
+        _, missing = employee_status(employee)
+        self.assertNotIn("Begründung für weggelassenen Pflichtteil", missing)
+
+        employee["suggestion"]["scope"] = "full"
+        employee["scope"] = "review_only"
+        _, missing = employee_status(employee)
+        self.assertIn("Begründung für weggelassenen Pflichtteil", missing)
+
+    def test_no_dialog_needs_no_reason_when_nothing_is_mandatory(self) -> None:
+        employee = self.payload["employees"][0]
+        employee["suggestion"]["scope"] = "none"
+        employee["scope"] = "none"
+        status, missing = employee_status(employee)
+        self.assertEqual(status, "kein_md")
+        self.assertEqual(missing, [])
 
     def test_html_is_self_contained_and_roundtrips(self) -> None:
         html = render_html(self.payload)
@@ -111,6 +131,13 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("isNoMd ? 'KEIN_MD'", template)
         self.assertIn("Sie wird nicht an das Personaldossier übergeben.", template)
         self.assertIn("`scope=${employee.scope || ''}`", template)
+
+    def test_scope_deviation_is_embedded_in_remaining_pdf(self) -> None:
+        template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
+        self.assertIn("function scopeReasonForPrint", template)
+        self.assertIn("Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen", template)
+        self.assertNotIn("print-scope-deviation", template)
+        self.assertNotIn("Abweichender_Umfang_", template)
 
     def test_completed_employee_is_recognised(self) -> None:
         employee = self.payload["employees"][0]

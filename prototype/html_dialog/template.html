@@ -583,6 +583,7 @@
       .print-section h2 { margin: 0 0 3mm; padding-bottom: 1.5mm; color: #1f4e79; border-bottom: .7pt solid #9fbad2; font-size: 14pt; break-after: avoid-page; page-break-after: avoid; }
       .print-section h3 { margin: 5mm 0 2mm; font-size: 11pt; break-after: avoid-page; page-break-after: avoid; }
       .print-block { break-inside: avoid; margin: 0 0 4mm; padding: 3.5mm; border: .7pt solid #c9d1da; border-radius: 2mm; }
+      .print-scope-note { margin-top: 4mm; color: #4b5563; font-size: 9pt; line-height: 1.35; }
       .print-row { display: grid; grid-template-columns: 38mm 1fr; gap: 4mm; margin-top: 2mm; }
       .print-row:first-child { margin-top: 0; }
       .print-label { font-weight: 700; }
@@ -736,6 +737,22 @@
         return scope === 'full' || scope === 'outlook_only';
       }
 
+      function mandatoryScope(employee) {
+        return employee.suggestion && employee.suggestion.scope ? employee.suggestion.scope : 'full';
+      }
+
+      function omittedMandatoryParts(employee) {
+        const mandatory = mandatoryScope(employee);
+        const omitted = [];
+        if (hasReview(mandatory) && !hasReview(employee.scope)) omitted.push(employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblick');
+        if (hasOutlook(mandatory) && !hasOutlook(employee.scope)) omitted.push('Ausblick');
+        return omitted;
+      }
+
+      function needsScopeReason(employee) {
+        return omittedMandatoryParts(employee).length > 0;
+      }
+
       function overallRatingCode(employee) {
         const match = String(employee.review.overall_rating || '').trim().match(/^([A-E])\b/);
         return match ? match[1] : '';
@@ -819,15 +836,17 @@
         if (!employee.scope) return completionFromRequirements(requirements);
 
         if (employee.scope === 'none') {
-          addRequirement(requirements, 'Grund für «Kein MD»', employee.no_md_reason);
-          if (employee.no_md_reason === 'Anderer Grund') {
-            addRequirement(requirements, 'Erläuterung zum anderen Grund', employee.no_md_note && employee.no_md_note.trim());
+          if (needsScopeReason(employee)) {
+            addRequirement(requirements, 'Grund für «Kein MD»', employee.no_md_reason);
+            if (employee.no_md_reason === 'Anderer Grund') {
+              addRequirement(requirements, 'Erläuterung zum anderen Grund', employee.no_md_note && employee.no_md_note.trim());
+            }
           }
           return completionFromRequirements(requirements);
         }
 
-        if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
-          addRequirement(requirements, 'Begründung für den abweichenden Umfang', employee.scope_reason && employee.scope_reason.trim());
+        if (needsScopeReason(employee)) {
+          addRequirement(requirements, 'Begründung für den weggelassenen Pflichtteil', employee.scope_reason && employee.scope_reason.trim());
         }
         addRequirement(requirements, 'Zeitraum von', employee.period_start);
         addRequirement(requirements, 'Zeitraum bis', employee.period_end);
@@ -1089,23 +1108,24 @@
                   <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
                 </label>`).join('')}
             </div>
-            ${employee.suggestion && employee.suggestion.is_special ? `<div class="suggestion"><strong>Voreinstellung wegen Spezialfall:</strong> ${h(employee.suggestion.reason)} Der Umfang darf bei Bedarf angepasst werden.</div>` : ''}
+            ${employee.suggestion ? `<div class="suggestion"><strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabels[mandatoryScope(employee)] || mandatoryScope(employee))}. ${h(employee.suggestion.reason)} Zusätzliche Gesprächsteile sind jederzeit möglich.</div>` : ''}
             ${!employee.suggestion || !employee.suggestion.is_special ? `<div class="suggestion">Interne Übertritte und weitere Spezialfälle sind aus den Stammdaten nicht zuverlässig erkennbar. Bitte prüfe bei Bedarf die <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Dokumentation der Spezialfälle</a>.</div>` : ''}
-            ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den abweichenden Umfang', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:'Diese Angabe wird für HR und die Prozessauswertung übernommen.' })}</div>` : ''}
+            ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
           </section>`;
       }
 
       function renderNoMd(employee) {
+        const reasonRequired = needsScopeReason(employee);
         return `
           <section class="section">
             <div class="section-head">
-              <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">Bitte vor dem Abschluss mit deiner oder deinem HR-Verantwortlichen absprechen.</p></div>
-              <button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>
+              <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">${reasonRequired ? 'Damit wird ein gemäss Stammdaten verpflichtender Gesprächsteil weggelassen. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen.' : 'Gemäss Stammdaten ist kein Gespräch verpflichtend. Ein freiwilliger Rückblick oder Ausblick ist trotzdem möglich.'}</p></div>
+              ${reasonRequired ? '<button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>' : ''}
             </div>
-            <div class="form-grid">
+            ${reasonRequired ? `<div class="form-grid">
               ${field('Grund', 'no_md_reason', employee.no_md_reason, { type:'select', items:state.configuration.no_md_reasons, required:true })}
               ${field('Ergänzende Bemerkung', 'no_md_note', employee.no_md_note, { type:'textarea', full:true, required:employee.no_md_reason === 'Anderer Grund' })}
-            </div>
+            </div>` : ''}
           </section>`;
       }
 
@@ -1248,9 +1268,7 @@
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
             ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
             ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
-            ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? '<button class="button" type="button" data-action="print-scope-deviation">Begründung für abweichenden Umfang als PDF</button>' : ''}
           </div>
-          ${(employee.scope === 'review_only' || employee.scope === 'outlook_only') ? '<div class="suggestion"><strong>Hinweis an HR:</strong> Bitte auch die PDF-Begründung für den abweichenden Umfang zusammen mit den übrigen Unterlagen an HR senden.</div>' : ''}
           ${renderTracking(employee)}
           ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Bei D/E oder Uneinigkeit müssen beide Parteien zusätzlich handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan.</div>' : ''}
         </section>`;
@@ -1410,9 +1428,7 @@
         }
         if (action === 'apply-suggestion') {
           employee.scope = employee.suggestion.scope;
-          if (employee.scope === 'review_only' || employee.scope === 'outlook_only') {
-            employee.scope_reason = employee.suggestion.reason;
-          }
+          employee.scope_reason = '';
           markDirty(employee);
           renderEditor();
           renderSidebar();
@@ -1425,7 +1441,6 @@
         if (action === 'print-review') printEmployee(employee, 'review');
         if (action === 'print-outlook') printEmployee(employee, 'outlook');
         if (action === 'print-no-md') printEmployee(employee, 'no_md');
-        if (action === 'print-scope-deviation') printEmployee(employee, 'scope_deviation');
       }
 
       function printValue(label, value) {
@@ -1488,6 +1503,11 @@
           </div>`;
       }
 
+      function scopeReasonForPrint(employee) {
+        if (!needsScopeReason(employee) || !employee.scope_reason) return '';
+        return `<div class="print-scope-note"><strong>Hinweis an HR zum Umfang:</strong> Weggelassener Pflichtteil: ${h(omittedMandatoryParts(employee).join(' und '))}. Begründung: ${h(employee.scope_reason)}</div>`;
+      }
+
       function buildReviewPrint(employee) {
         if (employee.dialog_type === 'probation') return buildProbationReviewPrint(employee);
         const previous = employee.previous_goals.map((goal, index) => `
@@ -1521,6 +1541,7 @@
             ${printValue('Vorgesetzte Person', employee.review.manager_comment)}
             ${printValue('Mitarbeitende Person', employee.review.employee_comment)}
             ${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}
+            ${scopeReasonForPrint(employee)}
           </section>
           <section class="print-section"><h2>Nebenbeschäftigungen / öffentliche Ämter</h2>
             ${printValue('In SAP hinterlegt', employee.employee.secondary_employment)}
@@ -1537,7 +1558,7 @@
           ${printHeader(employee, 'Rückblick auf die Probezeit', state.package.rb_year, employee.review.dialog_date)}
           <section class="print-section"><h2>Leistung</h2>${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}${printValue('Bisherige Leistung und Ziele des Einführungsprogramms', employee.review.performance)}</section>
           ${competencies ? `<section class="print-section"><h2>Kompetenzen und Zusammenarbeit</h2>${competencies}</section>` : ''}
-          <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>${printValue('Vorgesetzte Person', employee.review.manager_comment)}${printValue('Mitarbeitende Person', employee.review.employee_comment)}${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}</section>
+          <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>${printValue('Vorgesetzte Person', employee.review.manager_comment)}${printValue('Mitarbeitende Person', employee.review.employee_comment)}${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}${scopeReasonForPrint(employee)}</section>
           <section class="print-section"><h2>Anstellungsentscheid</h2>${printValue('Wird das Arbeitsverhältnis weitergeführt?', employee.review.employment_continued)}${printValue('Einigkeit zum Anstellungsentscheid', employee.review.agreement)}</section>
           ${signatures('probation')}`;
       }
@@ -1566,6 +1587,7 @@
             ${printValue('Bemerkungen', employee.outlook.nep_notes)}
           </section>
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
+          ${scopeReasonForPrint(employee)}
           ${signatures('outlook')}`;
       }
 
@@ -1581,38 +1603,31 @@
           </section>`;
       }
 
-      function buildScopeDeviationPrint(employee) {
-        return `
-          ${printHeader(employee, 'Abweichender Umfang Mitarbeitenden-Dialog', `${state.package.rb_year}/${state.package.ab_year}`, '')}
-          <section class="print-section"><h2>Administrativer Hinweis an HR</h2>
-            ${printValue('Gewählter Umfang', scopeLabels[employee.scope] || employee.scope)}
-            ${printValue('Begründung', employee.scope_reason)}
-          </section>
-          <section class="print-section"><p>Diese Bestätigung dient der administrativen Prozesskontrolle durch HR und wird nicht an das Personaldossier übergeben.</p></section>`;
-      }
-
       function printEmployee(employee, section) {
         const isNoMd = section === 'no_md';
-        const isScopeDeviation = section === 'scope_deviation';
-        const completion = isNoMd ? getCompletion(employee) : isScopeDeviation ? completionFromRequirements([{ label:'Begründung für den abweichenden Umfang', complete:Boolean(employee.scope_reason && employee.scope_reason.trim()) }]) : getSectionCompletion(employee, section);
+        const sectionCompletion = isNoMd ? null : getSectionCompletion(employee, section);
+        const completion = isNoMd ? getCompletion(employee) : completionFromRequirements([
+          ...sectionCompletion.requirements,
+          ...(needsScopeReason(employee) ? [{ label:'Begründung für den weggelassenen Pflichtteil', complete:Boolean(employee.scope_reason && employee.scope_reason.trim()) }] : [])
+        ]);
         if (!completion.complete) {
           const preview = completion.missing.slice(0, 6).join('\n– ');
-          const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : isScopeDeviation ? 'Hinweis zum abweichenden Umfang' : 'Kein-MD-Fall';
+          const sectionName = section === 'review' ? 'Rückblick' : section === 'outlook' ? 'Ausblick' : 'Kein-MD-Fall';
           const proceed = window.confirm(`Dieser ${sectionName} ist noch nicht vollständig.\n\nEs fehlt:\n– ${preview}\n\nTrotzdem PDF-Vorschau öffnen?`);
           if (!proceed) return;
         }
         employee.meta.pdf_exported_at = nowIso();
         markDirty(employee);
         const isReview = section === 'review';
-        const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : isScopeDeviation ? buildScopeDeviationPrint(employee) : buildOutlookPrint(employee);
-        const documentType = isReview ? (employee.dialog_type === 'probation' ? 'RUECKBLICK_PROBEZEIT' : 'RUECKBLICK') : isNoMd ? 'KEIN_MD' : isScopeDeviation ? 'ABWEICHENDER_UMFANG' : 'AUSBLICK';
+        const printContent = isReview ? buildReviewPrint(employee) : isNoMd ? buildNoMdPrint(employee) : buildOutlookPrint(employee);
+        const documentType = isReview ? (employee.dialog_type === 'probation' ? 'RUECKBLICK_PROBEZEIT' : 'RUECKBLICK') : isNoMd ? 'KEIN_MD' : 'AUSBLICK';
         const documentYear = section === 'outlook' ? state.package.ab_year : state.package.rb_year;
         printRoot.innerHTML = `${printContent}
           <div class="print-footer">${printAdminData(employee, documentType, documentYear)}</div>`;
         printRoot.setAttribute('aria-hidden', 'false');
         document.body.classList.add('printing');
         const person = employee.employee;
-        const prefix = isReview ? (employee.dialog_type === 'probation' ? `Rueckblick_Probezeit_${state.package.rb_year}` : `Rueckblick_${state.package.rb_year}`) : isNoMd ? `Kein_MD_${state.package.rb_year}` : isScopeDeviation ? `Abweichender_Umfang_${state.package.rb_year}_${state.package.ab_year}` : `Ausblick_${state.package.ab_year}`;
+        const prefix = isReview ? (employee.dialog_type === 'probation' ? `Rueckblick_Probezeit_${state.package.rb_year}` : `Rueckblick_${state.package.rb_year}`) : isNoMd ? `Kein_MD_${state.package.rb_year}` : `Ausblick_${state.package.ab_year}`;
         document.title = `${prefix}_${filenamePart(person.last_name)}_${filenamePart(person.first_name)}_${filenamePart(person.pn)}`;
         window.setTimeout(() => window.print(), 60);
       }

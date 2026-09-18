@@ -24,7 +24,9 @@ Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
 - getrennte Vollständigkeitsprüfung für Rückblick und Ausblick
 - Druckansichten für ein Rückblick- oder Ausblick-PDF je Person
 - eigener Rückblick auf die Probezeit mit Anstellungsentscheid
-- administratives PDF für «Kein MD» und einen abweichenden Umfang
+- administratives PDF für «Kein MD», wenn dadurch ein Pflichtteil entfällt
+- Begründung für einen weggelassenen Pflichtteil direkt im verbleibenden PDF
+- Stammdaten bestimmen nur den Mindestumfang; zusätzliche Gesprächsteile bleiben möglich
 - Speichern als neue, aktualisierte HTML-Datei
 - eindeutige Dateistände: Versanddatei mit `_START`, gespeicherte Rücksendungen
   mit `_BEARBEITET_vNN_YYYYMMDD_HHMM`
@@ -102,6 +104,10 @@ python prototype/html_dialog/generate_package.py `
 Die Probezeit-Arbeitsmappe verwendet den abweichenden Aufbau der bestehenden
 Vorlage: Leistung und Einführungsziele, ausgewählte Kompetenzen, Bemerkungen zum
 Gespräch und Anstellungsentscheid. Sie enthält keine reguläre Gesamtbeurteilung.
+Die aus den Stammdaten abgeleitete Vorgabe ist auch hier ein Mindestumfang. Ein
+zusätzlicher Ausblick kann freiwillig geführt werden. Nur wenn ein verpflichtender
+Probezeitrückblick oder Ausblick weggelassen wird, ist nach vorgängiger Absprache
+mit HR eine Begründung erforderlich.
 
 ## Empfohlener Funktionstest in Microsoft Edge
 

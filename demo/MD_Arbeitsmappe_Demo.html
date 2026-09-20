@@ -524,7 +524,7 @@
     .completion-panel.single { grid-template-columns: 1fr; }
     .document-progress { min-width: 0; padding: 10px 12px; background: #f7f9fb; }
     .document-progress-head { display:grid; grid-template-columns:minmax(150px,1fr) minmax(190px,240px) auto; align-items:center; gap:12px; }
-    .document-progress-head.detailed { grid-template-columns:auto minmax(190px,240px) minmax(170px,1fr); }
+    .document-progress-head.detailed { grid-template-columns:auto minmax(170px,1fr) minmax(190px,240px); }
     .document-progress-head.summary-only { grid-template-columns:minmax(150px,1fr) auto; }
     .document-progress-title { font-weight: 700; }
     .completion-score { min-width:72px; text-align:right; }
@@ -535,8 +535,8 @@
     .document-progress .field label { margin-bottom: 3px; }
     .document-progress .field select { padding: 7px 9px; }
     .document-progress details { margin-top: 7px; font-size: 12px; }
-    .document-progress-head.detailed details { justify-self:end; margin-top:0; }
-    .document-progress-head.detailed .complete-message { justify-self:end; margin-top:0; font-size:12px; }
+    .document-progress-head.detailed details { justify-self:start; margin-top:0; }
+    .document-progress-head.detailed .complete-message { justify-self:start; margin-top:0; font-size:12px; }
     .missing-list { margin: 5px 0 0; padding-left: 20px; }
     .missing-list li + li { margin-top: 4px; }
     .missing-list a { color: var(--blue-dark); }
@@ -1352,8 +1352,8 @@
           return `<div class="document-progress">
             <div class="document-progress-head detailed">
               <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div>
-              <div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
               ${completion.complete ? '<div class="complete-message">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}
+              <div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
             </div>
           </div>`;
         }

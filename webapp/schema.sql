@@ -225,6 +225,48 @@ CREATE TABLE IF NOT EXISTS mail_deliveries (
 CREATE INDEX IF NOT EXISTS idx_mail_deliveries_status
     ON mail_deliveries (status, updated_at);
 
+CREATE TABLE IF NOT EXISTS inbound_mail_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    outlook_entry_id TEXT NOT NULL UNIQUE,
+    internet_message_id TEXT NOT NULL DEFAULT '',
+    sender_email TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '',
+    received_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new'
+        CHECK (status IN (
+            'new', 'ready_to_move', 'review_required', 'moved', 'ignored', 'failed'
+        )),
+    contains_probation INTEGER NOT NULL DEFAULT 0 CHECK (contains_probation IN (0, 1)),
+    target_folder TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbound_mail_status
+    ON inbound_mail_messages (status, received_at);
+
+CREATE TABLE IF NOT EXISTS inbound_mail_attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mail_message_id INTEGER NOT NULL
+        REFERENCES inbound_mail_messages(id) ON DELETE CASCADE,
+    attachment_index INTEGER NOT NULL,
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL DEFAULT '',
+    sha256 TEXT NOT NULL,
+    file_kind TEXT NOT NULL
+        CHECK (file_kind IN ('md_pdf', 'html_workbook', 'other')),
+    status TEXT NOT NULL
+        CHECK (status IN ('stored', 'imported', 'duplicate', 'review_required', 'failed')),
+    official_document_id INTEGER REFERENCES official_documents(id),
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    UNIQUE (mail_message_id, attachment_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbound_attachment_sha
+    ON inbound_mail_attachments (sha256, status);
+
 CREATE TABLE IF NOT EXISTS official_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     case_id TEXT NOT NULL REFERENCES dialog_cases(case_id) ON DELETE CASCADE,

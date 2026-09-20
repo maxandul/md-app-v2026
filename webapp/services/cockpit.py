@@ -46,8 +46,36 @@ def cockpit_overview(
         "scans_pending": 0,
         "dossier_ready": 0,
         "master_data_issues": 0,
+        "mail_review_required": 0,
     }
     tasks: list[dict] = []
+
+    mail_reviews = connection.execute(
+        """
+        SELECT id, sender_email, subject, received_at, contains_probation
+        FROM inbound_mail_messages
+        WHERE status IN ('review_required', 'failed')
+        ORDER BY received_at
+        """
+    ).fetchall()
+    metrics["mail_review_required"] = len(mail_reviews)
+    for message in mail_reviews:
+        tasks.append(
+            {
+                "priority": "hoch" if message["contains_probation"] else "mittel",
+                "priority_rank": 2 if message["contains_probation"] else 4,
+                "kind": "Postfach",
+                "title": (
+                    "Probezeitrückblick prüfen"
+                    if message["contains_probation"]
+                    else "E-Mail-Anhänge prüfen"
+                ),
+                "subject": message["sender_email"],
+                "context": message["subject"] or "Ohne Betreff",
+                "date": message["received_at"],
+                "target": "mail",
+            }
+        )
 
     if latest_import:
         issue_rows = connection.execute(

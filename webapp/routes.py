@@ -53,6 +53,7 @@ from .services.documents import (
 from .services.sap_import import import_sap_workbook
 from .services.sap_export import create_sap_upload_file
 from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
+from .services.mail_intake import mail_inbox_overview, scan_outlook_inbox
 
 
 bp = Blueprint("main", __name__)
@@ -245,12 +246,14 @@ def dispatch():
 
 @bp.get("/ruecklaeufe")
 def returns_overview():
+    connection = get_db()
     return render_template(
         "returns.html",
         active_nav="returns",
         **cockpit_overview(
-            get_db(), selected_cycle_id=request.args.get("cycle_id", type=int)
+            connection, selected_cycle_id=request.args.get("cycle_id", type=int)
         ),
+        **mail_inbox_overview(connection),
     )
 
 
@@ -603,6 +606,31 @@ def upload_pdf_returns():
                 manager_pn=case["manager_pn"],
             )
         )
+    return redirect(url_for("main.returns_overview"))
+
+
+@bp.post("/mail-inbox/scan")
+def scan_mail_inbox():
+    try:
+        result = scan_outlook_inbox(
+            get_db(),
+            mailbox_name=current_app.config["OUTLOOK_MAILBOX_NAME"],
+            target_folder=current_app.config["OUTLOOK_TARGET_FOLDER"],
+            inbox_dir=_storage_dir("mail_inbox"),
+            pdf_dir=_storage_dir("pdf_processed"),
+        )
+    except Exception as exc:
+        flash(str(exc), "error")
+    else:
+        flash(
+            f"Postfach gelesen: {result['read']} Nachricht(en), "
+            f"{result['stored']} neue Anhänge gesichert, "
+            f"{result['ready']} vollständig, {result['review']} zur HR-Prüfung, "
+            f"{result['duplicates']} bereits bekannt.",
+            "success",
+        )
+        if result["errors"]:
+            flash(" ".join(result["errors"]), "error")
     return redirect(url_for("main.returns_overview"))
 
 

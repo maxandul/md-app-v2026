@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 PR_SECURITY_FLAGS = "http://schemas.microsoft.com/mapi/proptag/0x6E010003"
@@ -22,6 +24,48 @@ class EncryptionVerificationError(RuntimeError):
 class DraftResult:
     entry_id: str
     encryption_flag_verified: bool
+
+
+@dataclass(frozen=True)
+class InboundAttachment:
+    index: int
+    filename: str
+    content: bytes
+
+
+@dataclass(frozen=True)
+class InboundMessage:
+    entry_id: str
+    internet_message_id: str
+    sender_email: str
+    subject: str
+    received_at: datetime
+    attachments: tuple[InboundAttachment, ...]
+
+
+def _sender_email(mail) -> str:
+    try:
+        sender = getattr(mail, "Sender", None)
+        if sender and getattr(sender, "AddressEntryUserType", None) == 0:
+            exchange_user = sender.GetExchangeUser()
+            address = getattr(exchange_user, "PrimarySmtpAddress", "")
+            if address:
+                return str(address)
+    except Exception:
+        pass
+    try:
+        address = mail.PropertyAccessor.GetProperty(
+            "http://schemas.microsoft.com/mapi/proptag/0x39FE001E"
+        )
+        if address:
+            return str(address)
+    except Exception:
+        pass
+    return str(
+        getattr(mail, "SenderEmailAddress", "")
+        or getattr(mail, "SenderName", "")
+        or "Unbekannt"
+    )
 
 
 class OutlookDraftAdapter:
@@ -95,4 +139,79 @@ class OutlookDraftAdapter:
     def send(self, *_args, **_kwargs) -> None:
         raise EncryptionVerificationError(
             "Der automatische Versand ist bis zum S/MIME-Integrationstest gesperrt."
+        )
+
+
+class OutlookInboxAdapter:
+    """Liest Nachrichten und Anhänge, verändert das Outlook-Postfach aber nicht."""
+
+    def read_messages(
+        self, *, mailbox_name: str, limit: int = 100
+    ) -> list[InboundMessage]:
+        try:
+            import pythoncom
+            import win32com.client as win32
+        except ImportError as exc:
+            raise OutlookUnavailableError(
+                "Die Outlook-Integration benötigt Windows, klassisches Outlook und pywin32."
+            ) from exc
+
+        pythoncom.CoInitialize()
+        try:
+            namespace = win32.Dispatch("Outlook.Application").GetNamespace("MAPI")
+            mailbox = namespace.Folders.Item(mailbox_name)
+            inbox = mailbox.Store.GetDefaultFolder(6)
+            items = inbox.Items
+            items.Sort("[ReceivedTime]", True)
+            messages: list[InboundMessage] = []
+            for position in range(1, min(int(items.Count), limit) + 1):
+                mail = items.Item(position)
+                if int(getattr(mail, "Class", 0) or 0) != 43:
+                    continue
+                attachments: list[InboundAttachment] = []
+                with TemporaryDirectory(prefix="md-mail-") as temporary:
+                    temporary_dir = Path(temporary)
+                    for index in range(1, int(mail.Attachments.Count) + 1):
+                        attachment = mail.Attachments.Item(index)
+                        filename = str(getattr(attachment, "FileName", "") or "").strip()
+                        if not filename:
+                            filename = f"Anhang-{index}"
+                        temporary_path = temporary_dir / f"attachment-{index}"
+                        attachment.SaveAsFile(str(temporary_path))
+                        attachments.append(
+                            InboundAttachment(index, filename, temporary_path.read_bytes())
+                        )
+                try:
+                    internet_message_id = str(
+                        mail.PropertyAccessor.GetProperty(
+                            "http://schemas.microsoft.com/mapi/proptag/0x1035001E"
+                        )
+                        or ""
+                    )
+                except Exception:
+                    internet_message_id = ""
+                received_at = getattr(mail, "ReceivedTime", None)
+                if not isinstance(received_at, datetime):
+                    received_at = datetime.now().astimezone()
+                messages.append(
+                    InboundMessage(
+                        entry_id=str(getattr(mail, "EntryID", "") or ""),
+                        internet_message_id=internet_message_id,
+                        sender_email=_sender_email(mail),
+                        subject=str(getattr(mail, "Subject", "") or ""),
+                        received_at=received_at,
+                        attachments=tuple(attachments),
+                    )
+                )
+            return messages
+        except Exception as exc:
+            raise OutlookUnavailableError(
+                f"Das Outlook-Postfach konnte nicht gelesen werden: {exc}"
+            ) from exc
+        finally:
+            pythoncom.CoUninitialize()
+
+    def move_message(self, *_args, **_kwargs) -> None:
+        raise OutlookUnavailableError(
+            "Das automatische Verschieben bleibt bis zum Outlook-Integrationstest gesperrt."
         )

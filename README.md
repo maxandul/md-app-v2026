@@ -11,6 +11,8 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
 - START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
 - S/MIME-markierte Entwürfe im klassischen Outlook erzeugen und protokollieren
+- Outlook-Posteingang read-only einlesen, sämtliche Anhänge sichern und
+  idempotent klassifizieren
 - mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
 - Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
 - Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
@@ -72,7 +74,14 @@ erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
 
 ```powershell
 $env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
+$env:MD_OUTLOOK_MAILBOX = "hr@vd.zh.ch"
+$env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
 ```
+
+Das Einlesen verändert das Outlook-Postfach nicht. Nachrichten mit
+Probezeitrückblicken, unbekannten Anhängen oder Verarbeitungsfehlern erscheinen
+als Aufgabe im HR-Cockpit. Auch vollständig verarbeitete Nachrichten werden bis
+zum Bürotest nicht automatisch verschoben.
 
 ## Dateinamen
 

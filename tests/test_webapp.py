@@ -18,7 +18,11 @@ from webapp.db import get_db
 from webapp.adapters.outlook import (
     DraftResult,
     EncryptionVerificationError,
+    InboundAttachment,
+    InboundMessage,
     OutlookDraftAdapter,
+    OutlookInboxAdapter,
+    OutlookUnavailableError,
 )
 from webapp.services.cycles import create_cycle, cycle_overview
 from webapp.services.cockpit import cockpit_overview
@@ -29,6 +33,7 @@ from webapp.services.documents import (
     import_official_pdf,
 )
 from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
+from webapp.services.mail_intake import mail_inbox_overview, process_inbound_messages
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -301,6 +306,143 @@ class WebAppIntegrationTest(unittest.TestCase):
             EncryptionVerificationError, "automatische Versand"
         ):
             OutlookDraftAdapter().send()
+        with self.assertRaisesRegex(OutlookUnavailableError, "Verschieben"):
+            OutlookInboxAdapter().move_message()
+
+    def test_mail_intake_imports_pdf_and_is_idempotent(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            _package_path, payload = create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=root / "packages",
+            )
+            pdf_path = root / "mail-review.pdf"
+            write_test_pdf(
+                pdf_path,
+                "MD-DATENBLOCK ; version=1 ; document=RUECKBLICK ; "
+                "case_id=2025-111116-111111 ; "
+                f"package_id={payload['package']['package_id']} ; pn=111111 ; ans=2 ; "
+                "year=2025 ; scope=review_only ; period_start=2025-01-01 ; "
+                "period_end=2025-12-31 ; dialog_date=2026-01-21 ; rating=B ; "
+                "agreement=JA ; handwritten_scan_required=NEIN ; no_md_reason=",
+            )
+            message = InboundMessage(
+                entry_id="entry-001",
+                internet_message_id="<message-001@example.invalid>",
+                sender_email="manager@example.invalid",
+                subject="MD Rücklauf",
+                received_at=datetime(2026, 1, 22, 10, 0, tzinfo=timezone.utc),
+                attachments=(
+                    InboundAttachment(1, "Rueckblick_111111.pdf", pdf_path.read_bytes()),
+                ),
+            )
+            first = process_inbound_messages(
+                connection,
+                messages=[message],
+                inbox_dir=root / "mail_inbox",
+                pdf_dir=root / "pdf_processed",
+                target_folder="12 Mitarbeitenden-Dialog",
+            )
+            self.assertEqual(first["ready"], 1)
+            self.assertEqual(first["stored"], 1)
+            overview = mail_inbox_overview(connection)
+            self.assertEqual(overview["mail_messages"][0]["status"], "ready_to_move")
+            self.assertEqual(
+                overview["mail_messages"][0]["attachments"][0]["status"],
+                "imported",
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM official_documents"
+                ).fetchone()["count"],
+                1,
+            )
+
+            repeated = process_inbound_messages(
+                connection,
+                messages=[message],
+                inbox_dir=root / "mail_inbox",
+                pdf_dir=root / "pdf_processed",
+                target_folder="12 Mitarbeitenden-Dialog",
+            )
+            self.assertEqual(repeated["duplicates"], 1)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM inbound_mail_messages"
+                ).fetchone()["count"],
+                1,
+            )
+
+        page = self.client.get(f"/ruecklaeufe?cycle_id={cycle_id}")
+        body = page.get_data(as_text=True)
+        self.assertIn("MD Rücklauf", body)
+        self.assertIn("Vollständig gesichert", body)
+        self.assertIn("Verschieben noch gesperrt", body)
+
+    def test_mail_intake_keeps_probation_and_extra_files_for_review(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            _package_path, payload = create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=root / "packages",
+            )
+            pdf_path = root / "probation-review.pdf"
+            write_test_pdf(
+                pdf_path,
+                "MD-DATENBLOCK ; version=1 ; document=RUECKBLICK ; "
+                "case_id=2025-111116-111111 ; "
+                f"package_id={payload['package']['package_id']} ; pn=111111 ; ans=2 ; "
+                "year=2025 ; scope=review_only ; period_start=2025-01-01 ; "
+                "period_end=2025-12-31 ; dialog_date=2026-01-21 ; rating=B ; "
+                "agreement=JA ; handwritten_scan_required=NEIN ; no_md_reason=",
+            )
+            message = InboundMessage(
+                entry_id="entry-probation",
+                internet_message_id="<probation@example.invalid>",
+                sender_email="manager@example.invalid",
+                subject="Rücklauf Probezeit",
+                received_at=datetime(2026, 1, 22, 11, 0, tzinfo=timezone.utc),
+                attachments=(
+                    InboundAttachment(1, "Probezeit_Rueckblick.pdf", pdf_path.read_bytes()),
+                    InboundAttachment(2, "Begleitnotiz.txt", b"Bitte beachten"),
+                ),
+            )
+            result = process_inbound_messages(
+                connection,
+                messages=[message],
+                inbox_dir=root / "mail_inbox",
+                pdf_dir=root / "pdf_processed",
+                target_folder="12 Mitarbeitenden-Dialog",
+            )
+            self.assertEqual(result["review"], 1)
+            stored = connection.execute(
+                "SELECT status, contains_probation FROM inbound_mail_messages"
+            ).fetchone()
+            self.assertEqual(stored["status"], "review_required")
+            self.assertEqual(stored["contains_probation"], 1)
+            cockpit = cockpit_overview(connection, selected_cycle_id=cycle_id)
+            self.assertEqual(cockpit["metrics"]["mail_review_required"], 1)
+            self.assertTrue(
+                any(task["kind"] == "Postfach" for task in cockpit["tasks"])
+            )
+            attachments = connection.execute(
+                "SELECT original_filename, status FROM inbound_mail_attachments ORDER BY attachment_index"
+            ).fetchall()
+            self.assertEqual(
+                [(row["original_filename"], row["status"]) for row in attachments],
+                [
+                    ("Probezeit_Rueckblick.pdf", "imported"),
+                    ("Begleitnotiz.txt", "review_required"),
+                ],
+            )
 
     def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
         cycle_id = self._prepare_cycle()

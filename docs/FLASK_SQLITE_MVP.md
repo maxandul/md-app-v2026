@@ -158,6 +158,8 @@ geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 3. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
    Zertifikaten und der eingesetzten klassischen Outlook-Version testen und
    freigeben. Bis dahin bleibt der automatische Versand gesperrt.
-4. E-Mail-Rückläufe inklusive Fremdbeilagen und Probezeitrückblicken behandeln.
-5. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
-6. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.
+4. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
+   danach das Verschieben vollständig verarbeiteter Nachrichten freigeben.
+5. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
+6. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
+7. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

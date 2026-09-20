@@ -43,6 +43,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
         HR_MAILBOX_EMAIL=os.environ.get("MD_HR_MAILBOX_EMAIL", "hr@vd.zh.ch"),
+        OUTLOOK_MAILBOX_NAME=os.environ.get("MD_OUTLOOK_MAILBOX", "hr@vd.zh.ch"),
+        OUTLOOK_TARGET_FOLDER=os.environ.get(
+            "MD_OUTLOOK_TARGET_FOLDER", "12 Mitarbeitenden-Dialog"
+        ),
     )
     if test_config:
         app.config.update(test_config)

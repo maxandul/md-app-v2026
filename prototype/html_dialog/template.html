@@ -553,7 +553,7 @@
     }
 
     .completion-panel.single { grid-template-columns: 1fr; }
-    .document-progress { min-width: 0; padding: 10px 12px; background: #f7f9fb; }
+    .document-progress { min-width: 0; padding: 10px 12px; border: 1px solid #eac879; background: var(--warning-soft); }
     .document-progress-head { display:grid; grid-template-columns:minmax(150px,1fr) minmax(190px,240px) auto; align-items:center; gap:12px; }
     .document-progress-head.detailed { grid-template-columns:auto minmax(170px,1fr) minmax(190px,240px); }
     .document-progress-head.summary-only { grid-template-columns:minmax(150px,1fr) auto; }
@@ -1338,8 +1338,8 @@
             <div class="subsection" id="outlook-performance-goals"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
             <div class="subsection" id="outlook-development-goals"><h3>3. Entwicklungsziele</h3><p class="section-intro">Es können ein oder mehrere Entwicklungsziele formuliert werden; Human Resources &amp; Entwicklung empfiehlt ein bis zwei. Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p>${renderDevelopmentGoals(employee)}</div>
-            <div class="subsection"><h3>4. Entwicklungswunsch / NEP</h3><div class="form-grid">
-              ${field('Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
+            <div class="subsection"><h3>4. Laufbahnorientierte Entwicklung</h3><p class="section-intro">Die laufbahnorientierte Entwicklung (nächsthöhere Funktion, vertikale Laufbahn, KNF I &amp; II, Übernahme Stellvertretung usw.) findet im Rahmen der Nachfolge- und Entwicklungsplanung (NEP) statt.</p><div class="form-grid" style="margin-top:12px">
+              ${field('Laufbahnorientierter Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
               ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
             </div></div>
             <div class="subsection"><h3>5. Allgemeine Bemerkungen</h3><div class="form-grid">${field('Bemerkungen zum Ausblick', 'outlook.general_notes', employee.outlook.general_notes, { type:'textarea', full:true })}</div></div>
@@ -1800,8 +1800,8 @@
           <section class="print-section"><h2>Leistungsziele</h2>${goals}</section>
           ${employee.outlook.open_goals_text ? `<section class="print-section"><h2>Ergänzende Zielvereinbarungen</h2>${printValue('Weitere Ziele', employee.outlook.open_goals_text)}</section>` : ''}
           ${development ? `<section class="print-section"><h2>Entwicklungsziele</h2>${development}</section>` : ''}
-          <section class="print-section"><h2>Entwicklungswunsch / NEP</h2>
-            ${printValue('Entwicklungswunsch', employee.outlook.nep)}
+          <section class="print-section"><h2>Laufbahnorientierte Entwicklung</h2>
+            ${printValue('Laufbahnorientierter Entwicklungswunsch', employee.outlook.nep)}
             ${printValue('Bemerkungen', employee.outlook.nep_notes)}
           </section>
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}

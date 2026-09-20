@@ -58,4 +58,35 @@
   {% else %}
     <section class="content-section"><div class="empty-state">Für den gewählten Durchlauf sind noch keine Führungslinien vorhanden.</div></section>
   {% endif %}
+
+  {% if selected_cycle %}
+    <section class="content-section" aria-labelledby="mail-title">
+      <div class="section-heading"><div><p class="kicker">Outlook</p><h2 id="mail-title">S/MIME-Entwürfe vorbereiten</h2></div><span class="section-count">{{ mail_candidates|length }} vorbereitete Dateien</span></div>
+      <div class="info-box"><p>Die App erstellt nur Outlook-Entwürfe und prüft, ob Outlook die S/MIME-Verschlüsselungsmarkierung gespeichert hat. Vor dem manuellen Senden müssen Verschlüsselung, Absender, Empfänger und Anhang in Outlook sichtbar kontrolliert werden. Automatischer Versand ist gesperrt.</p></div>
+      {% if mail_candidates %}
+        <form action="{{ url_for('main.prepare_mail_drafts', cycle_id=selected_cycle.id) }}" method="post">
+          <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Vorgesetzte Person</th><th>Empfänger</th><th>Datei</th><th>Status</th></tr></thead><tbody>
+          {% for item in mail_candidates %}
+            <tr>
+              <td><input class="table-checkbox" type="checkbox" name="package_event_id" value="{{ item.package_event_id }}" aria-label="Nachricht an {{ item.manager_name }} auswählen"{% if not item.ready or item.delivery_status == 'draft_created' %} disabled{% endif %}></td>
+              <td><strong>{{ item.manager_name }}</strong><br><span class="muted">PN {{ item.manager_pn }}</span></td>
+              <td>{{ item.recipient_email or 'fehlt' }}</td>
+              <td>{{ item.filename }}<br><span class="muted">{{ 'Update' if item.package_kind == 'update' else 'START' }}</span></td>
+              <td>
+                {% if item.delivery_status == 'draft_created' %}<span class="status status--staged">Entwurf erstellt</span><br><span class="muted">Verschlüsselungsmarkierung geprüft</span>
+                {% elif item.delivery_status == 'failed' %}<span class="status status--danger">Fehlgeschlagen</span>{% if item.error_message %}<br><span class="issue-text issue-text--blocking">{{ item.error_message }}</span>{% endif %}
+                {% elif not item.recipient_email %}<span class="status status--danger">E-Mail fehlt</span>
+                {% elif not item.file_available %}<span class="status status--danger">Datei fehlt</span>
+                {% else %}<span class="status status--warning">Entwurf offen</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody></table></div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Markierte Outlook-Entwürfe erstellen</button></div>
+        </form>
+      {% else %}
+        <div class="empty-state">Noch keine Versanddatei erzeugt.</div>
+      {% endif %}
+    </section>
+  {% endif %}
 {% endblock %}

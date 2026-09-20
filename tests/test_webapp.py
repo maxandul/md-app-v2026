@@ -15,6 +15,11 @@ from prototype.html_dialog.generate_package import render_html
 from prototype.html_dialog.validate_package import extract_payload
 from webapp import create_app
 from webapp.db import get_db
+from webapp.adapters.outlook import (
+    DraftResult,
+    EncryptionVerificationError,
+    OutlookDraftAdapter,
+)
 from webapp.services.cycles import create_cycle, cycle_overview
 from webapp.services.cockpit import cockpit_overview
 from webapp.services.dialog_events import set_leading_sap_event
@@ -23,6 +28,7 @@ from webapp.services.documents import (
     import_handwritten_scan,
     import_official_pdf,
 )
+from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -36,6 +42,19 @@ from tests.sample_data import create_sap_sample
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+class FakeOutlookDraftAdapter:
+    def __init__(self, *, encryption_flag_verified: bool = True) -> None:
+        self.encryption_flag_verified = encryption_flag_verified
+        self.calls: list[dict] = []
+
+    def create_encrypted_draft(self, **message) -> DraftResult:
+        self.calls.append(message)
+        return DraftResult(
+            entry_id=f"draft-{len(self.calls)}",
+            encryption_flag_verified=self.encryption_flag_verified,
+        )
 
 
 def write_test_pdf(path: Path, data_block: str) -> None:
@@ -208,6 +227,80 @@ class WebAppIntegrationTest(unittest.TestCase):
         response.close()
         self.assertEqual(len(names), 3)
         self.assertTrue(all(name.startswith("START/") for name in names))
+
+    def test_outlook_draft_is_prepared_and_logged_without_sending(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            package_path, _payload = create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
+            )
+            candidates = dispatch_candidates(
+                connection, cycle_id=cycle_id, sender_email="md-test@vd.zh.ch"
+            )
+            candidate = next(
+                row for row in candidates if row["manager_pn"] == "111116"
+            )
+            self.assertTrue(candidate["ready"])
+            adapter = FakeOutlookDraftAdapter()
+            result = create_outlook_drafts(
+                connection,
+                cycle_id=cycle_id,
+                package_event_ids=[candidate["package_event_id"]],
+                sender_email="md-test@vd.zh.ch",
+                adapter=adapter,
+            )
+            self.assertEqual(result, {"created": 1, "failed": 0, "errors": []})
+            self.assertEqual(adapter.calls[0]["attachments"], [package_path])
+            self.assertEqual(adapter.calls[0]["sender_email"], "md-test@vd.zh.ch")
+            delivery = connection.execute(
+                "SELECT * FROM mail_deliveries WHERE package_event_id = ?",
+                (candidate["package_event_id"],),
+            ).fetchone()
+            self.assertEqual(delivery["status"], "draft_created")
+            self.assertEqual(delivery["encryption_flag_verified"], 1)
+            self.assertEqual(delivery["outlook_entry_id"], "draft-1")
+
+        page = self.client.get(f"/versand?cycle_id={cycle_id}")
+        self.assertIn("Entwurf erstellt", page.get_data(as_text=True))
+        self.assertIn("Automatischer Versand ist gesperrt", page.get_data(as_text=True))
+
+    def test_missing_recipient_blocks_outlook_draft(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            connection.execute("UPDATE employees SET email = '' WHERE pn = '111116'")
+            connection.commit()
+            create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
+            )
+            candidate = next(
+                row for row in dispatch_candidates(connection, cycle_id=cycle_id)
+                if row["manager_pn"] == "111116"
+            )
+            adapter = FakeOutlookDraftAdapter()
+            result = create_outlook_drafts(
+                connection,
+                cycle_id=cycle_id,
+                package_event_ids=[candidate["package_event_id"]],
+                adapter=adapter,
+            )
+            self.assertEqual(result["created"], 0)
+            self.assertEqual(result["failed"], 1)
+            self.assertEqual(adapter.calls, [])
+            self.assertIn("E-Mail-Adresse fehlt", result["errors"][0])
+
+    def test_outlook_adapter_never_sends_automatically(self) -> None:
+        with self.assertRaisesRegex(
+            EncryptionVerificationError, "automatische Versand"
+        ):
+            OutlookDraftAdapter().send()
 
     def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
         cycle_id = self._prepare_cycle()

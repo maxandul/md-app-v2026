@@ -195,6 +195,7 @@ CREATE TABLE IF NOT EXISTS package_events (
         CHECK (package_kind IN ('start', 'update', 'return')),
     revision INTEGER NOT NULL DEFAULT 0,
     filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL DEFAULT '',
     sha256 TEXT NOT NULL,
     payload_json TEXT NOT NULL,
     created_at TEXT NOT NULL
@@ -202,6 +203,27 @@ CREATE TABLE IF NOT EXISTS package_events (
 
 CREATE INDEX IF NOT EXISTS idx_package_events_package
     ON package_events (package_id, direction, created_at);
+
+CREATE TABLE IF NOT EXISTS mail_deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    package_event_id INTEGER NOT NULL REFERENCES package_events(id) ON DELETE CASCADE,
+    sender_email TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'prepared'
+        CHECK (status IN ('prepared', 'draft_created', 'sent_confirmed', 'failed')),
+    encryption_required INTEGER NOT NULL DEFAULT 1 CHECK (encryption_required IN (0, 1)),
+    encryption_flag_verified INTEGER NOT NULL DEFAULT 0 CHECK (encryption_flag_verified IN (0, 1)),
+    outlook_entry_id TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (package_event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mail_deliveries_status
+    ON mail_deliveries (status, updated_at);
 
 CREATE TABLE IF NOT EXISTS official_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

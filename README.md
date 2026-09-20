@@ -9,6 +9,8 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern
 - einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
 - pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
+- START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
+- S/MIME-markierte Entwürfe im klassischen Outlook erzeugen und protokollieren
 - mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
 - Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
 - Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
@@ -59,7 +61,18 @@ Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
 Personaldaten nicht ungeschützt über `0.0.0.0` im Netzwerk freigeben.
 
 Der Versand und Rückversand von Dateien mit Personaldaten erfolgt gemäss dem
-vorgesehenen Prozess S/MIME-verschlüsselt.
+vorgesehenen Prozess S/MIME-verschlüsselt. Die Anwendung sendet E-Mails nicht
+automatisch: Sie erstellt einen Entwurf, prüft die gespeicherte
+Verschlüsselungsmarkierung und verlangt vor dem manuellen Versand eine sichtbare
+Kontrolle in Outlook. Der vollständige Nachweis ist mit dem produktiven
+HR-Postfach, den Zertifikaten und der konkreten Outlook-Version durchzuführen.
+
+Für die Entwurfserstellung sind Windows, klassisches Outlook und `pywin32`
+erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
+
+```powershell
+$env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
+```
 
 ## Dateinamen
 

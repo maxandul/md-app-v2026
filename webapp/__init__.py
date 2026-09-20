@@ -42,6 +42,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
+        HR_MAILBOX_EMAIL=os.environ.get("MD_HR_MAILBOX_EMAIL", "hr@vd.zh.ch"),
     )
     if test_config:
         app.config.update(test_config)

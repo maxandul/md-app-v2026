@@ -155,8 +155,9 @@ geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 1. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert
    übernehmen und für den nächsten Jahresdurchlauf bereitstellen.
 2. Einzelfallansicht für HR mit kontrollierten Korrekturen und Begründung.
-3. START- und Update-Arbeitsmappen einzeln und gesammelt erzeugen.
-4. Outlook-Entwürfe mit erzwungener S/MIME-Prüfung erzeugen.
-5. E-Mail-Rückläufe inklusive Fremdbeilagen und Probezeitrückblicken behandeln.
-6. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
-7. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.
+3. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
+   Zertifikaten und der eingesetzten klassischen Outlook-Version testen und
+   freigeben. Bis dahin bleibt der automatische Versand gesperrt.
+4. E-Mail-Rückläufe inklusive Fremdbeilagen und Probezeitrückblicken behandeln.
+5. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
+6. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

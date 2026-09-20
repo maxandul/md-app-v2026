@@ -105,6 +105,10 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         connection.execute(
             "UPDATE package_events SET package_kind = 'return' WHERE direction = 'ruecklauf'"
         )
+    if "stored_path" not in package_columns:
+        connection.execute(
+            "ALTER TABLE package_events ADD COLUMN stored_path TEXT NOT NULL DEFAULT ''"
+        )
     connection.commit()
     from .services.dialog_events import backfill_dialog_model
 

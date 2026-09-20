@@ -52,6 +52,7 @@ from .services.documents import (
 )
 from .services.sap_import import import_sap_workbook
 from .services.sap_export import create_sap_upload_file
+from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 
 
 bp = Blueprint("main", __name__)
@@ -229,9 +230,16 @@ def dispatch():
             enriched.append(item)
         managers = enriched
     org_units = sorted({row["org_unit"] for row in managers if row["org_unit"]})
+    mail_candidates = []
+    if data["selected_cycle"]:
+        mail_candidates = dispatch_candidates(
+            get_db(),
+            cycle_id=data["selected_cycle"]["id"],
+            sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+        )
     return render_template(
         "dispatch.html", active_nav="dispatch", managers=managers,
-        org_units=org_units, **data
+        org_units=org_units, mail_candidates=mail_candidates, **data
     )
 
 
@@ -482,6 +490,34 @@ def download_package_batch(cycle_id: int):
     response.headers["X-MD-START-Count"] = str(counts["start"])
     response.headers["X-MD-Update-Count"] = str(counts["update"])
     return response
+
+
+@bp.post("/cycles/<int:cycle_id>/mail-drafts")
+def prepare_mail_drafts(cycle_id: int):
+    try:
+        result = create_outlook_drafts(
+            get_db(),
+            cycle_id=cycle_id,
+            package_event_ids=request.form.getlist("package_event_id", type=int),
+            sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+    else:
+        if result["created"]:
+            flash(
+                f"{result['created']} verschlüsselt markierte Outlook-Entwurf/Entwürfe "
+                "wurden erstellt. Bitte Verschlüsselung, Absender und Anhang in Outlook "
+                "prüfen und dort manuell senden.",
+                "success",
+            )
+        if result["failed"]:
+            flash(
+                f"{result['failed']} Entwurf/Entwürfe konnten nicht erstellt werden: "
+                + " ".join(result["errors"]),
+                "error",
+            )
+    return redirect(url_for("main.dispatch", cycle_id=cycle_id))
 
 
 @bp.post("/returns")

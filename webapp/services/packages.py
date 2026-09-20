@@ -476,11 +476,11 @@ def create_update_file(
         """
         INSERT INTO package_events (
             package_id, cycle_id, manager_pn, direction, package_kind, revision,
-            filename, sha256, payload_json, created_at
-        ) VALUES (?, ?, ?, 'versand', 'update', 0, ?, ?, ?, ?)
+            filename, stored_path, sha256, payload_json, created_at
+        ) VALUES (?, ?, ?, 'versand', 'update', 0, ?, ?, ?, ?, ?)
         """,
         (
-            update["target_package_id"], cycle_id, manager_pn, filename,
+            update["target_package_id"], cycle_id, manager_pn, filename, str(path),
             hashlib.sha256(raw).hexdigest(),
             json.dumps(payload, ensure_ascii=False), update["created_at"],
         ),
@@ -574,14 +574,15 @@ def create_package_file(
         """
         INSERT INTO package_events (
             package_id, cycle_id, manager_pn, direction, package_kind, revision,
-            filename, sha256, payload_json, created_at
-        ) VALUES (?, ?, ?, 'versand', 'start', 0, ?, ?, ?, ?)
+            filename, stored_path, sha256, payload_json, created_at
+        ) VALUES (?, ?, ?, 'versand', 'start', 0, ?, ?, ?, ?, ?)
         """,
         (
             package["package_id"],
             cycle_id,
             manager_pn,
             filename,
+            str(path),
             digest,
             json.dumps(payload, ensure_ascii=False),
             datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -698,8 +699,8 @@ def import_returned_package(
         """
         INSERT INTO package_events (
             package_id, cycle_id, manager_pn, direction, package_kind, revision,
-            filename, sha256, payload_json, created_at
-        ) VALUES (?, ?, ?, 'ruecklauf', 'return', ?, ?, ?, ?, ?)
+            filename, stored_path, sha256, payload_json, created_at
+        ) VALUES (?, ?, ?, 'ruecklauf', 'return', ?, ?, ?, ?, ?, ?)
         """,
         (
             package["package_id"],
@@ -707,6 +708,7 @@ def import_returned_package(
             package["manager_pn"],
             int(package["revision"]),
             original_filename,
+            str(path),
             digest,
             json.dumps(payload, ensure_ascii=False),
             timestamp,

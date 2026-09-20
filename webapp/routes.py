@@ -56,6 +56,12 @@ from .services.sap_export import create_sap_upload_file
 from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from .services.mail_intake import mail_inbox_overview, scan_outlook_inbox
 from .services.case_review import case_review_detail, correct_case_data
+from .services.deadlines import extend_deadlines
+from .services.reminders import (
+    confirm_reminder_sent,
+    create_reminder_drafts,
+    reminder_candidates,
+)
 
 
 bp = Blueprint("main", __name__)
@@ -146,7 +152,8 @@ def master_data():
 
 @bp.get("/dialoge")
 def dialogs():
-    data = dashboard_data(get_db())
+    connection = get_db()
+    data = dashboard_data(connection)
     selected_cycle_id = request.args.get("cycle_id", type=int)
     if selected_cycle_id is None and data["cycles"]:
         selected_cycle_id = data["cycles"][0]["id"]
@@ -155,11 +162,99 @@ def dialogs():
         active_nav="dialogs",
         now_year=datetime.now().year,
         selected_cycle_id=selected_cycle_id,
-        events=dialog_event_rows(get_db(), selected_cycle_id),
+        events=dialog_event_rows(connection, selected_cycle_id),
+        reminder_rows=(
+            reminder_candidates(
+                connection,
+                cycle_id=selected_cycle_id,
+                sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+            )
+            if selected_cycle_id else []
+        ),
         event_types=EVENT_TYPE_LABELS,
         scopes=SCOPE_LABELS,
         **data,
     )
+
+
+@bp.post("/cycles/<int:cycle_id>/deadlines")
+def change_deadlines(cycle_id: int):
+    try:
+        result = extend_deadlines(
+            get_db(),
+            cycle_id=cycle_id,
+            scope=request.form.get("scope", ""),
+            document_kind=request.form.get("document_kind", ""),
+            new_due_date=request.form.get("new_due_date", ""),
+            reason=request.form.get("reason", ""),
+            user_id=g.user["id"] if g.user else None,
+            manager_pn=request.form.get("manager_pn", ""),
+            case_id=request.form.get("case_id", ""),
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+    else:
+        audit(
+            "deadlines_extended", "cycle", str(cycle_id),
+            scope=result["scope"], document_kind=result["document_kind"],
+            new_due_date=result["new_due_date"], changed=result["changed"],
+            reason=result["reason"],
+        )
+        flash(f"{result['changed']} Frist(en) wurden nachvollziehbar verlängert.", "success")
+    return redirect(request.referrer or url_for("main.dialogs", cycle_id=cycle_id))
+
+
+@bp.post("/cycles/<int:cycle_id>/reminder-drafts")
+def prepare_reminder_drafts(cycle_id: int):
+    manager_pns = request.form.getlist("manager_pn")
+    if request.form.get("selection") == "all":
+        manager_pns = [
+            item["manager_pn"] for item in reminder_candidates(
+                get_db(), cycle_id=cycle_id,
+                sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+            ) if item["ready"]
+        ]
+    try:
+        result = create_reminder_drafts(
+            get_db(), cycle_id=cycle_id,
+            manager_pns=manager_pns,
+            sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+    else:
+        if result["created"]:
+            audit(
+                "reminder_drafts_created", "cycle", str(cycle_id),
+                created=result["created"],
+            )
+            flash(
+                f"{result['created']} S/MIME-markierte(r) Erinnerungsentwurf/-entwürfe "
+                "wurden erstellt. Bitte in Outlook prüfen und manuell senden.",
+                "success",
+            )
+        if result["failed"]:
+            flash(
+                f"{result['failed']} Entwurf/Entwürfe konnten nicht erstellt werden: "
+                + " ".join(result["errors"]),
+                "error",
+            )
+    return redirect(url_for("main.dialogs", cycle_id=cycle_id))
+
+
+@bp.post("/reminders/<int:reminder_id>/sent-confirmed")
+def mark_reminder_sent(reminder_id: int):
+    try:
+        reminder = confirm_reminder_sent(get_db(), reminder_id=reminder_id)
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(request.referrer or url_for("main.dialogs"))
+    audit(
+        "reminder_sent_confirmed", "reminder", str(reminder_id),
+        cycle_id=reminder["cycle_id"], manager_pn=reminder["manager_pn"],
+    )
+    flash("Der manuelle Versand wurde bestätigt.", "success")
+    return redirect(url_for("main.dialogs", cycle_id=reminder["cycle_id"]))
 
 
 @bp.post("/dialog-events")

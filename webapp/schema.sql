@@ -381,3 +381,49 @@ CREATE TABLE IF NOT EXISTS document_obligations (
 
 CREATE INDEX IF NOT EXISTS idx_document_obligations_due
     ON document_obligations (status, due_date, document_kind);
+
+CREATE TABLE IF NOT EXISTS deadline_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+    obligation_id INTEGER NOT NULL REFERENCES document_obligations(id) ON DELETE CASCADE,
+    manager_pn TEXT NOT NULL,
+    scope TEXT NOT NULL CHECK (scope IN ('cycle', 'manager', 'case')),
+    document_kind TEXT NOT NULL CHECK (document_kind IN ('review', 'outlook')),
+    old_due_date TEXT NOT NULL,
+    new_due_date TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    user_id INTEGER REFERENCES app_users(id),
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_deadline_changes_cycle
+    ON deadline_changes (cycle_id, created_at);
+
+CREATE TABLE IF NOT EXISTS reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+    manager_pn TEXT NOT NULL,
+    sender_email TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN (
+        'prepared', 'draft_created', 'sent_confirmed', 'failed'
+    )),
+    encryption_required INTEGER NOT NULL DEFAULT 1 CHECK (encryption_required IN (0, 1)),
+    encryption_flag_verified INTEGER NOT NULL DEFAULT 0 CHECK (encryption_flag_verified IN (0, 1)),
+    outlook_entry_id TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_manager
+    ON reminders (cycle_id, manager_pn, id);
+
+CREATE TABLE IF NOT EXISTS reminder_obligations (
+    reminder_id INTEGER NOT NULL REFERENCES reminders(id) ON DELETE CASCADE,
+    obligation_id INTEGER NOT NULL REFERENCES document_obligations(id) ON DELETE CASCADE,
+    due_date_snapshot TEXT NOT NULL,
+    PRIMARY KEY (reminder_id, obligation_id)
+);

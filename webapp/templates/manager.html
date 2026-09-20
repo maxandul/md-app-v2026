@@ -16,6 +16,19 @@
     {% else %}<span class="status status--staged">Arbeitsmappe aktuell</span>{% endif %}
   </section>
 
+  <section class="content-section" aria-labelledby="manager-deadline-title">
+    <div class="section-heading"><div><p class="kicker">Friststeuerung</p><h2 id="manager-deadline-title">Frist dieser Führungslinie verlängern</h2></div></div>
+    <form action="{{ url_for('main.change_deadlines', cycle_id=cycle.id) }}" method="post">
+      <input type="hidden" name="scope" value="manager"><input type="hidden" name="manager_pn" value="{{ manager.manager_pn }}">
+      <div class="form-grid form-grid--three">
+        <div><label for="manager-deadline-kind">Dokumentart</label><select id="manager-deadline-kind" name="document_kind" required><option value="review">Rückblick</option><option value="outlook">Ausblick</option></select></div>
+        <div><label for="manager-new-due">Neue Frist</label><input id="manager-new-due" name="new_due_date" type="date" required></div>
+        <div><label for="manager-deadline-reason">Begründung</label><input id="manager-deadline-reason" name="reason" minlength="10" required></div>
+      </div>
+      <button class="button" type="submit">Frist nachvollziehbar verlängern</button>
+    </form>
+  </section>
+
   <section class="content-section" aria-labelledby="cases-title">
     <div class="section-heading"><div><p class="kicker">Mitarbeitende</p><h2 id="cases-title">MD-Fälle</h2></div></div>
     <div class="table-wrap">

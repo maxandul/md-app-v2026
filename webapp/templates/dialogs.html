@@ -64,6 +64,45 @@
     {% else %}<div class="empty-state">Für den gewählten Durchlauf sind keine Dialogereignisse vorhanden.</div>{% endif %}
   </section>
 
+  {% if selected_cycle_id %}
+  <section class="split-layout">
+    <div class="content-card">
+      <p class="kicker">Friststeuerung</p><h2>Frist für ganzen Durchlauf verlängern</h2>
+      <p>Ändert nur offene Pflichten der gewählten Dokumentart. Jede einzelne Änderung wird mit alter Frist und Begründung protokolliert.</p>
+      <form action="{{ url_for('main.change_deadlines', cycle_id=selected_cycle_id) }}" method="post">
+        <input type="hidden" name="scope" value="cycle">
+        <div class="form-grid form-grid--three">
+          <div><label for="cycle-deadline-kind">Dokumentart</label><select id="cycle-deadline-kind" name="document_kind" required><option value="review">Rückblick</option><option value="outlook">Ausblick</option></select></div>
+          <div><label for="cycle-new-due">Neue Frist</label><input id="cycle-new-due" name="new_due_date" type="date" required></div>
+          <div><label for="cycle-deadline-reason">Begründung</label><input id="cycle-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird verlängert?"></div>
+        </div>
+        <button class="button" type="submit">Frist nachvollziehbar verlängern</button>
+      </form>
+    </div>
+    <aside class="info-box"><h2>Bewusste Schutzregel</h2><p>Eine Frist kann hier nur verlängert, nicht verkürzt werden. Bereits vollständige oder erlassene Pflichten bleiben unverändert.</p></aside>
+  </section>
+
+  <section class="content-section" aria-labelledby="reminders-title">
+    <div class="section-heading"><div><p class="kicker">Überfällige Pflichten</p><h2 id="reminders-title">Erinnerungsentwürfe</h2></div><span class="section-count">{{ reminder_rows|length }}</span></div>
+    <div class="info-box"><p>Die Anwendung erstellt nur S/MIME-markierte Outlook-Entwürfe. Absender, Empfänger, Inhalt und Verschlüsselung müssen in Outlook geprüft werden; der Versand erfolgt ausschliesslich manuell.</p></div>
+    {% if reminder_rows %}
+    <form action="{{ url_for('main.prepare_reminder_drafts', cycle_id=selected_cycle_id) }}" method="post">
+      <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Führungskraft</th><th>Überfällig</th><th>Älteste Frist</th><th>Letzte Erinnerung</th></tr></thead><tbody>
+      {% for row in reminder_rows %}<tr>
+        <td><input type="checkbox" name="manager_pn" value="{{ row.manager_pn }}" aria-label="{{ row.manager_name }} auswählen"{% if not row.ready %} disabled{% endif %}></td>
+        <td><strong>{{ row.manager_name }}</strong><br><span class="muted">{{ row.recipient_email or 'E-Mail-Adresse fehlt' }}</span></td>
+        <td>{{ row.overdue_count }}<br><span class="muted">{{ row.document_kinds }}</span></td>
+        <td>{{ row.oldest_due_date }}</td>
+        <td>{% if row.latest_status == 'draft_created' %}<span class="status status--warning">Entwurf offen</span><br><button class="link-button compact-action" type="submit" formaction="{{ url_for('main.mark_reminder_sent', reminder_id=row.latest_reminder_id) }}" formmethod="post">Versand manuell bestätigen</button>{% elif row.latest_status == 'sent_confirmed' %}<span class="status status--staged">Versand bestätigt</span><br><span class="muted">{{ row.latest_updated_at }}</span>{% elif row.latest_status == 'failed' %}<span class="status status--danger">Fehler</span><br><span class="muted">{{ row.error_message }}</span>{% else %}<span class="muted">Noch keine</span>{% endif %}</td>
+      </tr>{% endfor %}
+      </tbody></table></div>
+      <button class="button button--primary" type="submit" name="selection" value="selected">Ausgewählte Outlook-Entwürfe erstellen</button>
+      <button class="button" type="submit" name="selection" value="all">Alle verfügbaren Outlook-Entwürfe erstellen</button>
+    </form>
+    {% else %}<div class="empty-state">Für diesen Durchlauf bestehen aktuell keine überfälligen Dokumentpflichten.</div>{% endif %}
+  </section>
+  {% endif %}
+
   <details class="legacy-box" open>
     <summary>Unterjähriges oder nicht aus SAP ableitbares Ereignis erfassen</summary>
     <p>Die Personalnummer und Ans. müssen zu einer importierten Anstellung gehören. Die Begründung macht die manuelle Zuordnung nachvollziehbar.</p>

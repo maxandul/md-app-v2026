@@ -92,8 +92,8 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 - Die Startseite zeigt den gewählten Durchlauf, den SAP-Datenstand, heute bereits
   belastbar berechenbare Kennzahlen sowie direkte Aufgaben für SAP-Konflikte,
   START-Dateien, Unterschriftenprüfungen und fehlende Scans.
-- Fristen, Überfälligkeit, Erinnerungen und Mail-/Exportfehler werden ergänzt,
-  sobald das erweiterte Dialog-, Mail- und Exportmodell vorhanden ist.
+- Fristen, Überfälligkeit und Erinnerungsstatus werden aus den getrennten
+  Dokumentpflichten berechnet und in der Dialogsteuerung angezeigt.
 - Die Übergabe wird fachlich als Bereitstellung für die Personaldossier-Ablage
   bezeichnet. Der nachfolgende RPA-Prozess liegt ausserhalb des Scopes.
 
@@ -119,22 +119,17 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 - Führungskräfte, die selbst wegen BsGrd 0 nicht aktiv sind, erhalten keine Arbeitsmappe
 - manuelle, einem Durchlauf zugeordnete Dialogereignisse werden in Arbeitsmappen aufgenommen
 
-### Danach
+### Nächste Schritte
 
-1. Outlook-Versand mit erzwungener S/MIME-Prüfung integrieren
-2. E-Mail-Rückläufe und sämtliche Anhänge automatisiert einlesen
-3. Dokumentprüfung, Korrekturen und Versionen vervollständigen
-4. Erinnerungen und Fristverlängerungen umsetzen
-5. SAP-Exportbatches gegen Doppelverarbeitung absichern
-6. drei Muss-Auswertungen und tabellarische Exporte umsetzen
-7. Audit, Backup/Restore und Betriebskonzept vervollständigen
+1. SAP-Exportbatches gegen Doppelverarbeitung absichern
+2. drei Muss-Auswertungen und tabellarische Exporte umsetzen
+3. Audit, Backup/Restore und Betriebskonzept vervollständigen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Als Nächstes den Outlook-Versand vorbereiten. HR soll die erzeugten START- und
-Update-Dateien einzeln oder gesammelt über `hr@vd.zh.ch` versenden können. Vor jedem
-Versand muss die tatsächliche S/MIME-Verschlüsselung geprüft werden; ein
-unverschlüsselter Versand bleibt blockiert.
+Als Nächstes die SAP-Exportbatches gegen Doppelverarbeitung absichern. Die
+vorbereiteten Outlook-Funktionen werden parallel im Büro mit dem produktiven
+HR-Postfach, den Zertifikaten und der konkreten klassischen Outlook-Version geprüft.
 
 ## Prüfen und starten
 

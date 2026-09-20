@@ -20,6 +20,10 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
 - fehlerhaft übernommene Angaben vor der Freigabe begründet korrigieren
 - korrigierte PDF-Versionen kontrolliert ersetzen, ohne die Vorversion zu löschen
+- Fristen für den Durchlauf, eine Führungslinie oder einen Einzelfall begründet
+  verlängern und jede betroffene Pflicht protokollieren
+- überfällige Pflichten als Vorschau bündeln und ausgewählte oder alle
+  Erinnerungen als S/MIME-markierte Outlook-Entwürfe vorbereiten
 - bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
   unterzeichneten Scan nachverfolgen
 - nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen

@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 import zipfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -35,6 +35,12 @@ from webapp.services.documents import (
 from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from webapp.services.mail_intake import mail_inbox_overview, process_inbound_messages
 from webapp.services.case_review import case_review_detail, correct_case_data
+from webapp.services.deadlines import extend_deadlines
+from webapp.services.reminders import (
+    confirm_reminder_sent,
+    create_reminder_drafts,
+    reminder_candidates,
+)
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -627,6 +633,129 @@ class WebAppIntegrationTest(unittest.TestCase):
                 [(row["document_kind"], row["due_date"]) for row in obligations],
                 [("outlook", "2026-02-28"), ("review", "2026-01-31")],
             )
+
+    def test_cycle_deadline_extension_updates_open_obligations_and_audit(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            result = extend_deadlines(
+                connection,
+                cycle_id=cycle_id,
+                scope="cycle",
+                document_kind="review",
+                new_due_date="2026-03-31",
+                reason="Zusätzliche Bearbeitungszeit gemäss HR-Entscheid",
+            )
+            self.assertGreater(result["changed"], 0)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT review_due_date FROM cycles WHERE id = ?", (cycle_id,)
+                ).fetchone()["review_due_date"],
+                "2026-03-31",
+            )
+            changes = connection.execute(
+                "SELECT old_due_date, new_due_date, scope FROM deadline_changes WHERE cycle_id = ?",
+                (cycle_id,),
+            ).fetchall()
+            self.assertEqual(len(changes), result["changed"])
+            self.assertTrue(all(row["old_due_date"] == "2026-01-31" for row in changes))
+            self.assertTrue(all(row["new_due_date"] == "2026-03-31" for row in changes))
+            with self.assertRaisesRegex(ValueError, "nach allen bisherigen"):
+                extend_deadlines(
+                    connection,
+                    cycle_id=cycle_id,
+                    scope="cycle",
+                    document_kind="review",
+                    new_due_date="2026-03-01",
+                    reason="Diese Frist wäre keine echte Verlängerung",
+                )
+
+    def test_manager_and_case_deadline_extensions_are_scoped(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            manager_result = extend_deadlines(
+                connection,
+                cycle_id=cycle_id,
+                scope="manager",
+                manager_pn="111116",
+                document_kind="outlook",
+                new_due_date="2026-04-15",
+                reason="Individuelle Verlängerung der Führungslinie",
+            )
+            other_due_dates = connection.execute(
+                """
+                SELECT DISTINCT o.due_date FROM document_obligations o
+                JOIN dialog_events de ON de.id = o.dialog_event_id
+                JOIN manager_assignments ma ON ma.id = de.manager_assignment_id
+                WHERE de.cycle_id = ? AND o.document_kind = 'outlook'
+                  AND ma.manager_person_number <> '111116'
+                """,
+                (cycle_id,),
+            ).fetchall()
+            self.assertGreater(manager_result["changed"], 0)
+            self.assertEqual({row["due_date"] for row in other_due_dates}, {"2026-02-28"})
+
+            case_result = extend_deadlines(
+                connection,
+                cycle_id=cycle_id,
+                scope="case",
+                case_id="2025-111116-111111",
+                document_kind="review",
+                new_due_date="2026-05-01",
+                reason="Einzelfallverlängerung nach dokumentierter Rückfrage",
+            )
+            self.assertEqual(case_result["changed"], 1)
+
+    def test_reminder_draft_is_encrypted_logged_and_not_duplicated(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            candidates = reminder_candidates(
+                connection, cycle_id=cycle_id, today=date(2026, 3, 1)
+            )
+            candidate = next(row for row in candidates if row["recipient_email"])
+            adapter = FakeOutlookDraftAdapter()
+            result = create_reminder_drafts(
+                connection,
+                cycle_id=cycle_id,
+                manager_pns=[candidate["manager_pn"]],
+                adapter=adapter,
+                today=date(2026, 3, 1),
+                created_at=datetime(2026, 3, 1, 9, 0, tzinfo=timezone.utc),
+            )
+            self.assertEqual(result["created"], 1)
+            self.assertEqual(adapter.calls[0]["attachments"], [])
+            reminder = connection.execute(
+                "SELECT * FROM reminders WHERE cycle_id = ? AND manager_pn = ?",
+                (cycle_id, candidate["manager_pn"]),
+            ).fetchone()
+            self.assertEqual(reminder["status"], "draft_created")
+            self.assertEqual(reminder["encryption_flag_verified"], 1)
+            snapshots = connection.execute(
+                "SELECT COUNT(*) AS count FROM reminder_obligations WHERE reminder_id = ?",
+                (reminder["id"],),
+            ).fetchone()["count"]
+            self.assertEqual(snapshots, candidate["overdue_count"])
+            with self.assertRaisesRegex(ValueError, "offener Entwurf"):
+                create_reminder_drafts(
+                    connection,
+                    cycle_id=cycle_id,
+                    manager_pns=[candidate["manager_pn"]],
+                    adapter=adapter,
+                    today=date(2026, 3, 1),
+                )
+            confirmed = confirm_reminder_sent(connection, reminder_id=reminder["id"])
+            self.assertEqual(confirmed["status"], "sent_confirmed")
+
+    def test_dialog_page_offers_deadlines_and_reminder_preview(self) -> None:
+        cycle_id = self._prepare_cycle()
+        response = self.client.get(f"/dialoge?cycle_id={cycle_id}")
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn("Frist für ganzen Durchlauf verlängern", page)
+        self.assertIn("Erinnerungsentwürfe", page)
+        self.assertIn("S/MIME-markierte Outlook-Entwürfe", page)
 
     def test_manual_dialog_event_can_be_added(self) -> None:
         cycle_id = self._prepare_cycle()

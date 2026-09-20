@@ -523,11 +523,13 @@
 
     .completion-panel.single { grid-template-columns: 1fr; }
     .document-progress { min-width: 0; padding: 10px 12px; background: #f7f9fb; }
-    .document-progress-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .document-progress-head { display:grid; grid-template-columns:minmax(150px,1fr) minmax(190px,240px) auto; align-items:center; gap:12px; }
+    .document-progress-head.summary-only { grid-template-columns:minmax(150px,1fr) auto; }
     .document-progress-title { font-weight: 700; }
+    .completion-score { min-width:72px; text-align:right; }
     .completion-number { color: var(--blue-dark); font-size: 22px; font-weight: 700; line-height: 1; }
-    .completion-label { margin-top: 2px; color: var(--muted); font-size: 12px; }
-    .document-progress .field { margin-top: 9px; }
+    .completion-label { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .document-progress .field { margin: 0; }
     .document-progress .field label { margin-bottom: 3px; }
     .document-progress .field select { padding: 7px 9px; }
     .document-progress details { margin-top: 7px; font-size: 12px; }
@@ -582,6 +584,8 @@
       .scope-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .form-grid, .form-grid.three, .completion-panel { grid-template-columns: 1fr; }
       .tracking-grid { grid-template-columns: 1fr; }
+      .document-progress-head { grid-template-columns:1fr; }
+      .completion-score { text-align:left; }
     }
 
     @media print {
@@ -1331,7 +1335,7 @@
         return { step: 'review', anchor: 'review-performance' };
       }
 
-      function renderDocumentProgress(employee, section) {
+      function renderDocumentProgress(employee, section, detailed) {
         const completion = getDocumentCompletion(employee, section);
         const options = ['In Vorbereitung','Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt','In Korrektur'];
         const status = employee.document_tracking[section].status || '';
@@ -1340,14 +1344,18 @@
           return `<li><a href="#${h(target.anchor)}" data-action="go-requirement" data-step="${h(target.step)}" data-anchor="${h(target.anchor)}">${h(label)}</a></li>`;
         }).join('');
         return `<div class="document-progress">
-          <div class="document-progress-head"><div><div class="document-progress-title">${h(progressDocumentLabel(employee, section))}</div><div class="completion-label">Vollständigkeit</div></div><div class="completion-number">${completion.percent}%</div></div>
-          <div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
-          ${completion.complete ? '<div class="complete-message" style="margin-top:7px;font-size:12px">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}
+          <div class="document-progress-head ${detailed ? '' : 'summary-only'}">
+            <div class="document-progress-title">${h(progressDocumentLabel(employee, section))}</div>
+            ${detailed ? `<div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>` : ''}
+            <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div>
+          </div>
+          ${detailed ? (completion.complete ? '<div class="complete-message" style="margin-top:7px;font-size:12px">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`) : ''}
         </div>`;
       }
 
       function progressPanelHtml(employee, selectedStep) {
         let sections = [];
+        const detailed = selectedStep === 'review' || selectedStep === 'outlook';
         if (selectedStep === 'review' && hasReview(employee.scope)) sections = ['review'];
         else if (selectedStep === 'outlook' && hasOutlook(employee.scope)) sections = ['outlook'];
         else {
@@ -1356,11 +1364,9 @@
         }
         if (!sections.length) {
           const completion = getCompletion(employee);
-          const target = employee.scope === 'none' ? { step: 'finish', anchor: 'no-md-section' } : { step: 'basics', anchor: 'scope-section' };
-          const missing = completion.missing.map(label => `<li><a href="#${target.anchor}" data-action="go-requirement" data-step="${target.step}" data-anchor="${target.anchor}">${h(label)}</a></li>`).join('');
-          return `<section class="completion-panel single"><div class="document-progress"><div class="document-progress-head"><div><div class="document-progress-title">Fall</div><div class="completion-label">Vollständigkeit</div></div><div class="completion-number">${completion.percent}%</div></div>${completion.complete ? '<div class="complete-message" style="margin-top:7px;font-size:12px">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}</div></section>`;
+          return `<section class="completion-panel single"><div class="document-progress"><div class="document-progress-head summary-only"><div class="document-progress-title">Fall</div><div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div></div></div></section>`;
         }
-        return `<section class="completion-panel ${sections.length === 1 ? 'single' : ''}">${sections.map(section => renderDocumentProgress(employee, section)).join('')}</section>`;
+        return `<section class="completion-panel ${sections.length === 1 ? 'single' : ''}">${sections.map(section => renderDocumentProgress(employee, section, detailed)).join('')}</section>`;
       }
 
       function renderFinish(employee) {

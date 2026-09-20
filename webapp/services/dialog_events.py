@@ -149,7 +149,7 @@ def sync_cycle_events(connection: sqlite3.Connection, cycle_id: int) -> int:
                e.entry_date, e.exit_date
         FROM dialog_cases dc
         JOIN employees e ON e.pn = dc.employee_pn
-        WHERE dc.cycle_id = ?
+        WHERE dc.cycle_id = ? AND dc.active = 1
         ORDER BY dc.id
         """,
         (cycle_id,),
@@ -206,6 +206,20 @@ def sync_cycle_events(connection: sqlite3.Connection, cycle_id: int) -> int:
         event = connection.execute(
             "SELECT id FROM dialog_events WHERE event_id = ?", (event_id,)
         ).fetchone()
+        if not cursor.rowcount:
+            connection.execute(
+                """
+                UPDATE dialog_events
+                SET manager_assignment_id = ?, required_scope = ?, period_start = ?,
+                    period_end = ?, status = ?, source_reason = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    manager_assignment_id, row["suggested_scope"], period_start,
+                    period_end, status, row["suggestion_reason"], timestamp,
+                    event["id"],
+                ),
+            )
         if cursor.rowcount:
             created += 1
         _ensure_obligations(
@@ -359,6 +373,29 @@ def create_manual_event(
         created_at=timestamp,
     )
     event_id = f"MAN-{review_year}-{employee_pn.strip()}-{uuid.uuid4().hex[:8]}"
+    legacy_case_id = None
+    if cycle_id is not None:
+        legacy_case_id = event_id
+        try:
+            connection.execute(
+                """
+                INSERT INTO dialog_cases (
+                    case_id, cycle_id, employee_pn, employment_assignment, manager_pn,
+                    suggested_scope, suggestion_reason, status, period_start,
+                    period_end, data_json, active, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'offen', ?, ?, '', 1, ?)
+                """,
+                (
+                    legacy_case_id, cycle_id, employee_pn.strip(),
+                    assignment_number.strip(), manager_pn.strip(), required_scope,
+                    reason.strip(), period_start, period_end, timestamp,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(
+                "Für diese Person, Anstellung und Führungskraft besteht im Durchlauf "
+                "bereits ein Arbeitsmappenfall."
+            ) from exc
     if required_scope in {"full", "review_only"}:
         connection.execute(
             """
@@ -370,13 +407,13 @@ def create_manual_event(
     cursor = connection.execute(
         """
         INSERT INTO dialog_events (
-            event_id, cycle_id, employment_id, manager_assignment_id, review_year,
+            event_id, cycle_id, legacy_case_id, employment_id, manager_assignment_id, review_year,
             event_type, source, source_reason, required_scope, period_start,
             period_end, status, sap_leading, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, 'open', 0, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, 'open', 0, ?, ?)
         """,
         (
-            event_id, cycle_id, employment_id, manager_assignment_id, review_year,
+            event_id, cycle_id, legacy_case_id, employment_id, manager_assignment_id, review_year,
             event_type, reason.strip(), required_scope, period_start, period_end,
             timestamp, timestamp,
         ),

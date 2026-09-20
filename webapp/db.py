@@ -71,6 +71,10 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
             connection.execute(
                 f"ALTER TABLE dialog_cases ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
             )
+    if "active" not in case_columns:
+        connection.execute(
+            "ALTER TABLE dialog_cases ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
+        )
     cycle_columns = {
         row["name"] for row in connection.execute("PRAGMA table_info(cycles)").fetchall()
     }
@@ -90,6 +94,16 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
     if "document_obligation_id" not in document_columns:
         connection.execute(
             "ALTER TABLE official_documents ADD COLUMN document_obligation_id INTEGER REFERENCES document_obligations(id)"
+        )
+    package_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(package_events)").fetchall()
+    }
+    if "package_kind" not in package_columns:
+        connection.execute(
+            "ALTER TABLE package_events ADD COLUMN package_kind TEXT NOT NULL DEFAULT 'start'"
+        )
+        connection.execute(
+            "UPDATE package_events SET package_kind = 'return' WHERE direction = 'ruecklauf'"
         )
     connection.commit()
     from .services.dialog_events import backfill_dialog_model

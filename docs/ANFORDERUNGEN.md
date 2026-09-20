@@ -127,6 +127,11 @@ flowchart TD
 | MAP-013 | MUSS | Beim Einspielen eines Updates werden Änderungen, neue Personen, archivierte Personen und Konflikte vor der Übernahme zusammengefasst. |
 | MAP-014 | SOLL | Die Arbeitsmappe kann bei einem Konflikt zwischen lokalen Eingaben und einem HR-Update die betroffenen Felder anzeigen und eine sichere Entscheidung ermöglichen. |
 
+Umsetzungsstand: MAP-001 bis MAP-013 sind für reguläre und eindeutig verknüpfbare
+manuelle Fälle umgesetzt. Bei lokal bereits bearbeiteten Beurteilungszeiträumen zeigt
+die Update-Vorschau den Konflikt an und bewahrt den lokalen Wert. Die weitergehende
+feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
+
 ## 8. Versand durch HR
 
 | ID | Prio | Anforderung und Abnahmekriterium |

@@ -697,6 +697,8 @@
         </div>
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
+          <input id="update-file" type="file" accept=".json,application/json" hidden>
+          <button id="update-button" class="button" type="button">Update einlesen</button>
           <button id="save-button" class="button primary" type="button" disabled>Arbeitsmappe speichern</button>
         </div>
       </header>
@@ -718,7 +720,7 @@
 
       const dataNode = document.getElementById('md-data');
       let state = JSON.parse(dataNode.textContent);
-      state.employees.forEach(employee => {
+      function normalizeEmployee(employee) {
         employee.review = employee.review || {};
         employee.outlook = employee.outlook || {};
         employee.dialog_type = employee.dialog_type || 'annual';
@@ -741,7 +743,9 @@
           employee.document_tracking[section] = employee.document_tracking[section] || { status: '', note: '' };
           if (employee.document_tracking[section].status === 'preparation') employee.document_tracking[section].status = '';
         });
-      });
+        return employee;
+      }
+      state.employees.forEach(normalizeEmployee);
       let selectedCaseId = state.employees[0] ? state.employees[0].case_id : '';
       let dirty = false;
       let previousTitle = document.title;
@@ -1925,6 +1929,108 @@
         showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen. Für die weitere Bearbeitung oder den Rückversand bitte diese neue Datei verwenden.');
       }
 
+      function mergeGoalSources(existingGoals, incomingGoals) {
+        const existingById = new Map((existingGoals || []).map(goal => [String(goal.id || ''), goal]));
+        return (incomingGoals || []).map(goal => {
+          const existing = existingById.get(String(goal.id || ''));
+          if (!existing) return goal;
+          return { ...goal, achievement: existing.achievement || '', review: existing.review || '' };
+        });
+      }
+
+      function applyUpdate(updatePayload) {
+        if (!updatePayload || updatePayload.schema_version !== '1.0-update' || !updatePayload.update || !Array.isArray(updatePayload.employees)) {
+          throw new Error('Die gewählte Datei ist keine gültige MD-Update-Datei.');
+        }
+        const update = updatePayload.update;
+        if (String(update.manager_pn || '') !== String(state.package.manager_pn || '')) {
+          throw new Error('Die Update-Datei gehört zu einer anderen vorgesetzten Person.');
+        }
+        if (Number(update.rb_year) !== Number(state.package.rb_year) || Number(update.ab_year) !== Number(state.package.ab_year)) {
+          throw new Error('Die Update-Datei gehört zu einem anderen Durchlauf.');
+        }
+        const alreadyApplied = Array.isArray(state.package.applied_updates) ? state.package.applied_updates : [];
+        if (alreadyApplied.includes(update.update_id)) {
+          throw new Error('Dieses Update wurde bereits eingelesen.');
+        }
+
+        const incomingById = new Map(updatePayload.employees.map(employee => [String(employee.case_id || ''), employee]));
+        const currentById = new Map(state.employees.map(employee => [String(employee.case_id || ''), employee]));
+        const added = updatePayload.employees.filter(employee => !currentById.has(String(employee.case_id || ''))).length;
+        const archived = state.employees.filter(employee => !employee.meta.archived && !incomingById.has(String(employee.case_id || ''))).length;
+        let changed = 0;
+        let preservedPeriods = 0;
+        updatePayload.employees.forEach(incoming => {
+          const existing = currentById.get(String(incoming.case_id || ''));
+          if (!existing) return;
+          const metadataChanged = JSON.stringify(existing.employee || {}) !== JSON.stringify(incoming.employee || {}) ||
+            JSON.stringify(existing.suggestion || {}) !== JSON.stringify(incoming.suggestion || {}) ||
+            existing.dialog_type !== incoming.dialog_type;
+          if (metadataChanged) changed += 1;
+          const started = Boolean(existing.scope || existing.meta.updated_at);
+          if (started && (existing.period_start !== incoming.period_start || existing.period_end !== incoming.period_end)) preservedPeriods += 1;
+        });
+        const summary = [
+          `${added} neue Fälle`,
+          `${changed} aktualisierte Stammdatensätze`,
+          `${archived} neu archivierte Fälle`,
+          preservedPeriods ? `${preservedPeriods} lokal bearbeitete Zeiträume bleiben unverändert` : ''
+        ].filter(Boolean).join('\n');
+        if (!window.confirm(`Folgende Änderungen werden übernommen:\n\n${summary}\n\nVorhandene Gesprächsinhalte und lokale Eingaben bleiben erhalten.`)) return;
+
+        state.employees.forEach(existing => {
+          if (!incomingById.has(String(existing.case_id || ''))) existing.meta.archived = true;
+        });
+        updatePayload.employees.forEach(incomingRaw => {
+          const incoming = normalizeEmployee(incomingRaw);
+          const existing = currentById.get(String(incoming.case_id || ''));
+          if (!existing) {
+            incoming.meta.archived = false;
+            state.employees.push(incoming);
+            return;
+          }
+          const started = Boolean(existing.scope || existing.meta.updated_at);
+          existing.employee = incoming.employee;
+          existing.dialog_type = incoming.dialog_type;
+          existing.suggestion = incoming.suggestion;
+          existing.previous_goals = mergeGoalSources(existing.previous_goals, incoming.previous_goals);
+          existing.previous_development_goals = mergeGoalSources(existing.previous_development_goals, incoming.previous_development_goals);
+          existing.checkpoint_notes = incoming.checkpoint_notes;
+          if (!started) {
+            existing.period_start = incoming.period_start;
+            existing.period_end = incoming.period_end;
+          }
+          existing.meta.archived = false;
+        });
+        state.package.applied_updates = [...alreadyApplied, update.update_id];
+        state.package.last_update_at = update.created_at || nowIso();
+        state.package.manager_name = update.manager_name || state.package.manager_name;
+        state.package.manager_first_name = update.manager_first_name || state.package.manager_first_name;
+        state.package.manager_last_name = update.manager_last_name || state.package.manager_last_name;
+        if (!selectedEmployee() && state.employees.length) selectedCaseId = state.employees[0].case_id;
+        markDirty(selectedEmployee());
+        renderHeader();
+        renderSidebar();
+        renderEditor();
+        showToast('Update übernommen. Bitte die Arbeitsmappe jetzt als neue HTML-Datei speichern.');
+      }
+
+      function readUpdateFile(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            applyUpdate(JSON.parse(String(reader.result || '')));
+          } catch (error) {
+            window.alert(error && error.message ? error.message : 'Die Update-Datei konnte nicht gelesen werden.');
+          }
+        };
+        reader.onerror = () => window.alert('Die Update-Datei konnte nicht gelesen werden.');
+        reader.readAsText(file, 'utf-8');
+      }
+
       function showToast(message) {
         const toast = document.getElementById('toast');
         toast.textContent = message;
@@ -1957,6 +2063,8 @@
       completionPanel.addEventListener('change', handleEdit);
       completionPanel.addEventListener('click', handleEditorClick);
       document.getElementById('save-button').addEventListener('click', savePackage);
+      document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
+      document.getElementById('update-file').addEventListener('change', readUpdateFile);
       window.addEventListener('afterprint', cleanupPrint);
       window.addEventListener('beforeunload', event => {
         if (!dirty) return;

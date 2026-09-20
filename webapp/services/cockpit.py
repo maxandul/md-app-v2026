@@ -85,7 +85,7 @@ def cockpit_overview(
             """
             SELECT COUNT(*) AS count
             FROM dialog_cases
-            WHERE cycle_id = ? AND status IN ('offen', 'in_bearbeitung')
+            WHERE cycle_id = ? AND active = 1 AND status IN ('offen', 'in_bearbeitung')
             """,
             (cycle_id,),
         ).fetchone()["count"]
@@ -146,7 +146,7 @@ def cockpit_overview(
                    COUNT(*) AS case_count
             FROM dialog_cases dc
             LEFT JOIN employees m ON m.pn = dc.manager_pn
-            WHERE dc.cycle_id = ?
+            WHERE dc.cycle_id = ? AND dc.active = 1
               AND NOT EXISTS (
                   SELECT 1 FROM package_events pe
                   WHERE pe.cycle_id = dc.cycle_id

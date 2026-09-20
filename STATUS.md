@@ -107,23 +107,34 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 - unveränderter SAP-Standardexport mit doppelten Spaltenüberschriften wird eingelesen
 - Personen und Führungslinien mit Beschäftigungsgrad 0 werden ausgeschlossen
 
+### 3. START- und Update-Arbeitsmappen – umgesetzt
+
+- Einzel- und Sammelerzeugung nach Führungskraft, organisatorischem Teilbaum oder Gesamtdurchlauf
+- automatische Unterscheidung zwischen fehlender START-Datei, erforderlichem Update und aktuellem Stand
+- ZIP-Pakete mit getrennten Verzeichnissen für START- und Update-Dateien
+- Update-Dateien mit Änderungsvorschau direkt in der Offline-Arbeitsmappe einlesbar
+- neue Fälle werden ergänzt, weggefallene Fälle archiviert und vorhandene Gesprächsinhalte bewahrt
+- offene blockierende SAP-Konflikte und fehlende Anstellungsnummern verhindern die Erzeugung
+- neue SAP-Importe aktualisieren offene Durchläufe und lösen bei Änderungen Updates aus
+- Führungskräfte, die selbst wegen BsGrd 0 nicht aktiv sind, erhalten keine Arbeitsmappe
+- manuelle, einem Durchlauf zugeordnete Dialogereignisse werden in Arbeitsmappen aufgenommen
+
 ### Danach
 
-1. START-/Update-Dateien einzeln und gesammelt erzeugen
-2. Outlook-Versand mit erzwungener S/MIME-Prüfung integrieren
-3. E-Mail-Rückläufe und sämtliche Anhänge automatisiert einlesen
-4. Dokumentprüfung, Korrekturen und Versionen vervollständigen
-5. Erinnerungen und Fristverlängerungen umsetzen
-6. SAP-Exportbatches gegen Doppelverarbeitung absichern
-7. drei Muss-Auswertungen und tabellarische Exporte umsetzen
-8. Audit, Backup/Restore und Betriebskonzept vervollständigen
+1. Outlook-Versand mit erzwungener S/MIME-Prüfung integrieren
+2. E-Mail-Rückläufe und sämtliche Anhänge automatisiert einlesen
+3. Dokumentprüfung, Korrekturen und Versionen vervollständigen
+4. Erinnerungen und Fristverlängerungen umsetzen
+5. SAP-Exportbatches gegen Doppelverarbeitung absichern
+6. drei Muss-Auswertungen und tabellarische Exporte umsetzen
+7. Audit, Backup/Restore und Betriebskonzept vervollständigen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Als Nächstes die Erzeugung von START- und Update-Arbeitsmappen auf das neue
-Dialogmodell umstellen. HR soll dabei einzelne Führungskräfte, Organisationseinheiten
-oder den gesamten Durchlauf auswählen und vor der Erzeugung fehlende beziehungsweise
-widersprüchliche Zuordnungen sehen können.
+Als Nächstes den Outlook-Versand vorbereiten. HR soll die erzeugten START- und
+Update-Dateien einzeln oder gesammelt über `hr@vd.zh.ch` versenden können. Vor jedem
+Versand muss die tatsächliche S/MIME-Verschlüsselung geprüft werden; ein
+unverschlüsselter Versand bleibt blockiert.
 
 ## Prüfen und starten
 
@@ -133,7 +144,8 @@ python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
 python run_web.py
 ```
 
-Beim aktuellen Stand waren alle 33 automatisierten Tests erfolgreich.
+Beim aktuellen Stand waren alle 36 automatisierten Tests erfolgreich; zusätzlich
+wurde die JavaScript-Syntax der Offline-Arbeitsmappe geprüft.
 
 Weitere fachliche Details und Abnahmekriterien stehen in
 [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md).

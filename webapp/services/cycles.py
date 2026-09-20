@@ -68,6 +68,7 @@ def create_cycle(
                e.exit_date, e.probation_end
         FROM reporting_lines rl
         JOIN employees e ON e.pn = rl.employee_pn
+        JOIN employees manager ON manager.pn = rl.manager_pn AND manager.active = 1
         WHERE rl.sap_import_id = ?
         ORDER BY rl.manager_pn, e.last_name, e.first_name, e.pn
         """,
@@ -101,6 +102,157 @@ def create_cycle(
     return cycle_id
 
 
+def synchronize_cycle_with_import(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    sap_import_id: int,
+    updated_at: datetime | None = None,
+) -> dict[str, int]:
+    """Gleicht einen offenen Durchlauf mit einem neueren vollständigen SAP-Import ab."""
+    cycle = connection.execute(
+        "SELECT * FROM cycles WHERE id = ?", (cycle_id,)
+    ).fetchone()
+    if not cycle:
+        raise LookupError("Jahresprozess nicht gefunden.")
+    if cycle["status"] == "abgeschlossen":
+        return {"added": 0, "reactivated": 0, "deactivated": 0}
+    imported = connection.execute(
+        "SELECT id FROM sap_imports WHERE id = ?", (sap_import_id,)
+    ).fetchone()
+    if not imported:
+        raise ValueError("Der SAP-Import existiert nicht.")
+    timestamp = (updated_at or datetime.now().astimezone()).isoformat(timespec="seconds")
+    existing_rows = connection.execute(
+        "SELECT * FROM dialog_cases WHERE cycle_id = ?", (cycle_id,)
+    ).fetchall()
+    existing = {
+        (row["employee_pn"], row["employment_assignment"], row["manager_pn"]): row
+        for row in existing_rows
+    }
+    lines = connection.execute(
+        """
+        SELECT rl.employee_pn, rl.manager_pn,
+               COALESCE(NULLIF(rl.employment_assignment, ''), NULLIF(e.employment_assignment, ''), '1') AS employment_assignment,
+               e.exit_date, e.probation_end
+        FROM reporting_lines rl
+        JOIN employees e ON e.pn = rl.employee_pn
+        JOIN employees manager ON manager.pn = rl.manager_pn AND manager.active = 1
+        WHERE rl.sap_import_id = ? AND e.active = 1
+        ORDER BY rl.manager_pn, e.last_name, e.first_name, e.pn
+        """,
+        (sap_import_id,),
+    ).fetchall()
+    line_counts: dict[tuple[str, str], int] = {}
+    for line in lines:
+        key = (line["employee_pn"], line["manager_pn"])
+        line_counts[key] = line_counts.get(key, 0) + 1
+
+    connection.execute(
+        """
+        UPDATE dialog_cases SET active = 0, updated_at = ?
+        WHERE cycle_id = ? AND NOT EXISTS (
+            SELECT 1 FROM dialog_events de
+            WHERE de.legacy_case_id = dialog_cases.case_id AND de.source = 'manual'
+        )
+        """,
+        (timestamp, cycle_id),
+    )
+    added = 0
+    reactivated = 0
+    for line in lines:
+        key = (line["employee_pn"], line["employment_assignment"], line["manager_pn"])
+        scope, reason = _suggest_scope(line["exit_date"], line["probation_end"], cycle["review_year"])
+        if key in existing:
+            if not existing[key]["active"]:
+                reactivated += 1
+            connection.execute(
+                """
+                UPDATE dialog_cases
+                SET active = 1, suggested_scope = ?, suggestion_reason = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (scope, reason, timestamp, existing[key]["id"]),
+            )
+            continue
+        case_id = f"{cycle['review_year']}-{line['manager_pn']}-{line['employee_pn']}"
+        if line_counts[(line["employee_pn"], line["manager_pn"])] > 1:
+            case_id += f"-{line['employment_assignment']}"
+        base_case_id = case_id
+        suffix = 2
+        while connection.execute(
+            "SELECT 1 FROM dialog_cases WHERE case_id = ?", (case_id,)
+        ).fetchone():
+            case_id = f"{base_case_id}-{suffix}"
+            suffix += 1
+        connection.execute(
+            """
+            INSERT INTO dialog_cases (
+                case_id, cycle_id, employee_pn, employment_assignment, manager_pn,
+                suggested_scope, suggestion_reason, status, data_json, active, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'offen', '', 1, ?)
+            """,
+            (
+                case_id, cycle_id, line["employee_pn"], line["employment_assignment"],
+                line["manager_pn"], scope, reason, timestamp,
+            ),
+        )
+        added += 1
+    active_keys = {
+        (line["employee_pn"], line["employment_assignment"], line["manager_pn"])
+        for line in lines
+    }
+    manual_case_ids = {
+        row["legacy_case_id"]
+        for row in connection.execute(
+            """
+            SELECT legacy_case_id FROM dialog_events
+            WHERE cycle_id = ? AND source = 'manual' AND legacy_case_id IS NOT NULL
+            """,
+            (cycle_id,),
+        ).fetchall()
+    }
+    deactivated = sum(
+        1 for key, row in existing.items()
+        if row["active"] and key not in active_keys and row["case_id"] not in manual_case_ids
+    )
+    connection.execute(
+        "UPDATE cycles SET sap_import_id = ? WHERE id = ?", (sap_import_id, cycle_id)
+    )
+    connection.execute(
+        """
+        UPDATE dialog_events
+        SET status = 'cancelled', updated_at = ?
+        WHERE cycle_id = ? AND legacy_case_id IN (
+            SELECT case_id FROM dialog_cases WHERE cycle_id = ? AND active = 0
+        )
+        """,
+        (timestamp, cycle_id, cycle_id),
+    )
+    connection.commit()
+    from .dialog_events import sync_cycle_events
+
+    sync_cycle_events(connection, cycle_id)
+    return {"added": added, "reactivated": reactivated, "deactivated": deactivated}
+
+
+def synchronize_open_cycles(
+    connection: sqlite3.Connection, *, sap_import_id: int
+) -> dict[str, int]:
+    totals = {"cycles": 0, "added": 0, "reactivated": 0, "deactivated": 0}
+    cycles = connection.execute(
+        "SELECT id FROM cycles WHERE status <> 'abgeschlossen' ORDER BY id"
+    ).fetchall()
+    for cycle in cycles:
+        result = synchronize_cycle_with_import(
+            connection, cycle_id=cycle["id"], sap_import_id=sap_import_id
+        )
+        totals["cycles"] += 1
+        for key in ("added", "reactivated", "deactivated"):
+            totals[key] += result[key]
+    return totals
+
+
 def dashboard_data(connection: sqlite3.Connection) -> dict:
     imports = connection.execute(
         """
@@ -121,7 +273,7 @@ def dashboard_data(connection: sqlite3.Connection) -> dict:
                COUNT(DISTINCT dc.manager_pn) AS manager_count,
                SUM(CASE WHEN dc.status IN ('vollstaendig', 'kein_md') THEN 1 ELSE 0 END) AS done_count
         FROM cycles c
-        LEFT JOIN dialog_cases dc ON dc.cycle_id = c.id
+        LEFT JOIN dialog_cases dc ON dc.cycle_id = c.id AND dc.active = 1
         GROUP BY c.id
         ORDER BY c.review_year DESC
         """
@@ -148,8 +300,13 @@ def cycle_overview(connection: sqlite3.Connection, cycle_id: int) -> tuple[sqlit
                    SUM(CASE WHEN status IN ('vollstaendig', 'kein_md') THEN 1 ELSE 0 END) AS done_count,
                    SUM(CASE WHEN status = 'in_bearbeitung' THEN 1 ELSE 0 END) AS progress_count
             FROM dialog_cases
-            WHERE cycle_id = ?
+            WHERE cycle_id = ? AND active = 1
             GROUP BY manager_pn
+        ), manager_scope AS (
+            SELECT manager_pn FROM case_summary
+            UNION
+            SELECT DISTINCT manager_pn FROM package_events
+            WHERE cycle_id = ? AND direction = 'versand'
         ), event_summary AS (
             SELECT manager_pn,
                    MAX(CASE WHEN direction = 'versand' THEN created_at END) AS sent_at,
@@ -178,20 +335,23 @@ def cycle_overview(connection: sqlite3.Connection, cycle_id: int) -> tuple[sqlit
             WHERE od.cycle_id = ?
             GROUP BY od.manager_pn
         )
-        SELECT cs.manager_pn,
-               COALESCE(NULLIF(TRIM(m.first_name || ' ' || m.last_name), ''), 'VG ' || cs.manager_pn) AS manager_name,
+        SELECT ms.manager_pn,
+               COALESCE(NULLIF(TRIM(m.first_name || ' ' || m.last_name), ''), 'VG ' || ms.manager_pn) AS manager_name,
                m.email AS manager_email,
-               cs.case_count, cs.done_count, cs.progress_count,
+               COALESCE(cs.case_count, 0) AS case_count,
+               COALESCE(cs.done_count, 0) AS done_count,
+               COALESCE(cs.progress_count, 0) AS progress_count,
                es.sent_at, COALESCE(ds.pdf_received_at, es.returned_at) AS returned_at,
                COALESCE(ds.signature_check_count, 0) AS signature_check_count,
                COALESCE(ds.scan_pending_count, 0) AS scan_pending_count
-        FROM case_summary cs
-        LEFT JOIN employees m ON m.pn = cs.manager_pn
-        LEFT JOIN event_summary es ON es.manager_pn = cs.manager_pn
-        LEFT JOIN document_summary ds ON ds.manager_pn = cs.manager_pn
+        FROM manager_scope ms
+        LEFT JOIN case_summary cs ON cs.manager_pn = ms.manager_pn
+        LEFT JOIN employees m ON m.pn = ms.manager_pn
+        LEFT JOIN event_summary es ON es.manager_pn = ms.manager_pn
+        LEFT JOIN document_summary ds ON ds.manager_pn = ms.manager_pn
         ORDER BY manager_name, cs.manager_pn
         """,
-        (cycle_id, cycle_id, cycle_id),
+        (cycle_id, cycle_id, cycle_id, cycle_id),
     ).fetchall()
     return cycle, managers
 

@@ -44,9 +44,10 @@
             <td>{{ manager.sent_at or '–' }}</td>
             <td>{{ manager.returned_at or '–' }}</td>
             <td>
-              <form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post">
-                <button class="button button--small" type="submit">START-Datei erzeugen</button>
-              </form>
+              {% if manager.package_blocking %}<span class="status status--danger">Zuordnung prüfen</span>
+              {% elif manager.package_state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--small" type="submit">START-Datei erzeugen</button></form>
+              {% elif manager.package_state == 'update_required' %}<form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--small" type="submit">Update-Datei erzeugen</button></form>
+              {% else %}<span class="status status--staged">Aktuell</span>{% endif %}
             </td>
           </tr>
         {% endfor %}

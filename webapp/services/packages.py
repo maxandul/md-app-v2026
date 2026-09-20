@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
+import unicodedata
 import uuid
+import zipfile
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -28,6 +31,11 @@ NO_MD_REASONS = [
     "Längere Abwesenheit",
     "Anderer Grund",
 ]
+
+
+def _filename_part(value: Any) -> str:
+    ascii_value = unicodedata.normalize("NFKD", str(value)).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", ascii_value).strip("_") or "Unbekannt"
 
 
 def _empty_goal(goal_id: str) -> dict[str, str]:
@@ -104,9 +112,12 @@ def _new_case(
     review_year: int,
     employee_number: int,
 ) -> dict[str, Any]:
-    period_start, period_end = bounded_review_period(
-        review_year, row["entry_date"], row["exit_date"]
-    )
+    if row["period_start"] and row["period_end"]:
+        period_start, period_end = row["period_start"], row["period_end"]
+    else:
+        period_start, period_end = bounded_review_period(
+            review_year, row["entry_date"], row["exit_date"]
+        )
     previous_goals, previous_development_goals = _prior_goals(
         connection, employee_pn=row["employee_pn"], review_year=review_year
     )
@@ -129,7 +140,7 @@ def _new_case(
             "secondary_employment": row["secondary_employment"],
         },
         "scope": "",
-        "dialog_type": "annual",
+        "dialog_type": "probation" if str(row["event_type"] or "").startswith("probation_") else "annual",
         "scope_reason": "",
         "no_md_reason": "",
         "no_md_note": "",
@@ -181,6 +192,7 @@ def build_manager_payload(
     cycle_id: int,
     manager_pn: str,
     created_at: datetime | None = None,
+    allow_empty: bool = False,
 ) -> dict[str, Any]:
     cycle = connection.execute("SELECT * FROM cycles WHERE id = ?", (cycle_id,)).fetchone()
     if not cycle:
@@ -197,15 +209,17 @@ def build_manager_payload(
         """
         SELECT dc.*, e.first_name, e.last_name, e.position, e.org_unit,
                e.employment_degree, e.entry_date, e.exit_date, e.probation_end,
-               e.employment_assignment, e.secondary_employment
+               e.employment_assignment, e.secondary_employment,
+               COALESCE(de.event_type, 'annual') AS event_type
         FROM dialog_cases dc
         JOIN employees e ON e.pn = dc.employee_pn
-        WHERE dc.cycle_id = ? AND dc.manager_pn = ?
+        LEFT JOIN dialog_events de ON de.legacy_case_id = dc.case_id
+        WHERE dc.cycle_id = ? AND dc.manager_pn = ? AND dc.active = 1
         ORDER BY e.last_name, e.first_name, e.pn
         """,
         (cycle_id, manager_pn),
     ).fetchall()
-    if not rows:
+    if not rows and not allow_empty:
         raise LookupError("Für diese Führungslinie sind keine MD-Fälle vorhanden.")
 
     employees: list[dict[str, Any]] = []
@@ -256,6 +270,274 @@ def build_manager_payload(
     }
 
 
+def _workbook_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
+    """Reduziert ein Paket auf die Angaben, die HR mit Updates steuert."""
+    result: dict[str, Any] = {}
+    package = payload.get("package") or payload.get("update") or {}
+    goal_keys = ("id", "title", "criteria", "steps", "target_date", "competency", "imported")
+
+    def goal_sources(goals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            {key: goal.get(key, "") for key in goal_keys if key in goal}
+            for goal in goals
+        ]
+
+    for item in payload.get("employees") or []:
+        case_id = str(item.get("case_id", ""))
+        result[case_id] = {
+            "employee": item.get("employee") or {},
+            "dialog_type": item.get("dialog_type", "annual"),
+            "suggestion": item.get("suggestion") or {},
+            "period_start": item.get("period_start", ""),
+            "period_end": item.get("period_end", ""),
+            "previous_goals": goal_sources(item.get("previous_goals") or []),
+            "previous_development_goals": goal_sources(
+                item.get("previous_development_goals") or []
+            ),
+        }
+    return {
+        "manager": {
+            "manager_name": package.get("manager_name", ""),
+            "manager_first_name": package.get("manager_first_name", ""),
+            "manager_last_name": package.get("manager_last_name", ""),
+        },
+        "employees": result,
+    }
+
+
+def _latest_start_event(
+    connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
+) -> sqlite3.Row | None:
+    return connection.execute(
+        """
+        SELECT * FROM package_events
+        WHERE cycle_id = ? AND manager_pn = ? AND direction = 'versand'
+          AND package_kind = 'start'
+        ORDER BY id DESC LIMIT 1
+        """,
+        (cycle_id, manager_pn),
+    ).fetchone()
+
+
+def _latest_outbound_event(
+    connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
+) -> sqlite3.Row | None:
+    return connection.execute(
+        """
+        SELECT * FROM package_events
+        WHERE cycle_id = ? AND manager_pn = ? AND direction = 'versand'
+        ORDER BY id DESC LIMIT 1
+        """,
+        (cycle_id, manager_pn),
+    ).fetchone()
+
+
+def manager_package_state(
+    connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
+) -> dict[str, Any]:
+    """Liefert START-/Update-Status ohne eine Datei zu erzeugen."""
+    current = build_manager_payload(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn, allow_empty=True
+    )
+    cycle = connection.execute(
+        "SELECT sap_import_id FROM cycles WHERE id = ?", (cycle_id,)
+    ).fetchone()
+    cases = connection.execute(
+        """
+        SELECT employee_pn, employment_assignment
+        FROM dialog_cases
+        WHERE cycle_id = ? AND manager_pn = ? AND active = 1
+        """,
+        (cycle_id, manager_pn),
+    ).fetchall()
+    issues: list[dict[str, str]] = []
+    for case in cases:
+        if not str(case["employment_assignment"] or "").strip():
+            issues.append({
+                "severity": "blocking",
+                "message": f"Bei PN {case['employee_pn']} fehlt die Anstellungsnummer.",
+            })
+    person_numbers = [manager_pn, *(row["employee_pn"] for row in cases)]
+    if cycle and person_numbers:
+        placeholders = ",".join("?" for _ in person_numbers)
+        conflicts = connection.execute(
+            f"""
+            SELECT person_number, issue_type FROM sap_import_issues
+            WHERE sap_import_id = ? AND status = 'open' AND severity = 'blocking'
+              AND person_number IN ({placeholders})
+            ORDER BY person_number, id
+            """,
+            (cycle["sap_import_id"], *person_numbers),
+        ).fetchall()
+        issues.extend(
+            {
+                "severity": "blocking",
+                "message": f"Offener SAP-Konflikt bei PN {row['person_number']} ({row['issue_type']}).",
+            }
+            for row in conflicts
+        )
+    manager = connection.execute(
+        "SELECT email FROM employees WHERE pn = ? AND active = 1", (manager_pn,)
+    ).fetchone()
+    if cases and (not manager or not str(manager["email"] or "").strip()):
+        issues.append({
+            "severity": "warning",
+            "message": "Für die Führungskraft fehlt eine geschäftliche E-Mail-Adresse.",
+        })
+    readiness = {
+        "issues": issues,
+        "blocking": any(issue["severity"] == "blocking" for issue in issues),
+    }
+    start = _latest_start_event(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    if not start:
+        return {"state": "start_missing", "label": "START-Datei fehlt", "current": current, **readiness}
+    latest = _latest_outbound_event(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    try:
+        previous = json.loads(latest["payload_json"]) if latest else {}
+    except json.JSONDecodeError:
+        previous = {}
+    update_required = _workbook_snapshot(previous) != _workbook_snapshot(current)
+    return {
+        "state": "update_required" if update_required else "current",
+        "label": "Update erforderlich" if update_required else "Aktuell",
+        "current": current,
+        "start": start,
+        "latest": latest,
+        **readiness,
+    }
+
+
+def build_update_payload(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    manager_pn: str,
+    created_at: datetime | None = None,
+) -> dict[str, Any]:
+    state = manager_package_state(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    if state["blocking"]:
+        detail = " ".join(
+            issue["message"] for issue in state["issues"]
+            if issue["severity"] == "blocking"
+        )
+        raise ValueError(f"Die Update-Datei kann nicht erzeugt werden: {detail}")
+    if state["state"] == "start_missing":
+        raise ValueError("Für diese Führungskraft muss zuerst eine START-Datei erzeugt werden.")
+    if state["state"] == "current":
+        raise ValueError("Die Arbeitsmappe ist bereits aktuell; es ist kein Update erforderlich.")
+    current = state["current"]
+    start = state["start"]
+    timestamp = created_at or datetime.now().astimezone()
+    return {
+        "schema_version": "1.0-update",
+        "update": {
+            "update_id": f"UPD-{cycle_id}-{manager_pn}-{uuid.uuid4().hex[:8].upper()}",
+            "target_package_id": start["package_id"],
+            "cycle_id": cycle_id,
+            "manager_pn": manager_pn,
+            "manager_name": current["package"]["manager_name"],
+            "manager_first_name": current["package"]["manager_first_name"],
+            "manager_last_name": current["package"]["manager_last_name"],
+            "rb_year": current["package"]["rb_year"],
+            "ab_year": current["package"]["ab_year"],
+            "created_at": timestamp.isoformat(timespec="seconds"),
+        },
+        "employees": current["employees"],
+    }
+
+
+def create_update_file(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    manager_pn: str,
+    output_dir: Path,
+) -> tuple[Path, dict[str, Any]]:
+    payload = build_update_payload(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    update = payload["update"]
+    safe_manager = _filename_part(update["manager_name"])
+    filename = (
+        f"MD_Update_{update['rb_year']}_{update['ab_year']}_"
+        f"{safe_manager}_{manager_pn}.json"
+    )
+    path = output_dir / update["update_id"] / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    path.write_bytes(raw)
+    connection.execute(
+        """
+        INSERT INTO package_events (
+            package_id, cycle_id, manager_pn, direction, package_kind, revision,
+            filename, sha256, payload_json, created_at
+        ) VALUES (?, ?, ?, 'versand', 'update', 0, ?, ?, ?, ?)
+        """,
+        (
+            update["target_package_id"], cycle_id, manager_pn, filename,
+            hashlib.sha256(raw).hexdigest(),
+            json.dumps(payload, ensure_ascii=False), update["created_at"],
+        ),
+    )
+    connection.commit()
+    return path, payload
+
+
+def create_package_batch(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    manager_pns: list[str],
+    output_dir: Path,
+) -> tuple[Path, dict[str, int]]:
+    """Erzeugt pro Führungskraft die erforderliche START- oder Update-Datei."""
+    unique_manager_pns = list(dict.fromkeys(str(pn).strip() for pn in manager_pns if str(pn).strip()))
+    if not unique_manager_pns:
+        raise ValueError("Bitte wähle mindestens eine Führungskraft aus.")
+    stamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
+    batch_dir = output_dir / f"batch_{cycle_id}_{stamp}_{uuid.uuid4().hex[:6]}"
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    created: list[Path] = []
+    counts = {"start": 0, "update": 0, "current": 0}
+    for manager_pn in unique_manager_pns:
+        state = manager_package_state(
+            connection, cycle_id=cycle_id, manager_pn=manager_pn
+        )
+        if state["blocking"]:
+            detail = " ".join(issue["message"] for issue in state["issues"] if issue["severity"] == "blocking")
+            raise ValueError(f"Arbeitsmappe für PN {manager_pn} kann nicht erzeugt werden: {detail}")
+        if state["state"] == "start_missing":
+            path, _payload = create_package_file(
+                connection, cycle_id=cycle_id, manager_pn=manager_pn,
+                output_dir=batch_dir / "starts",
+            )
+            counts["start"] += 1
+            created.append(path)
+        elif state["state"] == "update_required":
+            path, _payload = create_update_file(
+                connection, cycle_id=cycle_id, manager_pn=manager_pn,
+                output_dir=batch_dir / "updates",
+            )
+            counts["update"] += 1
+            created.append(path)
+        else:
+            counts["current"] += 1
+    if not created:
+        raise ValueError("Für die Auswahl sind keine START- oder Update-Dateien erforderlich.")
+    zip_path = output_dir / f"MD_Arbeitsmappen_{cycle_id}_{stamp}.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in created:
+            folder = "START" if path.suffix.lower() == ".html" else "UPDATE"
+            archive.write(path, arcname=f"{folder}/{path.name}")
+    return zip_path, counts
+
+
 def create_package_file(
     connection: sqlite3.Connection,
     *,
@@ -263,6 +545,20 @@ def create_package_file(
     manager_pn: str,
     output_dir: Path,
 ) -> tuple[Path, dict[str, Any]]:
+    readiness = manager_package_state(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    if readiness["state"] != "start_missing":
+        raise ValueError(
+            "Für diese Führungskraft besteht bereits eine START-Datei. "
+            "Erzeuge bei Änderungen eine Update-Datei."
+        )
+    if readiness["blocking"]:
+        detail = " ".join(
+            issue["message"] for issue in readiness["issues"]
+            if issue["severity"] == "blocking"
+        )
+        raise ValueError(f"Die START-Datei kann nicht erzeugt werden: {detail}")
     payload = build_manager_payload(
         connection, cycle_id=cycle_id, manager_pn=manager_pn
     )
@@ -277,9 +573,9 @@ def create_package_file(
     connection.execute(
         """
         INSERT INTO package_events (
-            package_id, cycle_id, manager_pn, direction, revision,
+            package_id, cycle_id, manager_pn, direction, package_kind, revision,
             filename, sha256, payload_json, created_at
-        ) VALUES (?, ?, ?, 'versand', 0, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, 'versand', 'start', 0, ?, ?, ?, ?)
         """,
         (
             package["package_id"],
@@ -363,7 +659,7 @@ def import_returned_package(
     expected_rows = connection.execute(
         """
         SELECT case_id, employee_pn FROM dialog_cases
-        WHERE cycle_id = ? AND manager_pn = ?
+        WHERE cycle_id = ? AND manager_pn = ? AND active = 1
         """,
         (cycle["id"], package["manager_pn"]),
     ).fetchall()
@@ -401,9 +697,9 @@ def import_returned_package(
     connection.execute(
         """
         INSERT INTO package_events (
-            package_id, cycle_id, manager_pn, direction, revision,
+            package_id, cycle_id, manager_pn, direction, package_kind, revision,
             filename, sha256, payload_json, created_at
-        ) VALUES (?, ?, ?, 'ruecklauf', ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, 'ruecklauf', 'return', ?, ?, ?, ?, ?)
         """,
         (
             package["package_id"],

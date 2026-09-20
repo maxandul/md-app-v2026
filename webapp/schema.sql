@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS dialog_cases (
     overall_rating_code TEXT NOT NULL DEFAULT '',
     agreement TEXT NOT NULL DEFAULT '',
     data_json TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
     updated_at TEXT NOT NULL,
     UNIQUE (cycle_id, employee_pn, employment_assignment, manager_pn)
 );
@@ -190,6 +191,8 @@ CREATE TABLE IF NOT EXISTS package_events (
     cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
     manager_pn TEXT NOT NULL,
     direction TEXT NOT NULL CHECK (direction IN ('versand', 'ruecklauf')),
+    package_kind TEXT NOT NULL DEFAULT 'start'
+        CHECK (package_kind IN ('start', 'update', 'return')),
     revision INTEGER NOT NULL DEFAULT 0,
     filename TEXT NOT NULL,
     sha256 TEXT NOT NULL,

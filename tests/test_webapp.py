@@ -4,6 +4,7 @@ import io
 import json
 import tempfile
 import unittest
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,7 +23,12 @@ from webapp.services.documents import (
     import_handwritten_scan,
     import_official_pdf,
 )
-from webapp.services.packages import build_manager_payload, create_package_file
+from webapp.services.packages import (
+    build_manager_payload,
+    create_package_file,
+    create_update_file,
+    manager_package_state,
+)
 from webapp.services.sap_export import create_sap_upload_file
 from webapp.services.sap_import import import_sap_workbook
 
@@ -107,18 +113,101 @@ class WebAppIntegrationTest(unittest.TestCase):
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
             data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
-            self.assertEqual(data["metrics"]["workbooks_missing"], 4)
-            self.assertEqual(data["metrics"]["cases_open"], 10)
+            self.assertEqual(data["metrics"]["workbooks_missing"], 3)
+            self.assertEqual(data["metrics"]["cases_open"], 9)
             self.assertEqual(
                 len([task for task in data["tasks"] if task["kind"] == "Arbeitsmappe"]),
-                4,
+                3,
             )
 
         package = self.client.post(f"/cycles/{cycle_id}/managers/111116/package")
         package.close()
         with self.app.app_context():
             data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
-            self.assertEqual(data["metrics"]["workbooks_missing"], 3)
+            self.assertEqual(data["metrics"]["workbooks_missing"], 2)
+
+    def test_start_and_update_files_are_detected_and_generated(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
+            connection = get_db()
+            create_package_file(
+                connection, cycle_id=cycle_id, manager_pn="111116",
+                output_dir=Path(temp) / "packages",
+            )
+            self.assertEqual(
+                manager_package_state(
+                    connection, cycle_id=cycle_id, manager_pn="111116"
+                )["state"],
+                "current",
+            )
+            connection.execute(
+                "UPDATE employees SET org_unit = 'abt-neu' WHERE pn = '111111'"
+            )
+            connection.commit()
+            self.assertEqual(
+                manager_package_state(
+                    connection, cycle_id=cycle_id, manager_pn="111116"
+                )["state"],
+                "update_required",
+            )
+            path, payload = create_update_file(
+                connection, cycle_id=cycle_id, manager_pn="111116",
+                output_dir=Path(temp) / "packages",
+            )
+            self.assertEqual(path.suffix, ".json")
+            self.assertEqual(payload["schema_version"], "1.0-update")
+            self.assertEqual(payload["update"]["manager_pn"], "111116")
+            self.assertEqual(
+                manager_package_state(
+                    connection, cycle_id=cycle_id, manager_pn="111116"
+                )["state"],
+                "current",
+            )
+
+    def test_new_sap_import_marks_existing_workbook_for_update(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
+            create_package_file(
+                get_db(), cycle_id=cycle_id, manager_pn="111116",
+                output_dir=Path(temp) / "packages",
+            )
+        workbook = load_workbook(self.sap_sample)
+        worksheet = workbook.active
+        headers = {cell.value: cell.column for cell in worksheet[1]}
+        for row in range(2, worksheet.max_row + 1):
+            if str(worksheet.cell(row, headers["ID_NO_ZERO"]).value) == "111111":
+                worksheet.cell(row, headers["OE Bez."], "abt-neu")
+        changed = self.sap_sample.with_name("EXPORT_CHANGED.xlsx")
+        workbook.save(changed)
+        with changed.open("rb") as source:
+            response = self.client.post(
+                "/imports",
+                data={"sap_file": (source, "EXPORT_CHANGED.xlsx")},
+                content_type="multipart/form-data",
+                follow_redirects=True,
+            )
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(
+                manager_package_state(
+                    get_db(), cycle_id=cycle_id, manager_pn="111116"
+                )["state"],
+                "update_required",
+            )
+
+    def test_batch_download_contains_required_start_files(self) -> None:
+        cycle_id = self._prepare_cycle()
+        response = self.client.post(
+            f"/cycles/{cycle_id}/packages/batch",
+            data={"selection_mode": "all"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+            names = archive.namelist()
+        response.close()
+        self.assertEqual(len(names), 3)
+        self.assertTrue(all(name.startswith("START/") for name in names))
 
     def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -135,7 +224,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                     "SELECT COUNT(*) AS count FROM dialog_events WHERE cycle_id = ?",
                     (cycle_id,),
                 ).fetchone()["count"],
-                10,
+                9,
             )
             event = connection.execute(
                 """
@@ -192,8 +281,16 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()
             self.assertEqual(obligation["document_kind"], "review")
             self.assertEqual(obligation["due_date"], "2025-04-15")
-            with self.assertRaisesRegex(ValueError, "Arbeitsmappe"):
-                set_leading_sap_event(connection, event["id"])
+            payload = build_manager_payload(
+                connection, cycle_id=cycle_id, manager_pn="111118"
+            )
+            manual_case = next(
+                item for item in payload["employees"]
+                if item["case_id"] == event["event_id"]
+            )
+            self.assertEqual(manual_case["dialog_type"], "probation")
+            self.assertEqual(manual_case["suggestion"]["scope"], "review_only")
+            set_leading_sap_event(connection, event["id"])
 
     def test_sap_import_cycle_and_manager_counts(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -203,7 +300,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(cycle["review_year"], 2025)
             counts = {row["manager_pn"]: row["case_count"] for row in managers}
             self.assertEqual(counts["111116"], 3)
-            self.assertEqual(sum(counts.values()), 10)
+            self.assertEqual(sum(counts.values()), 9)
             assignment = connection.execute(
                 "SELECT employment_assignment FROM employees WHERE pn = '111111'"
             ).fetchone()["employment_assignment"]

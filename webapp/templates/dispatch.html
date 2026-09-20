@@ -2,18 +2,60 @@
 {% block title %}Versand · MD-Verwaltung{% endblock %}
 {% block content %}
   <section class="page-head page-head--overview">
-    <div><p class="kicker">Versand</p><h1>Arbeitsmappen bereitstellen</h1><p class="lead">START-Dateien für den ersten Versand erzeugen. Updates und der S/MIME-verschlüsselte Massenversand werden in diesem Bereich ergänzt.</p></div>
+    <div><p class="kicker">Versand</p><h1>Arbeitsmappen bereitstellen</h1><p class="lead">START-Dateien und notwendige Updates einzeln oder gesammelt erzeugen.</p></div>
     {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
   </section>
 
-  <section class="info-box info-box--wide"><h2>Erstversand und Updates</h2><p>Im ersten regulären Versand erhält jede vorgesetzte Person eine vollständige Arbeitsmappe. Spätere Änderungen werden als Update bereitgestellt. «Erstellt» bedeutet derzeit noch nicht «per E-Mail versendet».</p></section>
+  <section class="info-box info-box--wide"><h2>START oder Update?</h2><p>Beim ersten Bereitstellen erhält die Führungskraft eine vollständige HTML-Arbeitsmappe. Ändern sich danach Stammdaten oder Dialogpflichten, erzeugt die App eine JSON-Update-Datei. Die Führungskraft liest diese in ihrer zuletzt gespeicherten Arbeitsmappe ein; vorhandene Eingaben bleiben erhalten. «Erstellt» bedeutet noch nicht «per E-Mail versendet».</p></section>
 
-  <section class="content-section" aria-labelledby="dispatch-title">
-    <div class="section-heading"><div><p class="kicker">Führungskräfte</p><h2 id="dispatch-title">Arbeitsmappen</h2></div>{% if selected_cycle %}<span class="section-count">{{ metrics.workbooks_missing }} noch nicht erstellt</span>{% endif %}</div>
-    {% if managers %}
-      <div class="table-wrap"><table><thead><tr><th>Vorgesetzte Person</th><th>Fälle</th><th>START-Datei</th><th>Letzter Rücklauf</th><th>Aktion</th></tr></thead><tbody>
-      {% for manager in managers %}<tr><td><strong>{{ manager.manager_name }}</strong><br><span class="muted">PN {{ manager.manager_pn }}</span></td><td>{{ manager.case_count }}</td><td>{% if manager.sent_at %}<span class="status status--staged">Erstellt</span><br><span class="muted">{{ manager.sent_at }}</span>{% else %}<span class="status status--missing">Noch nicht erstellt</span>{% endif %}</td><td>{{ manager.returned_at or '–' }}</td><td><a href="{{ url_for('main.manager_detail', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">Öffnen</a></td></tr>{% endfor %}
-      </tbody></table></div>
-    {% else %}<div class="empty-state">Für den gewählten Durchlauf sind noch keine Führungslinien vorhanden.</div>{% endif %}
-  </section>
+  {% if managers %}
+    <form action="{{ url_for('main.download_package_batch', cycle_id=selected_cycle.id) }}" method="post">
+      <section class="content-section" aria-labelledby="batch-title">
+        <div class="section-heading"><div><p class="kicker">Sammelerzeugung</p><h2 id="batch-title">Auswahl festlegen</h2></div></div>
+        <div class="selection-panel">
+          <label class="choice"><input type="radio" name="selection_mode" value="selected" checked> Markierte Führungskräfte</label>
+          <label class="choice"><input type="radio" name="selection_mode" value="org_unit"> Organisation ab Einheit</label>
+          <select name="org_unit" aria-label="Organisationseinheit">
+            <option value="">Organisationseinheit wählen</option>
+            {% for org_unit in org_units %}<option value="{{ org_unit }}">{{ org_unit }}</option>{% endfor %}
+          </select>
+          <label class="choice"><input type="radio" name="selection_mode" value="all"> Gesamter Durchlauf</label>
+          <button class="button button--primary button--small" type="submit">Erforderliche Dateien als ZIP erzeugen</button>
+        </div>
+        <p class="list-note">Die Sammelerzeugung enthält nur fehlende START-Dateien und erforderliche Updates. Bereits aktuelle Arbeitsmappen werden übersprungen.</p>
+      </section>
+
+      <section class="content-section" aria-labelledby="dispatch-title">
+        <div class="section-heading"><div><p class="kicker">Führungskräfte</p><h2 id="dispatch-title">Arbeitsmappen</h2></div><span class="section-count">{{ managers|length }} Führungskräfte</span></div>
+        <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Vorgesetzte Person</th><th>Organisation</th><th>Fälle</th><th>Arbeitsmappe</th><th>Letzter Rücklauf</th><th>Einzeln erzeugen</th></tr></thead><tbody>
+        {% for manager in managers %}
+          <tr>
+            <td><input class="table-checkbox" type="checkbox" name="manager_pn" value="{{ manager.manager_pn }}" aria-label="{{ manager.manager_name }} auswählen"{% if manager.package_blocking %} disabled{% endif %}></td>
+            <td><strong>{{ manager.manager_name }}</strong><br><span class="muted">PN {{ manager.manager_pn }}</span></td>
+            <td>{{ manager.org_unit or '–' }}</td>
+            <td>{{ manager.case_count }}</td>
+            <td>
+              {% if manager.package_state == 'start_missing' %}<span class="status status--missing">START-Datei fehlt</span>
+              {% elif manager.package_state == 'update_required' %}<span class="status status--warning">Update erforderlich</span>
+              {% else %}<span class="status status--staged">Aktuell</span>{% endif %}
+              {% if manager.sent_at %}<br><span class="muted">zuletzt erstellt {{ manager.sent_at }}</span>{% endif %}
+              {% for issue in manager.package_issues %}<br><span class="issue-text issue-text--{{ issue.severity }}">{{ issue.message }}</span>{% endfor %}
+            </td>
+            <td>{{ manager.returned_at or '–' }}</td>
+            <td>
+              {% if manager.package_blocking %}<span class="status status--danger">Zuordnung prüfen</span>
+              {% elif manager.package_state == 'start_missing' %}
+                <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">START-Datei</button>
+              {% elif manager.package_state == 'update_required' %}
+                <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_update', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">Update-Datei</button>
+              {% else %}<span class="muted">Keine Datei nötig</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody></table></div>
+      </section>
+    </form>
+  {% else %}
+    <section class="content-section"><div class="empty-state">Für den gewählten Durchlauf sind noch keine Führungslinien vorhanden.</div></section>
+  {% endif %}
 {% endblock %}

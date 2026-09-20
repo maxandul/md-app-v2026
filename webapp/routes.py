@@ -28,6 +28,7 @@ from .services.cycles import (
     cycle_overview,
     dashboard_data,
     manager_case_overview,
+    synchronize_open_cycles,
 )
 from .services.cockpit import cockpit_overview
 from .services.dialog_events import (
@@ -37,7 +38,13 @@ from .services.dialog_events import (
     dialog_event_rows,
     set_leading_sap_event,
 )
-from .services.packages import create_package_file, import_returned_package
+from .services.packages import (
+    create_package_batch,
+    create_package_file,
+    create_update_file,
+    import_returned_package,
+    manager_package_state,
+)
 from .services.documents import (
     confirm_digital_signature,
     import_handwritten_scan,
@@ -75,6 +82,42 @@ def _stored_name(original: str) -> str:
     safe = secure_filename(original) or "datei"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{stamp}_{uuid.uuid4().hex[:8]}_{safe}"
+
+
+def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[str]:
+    """Löst eine OE in alle darunterliegenden Führungskräfte des Durchlaufs auf."""
+    available = {
+        row["manager_pn"]
+        for row in connection.execute(
+            "SELECT DISTINCT manager_pn FROM dialog_cases WHERE cycle_id = ? AND active = 1",
+            (cycle_id,),
+        ).fetchall()
+    }
+    frontier = {
+        row["pn"]
+        for row in connection.execute(
+            "SELECT pn FROM employees WHERE active = 1 AND org_unit = ?",
+            (org_unit,),
+        ).fetchall()
+    }
+    selected = available.intersection(frontier)
+    while frontier:
+        placeholders = ",".join("?" for _ in frontier)
+        reports = {
+            row["employee_pn"]
+            for row in connection.execute(
+                f"""
+                SELECT employee_pn FROM dialog_cases
+                WHERE cycle_id = ? AND active = 1
+                  AND manager_pn IN ({placeholders})
+                """,
+                (cycle_id, *frontier),
+            ).fetchall()
+        }
+        next_frontier = reports.intersection(available).difference(selected)
+        selected.update(next_frontier)
+        frontier = next_frontier
+    return sorted(selected)
 
 
 @bp.get("/")
@@ -160,8 +203,35 @@ def dispatch():
     managers = []
     if data["selected_cycle"]:
         _cycle, managers = cycle_overview(get_db(), data["selected_cycle"]["id"])
+        connection = get_db()
+        enriched = []
+        for row in managers:
+            item = dict(row)
+            state = manager_package_state(
+                connection,
+                cycle_id=data["selected_cycle"]["id"],
+                manager_pn=item["manager_pn"],
+            )
+            item["package_state"] = state["state"]
+            item["package_label"] = state["label"]
+            item["package_issues"] = state["issues"]
+            item["package_blocking"] = state["blocking"]
+            item["org_unit"] = connection.execute(
+                """
+                SELECT COALESCE(NULLIF(m.org_unit, ''), MIN(dc_employee.org_unit), '') AS org_unit
+                FROM dialog_cases dc
+                LEFT JOIN employees m ON m.pn = dc.manager_pn
+                LEFT JOIN employees dc_employee ON dc_employee.pn = dc.employee_pn
+                WHERE dc.cycle_id = ? AND dc.manager_pn = ?
+                """,
+                (data["selected_cycle"]["id"], item["manager_pn"]),
+            ).fetchone()["org_unit"]
+            enriched.append(item)
+        managers = enriched
+    org_units = sorted({row["org_unit"] for row in managers if row["org_unit"]})
     return render_template(
-        "dispatch.html", active_nav="dispatch", managers=managers, **data
+        "dispatch.html", active_nav="dispatch", managers=managers,
+        org_units=org_units, **data
     )
 
 
@@ -231,6 +301,13 @@ def upload_sap_import():
         message += f" {result.conflict_count} Konflikt(e) sind in der Prüfliste offen."
     if result.warnings:
         message += f" {len(result.warnings)} Hinweis(e) beachten."
+    synchronized = synchronize_open_cycles(get_db(), sap_import_id=result.import_id)
+    if synchronized["cycles"]:
+        message += (
+            f" {synchronized['cycles']} offene Durchlauf/Durchläufe aktualisiert: "
+            f"{synchronized['added']} neue und {synchronized['deactivated']} nicht mehr "
+            "aktive Führungslinie(n)."
+        )
     flash(message, "success")
     return redirect(url_for("main.master_data"))
 
@@ -276,8 +353,17 @@ def cycle_detail(cycle_id: int):
         cycle, managers = cycle_overview(get_db(), cycle_id)
     except LookupError:
         abort(404)
+    manager_rows = []
+    for row in managers:
+        item = dict(row)
+        state = manager_package_state(
+            get_db(), cycle_id=cycle_id, manager_pn=item["manager_pn"]
+        )
+        item["package_state"] = state["state"]
+        item["package_blocking"] = state["blocking"]
+        manager_rows.append(item)
     return render_template(
-        "cycle.html", cycle=cycle, managers=managers, active_nav="dialogs"
+        "cycle.html", cycle=cycle, managers=manager_rows, active_nav="dialogs"
     )
 
 
@@ -295,6 +381,9 @@ def manager_detail(cycle_id: int, manager_pn: str):
         manager=manager,
         cases=cases,
         events=events,
+        package_state=manager_package_state(
+            get_db(), cycle_id=cycle_id, manager_pn=manager_pn
+        ),
         active_nav="dialogs",
     )
 
@@ -338,6 +427,60 @@ def download_manager_package(cycle_id: int, manager_pn: str):
         mimetype="text/html; charset=utf-8",
     )
     response.headers["X-MD-Package-ID"] = payload["package"]["package_id"]
+    return response
+
+
+@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/update")
+def download_manager_update(cycle_id: int, manager_pn: str):
+    try:
+        path, payload = create_update_file(
+            get_db(),
+            cycle_id=cycle_id,
+            manager_pn=manager_pn,
+            output_dir=_storage_dir("packages"),
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    response = send_file(
+        path,
+        as_attachment=True,
+        download_name=path.name,
+        mimetype="application/json; charset=utf-8",
+    )
+    response.headers["X-MD-Update-ID"] = payload["update"]["update_id"]
+    return response
+
+
+@bp.post("/cycles/<int:cycle_id>/packages/batch")
+def download_package_batch(cycle_id: int):
+    manager_pns = request.form.getlist("manager_pn")
+    selection_mode = request.form.get("selection_mode", "selected")
+    if selection_mode in {"all", "org_unit"}:
+        _cycle, available = cycle_overview(get_db(), cycle_id)
+        if selection_mode == "all":
+            manager_pns = [row["manager_pn"] for row in available]
+        else:
+            org_unit = request.form.get("org_unit", "").strip()
+            manager_pns = _manager_pns_for_org_unit(get_db(), cycle_id, org_unit)
+    try:
+        path, counts = create_package_batch(
+            get_db(),
+            cycle_id=cycle_id,
+            manager_pns=manager_pns,
+            output_dir=_storage_dir("package_batches"),
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    response = send_file(
+        path,
+        as_attachment=True,
+        download_name=path.name,
+        mimetype="application/zip",
+    )
+    response.headers["X-MD-START-Count"] = str(counts["start"])
+    response.headers["X-MD-Update-Count"] = str(counts["update"])
     return response
 
 

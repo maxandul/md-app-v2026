@@ -10,9 +10,10 @@
     <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
     <h1>{{ manager.manager_name }}</h1>
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Vorschläge aus den SAP-Daten bleiben Hinweise und werden in der HTML-Datei bestätigt.</p>
-    <form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post">
-      <button class="button button--primary" type="submit">Neue START-Datei erzeugen</button>
-    </form>
+    {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
+    {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
+    {% elif package_state.state == 'update_required' %}<form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--primary" type="submit">Update-Datei erzeugen</button></form>
+    {% else %}<span class="status status--staged">Arbeitsmappe aktuell</span>{% endif %}
   </section>
 
   <section class="content-section" aria-labelledby="cases-title">

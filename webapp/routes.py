@@ -21,7 +21,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from .auth import login_required
+from .auth import audit, login_required
 from .db import get_db
 from .services.cycles import (
     create_cycle,
@@ -49,11 +49,13 @@ from .services.documents import (
     confirm_digital_signature,
     import_handwritten_scan,
     import_official_pdf,
+    inspect_pdf,
 )
 from .services.sap_import import import_sap_workbook
 from .services.sap_export import create_sap_upload_file
 from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from .services.mail_intake import mail_inbox_overview, scan_outlook_inbox
+from .services.case_review import case_review_detail, correct_case_data
 
 
 bp = Blueprint("main", __name__)
@@ -397,6 +399,88 @@ def manager_detail(cycle_id: int, manager_pn: str):
         ),
         active_nav="dialogs",
     )
+
+
+@bp.get("/cycles/<int:cycle_id>/cases/<case_id>")
+def case_detail(cycle_id: int, case_id: str):
+    try:
+        detail = case_review_detail(get_db(), cycle_id=cycle_id, case_id=case_id)
+    except LookupError:
+        abort(404)
+    return render_template(
+        "case_detail.html", active_nav="returns", cycle_id=cycle_id, **detail
+    )
+
+
+@bp.post("/cycles/<int:cycle_id>/cases/<case_id>/correction")
+def correct_case(cycle_id: int, case_id: str):
+    try:
+        changed = correct_case_data(
+            get_db(),
+            cycle_id=cycle_id,
+            case_id=case_id,
+            values={
+                field: request.form.get(field, "")
+                for field in (
+                    "official_scope", "dialog_date", "period_start", "period_end",
+                    "overall_rating_code", "agreement",
+                )
+            },
+            reason=request.form.get("reason", ""),
+            user_id=g.user["id"] if g.user else None,
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+    else:
+        audit(
+            "case_data_corrected", "dialog_case", case_id,
+            fields=changed, reason=request.form.get("reason", "").strip(),
+        )
+        flash(f"{len(changed)} Angabe(n) wurden begründet korrigiert.", "success")
+    return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
+
+
+@bp.post("/cycles/<int:cycle_id>/cases/<case_id>/replacement-pdf")
+def replace_case_pdf(cycle_id: int, case_id: str):
+    upload = request.files.get("replacement_pdf")
+    reason = request.form.get("replacement_reason", "").strip()
+    if not upload or not upload.filename or not upload.filename.lower().endswith(".pdf"):
+        flash("Bitte wähle eine korrigierte PDF-Datei aus.", "error")
+        return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
+    if len(reason) < 10:
+        flash("Bitte begründe die Ersetzung mit mindestens 10 Zeichen.", "error")
+        return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
+    stored_name = _stored_name(upload.filename)
+    temporary = _storage_dir("pdf_pending") / stored_name
+    upload.save(temporary)
+    try:
+        inspection = inspect_pdf(temporary)
+        if inspection.data.get("case_id", "") != case_id:
+            raise ValueError("Die korrigierte PDF-Datei gehört zu einem anderen MD-Fall.")
+        target_case = get_db().execute(
+            "SELECT cycle_id FROM dialog_cases WHERE case_id = ?", (case_id,)
+        ).fetchone()
+        if not target_case or target_case["cycle_id"] != cycle_id:
+            raise ValueError("Der MD-Fall gehört zu einem anderen Durchlauf.")
+        result = import_official_pdf(
+            get_db(),
+            path=temporary,
+            original_filename=upload.filename,
+            accepted_dir=_storage_dir("pdf_processed"),
+            replacement_reason=reason,
+        )
+    except Exception as exc:
+        rejected = _storage_dir("pdf_rejected") / stored_name
+        if temporary.exists():
+            shutil.move(str(temporary), str(rejected))
+        flash(str(exc), "error")
+    else:
+        audit(
+            "document_version_replaced", "official_document",
+            str(result["document_id"]), case_id=case_id, reason=reason,
+        )
+        flash("Die korrigierte PDF-Version wurde übernommen und protokolliert.", "success")
+    return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
 
 
 @bp.post("/cycles/<int:cycle_id>/sap-export")

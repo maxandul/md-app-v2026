@@ -162,6 +162,8 @@ code { padding: 2px 5px; background: var(--zh-black-10); font-family: Consolas, 
 .issue-text { display: inline-block; margin-top: 5px; color: var(--zh-black-60); font-size: 12px; line-height: 1.35; }
 .issue-text--blocking { color: #9c2c15; font-weight: 700; }
 .mail-attachment + .mail-attachment { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--zh-black-20); }
+.version-upload { margin-top: 24px; }
+.version-upload h3 { margin-bottom: 8px; }
 
 @media (max-width: 900px) {
   .panel { grid-column: 1 / -1; }

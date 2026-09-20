@@ -154,12 +154,11 @@ geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 
 1. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert
    übernehmen und für den nächsten Jahresdurchlauf bereitstellen.
-2. Einzelfallansicht für HR mit kontrollierten Korrekturen und Begründung.
-3. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
+2. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
    Zertifikaten und der eingesetzten klassischen Outlook-Version testen und
    freigeben. Bis dahin bleibt der automatische Versand gesperrt.
-4. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
+3. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
    danach das Verschieben vollständig verarbeiteter Nachrichten freigeben.
-5. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
-6. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
-7. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.
+4. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
+5. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
+6. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

@@ -17,6 +17,9 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
 - Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
 - elektronisch unterzeichnete PDFs einlesen und ihren MD-Datenblock übernehmen
+- Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
+- fehlerhaft übernommene Angaben vor der Freigabe begründet korrigieren
+- korrigierte PDF-Versionen kontrolliert ersetzen, ohne die Vorversion zu löschen
 - bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
   unterzeichneten Scan nachverfolgen
 - nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen

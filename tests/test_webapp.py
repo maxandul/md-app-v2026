@@ -34,6 +34,7 @@ from webapp.services.documents import (
 )
 from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from webapp.services.mail_intake import mail_inbox_overview, process_inbound_messages
+from webapp.services.case_review import case_review_detail, correct_case_data
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -443,6 +444,154 @@ class WebAppIntegrationTest(unittest.TestCase):
                     ("Begleitnotiz.txt", "review_required"),
                 ],
             )
+
+    def test_case_correction_is_reasoned_and_preserves_original_pdf_data(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            _package_path, payload = create_package_file(
+                connection, cycle_id=cycle_id, manager_pn="111116",
+                output_dir=root / "packages",
+            )
+            pdf_path = root / "review-original.pdf"
+            write_test_pdf(
+                pdf_path,
+                "MD-DATENBLOCK ; version=1 ; document=RUECKBLICK ; "
+                "case_id=2025-111116-111111 ; "
+                f"package_id={payload['package']['package_id']} ; pn=111111 ; ans=2 ; "
+                "year=2025 ; scope=review_only ; period_start=2025-01-01 ; "
+                "period_end=2025-12-31 ; dialog_date=2026-01-21 ; rating=B ; "
+                "agreement=JA ; handwritten_scan_required=NEIN ; no_md_reason=",
+            )
+            imported = import_official_pdf(
+                connection,
+                path=pdf_path,
+                original_filename="Rueckblick_111111.pdf",
+                accepted_dir=root / "pdf_processed",
+            )
+            changed = correct_case_data(
+                connection,
+                cycle_id=cycle_id,
+                case_id="2025-111116-111111",
+                values={
+                    "official_scope": "review_only",
+                    "dialog_date": "2026-01-21",
+                    "period_start": "2025-01-01",
+                    "period_end": "2025-12-31",
+                    "overall_rating_code": "D",
+                    "agreement": "NEIN",
+                },
+                reason="Bewertung gemäss kontrollierter PDF-Prüfung korrigiert.",
+                user_id=None,
+            )
+            self.assertEqual(changed, ["overall_rating_code", "agreement"])
+            current = connection.execute(
+                "SELECT overall_rating_code, agreement FROM dialog_cases WHERE case_id = ?",
+                ("2025-111116-111111",),
+            ).fetchone()
+            self.assertEqual((current["overall_rating_code"], current["agreement"]), ("D", "NEIN"))
+            document = connection.execute(
+                "SELECT data_block_json, scan_required FROM official_documents WHERE id = ?",
+                (imported["document_id"],),
+            ).fetchone()
+            self.assertEqual(json.loads(document["data_block_json"])["rating"], "B")
+            self.assertEqual(document["scan_required"], 1)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM case_corrections WHERE case_id = ?",
+                    ("2025-111116-111111",),
+                ).fetchone()["count"],
+                2,
+            )
+            detail = case_review_detail(
+                connection, cycle_id=cycle_id, case_id="2025-111116-111111"
+            )
+            self.assertFalse(detail["correction_locked"])
+            confirm_digital_signature(
+                connection,
+                document_id=imported["document_id"],
+                handoff_dir=root / "dossier_ready",
+            )
+            with self.assertRaisesRegex(ValueError, "nicht direkt korrigiert"):
+                correct_case_data(
+                    connection,
+                    cycle_id=cycle_id,
+                    case_id="2025-111116-111111",
+                    values={
+                        "official_scope": "review_only",
+                        "dialog_date": "2026-01-21",
+                        "period_start": "2025-01-01",
+                        "period_end": "2025-12-31",
+                        "overall_rating_code": "B",
+                        "agreement": "JA",
+                    },
+                    reason="Nachträglicher Änderungsversuch nach Freigabe.",
+                    user_id=None,
+                )
+
+        page = self.client.get(
+            f"/cycles/{cycle_id}/cases/2025-111116-111111"
+        )
+        body = page.get_data(as_text=True)
+        self.assertIn("Einzelfallprüfung", body)
+        self.assertIn("Begründete Korrekturen", body)
+
+    def test_corrected_pdf_requires_reason_and_keeps_both_versions(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            _package_path, payload = create_package_file(
+                connection, cycle_id=cycle_id, manager_pn="111116",
+                output_dir=root / "packages",
+            )
+
+            def make_pdf(path: Path, rating: str) -> None:
+                write_test_pdf(
+                    path,
+                    "MD-DATENBLOCK ; version=1 ; document=RUECKBLICK ; "
+                    "case_id=2025-111116-111111 ; "
+                    f"package_id={payload['package']['package_id']} ; pn=111111 ; ans=2 ; "
+                    "year=2025 ; scope=review_only ; period_start=2025-01-01 ; "
+                    "period_end=2025-12-31 ; dialog_date=2026-01-21 ; "
+                    f"rating={rating} ; agreement=JA ; handwritten_scan_required=NEIN ; "
+                    "no_md_reason=",
+                )
+
+            first_path = root / "first.pdf"
+            make_pdf(first_path, "B")
+            first = import_official_pdf(
+                connection, path=first_path, original_filename="first.pdf",
+                accepted_dir=root / "pdf_processed",
+            )
+            corrected_path = root / "corrected.pdf"
+            make_pdf(corrected_path, "C")
+            with self.assertRaisesRegex(ValueError, "Ersetzungsgrund"):
+                import_official_pdf(
+                    connection, path=corrected_path, original_filename="corrected.pdf",
+                    accepted_dir=root / "pdf_processed",
+                )
+            self.assertTrue(corrected_path.exists())
+            second = import_official_pdf(
+                connection, path=corrected_path, original_filename="corrected.pdf",
+                accepted_dir=root / "pdf_processed",
+                replacement_reason="Korrigierte Gesamtbeurteilung nach Rückfrage.",
+            )
+            versions = connection.execute(
+                """
+                SELECT id, is_current, replaces_document_id, replacement_reason, replaced_at
+                FROM official_documents WHERE case_id = ? ORDER BY id
+                """,
+                ("2025-111116-111111",),
+            ).fetchall()
+            self.assertEqual(len(versions), 2)
+            self.assertEqual(versions[0]["id"], first["document_id"])
+            self.assertEqual(versions[0]["is_current"], 0)
+            self.assertTrue(versions[0]["replaced_at"])
+            self.assertEqual(versions[1]["id"], second["document_id"])
+            self.assertEqual(versions[1]["replaces_document_id"], first["document_id"])
+            self.assertIn("Rückfrage", versions[1]["replacement_reason"])
 
     def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
         cycle_id = self._prepare_cycle()

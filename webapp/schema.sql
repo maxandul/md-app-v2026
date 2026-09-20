@@ -295,6 +295,9 @@ CREATE TABLE IF NOT EXISTS official_documents (
         )),
     handoff_filename TEXT NOT NULL DEFAULT '',
     handoff_at TEXT NOT NULL DEFAULT '',
+    replaces_document_id INTEGER REFERENCES official_documents(id),
+    replacement_reason TEXT NOT NULL DEFAULT '',
+    replaced_at TEXT NOT NULL DEFAULT '',
     is_current INTEGER NOT NULL DEFAULT 1
         CHECK (is_current IN (0, 1))
 );
@@ -305,6 +308,23 @@ CREATE INDEX IF NOT EXISTS idx_official_documents_case
 CREATE UNIQUE INDEX IF NOT EXISTS idx_official_documents_current
     ON official_documents (case_id, document_kind, variant)
     WHERE is_current = 1;
+
+CREATE TABLE IF NOT EXISTS case_corrections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES dialog_cases(case_id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES app_users(id),
+    field_name TEXT NOT NULL CHECK (field_name IN (
+        'official_scope', 'dialog_date', 'period_start', 'period_end',
+        'overall_rating_code', 'agreement'
+    )),
+    old_value TEXT NOT NULL DEFAULT '',
+    new_value TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_case_corrections_case
+    ON case_corrections (case_id, created_at);
 
 CREATE TABLE IF NOT EXISTS dialog_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

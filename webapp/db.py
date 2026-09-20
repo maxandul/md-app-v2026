@@ -95,6 +95,15 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         connection.execute(
             "ALTER TABLE official_documents ADD COLUMN document_obligation_id INTEGER REFERENCES document_obligations(id)"
         )
+    if "replaces_document_id" not in document_columns:
+        connection.execute(
+            "ALTER TABLE official_documents ADD COLUMN replaces_document_id INTEGER REFERENCES official_documents(id)"
+        )
+    for column in ("replacement_reason", "replaced_at"):
+        if column not in document_columns:
+            connection.execute(
+                f"ALTER TABLE official_documents ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+            )
     package_columns = {
         row["name"] for row in connection.execute("PRAGMA table_info(package_events)").fetchall()
     }

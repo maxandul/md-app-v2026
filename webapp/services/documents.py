@@ -186,20 +186,38 @@ def _store_current_document(
     handoff_status: str,
     handoff_filename: str = "",
     handoff_at: str = "",
+    replacement_reason: str = "",
 ) -> int:
     duplicate = connection.execute(
         "SELECT id FROM official_documents WHERE sha256 = ?", (digest,)
     ).fetchone()
     if duplicate:
         raise ValueError("Dieses PDF wurde bereits importiert.")
-    connection.execute(
+    current = connection.execute(
         """
-        UPDATE official_documents
-        SET is_current = 0
+        SELECT * FROM official_documents
         WHERE case_id = ? AND document_kind = ? AND variant = ? AND is_current = 1
         """,
         (case["case_id"], document_kind, variant),
-    )
+    ).fetchone()
+    replacement_reason = replacement_reason.strip()
+    if current:
+        if not replacement_reason:
+            raise ValueError(
+                "Für diesen Dokumenttyp besteht bereits eine aktuelle Version. "
+                "Die neue Version muss in der Einzelfallansicht mit einem "
+                "Ersetzungsgrund importiert werden."
+            )
+        if current["handoff_status"] == "staged":
+            raise ValueError(
+                "Die aktuelle Version wurde bereits für die Personaldossier-Ablage "
+                "bereitgestellt. Eine Ersetzung muss zuerst mit dem nachgelagerten "
+                "Ablageprozess geklärt werden."
+            )
+        connection.execute(
+            "UPDATE official_documents SET is_current = 0, replaced_at = ? WHERE id = ?",
+            (received_at, current["id"]),
+        )
     event = connection.execute(
         "SELECT id, event_id FROM dialog_events WHERE legacy_case_id = ? ORDER BY id LIMIT 1",
         (case["case_id"],),
@@ -244,8 +262,9 @@ def _store_current_document(
             cycle_id, employee_pn, manager_pn, document_kind, variant,
             original_filename, stored_path, sha256, received_at, data_block_json,
             extracted_text, fill_sign_detected, fill_sign_count, signature_checked,
-            scan_required, handoff_status, handoff_filename, handoff_at, is_current
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            scan_required, handoff_status, handoff_filename, handoff_at,
+            replaces_document_id, replacement_reason, replaced_at, is_current
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         """,
         (
             case["case_id"],
@@ -269,6 +288,9 @@ def _store_current_document(
             handoff_status,
             handoff_filename,
             handoff_at,
+            current["id"] if current else None,
+            replacement_reason,
+            "",
         ),
     )
     document_id = int(cursor.lastrowid)
@@ -356,6 +378,50 @@ def refresh_case_status(connection: sqlite3.Connection, case_id: str) -> str:
     return status
 
 
+def update_scope_obligations(
+    connection: sqlite3.Connection, *, case_id: str, scope: str, timestamp: str
+) -> None:
+    event = connection.execute(
+        "SELECT id FROM dialog_events WHERE legacy_case_id = ? ORDER BY id LIMIT 1",
+        (case_id,),
+    ).fetchone()
+    if not event:
+        return
+    required_kinds = {
+        "full": {"review", "outlook"},
+        "review_only": {"review"},
+        "outlook_only": {"outlook"},
+        "none": set(),
+    }[scope]
+    for kind in ("review", "outlook"):
+        obligation = connection.execute(
+            """
+            SELECT id, status FROM document_obligations
+            WHERE dialog_event_id = ? AND document_kind = ?
+            """,
+            (event["id"], kind),
+        ).fetchone()
+        if not obligation:
+            continue
+        required = int(kind in required_kinds)
+        status = obligation["status"]
+        if required and status == "waived":
+            status = "open"
+        elif not required and status != "complete":
+            status = "waived"
+        connection.execute(
+            """
+            UPDATE document_obligations
+            SET required = ?, status = ?, updated_at = ? WHERE id = ?
+            """,
+            (required, status, timestamp, obligation["id"]),
+        )
+    connection.execute(
+        "UPDATE dialog_events SET required_scope = ?, updated_at = ? WHERE id = ?",
+        (scope, timestamp, event["id"]),
+    )
+
+
 def import_official_pdf(
     connection: sqlite3.Connection,
     *,
@@ -363,6 +429,7 @@ def import_official_pdf(
     original_filename: str,
     accepted_dir: Path,
     received_at: datetime | None = None,
+    replacement_reason: str = "",
 ) -> dict[str, Any]:
     inspection = inspect_pdf(path)
     if not inspection.data:
@@ -432,11 +499,15 @@ def import_official_pdf(
             signature_checked=document_kind == "no_md",
             scan_required=scan_required,
             handoff_status=handoff_status,
+            replacement_reason=replacement_reason,
         )
         if scope:
             connection.execute(
                 "UPDATE dialog_cases SET official_scope = ? WHERE case_id = ?",
                 (scope, case["case_id"]),
+            )
+            update_scope_obligations(
+                connection, case_id=case["case_id"], scope=scope, timestamp=timestamp
             )
         if document_kind == "review":
             connection.execute(

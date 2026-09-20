@@ -24,7 +24,7 @@
         <tbody>
         {% for case in cases %}
           <tr>
-            <td><strong>{{ case.first_name }} {{ case.last_name }}</strong><br><span class="muted">PN {{ case.employee_pn }}</span></td>
+            <td><strong><a href="{{ url_for('main.case_detail', cycle_id=cycle.id, case_id=case.case_id) }}">{{ case.first_name }} {{ case.last_name }}</a></strong><br><span class="muted">PN {{ case.employee_pn }}</span></td>
             <td>{{ case.position or '–' }}<br><span class="muted">{{ case.org_unit or '–' }}</span></td>
             <td><strong>{{ case.scope_label }}</strong><br><span class="muted">Vorschlag: {{ case.suggested_scope }} · {{ case.suggestion_reason }}</span></td>
             <td>

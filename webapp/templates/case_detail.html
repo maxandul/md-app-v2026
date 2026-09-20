@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ case.first_name }} {{ case.last_name }} · Einzelfallprüfung{% endblock %}
+{% block content %}
+  <nav class="breadcrumb" aria-label="Brotkrumen">
+    <a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span>
+    <a href="{{ url_for('main.manager_detail', cycle_id=cycle_id, manager_pn=case.manager_pn) }}">{{ case.manager_name }}</a><span aria-hidden="true">/</span>
+    <span>{{ case.first_name }} {{ case.last_name }}</span>
+  </nav>
+
+  <section class="page-head page-head--compact">
+    <p class="kicker">Einzelfallprüfung · {{ case.case_id }}</p>
+    <h1>{{ case.first_name }} {{ case.last_name }}</h1>
+    <p class="lead">PN {{ case.employee_pn }} · Ans. {{ case.employment_assignment or '–' }} · {{ case.position or '–' }} · {{ case.org_unit or '–' }}</p>
+    <span class="status">{{ case.status }}</span>
+  </section>
+
+  <section class="content-section" aria-labelledby="case-data-title">
+    <div class="section-heading"><div><p class="kicker">Übernommene Angaben</p><h2 id="case-data-title">Fachdaten prüfen</h2></div></div>
+    {% if correction_locked %}<div class="info-box"><p>Mindestens ein aktuelles Dokument wurde bereits freigegeben. Direkte Datenkorrekturen sind deshalb gesperrt; verwende eine begründete neue PDF-Version.</p></div>{% endif %}
+    <form action="{{ url_for('main.correct_case', cycle_id=cycle_id, case_id=case.case_id) }}" method="post">
+      <div class="form-grid form-grid--three">
+        <div><label for="official_scope">Verbindlicher Umfang</label><select id="official_scope" name="official_scope"{% if correction_locked %} disabled{% endif %}>{% if not case.official_scope %}<option value="" selected>Noch nicht festgelegt</option>{% endif %}<option value="full"{% if case.official_scope == 'full' %} selected{% endif %}>Rückblick und Ausblick</option><option value="review_only"{% if case.official_scope == 'review_only' %} selected{% endif %}>Nur Rückblick</option><option value="outlook_only"{% if case.official_scope == 'outlook_only' %} selected{% endif %}>Nur Ausblick</option><option value="none"{% if case.official_scope == 'none' %} selected{% endif %}>Kein MD</option></select></div>
+        <div><label for="dialog_date">Gesprächsdatum</label><input id="dialog_date" name="dialog_date" type="date" value="{{ case.dialog_date }}"{% if correction_locked %} disabled{% endif %}></div>
+        <div><label for="overall_rating_code">Gesamtbeurteilung</label><select id="overall_rating_code" name="overall_rating_code"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option>{% for rating in ['A','B','C','D','E'] %}<option value="{{ rating }}"{% if case.overall_rating_code == rating %} selected{% endif %}>{{ rating }}</option>{% endfor %}</select></div>
+        <div><label for="period_start">Zeitraum von</label><input id="period_start" name="period_start" type="date" value="{{ case.period_start }}"{% if correction_locked %} disabled{% endif %}></div>
+        <div><label for="period_end">Zeitraum bis</label><input id="period_end" name="period_end" type="date" value="{{ case.period_end }}"{% if correction_locked %} disabled{% endif %}></div>
+        <div><label for="agreement">Einigkeitsstatus</label><select id="agreement" name="agreement"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option><option value="JA"{% if case.agreement == 'JA' %} selected{% endif %}>Ja</option><option value="NEIN"{% if case.agreement == 'NEIN' %} selected{% endif %}>Nein</option></select></div>
+        <div class="form-grid__wide"><label for="reason">Begründung der Korrektur</label><input id="reason" name="reason" minlength="10" placeholder="Was war falsch und weshalb wird es geändert?"{% if correction_locked %} disabled{% endif %}></div>
+      </div>
+      <button class="button button--primary" type="submit"{% if correction_locked %} disabled{% endif %}>Begründete Korrektur speichern</button>
+    </form>
+  </section>
+
+  <section class="content-section" aria-labelledby="obligations-title">
+    <div class="section-heading"><div><p class="kicker">Soll und Ist</p><h2 id="obligations-title">Dokumentpflichten</h2></div></div>
+    {% if obligations %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Erforderlich</th><th>Frist</th><th>Status</th></tr></thead><tbody>{% for obligation in obligations %}<tr><td>{{ obligation.document_name }}</td><td>{{ 'Ja' if obligation.required else 'Nein' }}</td><td>{{ obligation.due_date or '–' }}</td><td><span class="status{% if obligation.status in ['open','scan_pending','rejected'] %} status--warning{% else %} status--staged{% endif %}">{{ obligation.status_label }}</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Für diesen Fall sind keine Dokumentpflichten erfasst.</div>{% endif %}
+  </section>
+
+  <section class="content-section" aria-labelledby="documents-title">
+    <div class="section-heading"><div><p class="kicker">Dokumentversionen</p><h2 id="documents-title">PDF-Verlauf</h2></div><span class="section-count">{{ documents|length }}</span></div>
+    {% if documents %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Version</th><th>Eingang</th><th>Status</th><th>Ersetzungsgrund</th></tr></thead><tbody>{% for document in documents %}<tr><td><strong>{{ document.document_name }}</strong><br><span class="muted">{{ document.original_filename }}</span></td><td>{% if document.is_current %}<span class="status status--staged">Aktuell</span>{% else %}<span class="status">Ersetzt</span>{% endif %}<br><code>{{ document.sha256[:12] }}…</code></td><td>{{ document.received_at }}</td><td>{{ document.variant_label }}<br><span class="muted">{{ document.handoff_label }}</span></td><td>{{ document.replacement_reason or '–' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch kein offizielles Dokument vorhanden.</div>{% endif %}
+
+    <div class="content-card version-upload">
+      <h3>Korrigierte PDF-Version importieren</h3>
+      <p>Die Datei wird vollständig neu validiert. Die bisherige Version bleibt erhalten. Bereits für die Ablage bereitgestellte Dokumente können nicht automatisch ersetzt werden.</p>
+      <form action="{{ url_for('main.replace_case_pdf', cycle_id=cycle_id, case_id=case.case_id) }}" method="post" enctype="multipart/form-data">
+        <label for="replacement_pdf">Korrigierte PDF-Datei</label><input id="replacement_pdf" name="replacement_pdf" type="file" accept=".pdf,application/pdf" required>
+        <label for="replacement_reason">Ersetzungsgrund</label><input id="replacement_reason" name="replacement_reason" minlength="10" required placeholder="Weshalb ersetzt diese Datei die aktuelle Version?">
+        <button class="button" type="submit">Neue Version prüfen und übernehmen</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="content-section" aria-labelledby="corrections-title">
+    <div class="section-heading"><div><p class="kicker">Audit-Verlauf</p><h2 id="corrections-title">Begründete Korrekturen</h2></div><span class="section-count">{{ corrections|length }}</span></div>
+    {% if corrections %}<div class="table-wrap"><table><thead><tr><th>Zeitpunkt</th><th>Feld</th><th>Änderung</th><th>Begründung</th><th>Bearbeitet durch</th></tr></thead><tbody>{% for correction in corrections %}<tr><td>{{ correction.created_at }}</td><td>{{ correction.field_label }}</td><td><code>{{ correction.old_value or 'leer' }}</code> → <code>{{ correction.new_value or 'leer' }}</code></td><td>{{ correction.reason }}</td><td>{{ correction.user_email }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch keine manuelle Korrektur protokolliert.</div>{% endif %}
+  </section>
+{% endblock %}

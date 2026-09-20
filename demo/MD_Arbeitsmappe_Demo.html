@@ -354,6 +354,12 @@
       font-size: 13px;
     }
 
+    .suggestion.warning {
+      color: #65430b;
+      border-left-color: #e0a526;
+      background: var(--warning-soft);
+    }
+
     .scan-warning {
       margin-top: 12px;
       padding: 12px 14px;
@@ -1172,8 +1178,7 @@
                   <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
                 </label>`).join('')}
             </div>
-            ${employee.suggestion ? `<div class="suggestion"><strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))} Zusätzliche Gesprächsteile sind jederzeit möglich.</div>` : ''}
-            ${!employee.suggestion || !employee.suggestion.is_special ? `<div class="suggestion">Weitere Regelungen findest du in der <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Dokumentation der Spezialfälle</a>.</div>` : ''}
+            <div class="suggestion warning">${employee.suggestion ? `<strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))} ` : ''}Hier geht's zu den <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen bei Spezialfällen</a>.</div>
             ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
           </section>`;
       }

@@ -41,7 +41,7 @@
                       <form class="scan-form" action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.kind) }}" method="post" enctype="multipart/form-data">
                         <label for="scan-{{ case.case_id }}-{{ document.kind }}">Handschriftlicher PDF-Scan</label>
                         <input id="scan-{{ case.case_id }}-{{ document.kind }}" name="scan_file" type="file" accept=".pdf,application/pdf" required>
-                        <button class="button button--small" type="submit">Prüfen und für RPA bereitstellen</button>
+                        <button class="button button--small" type="submit">Prüfen und für Personaldossier bereitstellen</button>
                       </form>
                     {% endif %}
                   </div>

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Zum Inhalt</a>
   <div class="accent" aria-hidden="true"></div>
   <header class="app-header">
     <div class="app-shell header-inner">
@@ -18,11 +19,24 @@
         <p class="environment">Geschützte HR-Arbeitsumgebung</p>
         {% if g.user %}
           <span class="user-chip">{{ g.user.email }}</span>
-          {% if g.user.role == 'system_admin' %}<a href="{{ url_for('auth.users') }}">Benutzerkonten</a>{% endif %}
           <form action="{{ url_for('auth.logout') }}" method="post"><button class="link-button" type="submit">Abmelden</button></form>
         {% endif %}
       </div>
     </div>
+    {% if g.user or config.AUTH_DISABLED %}
+      <nav class="main-nav" aria-label="Hauptnavigation">
+        <div class="app-shell main-nav__inner">
+          <a href="{{ url_for('main.dashboard') }}"{% if active_nav == 'overview' %} class="is-active" aria-current="page"{% endif %}>Übersicht</a>
+          <a href="{{ url_for('main.master_data') }}"{% if active_nav == 'master_data' %} class="is-active" aria-current="page"{% endif %}>Stammdaten</a>
+          <a href="{{ url_for('main.dialogs') }}"{% if active_nav == 'dialogs' %} class="is-active" aria-current="page"{% endif %}>Dialoge</a>
+          <a href="{{ url_for('main.dispatch') }}"{% if active_nav == 'dispatch' %} class="is-active" aria-current="page"{% endif %}>Versand</a>
+          <a href="{{ url_for('main.returns_overview') }}"{% if active_nav == 'returns' %} class="is-active" aria-current="page"{% endif %}>Rückläufe</a>
+          <a href="{{ url_for('main.sap_exports') }}"{% if active_nav == 'sap_export' %} class="is-active" aria-current="page"{% endif %}>SAP-Export</a>
+          <a href="{{ url_for('main.analytics') }}"{% if active_nav == 'analytics' %} class="is-active" aria-current="page"{% endif %}>Auswertungen</a>
+          {% if g.user and g.user.role == 'system_admin' %}<a href="{{ url_for('auth.users') }}"{% if active_nav == 'administration' %} class="is-active" aria-current="page"{% endif %}>Administration</a>{% endif %}
+        </div>
+      </nav>
+    {% endif %}
   </header>
 
   <main class="app-shell" id="main-content">

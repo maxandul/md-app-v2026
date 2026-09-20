@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Dialoge · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--compact">
+    <p class="kicker">Dialoge</p><h1>Durchläufe und Dialogpflichten</h1>
+    <p class="lead">Reguläre Jahresprozesse steuern. Unterjährige und manuell ergänzte Dialogereignisse werden hier später ebenfalls geführt.</p>
+  </section>
+
+  <section class="split-layout">
+    <div class="content-card">
+      <p class="kicker">Regulärer Prozess</p><h2>Durchlauf eröffnen</h2>
+      {% if imports %}
+        <form action="{{ url_for('main.add_cycle') }}" method="post">
+          <label for="review_year">Rückblickjahr</label><input id="review_year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year|default(2026) }}" required>
+          <label for="sap_import_id">Verwendeter SAP-Datenstand</label>
+          <select id="sap_import_id" name="sap_import_id" required>{% for item in imports %}<option value="{{ item.id }}">Import {{ item.id }} · {{ item.original_filename }} · {{ item.employee_count }} Personen</option>{% endfor %}</select>
+          <button class="button button--primary" type="submit">Durchlauf eröffnen</button>
+        </form>
+      {% else %}<p>Vor dem ersten Durchlauf wird ein SAP-Datenstand benötigt.</p><a class="button" href="{{ url_for('main.master_data') }}">Zu den Stammdaten</a>{% endif %}
+    </div>
+    <aside class="info-box"><h2>Unterjährige Ereignisse</h2><p>Neueintritte, Austritte, Wechsel und Übertritte können zusätzliche Rückblicke, Probezeitdialoge oder Ausblicke auslösen. Die manuelle Zuordnung folgt mit dem erweiterten Dialogmodell.</p></aside>
+  </section>
+
+  <section class="content-section" aria-labelledby="processes-title">
+    <div class="section-heading"><div><p class="kicker">Prozessübersicht</p><h2 id="processes-title">Durchläufe</h2></div></div>
+    {% if cycles %}
+      <div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Status</th><th>Führungskräfte</th><th>Fälle</th><th>Abgeschlossen</th><th></th></tr></thead><tbody>
+      {% for cycle in cycles %}<tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td><span class="status">{{ cycle.status }}</span></td><td>{{ cycle.manager_count }}</td><td>{{ cycle.case_count }}</td><td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td><td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="empty-state">Noch kein Durchlauf angelegt.</div>{% endif %}
+  </section>
+{% endblock %}

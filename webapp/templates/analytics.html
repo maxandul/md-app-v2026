@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Auswertungen · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--compact"><p class="kicker">Auswertungen</p><h1>Prozess- und Organisationsauswertungen</h1><p class="lead">Gesprächszeitpunkte, Gesamtbeurteilungen sowie thematisierte Kompetenzen und Entwicklungsziele werden hier durchlaufübergreifend auswertbar.</p></section>
+  <section class="info-box info-box--wide"><h2>Nächster Ausbauschritt</h2><p>Die Arbeitsmappe erfasst die relevanten Angaben bereits strukturiert. Für belastbare Auswertungen werden diese Inhalte im erweiterten Dialogmodell vollständig in SQLite übernommen. Aggregierte Ansichten berücksichtigen die festzulegende Mindestgruppengrösse.</p></section>
+  <section class="content-section" aria-labelledby="analysis-state-title">
+    <div class="section-heading"><div><p class="kicker">Verfügbare Grundlage</p><h2 id="analysis-state-title">Daten nach Durchlauf</h2></div></div>
+    {% if cycles %}<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Führungskräfte</th><th>Fälle</th><th>Abgeschlossen</th><th>Bearbeitungsstand</th></tr></thead><tbody>{% for cycle in cycles %}<tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td>{{ cycle.manager_count }}</td><td>{{ cycle.case_count }}</td><td>{{ cycle.done_count or 0 }}</td><td>{% if cycle.case_count %}{{ ((cycle.done_count or 0) * 100 / cycle.case_count)|round|int }} %{% else %}–{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch keine Daten für Auswertungen vorhanden.</div>{% endif %}
+  </section>
+{% endblock %}

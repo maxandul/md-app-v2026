@@ -1,4 +1,4 @@
-"""Importiert offizielle PDF-Rückläufe und steuert die RPA-Ablage."""
+"""Importiert offizielle PDF-Rückläufe und steuert die Dossier-Bereitstellung."""
 
 from __future__ import annotations
 
@@ -427,7 +427,7 @@ def confirm_digital_signature(
         handoff_filename = _handoff_filename(case, document["document_kind"], scan=False)
         destination = handoff_dir / handoff_filename
         if destination.exists() and destination.resolve() != source.resolve():
-            raise ValueError(f"Im RPA-Ordner existiert bereits «{handoff_filename}».")
+            raise ValueError(f"Im Übergabeordner existiert bereits «{handoff_filename}».")
         if source.resolve() != destination.resolve():
             shutil.move(str(source), str(destination))
         connection.execute(
@@ -478,7 +478,7 @@ def import_handwritten_scan(
     handoff_filename = _handoff_filename(case, document_kind, scan=True)
     destination = handoff_dir / handoff_filename
     if destination.exists():
-        raise ValueError(f"Im RPA-Ordner existiert bereits «{handoff_filename}».")
+        raise ValueError(f"Im Übergabeordner existiert bereits «{handoff_filename}».")
 
     try:
         shutil.move(str(path), str(destination))
@@ -525,8 +525,8 @@ def _document_state(digital: sqlite3.Row | None, scan: sqlite3.Row | None) -> di
     if digital["scan_required"] and not scan:
         return {"key": "scan", "label": "Handschriftlicher Scan ausstehend", "digital": digital, "scan": None}
     if digital["scan_required"]:
-        return {"key": "staged", "label": "Handschriftlicher Scan für RPA bereit", "digital": digital, "scan": scan}
-    return {"key": "staged", "label": "Elektronisches PDF für RPA bereit", "digital": digital, "scan": None}
+        return {"key": "staged", "label": "Handschriftlicher Scan bereitgestellt", "digital": digital, "scan": scan}
+    return {"key": "staged", "label": "Elektronisches PDF bereitgestellt", "digital": digital, "scan": None}
 
 
 def case_document_overview(

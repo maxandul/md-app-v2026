@@ -1,115 +1,96 @@
 {% extends "base.html" %}
 {% block title %}Übersicht · MD-Verwaltung{% endblock %}
 {% block content %}
-  <section class="page-head">
-    <p class="kicker">Administration</p>
-    <h1>Mitarbeitenden-Dialoge verwalten</h1>
-    <p class="lead">SAP-Stammdaten importieren, Jahresprozesse eröffnen, HTML-Arbeitsmappen bereitstellen und unterzeichnete PDF-Rückläufe kontrolliert verarbeiten.</p>
-  </section>
-
-  <section class="security-note" aria-labelledby="security-title">
-    <h2 id="security-title">Schutz der Personaldaten</h2>
-    <p>Startdateien enthalten Vorjahresdaten. Erst- und Rückversand erfolgen ausschliesslich S/MIME-verschlüsselt. Die lokale Ablage ist durch das verwaltete Geschäftsgerät zu schützen.</p>
-  </section>
-
-  <div class="action-grid">
-    <section class="panel" aria-labelledby="import-title">
-      <h2 id="import-title">1. SAP-Export importieren</h2>
-      <p>Der Import wird als unveränderter Datenstand historisiert. Doppelte Führungslinien werden erkannt.</p>
-      <form action="{{ url_for('main.upload_sap_import') }}" method="post" enctype="multipart/form-data">
-        <label for="sap_file">SAP-Datei im Format XLSX</label>
-        <input id="sap_file" name="sap_file" type="file" accept=".xlsx" required>
-        <button class="button button--primary" type="submit">SAP-Export importieren</button>
+  <section class="page-head page-head--overview">
+    <div>
+      <p class="kicker">HR-Cockpit</p>
+      <h1>Übersicht</h1>
+      <p class="lead">Mitarbeitenden-Dialoge verwalten und die nächsten Aufgaben im laufenden Prozess bearbeiten.</p>
+    </div>
+    {% if cycles %}
+      <form class="context-selector" action="{{ url_for('main.dashboard') }}" method="get">
+        <label for="cycle_id">Angezeigter Durchlauf</label>
+        <select id="cycle_id" name="cycle_id">
+          {% for cycle in cycles %}
+            <option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>Rückblick {{ cycle.review_year }} · Ausblick {{ cycle.outlook_year }}</option>
+          {% endfor %}
+        </select>
+        <button class="button button--small" type="submit">Anzeigen</button>
       </form>
+    {% endif %}
+  </section>
+
+  {% if not latest_import %}
+    <section class="next-step" aria-labelledby="first-import-title">
+      <div>
+        <p class="kicker">Erster Schritt</p>
+        <h2 id="first-import-title">SAP-Stammdaten importieren</h2>
+        <p>Für Arbeitsmappen, Führungslinien und Dialogpflichten wird zuerst ein aktueller SAP-Export benötigt. Zeilen mit Beschäftigungsgrad 0 werden ausgeschlossen.</p>
+      </div>
+      <a class="button button--primary" href="{{ url_for('main.master_data') }}">Zu den Stammdaten</a>
+    </section>
+  {% elif not selected_cycle %}
+    <section class="next-step" aria-labelledby="first-cycle-title">
+      <div>
+        <p class="kicker">Nächster Schritt</p>
+        <h2 id="first-cycle-title">Regulären Durchlauf eröffnen</h2>
+        <p>Der aktuelle SAP-Datenstand ist vorhanden. Nun kann der reguläre Rückblick- und Ausblickprozess angelegt werden.</p>
+      </div>
+      <a class="button button--primary" href="{{ url_for('main.dialogs') }}">Durchlauf eröffnen</a>
+    </section>
+  {% else %}
+    <section class="process-context" aria-label="Aktueller Prozesskontext">
+      <div><span class="context-label">Durchlauf</span><strong>Rückblick {{ selected_cycle.review_year }} · Ausblick {{ selected_cycle.outlook_year }}</strong></div>
+      <div><span class="context-label">Phase</span><strong>{{ selected_cycle.status_label }}</strong></div>
+      <div><span class="context-label">SAP-Datenstand</span><strong>{{ latest_import.imported_at }}</strong><span class="context-detail">{{ latest_import.original_filename }}</span></div>
+      <a href="{{ url_for('main.cycle_detail', cycle_id=selected_cycle.id) }}">Durchlauf öffnen</a>
     </section>
 
-    <section class="panel" aria-labelledby="cycle-title">
-      <h2 id="cycle-title">2. Jahresprozess eröffnen</h2>
-      {% if imports %}
-        <form action="{{ url_for('main.add_cycle') }}" method="post">
-          <label for="review_year">Rückblickjahr</label>
-          <input id="review_year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year|default(2026) }}" required>
-          <label for="sap_import_id">Verwendeter SAP-Datenstand</label>
-          <select id="sap_import_id" name="sap_import_id" required>
-            {% for item in imports %}
-              <option value="{{ item.id }}">Import {{ item.id }} · {{ item.original_filename }} · {{ item.employee_count }} Personen</option>
-            {% endfor %}
-          </select>
-          <button class="button button--primary" type="submit">Jahresprozess eröffnen</button>
-        </form>
+    <section class="metric-grid" aria-label="Operative Kennzahlen">
+      <a class="metric-card" href="{{ url_for('main.dispatch', cycle_id=selected_cycle.id) }}"><span class="metric-card__value">{{ metrics.workbooks_missing }}</span><span class="metric-card__label">START-Dateien fehlen</span><span class="metric-card__detail">Noch nicht bereitgestellt</span></a>
+      <a class="metric-card" href="{{ url_for('main.cycle_detail', cycle_id=selected_cycle.id) }}"><span class="metric-card__value">{{ metrics.cases_open }}</span><span class="metric-card__label">Fälle offen</span><span class="metric-card__detail">Offen oder in Bearbeitung</span></a>
+      <a class="metric-card{% if metrics.documents_to_check %} metric-card--attention{% endif %}" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#pruefen"><span class="metric-card__value">{{ metrics.documents_to_check }}</span><span class="metric-card__label">Dokumente prüfen</span><span class="metric-card__detail">Unterschriften bestätigen</span></a>
+      <a class="metric-card{% if metrics.scans_pending %} metric-card--critical{% endif %}" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#pruefen"><span class="metric-card__value">{{ metrics.scans_pending }}</span><span class="metric-card__label">Scans ausstehend</span><span class="metric-card__detail">Bei D/E oder Uneinigkeit</span></a>
+      <a class="metric-card" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}"><span class="metric-card__value">{{ metrics.dossier_ready }}</span><span class="metric-card__label">Bereitgestellt</span><span class="metric-card__detail">Für die Personaldossier-Ablage</span></a>
+      <a class="metric-card{% if metrics.master_data_issues %} metric-card--critical{% endif %}" href="{{ url_for('main.master_data') }}#importe"><span class="metric-card__value">{{ metrics.master_data_issues }}</span><span class="metric-card__label">Stammdaten prüfen</span><span class="metric-card__detail">Konflikte und Warnungen</span></a>
+    </section>
+
+    <section class="content-section" id="aufgaben" aria-labelledby="tasks-title">
+      <div class="section-heading">
+        <div><p class="kicker">Operative Arbeitsliste</p><h2 id="tasks-title">Jetzt zu erledigen</h2></div>
+        <span class="section-count">{{ task_count }} Aufgabe{% if task_count != 1 %}n{% endif %}</span>
+      </div>
+      {% if tasks %}
+        <div class="task-list">
+          {% for task in tasks[:10] %}
+            <article class="task-row">
+              <div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div>
+              <div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }}{% if task.context %} · {{ task.context }}{% endif %}</p></div>
+              <div class="task-row__date"><span class="context-label">Seit</span>{{ task.date }}</div>
+              <div>
+                {% if task.target == 'import' %}<a class="button button--small" href="{{ url_for('main.import_detail', import_id=task.import_id) }}">Prüfen</a>{% else %}<a class="button button--small" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Bearbeiten</a>{% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+        {% if task_count > 10 %}<p class="list-note">Gezeigt werden die 10 Aufgaben mit der höchsten Priorität.</p>{% endif %}
       {% else %}
-        <p class="muted">Zuerst wird ein SAP-Export benötigt.</p>
+        <div class="empty-state empty-state--success"><strong>Aktuell ist keine direkte HR-Aufgabe offen.</strong><br>Offene Gesprächsfälle bleiben im Prozessstand sichtbar.</div>
       {% endif %}
     </section>
 
-    <section class="panel" aria-labelledby="return-title">
-      <h2 id="return-title">3. PDF-Rückläufe einlesen</h2>
-      <p>Elektronische Rückblick-/Ausblick-PDFs und administrative Kein-MD-Bestätigungen werden über ihren MD-Datenblock zugeordnet.</p>
-      <form action="{{ url_for('main.upload_pdf_returns') }}" method="post" enctype="multipart/form-data">
-        <label for="pdf_files">PDF-Dateien</label>
-        <input id="pdf_files" name="pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
-        <button class="button button--primary" type="submit">PDFs prüfen und importieren</button>
-      </form>
-    </section>
-  </div>
-
-  <details class="legacy-box">
-    <summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary>
-    <form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data">
-      <label for="return_file">Bearbeitete HTML-Datei</label>
-      <input id="return_file" name="return_file" type="file" accept=".html,.htm" required>
-      <button class="button" type="submit">HTML-Rücklauf importieren</button>
-    </form>
-  </details>
-
-  <section class="content-section" aria-labelledby="processes-title">
-    <div class="section-heading">
-      <div>
-        <p class="kicker">Prozessübersicht</p>
-        <h2 id="processes-title">Jahresprozesse</h2>
-      </div>
-    </div>
-    {% if cycles %}
+    <section class="content-section" aria-labelledby="cycles-title">
+      <div class="section-heading"><div><p class="kicker">Prozessstand</p><h2 id="cycles-title">Durchläufe</h2></div><a href="{{ url_for('main.dialogs') }}">Alle Durchläufe</a></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Zeitraum</th><th>Status</th><th>Führungslinien</th><th>Fälle</th><th>Abgeschlossen</th><th></th></tr></thead>
+          <thead><tr><th>Zeitraum</th><th>Phase</th><th>Führungskräfte</th><th>Fälle</th><th>Abgeschlossen</th><th></th></tr></thead>
           <tbody>
           {% for cycle in cycles %}
-            <tr>
-              <td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td>
-              <td><span class="status">{{ cycle.status }}</span></td>
-              <td>{{ cycle.manager_count }}</td>
-              <td>{{ cycle.case_count }}</td>
-              <td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td>
-              <td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td>
-            </tr>
+            <tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td><span class="status">{{ cycle.status_label }}</span></td><td>{{ cycle.manager_count }}</td><td>{{ cycle.case_count }}</td><td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td><td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td></tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
-    {% else %}
-      <div class="empty-state">Noch kein Jahresprozess angelegt.</div>
-    {% endif %}
-  </section>
-
-  <section class="content-section" aria-labelledby="imports-title">
-    <div class="section-heading"><div><p class="kicker">Datenstände</p><h2 id="imports-title">SAP-Importe</h2></div></div>
-    {% if imports %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Import</th><th>Datei</th><th>Zeitpunkt</th><th>Personen</th><th>Führungslinien</th><th>Prüfung</th></tr></thead>
-          <tbody>
-          {% for item in imports %}
-            <tr><td>{{ item.id }}</td><td>{{ item.original_filename }}</td><td>{{ item.imported_at }}</td><td>{{ item.employee_count }}</td><td>{{ item.reporting_line_count }}</td><td>
-              {% if item.blocking_issue_count %}<span class="status status--danger">{{ item.blocking_issue_count }} Konflikt(e)</span>{% elif item.issue_count %}<span class="status status--warning">{{ item.issue_count }} Hinweis(e)</span>{% else %}<span class="status status--staged">Eindeutig</span>{% endif %}
-              <a href="{{ url_for('main.import_detail', import_id=item.id) }}">Prüfliste</a>
-            </td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="empty-state">Noch kein SAP-Datenstand importiert.</div>
-    {% endif %}
-  </section>
+    </section>
+  {% endif %}
 {% endblock %}

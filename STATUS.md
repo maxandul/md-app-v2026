@@ -25,8 +25,9 @@ Anmeldung und Outlook-Verarbeitung.
   mehrere verantwortliche Führungskräfte vorkommen.
 - HR erhält immer das maschinenlesbare digitale PDF. Bei Gesamtbeurteilung D oder E
   oder bei Uneinigkeit wird zusätzlich ein handschriftlich unterzeichneter Scan benötigt.
-- Ohne Scanpflicht wird das digitale PDF für die Dossier-RPA bereitgestellt. Bei
-  Scanpflicht wird ausschliesslich der Scan an die RPA übergeben.
+- Ohne Scanpflicht wird das digitale PDF im Übergabeordner für die
+  Personaldossier-Ablage bereitgestellt. Bei Scanpflicht wird dort ausschliesslich
+  der Scan bereitgestellt.
 - Versand und Rückversand mit Personaldaten erfolgen S/MIME-verschlüsselt.
 - Die Personalnummer steht bei dossierrelevanten PDF-Dateien am Ende des Dateinamens;
   Dokumenttyp und fachlich richtiges Jahr sind ebenfalls enthalten.
@@ -40,6 +41,10 @@ Anmeldung und Outlook-Verarbeitung.
 
 - lokales Flask-/SQLite-Grundsystem
 - Ersteinrichtung, Anmeldung, Passwortwechsel und Benutzerverwaltung
+- durchgängige Hauptnavigation für Übersicht, Stammdaten, Dialoge, Versand,
+  Rückläufe, SAP-Export und Auswertungen
+- operative Startseite mit belastbaren Kennzahlen und priorisierter Aufgabenliste
+- fachlich getrennte Einstiegsseiten statt technischer Formulare auf der Startseite
 - SAP-XLSX-Import mit Historisierung
 - Erkennung von BG 0, identischen und widersprüchlichen Duplikaten,
   Mehrfachanstellungen und mehreren Bewilligungen
@@ -50,7 +55,8 @@ Anmeldung und Outlook-Verarbeitung.
 - manueller Import maschinenlesbarer PDF-Rückläufe
 - Bestätigung der sichtbaren elektronischen Unterzeichnung
 - Nachverfolgung und Import erforderlicher handschriftlicher Scans
-- Bereitstellung des massgebenden Dokuments für die Dossier-RPA
+- Bereitstellung des massgebenden Dokuments im Übergabeordner für die
+  Personaldossier-Ablage
 - grundlegender SAP-Massenupload mit Begrenzung auf Ein- und Austrittsdatum
 
 ### Arbeitsmappe
@@ -71,19 +77,21 @@ Die fachliche und funktionale Gestaltung der Arbeitsmappe ist für den aktuellen
 ausreichend. Die typografische Harmonisierung mit dem HR-Cockpit und dem kantonalen CD
 wird in einer späteren Feinbearbeitung vorgenommen.
 
-## Nächstes Arbeitspaket: HR-Cockpit
+## Weiterentwicklung HR-Cockpit
 
-Das bestehende Cockpit ist ein technischer Durchstich und wird nun zu einer operativen
-Arbeitsoberfläche für HR weiterentwickelt.
+Das Cockpit besitzt nun die grundlegende Informationsarchitektur einer operativen
+Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erweitert.
 
-### 1. Informationsarchitektur und Übersicht
+### 1. Informationsarchitektur und Übersicht – umgesetzt
 
-- klare Hauptnavigation für Übersicht, Durchläufe, Stammdaten, Versand, Rückläufe,
-  SAP-Export, Auswertungen und Administration
-- operative Startseite mit offenen Aufgaben statt primär technischen Formularen
-- Kennzahlen für offene, überfällige, eingegangene, zu prüfende und für RPA bereite Fälle
-- Aufgabenliste für fehlende Scans sowie Import-, Mail-, PDF-, Export- und RPA-Fehler
-- direkte Einstiege in die jeweils erforderliche Bearbeitung
+- Hauptnavigation und fachliche Modul-Einstiege sind vorhanden.
+- Die Startseite zeigt den gewählten Durchlauf, den SAP-Datenstand, heute bereits
+  belastbar berechenbare Kennzahlen sowie direkte Aufgaben für SAP-Konflikte,
+  START-Dateien, Unterschriftenprüfungen und fehlende Scans.
+- Fristen, Überfälligkeit, Erinnerungen und Mail-/Exportfehler werden ergänzt,
+  sobald das erweiterte Dialog-, Mail- und Exportmodell vorhanden ist.
+- Die Übergabe wird fachlich als Bereitstellung für die Personaldossier-Ablage
+  bezeichnet. Der nachfolgende RPA-Prozess liegt ausserhalb des Scopes.
 
 ### 2. Fall- und Dialogmodell
 
@@ -107,11 +115,11 @@ Arbeitsoberfläche für HR weiterentwickelt.
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Zuerst die bestehende Oberfläche und die verfügbaren Datenfelder prüfen. Anschliessend
-einen konkreten Entwurf für Navigation und operative Startseite erstellen. Noch keine
-umfangreiche visuelle Feinpolitur vornehmen. Die Oberfläche soll das kantonale CD
-aufgreifen, schlank bleiben und HR jeweils nur die für den nächsten Arbeitsschritt
-notwendigen Informationen zeigen.
+Als Nächstes das Fall- und Dialogmodell erweitern. Parallel muss das dokumentierte
+Profil des unveränderten SAP-Standardexports unterstützt werden. Der aktuelle echte
+Beispielexport enthält unter anderem doppelte Überschriften für «Dir. Vorgesetzter»
+und mehrteilige Felder «Bewilligung für», die ohne vorgängige Bearbeitung korrekt
+zugeordnet werden müssen.
 
 ## Prüfen und starten
 
@@ -121,7 +129,7 @@ python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
 python run_web.py
 ```
 
-Beim Übergabestand waren alle 28 automatisierten Tests erfolgreich.
+Beim aktuellen Stand waren alle 30 automatisierten Tests erfolgreich.
 
 Weitere fachliche Details und Abnahmekriterien stehen in
 [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md).

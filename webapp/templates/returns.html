@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Rückläufe · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--overview">
+    <div><p class="kicker">Rückläufe</p><h1>PDFs prüfen und verarbeiten</h1><p class="lead">Eingegangene MD-Dokumente zuordnen, prüfen und für die Personaldossier-Ablage bereitstellen.</p></div>
+    {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
+  </section>
+
+  <section class="split-layout">
+    <div class="content-card">
+      <p class="kicker">Manueller Eingang</p><h2>PDF-Rückläufe einlesen</h2>
+      <p>Elektronische Rückblick-, Ausblick- und Kein-MD-PDFs werden über den MD-Datenblock zugeordnet.</p>
+      <form action="{{ url_for('main.upload_pdf_returns') }}" method="post" enctype="multipart/form-data">
+        <label for="pdf_files">PDF-Dateien</label><input id="pdf_files" name="pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
+        <button class="button button--primary" type="submit">PDFs prüfen und importieren</button>
+      </form>
+    </div>
+    <aside class="info-box">
+      <h2>Postfachbearbeitung</h2>
+      <p>E-Mails mit ausschliesslich gesicherten MD-Dokumenten können später nach «12 Mitarbeitenden-Dialog» verschoben werden. Zusätzliche Anhänge bleiben als Prüfaufgabe sichtbar. E-Mails mit Probezeitrückblick bleiben im Posteingang, weil sie weitere Prozesse auslösen.</p>
+    </aside>
+  </section>
+
+  <section class="content-section" id="pruefen" aria-labelledby="review-title">
+    <div class="section-heading"><div><p class="kicker">Dokumentprüfung</p><h2 id="review-title">Offene Rücklaufaufgaben</h2></div><span class="section-count">{{ metrics.documents_to_check + metrics.scans_pending }}</span></div>
+    {% set return_tasks = tasks|selectattr('kind', 'equalto', 'Rücklauf')|list %}
+    {% if return_tasks %}
+      <div class="task-list">
+        {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Bearbeiten</a></div></article>{% endfor %}
+      </div>
+    {% else %}<div class="empty-state empty-state--success">Keine eingegangenen Dokumente benötigen aktuell eine manuelle Prüfung.</div>{% endif %}
+  </section>
+
+  <details class="legacy-box"><summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary><form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data"><label for="return_file">Bearbeitete HTML-Datei</label><input id="return_file" name="return_file" type="file" accept=".html,.htm" required><button class="button" type="submit">HTML-Rücklauf importieren</button></form></details>
+{% endblock %}

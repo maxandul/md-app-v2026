@@ -1,7 +1,7 @@
 # Anforderungen MD-App v2026
 
-**Status:** Lebender Entwurf 0.2
-**Stand:** 17. September 2026  
+**Status:** Lebender Entwurf 0.3
+**Stand:** 20. September 2026
 **Verantwortung:** Human Resources  
 **Zweck:** Fachliche Grundlage für Konzeption, Umsetzung, Tests und Abnahme
 
@@ -37,7 +37,7 @@ flowchart TD
     HR -->|"S/MIME: START oder Update"| VG["Offline-Arbeitsmappe der Führungskraft"]
     VG -->|"S/MIME: PDF-Rücklauf"| MAIL["HR-Postfach"]
     MAIL --> HR
-    HR --> RPA["Freigabeordner für Personaldossier"]
+    HR --> ABLAGE["Übergabeordner für Personaldossier"]
     HR --> UPLOAD["SAP-Massenupload"]
     HR --> ANALYSE["MD-Analyse"]
 ```
@@ -66,7 +66,7 @@ flowchart TD
 | HR-Systemadministration | Benutzerverwaltung, Passwortzurücksetzung, Konfiguration und technische Fehlerbehebung |
 | Vorgesetzte Person | Dialoge vorbereiten, durchführen, dokumentieren und PDFs an HR zurücksenden |
 | Mitarbeitende Person | Dialog führen und Dokumente je nach Fall elektronisch oder handschriftlich unterzeichnen |
-| Nachgelagertes RPA-System | Freigegebene PDFs aus einem definierten Ordner ins Personaldossier übertragen |
+| Nachgelagertes System | Verarbeitet die korrekt benannten PDFs aus dem definierten Übergabeordner ausserhalb des Scopes dieser Anwendung |
 
 ## 4. Prioritäten
 
@@ -80,7 +80,7 @@ flowchart TD
 |---|---|---|
 | STA-001 | MUSS | HR kann jederzeit einen vollständigen neuen SAP-Export im Format XLSX importieren. Jeder Import erhält Zeitpunkt, Dateiname und Prüfsumme und bleibt nachvollziehbar. |
 | STA-002 | MUSS | Der Import synchronisiert den aktuellen Personenbestand: neue Personen werden angelegt, geänderte Daten aktualisiert und im neuen Export nicht mehr vorhandene Personen inaktiv gesetzt. Personen und historische Daten werden nicht physisch gelöscht. |
-| STA-003 | MUSS | Zeilen mit Beschäftigungsgrad `BG = 0` werden fachlich ignoriert und erzeugen weder aktive Personen-/Anstellungszuordnungen noch Dialogpflichten. Die Anzahl ignorierter Zeilen wird im Importprotokoll ausgewiesen. |
+| STA-003 | MUSS | Zeilen mit Beschäftigungsgrad `BG = 0` beziehungsweise `BsGrd = 0` werden fachlich vollständig ignoriert und erzeugen weder aktive Personen-/Anstellungszuordnungen noch Dialogpflichten oder Arbeitsmappen. Dies gilt auch für die Direktionsleitung. Die Anzahl ignorierter Zeilen wird im Importprotokoll ausgewiesen. |
 | STA-004 | MUSS | Person und Anstellung werden getrennt modelliert. Unterschiedliche `Ans.`-Nummern derselben Personalnummer gelten als mögliche Mehrfachanstellungen und dürfen nicht zusammengeführt werden. |
 | STA-005 | MUSS | Mehrfach vorkommende Personalnummern werden mindestens in vier Klassen eingeteilt: Mehrfachanstellung, mehrere Bewilligungen derselben Anstellung, identisches Duplikat und widersprüchliches Duplikat mit Abklärungsbedarf. |
 | STA-006 | MUSS | Bei gleicher Personalnummer und gleicher `Ans.`, aber unterschiedlichen Angaben zu Beginn, Ende, Bewilligung oder «Bewilligung für», werden die Bewilligungen separat zur Anstellung gespeichert und nicht als zusätzliche Person behandelt. |
@@ -90,6 +90,7 @@ flowchart TD
 | STA-010 | MUSS | Jede automatische und manuelle Änderung an Person, Anstellung, Bewilligung oder Führungslinie ist mit Quelle, Zeitpunkt und ausführender Person nachvollziehbar. |
 | STA-011 | MUSS | Personen können bei Bedarf manuell einer frei wählbaren vorgesetzten Person zugewiesen werden. Die manuelle Zuordnung besitzt einen Gültigkeitszeitraum und eine Begründung. |
 | STA-012 | MUSS | Ein späterer SAP-Import darf eine manuelle Zuordnung nicht unbemerkt überschreiben. Das System zeigt den Konflikt und verlangt einen Entscheid von HR. |
+| STA-013 | MUSS | Der standardisierte SAP-Export kann ohne vorgängige manuelle Umbenennung oder Umformatierung importiert werden. Wiederholte Spaltenüberschriften, insbesondere für die direkte vorgesetzte Person und «Bewilligung für», werden anhand des dokumentierten Exportprofils eindeutig zugeordnet. Mehrteilige Bewilligungstexte gehen nicht verloren. |
 
 ## 6. Führungslinien, Zeiträume und Dialogereignisse
 
@@ -160,6 +161,9 @@ flowchart TD
 | IN-004 | MUSS | Eine E-Mail wird erst aus dem Posteingang in den definierten Zielordner verschoben, wenn alle Anhänge gesichert und klassifiziert sind. Bei Fehlern bleibt sie im Posteingang oder in einem klaren Prüfstatus. |
 | IN-005 | MUSS | Die Verarbeitung derselben E-Mail oder desselben Anhangs ist idempotent. Erneutes Scannen erzeugt keine doppelten Dokumente oder Daten. |
 | IN-006 | MUSS | Für jede Nachricht werden Nachrichten-ID, Absender, Empfangszeit, Anhänge, Prüfsummen, Verarbeitungsresultat und Zielordner protokolliert. |
+| IN-007 | MUSS | Eine E-Mail, die ausschliesslich erfolgreich gesicherte und klassifizierte MD-Dokumente enthält, kann aus dem Posteingang in den Postfachordner «12 Mitarbeitenden-Dialog» verschoben werden. |
+| IN-008 | MUSS | E-Mails mit einem Rückblick Probezeit bleiben auch nach erfolgreicher Sicherung im Posteingang, weil der Dokumenteingang weitere HR-Prozesse auslöst. |
+| IN-009 | MUSS | Enthält eine E-Mail zusätzliche oder nicht eindeutig klassifizierbare Anhänge, werden diese als Prüfaufgabe ausgewiesen und die Nachricht wird nicht automatisch aus dem Posteingang verschoben. |
 
 ## 11. PDF-Verarbeitung, Korrekturen und Ablage
 
@@ -173,7 +177,7 @@ flowchart TD
 | RET-006 | MUSS | Das System erkennt identische doppelte Zustellungen anhand von stabiler Identität und Prüfsumme und verarbeitet sie nicht erneut. |
 | RET-007 | MUSS | Eine korrigierte neue Version kann eine frühere Version kontrolliert ersetzen. Beide Versionen und der Ersetzungsgrund bleiben nachvollziehbar; nur die gültige Version wird weiterverarbeitet und exportiert. |
 | RET-008 | MUSS | HR kann eine falsche automatische Zuordnung oder Datenübernahme mit Begründung korrigieren. Die Originaldaten bleiben im Audit-Verlauf erhalten. |
-| RET-009 | MUSS | Der Status unterscheidet mindestens: eingegangen, unvollständig, HR-Prüfung, Scan ausstehend, vollständig, für RPA bereit, durch RPA übernommen, ersetzt und zurückgewiesen. |
+| RET-009 | MUSS | Der Status unterscheidet mindestens: eingegangen, unvollständig, HR-Prüfung, Scan ausstehend, vollständig, für die Personaldossier-Ablage bereitgestellt, ersetzt und zurückgewiesen. |
 
 ## 12. HR-Cockpit, Fristen und Erinnerungen
 
@@ -186,7 +190,7 @@ flowchart TD
 | COC-005 | MUSS | Überfällige und demnächst fällige Fälle sind klar filterbar. |
 | COC-006 | MUSS | Erinnerungen können zunächst als Vorschau/Entwurf geprüft und danach gesammelt versendet werden. |
 | COC-007 | MUSS | Suche und Filter unterstützen mindestens Name, Personalnummer, `Ans.`, Führungskraft, Organisationseinheit, Status, Dokumenttyp, Jahr und Frist. |
-| COC-008 | MUSS | Das Cockpit zeigt Import-, Mail-, PDF-, Export- und RPA-Fehler in einer bearbeitbaren Aufgabenliste. |
+| COC-008 | MUSS | Das Cockpit zeigt Import-, Mail-, PDF- und Exportfehler in einer bearbeitbaren Aufgabenliste. Der nachgelagerte RPA-Prozess selbst liegt ausserhalb der Anwendung. |
 
 ## 13. SAP-Massenupload
 
@@ -250,6 +254,7 @@ flowchart TD
 | NFR-005 | MUSS | Zeitstempel werden eindeutig gespeichert und in der Benutzeroberfläche in der lokalen Zeitzone angezeigt. |
 | NFR-006 | SOLL | Technische Protokolle unterstützen Fehlerdiagnose, enthalten aber keine unnötigen Personendaten oder Dokumentinhalte. |
 | NFR-007 | OFFEN | Mengengerüst und Leistungsziele, insbesondere Personen, Führungslinien, PDFs pro Jahr und zulässige Verarbeitungsdauer, müssen festgelegt werden. |
+| NFR-008 | MUSS | Die Verantwortung der Anwendung endet mit der korrekt benannten Bereitstellung des massgebenden PDFs im definierten Übergabeordner. Die nachfolgende Verarbeitung durch das separate System liegt ausserhalb des Scopes. |
 
 ## 18. Vorgeschlagenes Datenmodell
 
@@ -298,7 +303,7 @@ führende SAP-Ereignis bestimmen.
 
 Das elektronisch unterzeichnete digitale PDF wird aus dem HR-Postfach übernommen,
 eindeutig zugeordnet, als vollständig erkannt, in die Datenbank geschrieben und
-für die RPA bereitgestellt. Eine Signaturprüfung findet nicht statt.
+im Übergabeordner für die Personaldossier-Ablage bereitgestellt. Eine Signaturprüfung findet nicht statt.
 
 ### AS-05 – D/E oder Uneinigkeit
 
@@ -355,8 +360,7 @@ Vorgang wird protokolliert.
 8. Welche zusätzlichen E-Mail-Anhänge dürfen automatisch klassifiziert werden und
    welche erfordern immer eine manuelle HR-Prüfung?
 9. Welche Erinnerungsstufen, Vorlaufzeiten und Textvorlagen werden verwendet?
-10. Wie meldet das RPA-System die erfolgreiche Übernahme ins Personaldossier zurück?
-11. Welches Mengengerüst und welche maximalen Dateigrössen sind zu erwarten?
+10. Welches Mengengerüst und welche maximalen Dateigrössen sind zu erwarten?
 
 ## 21. Bewusst nicht vorgesehen
 
@@ -371,5 +375,6 @@ Vorgang wird protokolliert.
 
 | Version | Datum | Änderung |
 |---|---|---|
+| 0.3 | 20.09.2026 | Standard-SAP-Export, Ausschluss von BsGrd 0, Postfachordner und Sonderbehandlung von Probezeitrückblicken präzisiert; nachgelagerten RPA-Prozess aus dem Scope abgegrenzt |
 | 0.2 | 17.09.2026 | Eigenständige Übergangslösung präzisiert; konkrete Muss-Analysen ergänzt; Wiederverwendung erprobter Muster aus Vorgängerprojekten eingeordnet |
 | 0.1 | 17.09.2026 | Erster konsolidierter Anforderungskatalog aus dem bisherigen Konzept und der ergänzten Muss-Liste |

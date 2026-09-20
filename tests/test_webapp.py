@@ -15,6 +15,7 @@ from prototype.html_dialog.validate_package import extract_payload
 from webapp import create_app
 from webapp.db import get_db
 from webapp.services.cycles import create_cycle, cycle_overview
+from webapp.services.cockpit import cockpit_overview
 from webapp.services.documents import (
     confirm_digital_signature,
     import_handwritten_scan,
@@ -77,8 +78,46 @@ class WebAppIntegrationTest(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Mitarbeitenden-Dialoge verwalten", response.get_data(as_text=True))
+        self.assertIn("SAP-Stammdaten importieren", response.get_data(as_text=True))
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+
+    def test_main_navigation_and_module_pages(self) -> None:
+        self._prepare_cycle()
+        pages = {
+            "/": "Übersicht",
+            "/stammdaten": "SAP-Datenstände",
+            "/dialoge": "Durchläufe und Dialogpflichten",
+            "/versand": "Arbeitsmappen bereitstellen",
+            "/ruecklaeufe": "PDFs prüfen und verarbeiten",
+            "/sap-export": "Massenuploads erstellen",
+            "/auswertungen": "Prozess- und Organisationsauswertungen",
+        }
+        for path, heading in pages.items():
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                page = response.get_data(as_text=True)
+                self.assertIn(heading, page)
+                self.assertIn("Stammdaten", page)
+                self.assertIn("Rückläufe", page)
+
+    def test_operational_overview_counts_missing_workbooks(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
+            self.assertEqual(data["metrics"]["workbooks_missing"], 4)
+            self.assertEqual(data["metrics"]["cases_open"], 10)
+            self.assertEqual(
+                len([task for task in data["tasks"] if task["kind"] == "Arbeitsmappe"]),
+                4,
+            )
+
+        package = self.client.post(f"/cycles/{cycle_id}/managers/111116/package")
+        package.close()
+        with self.app.app_context():
+            data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
+            self.assertEqual(data["metrics"]["workbooks_missing"], 3)
 
     def test_sap_import_cycle_and_manager_counts(self) -> None:
         cycle_id = self._prepare_cycle()

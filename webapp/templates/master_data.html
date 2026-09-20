@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Stammdaten · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--compact">
+    <p class="kicker">Stammdaten</p>
+    <h1>SAP-Datenstände</h1>
+    <p class="lead">Vollständige SAP-Exporte importieren, Änderungen nachvollziehen und Konflikte vor der weiteren Verarbeitung prüfen.</p>
+  </section>
+
+  <section class="split-layout">
+    <div class="content-card">
+      <p class="kicker">Aktualisieren</p>
+      <h2>SAP-Export importieren</h2>
+      <p>Der vollständige Datenstand wird historisiert. Zeilen mit Beschäftigungsgrad 0 werden nicht in den MD-Prozess übernommen.</p>
+      <form action="{{ url_for('main.upload_sap_import') }}" method="post" enctype="multipart/form-data">
+        <label for="sap_file">SAP-Datei im Format XLSX</label>
+        <input id="sap_file" name="sap_file" type="file" accept=".xlsx" required>
+        <button class="button button--primary" type="submit">SAP-Export importieren</button>
+      </form>
+    </div>
+    <aside class="info-box">
+      <h2>Wofür wird der Datenstand verwendet?</h2>
+      <p>Die App leitet daraus Personen, Anstellungen und direkte Führungslinien ab. Neue oder geänderte Zuordnungen können später eine neue Arbeitsmappe, ein Update oder einen unterjährigen Dialog auslösen.</p>
+    </aside>
+  </section>
+
+  <section class="content-section" id="importe" aria-labelledby="imports-title">
+    <div class="section-heading"><div><p class="kicker">Historie</p><h2 id="imports-title">Importierte Datenstände</h2></div></div>
+    {% if imports %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Import</th><th>Datei</th><th>Zeitpunkt</th><th>Personen</th><th>Führungslinien</th><th>Prüfung</th></tr></thead>
+          <tbody>
+          {% for item in imports %}
+            <tr>
+              <td>{{ item.id }}</td><td>{{ item.original_filename }}</td><td>{{ item.imported_at }}</td><td>{{ item.employee_count }}</td><td>{{ item.reporting_line_count }}</td>
+              <td>{% if item.blocking_issue_count %}<span class="status status--danger">{{ item.blocking_issue_count }} Konflikt(e)</span>{% elif item.issue_count %}<span class="status status--warning">{{ item.issue_count }} Hinweis(e)</span>{% else %}<span class="status status--staged">Eindeutig</span>{% endif %} <a href="{{ url_for('main.import_detail', import_id=item.id) }}">Prüfliste</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}<div class="empty-state">Noch kein SAP-Datenstand importiert.</div>{% endif %}
+  </section>
+{% endblock %}

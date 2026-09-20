@@ -278,7 +278,7 @@ def users():
     rows = get_db().execute(
         "SELECT id, email, role, active, password_temporary, created_at FROM app_users ORDER BY email"
     ).fetchall()
-    return render_template("auth/users.html", users=rows)
+    return render_template("auth/users.html", users=rows, active_nav="administration")
 
 
 @bp.post("/users/<int:user_id>/reset")

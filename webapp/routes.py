@@ -29,6 +29,7 @@ from .services.cycles import (
     dashboard_data,
     manager_case_overview,
 )
+from .services.cockpit import cockpit_overview
 from .services.packages import create_package_file, import_returned_package
 from .services.documents import (
     confirm_digital_signature,
@@ -71,9 +72,72 @@ def _stored_name(original: str) -> str:
 
 @bp.get("/")
 def dashboard():
+    selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
         now_year=datetime.now().year,
+        active_nav="overview",
+        **cockpit_overview(get_db(), selected_cycle_id=selected_cycle_id),
+    )
+
+
+@bp.get("/stammdaten")
+def master_data():
+    return render_template(
+        "master_data.html",
+        active_nav="master_data",
+        **dashboard_data(get_db()),
+    )
+
+
+@bp.get("/dialoge")
+def dialogs():
+    return render_template(
+        "dialogs.html",
+        active_nav="dialogs",
+        now_year=datetime.now().year,
+        **dashboard_data(get_db()),
+    )
+
+
+@bp.get("/versand")
+def dispatch():
+    data = cockpit_overview(
+        get_db(), selected_cycle_id=request.args.get("cycle_id", type=int)
+    )
+    managers = []
+    if data["selected_cycle"]:
+        _cycle, managers = cycle_overview(get_db(), data["selected_cycle"]["id"])
+    return render_template(
+        "dispatch.html", active_nav="dispatch", managers=managers, **data
+    )
+
+
+@bp.get("/ruecklaeufe")
+def returns_overview():
+    return render_template(
+        "returns.html",
+        active_nav="returns",
+        **cockpit_overview(
+            get_db(), selected_cycle_id=request.args.get("cycle_id", type=int)
+        ),
+    )
+
+
+@bp.get("/sap-export")
+def sap_exports():
+    return render_template(
+        "sap_exports.html",
+        active_nav="sap_export",
+        **dashboard_data(get_db()),
+    )
+
+
+@bp.get("/auswertungen")
+def analytics():
+    return render_template(
+        "analytics.html",
+        active_nav="analytics",
         **dashboard_data(get_db()),
     )
 
@@ -83,10 +147,10 @@ def upload_sap_import():
     upload = request.files.get("sap_file")
     if not upload or not upload.filename:
         flash("Bitte wähle einen SAP-Excel-Export aus.", "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.master_data"))
     if not upload.filename.lower().endswith(".xlsx"):
         flash("Der SAP-Import muss eine XLSX-Datei sein.", "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.master_data"))
 
     stored_name = _stored_name(upload.filename)
     path = _storage_dir("sap_imports") / stored_name
@@ -101,7 +165,7 @@ def upload_sap_import():
     except Exception as exc:
         path.unlink(missing_ok=True)
         flash(str(exc), "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.master_data"))
 
     message = (
         f"SAP-Import {result.import_id}: {result.employee_count} Personen und "
@@ -116,7 +180,7 @@ def upload_sap_import():
     if result.warnings:
         message += f" {len(result.warnings)} Hinweis(e) beachten."
     flash(message, "success")
-    return redirect(url_for("main.dashboard"))
+    return redirect(url_for("main.master_data"))
 
 
 @bp.get("/imports/<int:import_id>")
@@ -134,7 +198,9 @@ def import_detail(import_id: int):
         """,
         (import_id,),
     ).fetchall()
-    return render_template("import_detail.html", imported=imported, issues=issues)
+    return render_template(
+        "import_detail.html", imported=imported, issues=issues, active_nav="master_data"
+    )
 
 
 @bp.post("/cycles")
@@ -147,7 +213,7 @@ def add_cycle():
         )
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.dialogs"))
     flash(f"Jahresprozess {review_year}/{review_year + 1} wurde angelegt.", "success")
     return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
 
@@ -158,7 +224,9 @@ def cycle_detail(cycle_id: int):
         cycle, managers = cycle_overview(get_db(), cycle_id)
     except LookupError:
         abort(404)
-    return render_template("cycle.html", cycle=cycle, managers=managers)
+    return render_template(
+        "cycle.html", cycle=cycle, managers=managers, active_nav="dialogs"
+    )
 
 
 @bp.get("/cycles/<int:cycle_id>/managers/<manager_pn>")
@@ -175,6 +243,7 @@ def manager_detail(cycle_id: int, manager_pn: str):
         manager=manager,
         cases=cases,
         events=events,
+        active_nav="dialogs",
     )
 
 
@@ -225,10 +294,10 @@ def upload_return():
     upload = request.files.get("return_file")
     if not upload or not upload.filename:
         flash("Bitte wähle die zurückgesendete HTML-Datei aus.", "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.returns_overview"))
     if not upload.filename.lower().endswith(('.html', '.htm')):
         flash("Der Rücklauf muss eine gespeicherte HTML-Datei sein.", "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.returns_overview"))
 
     stored_name = _stored_name(upload.filename)
     temporary = _storage_dir("returns_pending") / stored_name
@@ -241,7 +310,7 @@ def upload_return():
         rejected = _storage_dir("returns_rejected") / stored_name
         shutil.move(str(temporary), str(rejected))
         flash(str(exc), "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.returns_overview"))
 
     accepted = _storage_dir("returns_accepted") / stored_name
     shutil.move(str(temporary), str(accepted))
@@ -260,7 +329,7 @@ def upload_pdf_returns():
     uploads = [item for item in request.files.getlist("pdf_files") if item and item.filename]
     if not uploads:
         flash("Bitte wähle mindestens ein PDF aus.", "error")
-        return redirect(url_for("main.dashboard"))
+        return redirect(url_for("main.returns_overview"))
 
     imported: list[dict] = []
     errors: list[str] = []
@@ -303,7 +372,7 @@ def upload_pdf_returns():
                 manager_pn=case["manager_pn"],
             )
         )
-    return redirect(url_for("main.dashboard"))
+    return redirect(url_for("main.returns_overview"))
 
 
 @bp.post("/documents/<int:document_id>/signature-checked")
@@ -319,7 +388,7 @@ def mark_signature_checked(document_id: int):
         flash("Unterschriften bestätigt. Der handschriftliche Scan ist noch ausstehend.", "success")
     else:
         flash(
-            f"Unterschriften bestätigt und «{result['handoff_filename']}» für RPA bereitgestellt.",
+            f"Unterschriften bestätigt und «{result['handoff_filename']}» für die Personaldossier-Ablage bereitgestellt.",
             "success",
         )
     return redirect(request.referrer or url_for("main.dashboard"))
@@ -354,7 +423,7 @@ def upload_scan(case_id: str, document_kind: str):
         flash(str(exc), "error")
         return redirect(request.referrer or url_for("main.dashboard"))
     flash(
-        f"Handschriftlicher Scan «{result['handoff_filename']}» für RPA bereitgestellt.",
+        f"Handschriftlicher Scan «{result['handoff_filename']}» für die Personaldossier-Ablage bereitgestellt.",
         "success",
     )
     return redirect(request.referrer or url_for("main.dashboard"))

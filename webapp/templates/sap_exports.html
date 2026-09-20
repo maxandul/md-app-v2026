@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}SAP-Export · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--compact"><p class="kicker">SAP-Export</p><h1>Massenuploads erstellen</h1><p class="lead">Abgeschlossene Rückblicke regelmässig exportieren. Bereits verarbeitete und später korrigierte Datensätze werden mit der erweiterten Exportlogik getrennt nachverfolgt.</p></section>
+  <section class="info-box info-box--wide"><h2>Aktueller Funktionsstand</h2><p>Der bestehende Export erstellt eine Datei aus abgeschlossenen Rückblicken. Die sichere Verhinderung von Doppelexporten und die Verarbeitung nachträglicher Korrekturen folgen mit den protokollierten Exportbatches.</p></section>
+  <section class="content-section" aria-labelledby="exports-title">
+    <div class="section-heading"><div><p class="kicker">Durchläufe</p><h2 id="exports-title">Massenupload</h2></div></div>
+    {% if cycles %}<div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Status</th><th>Abgeschlossene Fälle</th><th>Aktion</th></tr></thead><tbody>{% for cycle in cycles %}<tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td><span class="status">{{ cycle.status }}</span></td><td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td><td><form action="{{ url_for('main.download_sap_export', cycle_id=cycle.id) }}" method="post"><button class="button button--small" type="submit">Massenupload herunterladen</button></form></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch kein Durchlauf vorhanden.</div>{% endif %}
+  </section>
+{% endblock %}

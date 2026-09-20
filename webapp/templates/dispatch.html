@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Versand · MD-Verwaltung{% endblock %}
+{% block content %}
+  <section class="page-head page-head--overview">
+    <div><p class="kicker">Versand</p><h1>Arbeitsmappen bereitstellen</h1><p class="lead">START-Dateien für den ersten Versand erzeugen. Updates und der S/MIME-verschlüsselte Massenversand werden in diesem Bereich ergänzt.</p></div>
+    {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
+  </section>
+
+  <section class="info-box info-box--wide"><h2>Erstversand und Updates</h2><p>Im ersten regulären Versand erhält jede vorgesetzte Person eine vollständige Arbeitsmappe. Spätere Änderungen werden als Update bereitgestellt. «Erstellt» bedeutet derzeit noch nicht «per E-Mail versendet».</p></section>
+
+  <section class="content-section" aria-labelledby="dispatch-title">
+    <div class="section-heading"><div><p class="kicker">Führungskräfte</p><h2 id="dispatch-title">Arbeitsmappen</h2></div>{% if selected_cycle %}<span class="section-count">{{ metrics.workbooks_missing }} noch nicht erstellt</span>{% endif %}</div>
+    {% if managers %}
+      <div class="table-wrap"><table><thead><tr><th>Vorgesetzte Person</th><th>Fälle</th><th>START-Datei</th><th>Letzter Rücklauf</th><th>Aktion</th></tr></thead><tbody>
+      {% for manager in managers %}<tr><td><strong>{{ manager.manager_name }}</strong><br><span class="muted">PN {{ manager.manager_pn }}</span></td><td>{{ manager.case_count }}</td><td>{% if manager.sent_at %}<span class="status status--staged">Erstellt</span><br><span class="muted">{{ manager.sent_at }}</span>{% else %}<span class="status status--missing">Noch nicht erstellt</span>{% endif %}</td><td>{{ manager.returned_at or '–' }}</td><td><a href="{{ url_for('main.manager_detail', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">Öffnen</a></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="empty-state">Für den gewählten Durchlauf sind noch keine Führungslinien vorhanden.</div>{% endif %}
+  </section>
+{% endblock %}

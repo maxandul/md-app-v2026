@@ -200,17 +200,57 @@ def _store_current_document(
         """,
         (case["case_id"], document_kind, variant),
     )
+    event = connection.execute(
+        "SELECT id, event_id FROM dialog_events WHERE legacy_case_id = ? ORDER BY id LIMIT 1",
+        (case["case_id"],),
+    ).fetchone()
+    obligation = None
+    if event:
+        if document_kind == "no_md":
+            connection.execute(
+                """
+                UPDATE document_obligations
+                SET status = 'waived', updated_at = ?
+                WHERE dialog_event_id = ? AND required = 1
+                  AND document_kind IN ('review', 'outlook')
+                """,
+                (received_at, event["id"]),
+            )
+        obligation = connection.execute(
+            """
+            SELECT id FROM document_obligations
+            WHERE dialog_event_id = ? AND document_kind = ?
+            """,
+            (event["id"], document_kind),
+        ).fetchone()
+        if not obligation:
+            cursor = connection.execute(
+                """
+                INSERT INTO document_obligations (
+                    obligation_id, dialog_event_id, document_kind, required,
+                    due_date, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, '', 'open', ?, ?)
+                """,
+                (
+                    f"{event['event_id']}-{document_kind}", event["id"], document_kind,
+                    int(document_kind == "no_md"), received_at, received_at,
+                ),
+            )
+            obligation = {"id": int(cursor.lastrowid)}
     cursor = connection.execute(
         """
         INSERT INTO official_documents (
-            case_id, cycle_id, employee_pn, manager_pn, document_kind, variant,
+            case_id, dialog_event_id, document_obligation_id,
+            cycle_id, employee_pn, manager_pn, document_kind, variant,
             original_filename, stored_path, sha256, received_at, data_block_json,
             extracted_text, fill_sign_detected, fill_sign_count, signature_checked,
             scan_required, handoff_status, handoff_filename, handoff_at, is_current
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         """,
         (
             case["case_id"],
+            event["id"] if event else None,
+            obligation["id"] if obligation else None,
             case["cycle_id"],
             case["employee_pn"],
             case["manager_pn"],
@@ -231,7 +271,45 @@ def _store_current_document(
             handoff_at,
         ),
     )
-    return int(cursor.lastrowid)
+    document_id = int(cursor.lastrowid)
+    if obligation:
+        obligation_status = "complete" if variant in {"scan", "administrative"} else "received"
+        connection.execute(
+            """
+            UPDATE document_obligations
+            SET status = ?, fulfilled_document_id = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (obligation_status, document_id, received_at, obligation["id"]),
+        )
+    return document_id
+
+
+def refresh_dialog_event_status(connection: sqlite3.Connection, case_id: str) -> None:
+    event = connection.execute(
+        "SELECT id FROM dialog_events WHERE legacy_case_id = ? ORDER BY id LIMIT 1",
+        (case_id,),
+    ).fetchone()
+    if not event:
+        return
+    obligations = connection.execute(
+        "SELECT document_kind, required, status FROM document_obligations WHERE dialog_event_id = ?",
+        (event["id"],),
+    ).fetchall()
+    required = [item for item in obligations if item["required"]]
+    if required and all(item["status"] in {"complete", "waived"} for item in required):
+        status = "no_md" if any(
+            item["document_kind"] == "no_md" and item["status"] == "complete"
+            for item in required
+        ) else "completed"
+    elif any(item["status"] != "open" for item in obligations):
+        status = "in_progress"
+    else:
+        status = "open"
+    connection.execute(
+        "UPDATE dialog_events SET status = ?, updated_at = ? WHERE id = ?",
+        (status, datetime.now().astimezone().isoformat(timespec="seconds"), event["id"]),
+    )
 
 
 def _current_documents(connection: sqlite3.Connection, case_id: str) -> dict[tuple[str, str], sqlite3.Row]:
@@ -274,6 +352,7 @@ def refresh_case_status(connection: sqlite3.Connection, case_id: str) -> str:
         "UPDATE dialog_cases SET status = ?, updated_at = ? WHERE case_id = ?",
         (status, datetime.now().astimezone().isoformat(timespec="seconds"), case_id),
     )
+    refresh_dialog_event_status(connection, case_id)
     return status
 
 
@@ -420,6 +499,14 @@ def confirm_digital_signature(
             """,
             (document_id,),
         )
+        if document["document_obligation_id"]:
+            connection.execute(
+                """
+                UPDATE document_obligations
+                SET status = 'scan_pending', updated_at = ? WHERE id = ?
+                """,
+                (timestamp, document["document_obligation_id"]),
+            )
         handoff_filename = ""
     else:
         source = Path(document["stored_path"])
@@ -439,6 +526,15 @@ def confirm_digital_signature(
             """,
             (str(destination), handoff_filename, timestamp, document_id),
         )
+        if document["document_obligation_id"]:
+            connection.execute(
+                """
+                UPDATE document_obligations
+                SET status = 'complete', fulfilled_document_id = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (document_id, timestamp, document["document_obligation_id"]),
+            )
     refresh_case_status(connection, document["case_id"])
     connection.commit()
     return {

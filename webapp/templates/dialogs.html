@@ -3,7 +3,7 @@
 {% block content %}
   <section class="page-head page-head--compact">
     <p class="kicker">Dialoge</p><h1>Durchläufe und Dialogpflichten</h1>
-    <p class="lead">Reguläre Jahresprozesse steuern. Unterjährige und manuell ergänzte Dialogereignisse werden hier später ebenfalls geführt.</p>
+    <p class="lead">Reguläre Jahresprozesse sowie unterjährige und manuell ergänzte Dialogereignisse steuern.</p>
   </section>
 
   <section class="split-layout">
@@ -18,7 +18,7 @@
         </form>
       {% else %}<p>Vor dem ersten Durchlauf wird ein SAP-Datenstand benötigt.</p><a class="button" href="{{ url_for('main.master_data') }}">Zu den Stammdaten</a>{% endif %}
     </div>
-    <aside class="info-box"><h2>Unterjährige Ereignisse</h2><p>Neueintritte, Austritte, Wechsel und Übertritte können zusätzliche Rückblicke, Probezeitdialoge oder Ausblicke auslösen. Die manuelle Zuordnung folgt mit dem erweiterten Dialogmodell.</p></aside>
+    <aside class="info-box"><h2>Unterjährige Ereignisse</h2><p>Neueintritte, Austritte, Wechsel und Übertritte können zusätzliche Rückblicke, Probezeitdialoge oder Ausblicke auslösen. Eine manuelle Zuordnung ergänzt Fälle, die sich nicht eindeutig aus SAP ableiten lassen.</p></aside>
   </section>
 
   <section class="content-section" aria-labelledby="processes-title">
@@ -29,4 +29,60 @@
       </tbody></table></div>
     {% else %}<div class="empty-state">Noch kein Durchlauf angelegt.</div>{% endif %}
   </section>
+
+  <section class="content-section" aria-labelledby="events-title">
+    <div class="section-heading">
+      <div><p class="kicker">Pflichten</p><h2 id="events-title">Dialogereignisse</h2></div>
+      {% if cycles %}
+        <form class="compact-filter" method="get">
+          <label for="event-cycle">Durchlauf</label>
+          <select id="event-cycle" name="cycle_id">
+            {% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}
+          </select>
+          <button class="button button--small" type="submit">Anzeigen</button>
+        </form>
+      {% endif %}
+    </div>
+    {% if events %}
+      <div class="table-wrap"><table><thead><tr><th>Person</th><th>Dialogart</th><th>Vorgesetzte Person</th><th>Pflichtumfang</th><th>Frist</th><th>Status</th></tr></thead><tbody>
+      {% for event in events %}
+        <tr>
+          <td><strong>{{ event.first_name }} {{ event.last_name }}</strong><br><span class="muted">PN {{ event.employee_pn }} · Ans. {{ event.assignment_number }}</span></td>
+          <td>{{ event.event_type_label }}{% if event.source == 'manual' %}<br><span class="status status--warning">Manuell</span>{% endif %}</td>
+          <td>{{ event.manager_name }}<br><span class="muted">PN {{ event.manager_pn }}</span></td>
+          <td>{{ event.scope_label }}<br><span class="muted">{{ event.obligation_done_count or 0 }} von {{ event.obligation_count or 0 }} Pflichtdokumenten erfüllt</span></td>
+          <td>{{ event.next_due_date or '–' }}</td>
+          <td>
+            <span class="status">{{ event.status }}</span>
+            {% if event.sap_leading %}<br><span class="muted">Führend für SAP</span>
+            {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Als SAP-führend markieren</button></form>
+            {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Arbeitsmappen-Verknüpfung</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="empty-state">Für den gewählten Durchlauf sind keine Dialogereignisse vorhanden.</div>{% endif %}
+  </section>
+
+  <details class="legacy-box" open>
+    <summary>Unterjähriges oder nicht aus SAP ableitbares Ereignis erfassen</summary>
+    <p>Die Personalnummer und Ans. müssen zu einer importierten Anstellung gehören. Die Begründung macht die manuelle Zuordnung nachvollziehbar.</p>
+    <form action="{{ url_for('main.add_dialog_event') }}" method="post">
+      <div class="form-grid form-grid--three">
+        <div><label for="manual-employee">Personalnummer</label><input id="manual-employee" name="employee_pn" required></div>
+        <div><label for="manual-assignment">Ans.</label><input id="manual-assignment" name="assignment_number" required></div>
+        <div><label for="manual-manager">Personalnummer vorgesetzte Person</label><input id="manual-manager" name="manager_pn" required></div>
+        <div><label for="manual-type">Dialogart</label><select id="manual-type" name="event_type" required>{% for key, label in event_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+        <div><label for="manual-scope">Pflichtumfang</label><select id="manual-scope" name="required_scope" required>{% for key, label in scopes.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+        <div><label for="manual-year">Rückblickjahr</label><input id="manual-year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year }}" required></div>
+        <div><label for="manual-start">Beurteilungsbeginn</label><input id="manual-start" name="period_start" type="date" required></div>
+        <div><label for="manual-end">Beurteilungsende</label><input id="manual-end" name="period_end" type="date" required></div>
+        <div><label for="manual-cycle">Zuordnung zum Durchlauf</label><select id="manual-cycle" name="cycle_id"><option value="">Ausserhalb eines Durchlaufs</option>{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>
+        <div><label for="manual-review-due">Frist Rückblick</label><input id="manual-review-due" name="review_due_date" type="date"></div>
+        <div><label for="manual-outlook-due">Frist Ausblick</label><input id="manual-outlook-due" name="outlook_due_date" type="date"></div>
+        <div class="form-grid__wide"><label for="manual-reason">Begründung</label><input id="manual-reason" name="reason" required></div>
+      </div>
+      <button class="button button--primary" type="submit">Dialogereignis anlegen</button>
+    </form>
+  </details>
 {% endblock %}

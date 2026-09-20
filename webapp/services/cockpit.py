@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 
 from .cycles import dashboard_data
 
@@ -40,6 +40,8 @@ def cockpit_overview(
     metrics = {
         "workbooks_missing": 0,
         "cases_open": 0,
+        "obligations_open": 0,
+        "obligations_overdue": 0,
         "documents_to_check": 0,
         "scans_pending": 0,
         "dossier_ready": 0,
@@ -87,6 +89,54 @@ def cockpit_overview(
             """,
             (cycle_id,),
         ).fetchone()["count"]
+        obligation_summary = connection.execute(
+            """
+            SELECT
+                SUM(CASE WHEN o.required = 1 AND o.status NOT IN ('complete', 'waived') THEN 1 ELSE 0 END) AS open_count,
+                SUM(CASE WHEN o.required = 1 AND o.status NOT IN ('complete', 'waived')
+                          AND o.due_date <> '' AND o.due_date < ? THEN 1 ELSE 0 END) AS overdue_count
+            FROM document_obligations o
+            JOIN dialog_events de ON de.id = o.dialog_event_id
+            WHERE de.cycle_id = ? AND de.status <> 'cancelled'
+            """,
+            (date.today().isoformat(), cycle_id),
+        ).fetchone()
+        metrics["obligations_open"] = obligation_summary["open_count"] or 0
+        metrics["obligations_overdue"] = obligation_summary["overdue_count"] or 0
+
+        overdue_managers = connection.execute(
+            """
+            SELECT ma.manager_person_number AS manager_pn,
+                   COALESCE(NULLIF(TRIM(mp.first_name || ' ' || mp.last_name), ''),
+                            'VG ' || ma.manager_person_number) AS manager_name,
+                   COUNT(*) AS obligation_count, MIN(o.due_date) AS oldest_due
+            FROM document_obligations o
+            JOIN dialog_events de ON de.id = o.dialog_event_id
+            JOIN manager_assignments ma ON ma.id = de.manager_assignment_id
+            LEFT JOIN persons mp ON mp.person_number = ma.manager_person_number
+            WHERE de.cycle_id = ? AND de.status <> 'cancelled'
+              AND o.required = 1 AND o.status NOT IN ('complete', 'waived')
+              AND o.due_date <> '' AND o.due_date < ?
+            GROUP BY ma.manager_person_number, manager_name
+            ORDER BY oldest_due, manager_name
+            """,
+            (cycle_id, date.today().isoformat()),
+        ).fetchall()
+        for manager in overdue_managers:
+            tasks.append(
+                {
+                    "priority": "hoch",
+                    "priority_rank": 2,
+                    "kind": "Frist",
+                    "title": "Pflichtdokumente überfällig",
+                    "subject": manager["manager_name"],
+                    "context": f"{manager['obligation_count']} Dokument(e) ausstehend",
+                    "date": manager["oldest_due"],
+                    "target": "dialogs",
+                    "cycle_id": cycle_id,
+                    "manager_pn": manager["manager_pn"],
+                }
+            )
 
         missing_workbooks = connection.execute(
             """

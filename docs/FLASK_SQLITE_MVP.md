@@ -1,6 +1,6 @@
 # Flask-/SQLite-MVP für den Mitarbeitenden-Dialog
 
-Stand: 17. September 2026
+Stand: 20. September 2026
 
 ## Zielbild
 
@@ -31,15 +31,15 @@ aus den fest bezeichneten PDF-Abschnitten übernommen.
   prüfbare digitale Signatur. Deshalb wird der Eingang technisch protokolliert;
   die sichtbare Unterzeichnung wird von HR kontrolliert und bestätigt.
 - Ohne Scanpflicht wird das elektronische PDF nach der HR-Prüfung in den
-  RPA-Übergabeordner verschoben.
+  Übergabeordner für die Personaldossier-Ablage verschoben.
 - Mit Scanpflicht bleibt das elektronische PDF als Datenquelle im geschützten
   Verarbeitungsarchiv. Erst der handschriftlich unterzeichnete Scan wird in den
-  RPA-Übergabeordner verschoben; das elektronische Exemplar gelangt nicht
+  Übergabeordner für die Personaldossier-Ablage verschoben; das elektronische Exemplar gelangt nicht
   zusätzlich ins Personaldossier.
 - Fehlt ein erforderlicher Scan, wird dies im HR-Cockpit pro Rückblick und
   Ausblick ausgewiesen.
 - Für «Kein MD» erzeugt die Arbeitsmappe eine administrative PDF-Bestätigung.
-  Sie schliesst den Fall im Cockpit ab, wird aber nicht an RPA oder Dossier
+  Sie schliesst den Fall im Cockpit ab, wird aber nicht an das Personaldossier
   übergeben.
 
 ## Umgesetzter Durchstich
@@ -57,7 +57,7 @@ aus den fest bezeichneten PDF-Abschnitten übernommen.
    offiziellen Daten werden in SQLite übernommen.
 7. HR bestätigt die sichtbaren Unterschriften. Die Anwendung stellt danach
    entweder das elektronische PDF oder - bei Scanpflicht - ausschliesslich den
-   handschriftlichen Scan für RPA bereit.
+   handschriftlichen Scan für die Personaldossier-Ablage bereit.
 8. Der HTML-Rücklauf bleibt vorläufig als technischer Übergangsweg vorhanden,
    ist aber nicht Teil des Zielprozesses.
 
@@ -81,16 +81,23 @@ Dokumenten bleiben sie erhalten.
 - `sap_imports`: unveränderter Importnachweis mit SHA-256 und Hinweisen
 - `employees`: aktueller Personenstamm pro Personalnummer
 - `reporting_lines`: Führungslinien je SAP-Datenstand
+- `manager_assignments`: zeitlich zugeordnete Führungsverantwortung je Anstellung
 - `cycles`: Rückblick-/Ausblickjahr und verwendeter SAP-Datenstand
-- `dialog_cases`: stabiler Fall pro Jahresprozess, Person und Führungslinie
+- `dialog_cases`: bestehender Jahresfall und Kompatibilitätsschicht für Arbeitsmappen
+- `dialog_events`: fachliches Dialogereignis pro Person, Anstellung, Führungskraft
+  und Zeitraum
+- `document_obligations`: getrennte Pflicht und Frist für Rückblick, Ausblick
+  oder Kein-MD-Bestätigung
 - `package_events`: Versand- und Rücklaufhistorie inklusive Version und SHA-256
 - `official_documents`: elektronische PDFs, handschriftliche Scans und
-  administrative Kein-MD-Bestätigungen samt Prüf- und RPA-Status
+  administrative Kein-MD-Bestätigungen samt Prüf- und Übergabestatus
 
-Das Fallmodell wird in der nächsten Iteration von einem einzigen Jahresfall auf
-mehrere Dialogereignisse pro Person erweitert. Das ist für Probezeit, Übertritt,
-Standortgespräch und zwei MDs im selben Jahr erforderlich. Für den SAP-Upload darf
-pro Personalnummer und Ans. nur ein führendes, SAP-relevantes Ereignis markiert sein.
+Das Fallmodell unterstützt mehrere Dialogereignisse pro Person. Reguläre Fälle
+werden beim Eröffnen eines Durchlaufs automatisch erzeugt; Probezeit, Übertritt,
+Standortgespräch und weitere unterjährige Ereignisse kann HR manuell ergänzen.
+Rückblick und Ausblick werden als eigene Dokumentpflichten mit getrennten Fristen
+geführt. Für den SAP-Upload lässt sich bei mehreren relevanten Rückblicken genau
+ein führendes Ereignis bestimmen.
 
 Mehrfachzeilen derselben Führungslinie werden beim Import zusammengeführt. Eine
 Person kann in einem SAP-Datenstand mehreren Führungslinien zugeordnet bleiben;
@@ -117,7 +124,7 @@ dies wird nicht stillschweigend überschrieben.
   Berechtigungen und Laufwerksverschlüsselung.
 - `instance/` enthält SQLite und Prozessdateien und wird nicht in Git
   aufgenommen.
-- Der RPA-Übergabeordner liegt standardmässig unter
+- Der Übergabeordner für die Personaldossier-Ablage liegt standardmässig unter
   `instance/data/dossier_ready`. Mit `MD_DOSSIER_HANDOFF_ROOT` kann ein anderer
   definierter lokaler oder gemounteter Ordner konfiguriert werden.
 - Netzwerkzugriff wird erst nach Festlegung von Windows-Authentisierung, TLS,
@@ -145,12 +152,11 @@ geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 
 ## Nächste Iterationen
 
-1. Mehrere Dialogereignisse pro Person sowie ein führendes SAP-Ereignis abbilden.
-2. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert
+1. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert
    übernehmen und für den nächsten Jahresdurchlauf bereitstellen.
-3. Einzelfallansicht für HR mit kontrollierten Korrekturen und Begründung.
+2. Einzelfallansicht für HR mit kontrollierten Korrekturen und Begründung.
+3. START- und Update-Arbeitsmappen einzeln und gesammelt erzeugen.
 4. Outlook-Entwürfe mit erzwungener S/MIME-Prüfung erzeugen.
-5. Rückmeldung des RPA-Systems ergänzen, damit «bereitgestellt» und
-   «erfolgreich im Dossier» unterschieden werden können.
+5. E-Mail-Rückläufe inklusive Fremdbeilagen und Probezeitrückblicken behandeln.
 6. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
 7. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

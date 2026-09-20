@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+from openpyxl import Workbook
 
 from webapp import create_app
 from webapp.db import get_db
@@ -105,6 +106,61 @@ class AuthAndSapSyncTest(unittest.TestCase):
             import_sap_workbook(connection, second, original_filename="second.xlsx", stored_filename="second.xlsx", imported_at=datetime(2026, 9, 18, tzinfo=timezone.utc))
             inactive = connection.execute("SELECT active FROM persons WHERE person_number = '100003'").fetchone()
             self.assertEqual(inactive["active"], 0)
+
+    def test_unchanged_sap_profile_and_bg_zero_manager_are_supported(self) -> None:
+        path = self.root / "standard-export.xlsx"
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append([
+            "ID_NO_ZERO", "Rufname", "Nachname", "Austritt", "AG",
+            "Austrittsgrund Anstellung", "BsGrd", "Eintritt", "Ende Probezeit",
+            "OE Bez.", "Plans. Bez.", "Dir. Vorgesetzter", "Dir. Vorgesetzter",
+            "lange ID/Nummer", "OE Kurzb.", "Beginn", "Ende", "Bewilligung",
+            "Bewilligung für", "Bewilligung für", "Bewilligung für",
+            "Bewilligung für", "Bewilligung für", "Ans.",
+        ])
+        sheet.append([
+            "900000", "Direktion", "Leitung", None, None, None, 0,
+            "2020-01-01", None, "Direktion", "Direktionsleitung", "Extern", "999999",
+            "direktion@example.invalid", "DL", None, None, None, None, None, None, None, None, "1",
+        ])
+        sheet.append([
+            "100000", "Amt", "Vorstehend", None, None, None, 100,
+            "2020-01-01", None, "Amt", "Amtsvorstehung", "Direktion", "900000",
+            "amt@example.invalid", "AMT", None, None, None, None, None, None, None, None, "1",
+        ])
+        sheet.append([
+            "100001", "Mara", "Beispiel", None, None, None, 80,
+            "2022-01-01", None, "Team", "Funktion", "Amt", "100000",
+            "mara@example.invalid", "TEAM", "2026-01-01", "2026-12-31",
+            "Nebenbeschäftigung", "Mandat", "Zusatz", None, None, None, "2",
+        ])
+        workbook.save(path)
+
+        with self.app.app_context():
+            connection = get_db()
+            result = import_sap_workbook(
+                connection, path, original_filename=path.name,
+                stored_filename=path.name,
+                imported_at=datetime(2026, 9, 19, tzinfo=timezone.utc),
+            )
+            self.assertEqual(result.ignored_bg_zero_count, 1)
+            self.assertIsNone(
+                connection.execute(
+                    "SELECT 1 FROM persons WHERE person_number = '900000'"
+                ).fetchone()
+            )
+            lines = connection.execute(
+                "SELECT employee_pn, manager_pn FROM reporting_lines ORDER BY employee_pn"
+            ).fetchall()
+            self.assertEqual(
+                [(row["employee_pn"], row["manager_pn"]) for row in lines],
+                [("100001", "100000")],
+            )
+            permission = connection.execute(
+                "SELECT permission_for FROM secondary_activity_permissions"
+            ).fetchone()
+            self.assertEqual(permission["permission_for"], "Mandat\nZusatz")
 
 
 if __name__ == "__main__":

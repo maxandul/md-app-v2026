@@ -93,6 +93,27 @@ CREATE TABLE IF NOT EXISTS secondary_activity_permissions (
     UNIQUE (employment_id, source_fingerprint)
 );
 
+CREATE TABLE IF NOT EXISTS manager_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employment_id INTEGER NOT NULL REFERENCES employment_assignments(id),
+    manager_person_number TEXT NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('sap', 'manual')),
+    sap_import_id INTEGER REFERENCES sap_imports(id),
+    valid_from TEXT NOT NULL DEFAULT '',
+    valid_to TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_manager_assignments_current
+    ON manager_assignments (employment_id, active, manager_person_number);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_assignments_sap_unique
+    ON manager_assignments (employment_id, manager_person_number, sap_import_id)
+    WHERE source = 'sap';
+
 CREATE TABLE IF NOT EXISTS employees (
     pn TEXT PRIMARY KEY,
     first_name TEXT NOT NULL DEFAULT '',
@@ -115,10 +136,11 @@ CREATE TABLE IF NOT EXISTS reporting_lines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sap_import_id INTEGER NOT NULL REFERENCES sap_imports(id) ON DELETE CASCADE,
     employee_pn TEXT NOT NULL REFERENCES employees(pn),
+    employment_assignment TEXT NOT NULL DEFAULT '',
     manager_pn TEXT NOT NULL,
     org_unit TEXT NOT NULL DEFAULT '',
     position TEXT NOT NULL DEFAULT '',
-    UNIQUE (sap_import_id, employee_pn, manager_pn)
+    UNIQUE (sap_import_id, employee_pn, employment_assignment, manager_pn)
 );
 
 CREATE INDEX IF NOT EXISTS idx_reporting_lines_import_manager
@@ -129,6 +151,8 @@ CREATE TABLE IF NOT EXISTS cycles (
     review_year INTEGER NOT NULL,
     outlook_year INTEGER NOT NULL,
     sap_import_id INTEGER NOT NULL REFERENCES sap_imports(id),
+    review_due_date TEXT NOT NULL DEFAULT '',
+    outlook_due_date TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'vorbereitung'
         CHECK (status IN ('vorbereitung', 'versand', 'ruecklauf', 'abgeschlossen')),
     created_at TEXT NOT NULL,
@@ -140,6 +164,7 @@ CREATE TABLE IF NOT EXISTS dialog_cases (
     case_id TEXT NOT NULL UNIQUE,
     cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
     employee_pn TEXT NOT NULL REFERENCES employees(pn),
+    employment_assignment TEXT NOT NULL DEFAULT '',
     manager_pn TEXT NOT NULL,
     suggested_scope TEXT NOT NULL,
     suggestion_reason TEXT NOT NULL,
@@ -153,7 +178,7 @@ CREATE TABLE IF NOT EXISTS dialog_cases (
     agreement TEXT NOT NULL DEFAULT '',
     data_json TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL,
-    UNIQUE (cycle_id, employee_pn, manager_pn)
+    UNIQUE (cycle_id, employee_pn, employment_assignment, manager_pn)
 );
 
 CREATE INDEX IF NOT EXISTS idx_dialog_cases_cycle_manager
@@ -178,6 +203,8 @@ CREATE INDEX IF NOT EXISTS idx_package_events_package
 CREATE TABLE IF NOT EXISTS official_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     case_id TEXT NOT NULL REFERENCES dialog_cases(case_id) ON DELETE CASCADE,
+    dialog_event_id INTEGER REFERENCES dialog_events(id),
+    document_obligation_id INTEGER REFERENCES document_obligations(id),
     cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
     employee_pn TEXT NOT NULL,
     manager_pn TEXT NOT NULL,
@@ -211,3 +238,59 @@ CREATE INDEX IF NOT EXISTS idx_official_documents_case
 CREATE UNIQUE INDEX IF NOT EXISTS idx_official_documents_current
     ON official_documents (case_id, document_kind, variant)
     WHERE is_current = 1;
+
+CREATE TABLE IF NOT EXISTS dialog_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL UNIQUE,
+    cycle_id INTEGER REFERENCES cycles(id) ON DELETE CASCADE,
+    legacy_case_id TEXT REFERENCES dialog_cases(case_id) ON DELETE SET NULL,
+    employment_id INTEGER NOT NULL REFERENCES employment_assignments(id),
+    manager_assignment_id INTEGER NOT NULL REFERENCES manager_assignments(id),
+    review_year INTEGER NOT NULL,
+    event_type TEXT NOT NULL CHECK (event_type IN (
+        'annual', 'probation_review', 'probation_outlook', 'interim',
+        'transfer_review', 'departure_review', 'location_meeting'
+    )),
+    source TEXT NOT NULL CHECK (source IN ('rule', 'manual', 'workbook')),
+    source_reason TEXT NOT NULL DEFAULT '',
+    required_scope TEXT NOT NULL CHECK (required_scope IN (
+        'full', 'review_only', 'outlook_only', 'none'
+    )),
+    period_start TEXT NOT NULL DEFAULT '',
+    period_end TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN (
+        'planned', 'open', 'in_progress', 'completed', 'no_md', 'cancelled'
+    )),
+    sap_leading INTEGER NOT NULL DEFAULT 0 CHECK (sap_leading IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_dialog_events_cycle
+    ON dialog_events (cycle_id, status, event_type);
+
+CREATE INDEX IF NOT EXISTS idx_dialog_events_assignment
+    ON dialog_events (manager_assignment_id, period_start, period_end);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dialog_events_leading_sap
+    ON dialog_events (employment_id, review_year)
+    WHERE sap_leading = 1;
+
+CREATE TABLE IF NOT EXISTS document_obligations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    obligation_id TEXT NOT NULL UNIQUE,
+    dialog_event_id INTEGER NOT NULL REFERENCES dialog_events(id) ON DELETE CASCADE,
+    document_kind TEXT NOT NULL CHECK (document_kind IN ('review', 'outlook', 'no_md')),
+    required INTEGER NOT NULL DEFAULT 1 CHECK (required IN (0, 1)),
+    due_date TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN (
+        'open', 'received', 'review', 'scan_pending', 'complete', 'waived', 'rejected'
+    )),
+    fulfilled_document_id INTEGER REFERENCES official_documents(id),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (dialog_event_id, document_kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_obligations_due
+    ON document_obligations (status, due_date, document_kind);

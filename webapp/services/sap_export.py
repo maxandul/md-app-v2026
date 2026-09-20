@@ -100,9 +100,12 @@ def collect_sap_upload_rows(
         """
         SELECT dc.case_id, dc.employee_pn, dc.data_json, dc.official_scope,
                dc.dialog_date, dc.overall_rating_code,
-               e.entry_date, e.exit_date, e.employment_assignment
+               e.entry_date, e.exit_date,
+               COALESCE(NULLIF(dc.employment_assignment, ''), NULLIF(e.employment_assignment, ''), '1') AS employment_assignment,
+               COALESCE(de.sap_leading, 0) AS sap_leading
         FROM dialog_cases dc
         JOIN employees e ON e.pn = dc.employee_pn
+        LEFT JOIN dialog_events de ON de.legacy_case_id = dc.case_id
         WHERE dc.cycle_id = ?
           AND dc.status = 'vollstaendig'
         ORDER BY CAST(dc.employee_pn AS INTEGER), dc.employee_pn, dc.manager_pn
@@ -111,7 +114,7 @@ def collect_sap_upload_rows(
     ).fetchall()
 
     rows: list[SapUploadRow] = []
-    seen: set[tuple[str, str]] = set()
+    review_candidates: list[tuple[sqlite3.Row, dict[str, Any], str]] = []
     for case in cases:
         pn = str(case["employee_pn"])
         payload: dict[str, Any] = {}
@@ -123,15 +126,29 @@ def collect_sap_upload_rows(
         scope = case["official_scope"] or payload.get("scope", "")
         if scope not in {"full", "review_only"}:
             continue
+        review_candidates.append((case, payload, scope))
+
+    leading_keys = {
+        (str(case["employee_pn"]), str(case["employment_assignment"] or "").strip())
+        for case, _payload, _scope in review_candidates if case["sap_leading"]
+    }
+    unresolved_keys = {
+        (str(case["employee_pn"]), str(case["employment_assignment"] or "").strip())
+        for case, _payload, _scope in review_candidates
+        if not case["sap_leading"]
+    } - leading_keys
+    if unresolved_keys:
+        pn, assignment = sorted(unresolved_keys)[0]
+        raise ValueError(
+            f"PN {pn}, Ans. {assignment or 'leer'}: Das führende SAP-Ereignis ist nicht festgelegt."
+        )
+
+    for case, payload, _scope in review_candidates:
+        if not case["sap_leading"]:
+            continue
+        pn = str(case["employee_pn"])
 
         assignment = str(case["employment_assignment"] or "").strip()
-        unique_key = (pn, assignment)
-        if unique_key in seen:
-            raise ValueError(
-                f"PN {pn}, Ans. {assignment or 'leer'}: mehrere SAP-relevante Rückblicke. "
-                "HR muss einen führenden Datensatz bestimmen."
-            )
-        seen.add(unique_key)
 
         if not case["entry_date"]:
             raise ValueError(

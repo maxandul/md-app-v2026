@@ -27,6 +27,8 @@ def create_cycle(
     review_year: int,
     sap_import_id: int,
     created_at: datetime | None = None,
+    review_due_date: str = "",
+    outlook_due_date: str = "",
 ) -> int:
     if review_year < 2020 or review_year > 2100:
         raise ValueError("Das Rückblickjahr liegt ausserhalb des unterstützten Bereichs.")
@@ -37,13 +39,23 @@ def create_cycle(
         raise ValueError("Der gewählte SAP-Import existiert nicht.")
 
     timestamp = (created_at or datetime.now().astimezone()).isoformat(timespec="seconds")
+    from .dialog_events import default_due_dates
+
+    default_review_due, default_outlook_due = default_due_dates(review_year)
+    review_due_date = review_due_date or default_review_due
+    outlook_due_date = outlook_due_date or default_outlook_due
     try:
         cursor = connection.execute(
             """
-            INSERT INTO cycles (review_year, outlook_year, sap_import_id, status, created_at)
-            VALUES (?, ?, ?, 'vorbereitung', ?)
+            INSERT INTO cycles (
+                review_year, outlook_year, sap_import_id, review_due_date,
+                outlook_due_date, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, 'vorbereitung', ?)
             """,
-            (review_year, review_year + 1, sap_import_id, timestamp),
+            (
+                review_year, review_year + 1, sap_import_id, review_due_date,
+                outlook_due_date, timestamp,
+            ),
         )
     except sqlite3.IntegrityError as exc:
         raise ValueError(f"Der Jahresprozess {review_year}/{review_year + 1} existiert bereits.") from exc
@@ -51,7 +63,9 @@ def create_cycle(
 
     lines = connection.execute(
         """
-        SELECT rl.employee_pn, rl.manager_pn, e.exit_date, e.probation_end
+        SELECT rl.employee_pn, rl.manager_pn,
+               COALESCE(NULLIF(rl.employment_assignment, ''), NULLIF(e.employment_assignment, ''), '1') AS employment_assignment,
+               e.exit_date, e.probation_end
         FROM reporting_lines rl
         JOIN employees e ON e.pn = rl.employee_pn
         WHERE rl.sap_import_id = ?
@@ -59,27 +73,31 @@ def create_cycle(
         """,
         (sap_import_id,),
     ).fetchall()
+    line_counts: dict[tuple[str, str], int] = {}
+    for line in lines:
+        key = (line["employee_pn"], line["manager_pn"])
+        line_counts[key] = line_counts.get(key, 0) + 1
     for line in lines:
         scope, reason = _suggest_scope(line["exit_date"], line["probation_end"], review_year)
         case_id = f"{review_year}-{line['manager_pn']}-{line['employee_pn']}"
+        if line_counts[(line["employee_pn"], line["manager_pn"])] > 1:
+            case_id += f"-{line['employment_assignment']}"
         connection.execute(
             """
             INSERT INTO dialog_cases (
-                case_id, cycle_id, employee_pn, manager_pn, suggested_scope,
-                suggestion_reason, status, data_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'offen', '', ?)
+                case_id, cycle_id, employee_pn, employment_assignment, manager_pn,
+                suggested_scope, suggestion_reason, status, data_json, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'offen', '', ?)
             """,
             (
-                case_id,
-                cycle_id,
-                line["employee_pn"],
-                line["manager_pn"],
-                scope,
-                reason,
-                timestamp,
+                case_id, cycle_id, line["employee_pn"], line["employment_assignment"],
+                line["manager_pn"], scope, reason, timestamp,
             ),
         )
     connection.commit()
+    from .dialog_events import sync_cycle_events
+
+    sync_cycle_events(connection, cycle_id)
     return cycle_id
 
 

@@ -50,6 +50,10 @@ Anmeldung und Outlook-Verarbeitung.
   Mehrfachanstellungen und mehreren Bewilligungen
 - Inaktivsetzung nicht mehr enthaltener Personen
 - Eröffnung eines Jahresdurchlaufs
+- automatische Dialogereignisse mit getrennten Rückblick-/Ausblickpflichten und Fristen
+- manuelle unterjährige Dialogereignisse für Probezeit, Übertritt, Austritt und Standortgespräch
+- zeitbezogene Zuordnung der verantwortlichen Führungskraft je Ereignis
+- explizite Wahl des führenden SAP-Ereignisses bei mehreren relevanten Rückblicken
 - Übersicht nach Führungskräften und Fällen
 - Erzeugung einer START-Arbeitsmappe pro Führungskraft
 - manueller Import maschinenlesbarer PDF-Rückläufe
@@ -93,33 +97,33 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 - Die Übergabe wird fachlich als Bereitstellung für die Personaldossier-Ablage
   bezeichnet. Der nachfolgende RPA-Prozess liegt ausserhalb des Scopes.
 
-### 2. Fall- und Dialogmodell
+### 2. Fall- und Dialogmodell – umgesetzt
 
 - mehrere Dialogereignisse pro Person, Anstellung, Führungskraft und Zeitraum
 - regulärer MD, Probezeit, unterjähriger MD, Standortgespräch, Übertritt, Austritt und Kein MD
 - Pflicht, freiwilliger zusätzlicher Umfang und begründete Abweichung
 - getrennte Fristen und Bearbeitungsstände für Rückblick und Ausblick
 - genau ein führendes SAP-Ereignis bei mehreren relevanten Rückblicken
+- unveränderter SAP-Standardexport mit doppelten Spaltenüberschriften wird eingelesen
+- Personen und Führungslinien mit Beschäftigungsgrad 0 werden ausgeschlossen
 
 ### Danach
 
-1. SAP-Prüfung und manuelle Führungslinien vervollständigen
-2. START-/Update-Dateien einzeln und gesammelt erzeugen
-3. Outlook-Versand mit erzwungener S/MIME-Prüfung integrieren
-4. E-Mail-Rückläufe und sämtliche Anhänge automatisiert einlesen
-5. Dokumentprüfung, Korrekturen und Versionen vervollständigen
-6. Erinnerungen und Fristverlängerungen umsetzen
-7. SAP-Exportbatches gegen Doppelverarbeitung absichern
-8. drei Muss-Auswertungen und tabellarische Exporte umsetzen
-9. Audit, Backup/Restore und Betriebskonzept vervollständigen
+1. START-/Update-Dateien einzeln und gesammelt erzeugen
+2. Outlook-Versand mit erzwungener S/MIME-Prüfung integrieren
+3. E-Mail-Rückläufe und sämtliche Anhänge automatisiert einlesen
+4. Dokumentprüfung, Korrekturen und Versionen vervollständigen
+5. Erinnerungen und Fristverlängerungen umsetzen
+6. SAP-Exportbatches gegen Doppelverarbeitung absichern
+7. drei Muss-Auswertungen und tabellarische Exporte umsetzen
+8. Audit, Backup/Restore und Betriebskonzept vervollständigen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Als Nächstes das Fall- und Dialogmodell erweitern. Parallel muss das dokumentierte
-Profil des unveränderten SAP-Standardexports unterstützt werden. Der aktuelle echte
-Beispielexport enthält unter anderem doppelte Überschriften für «Dir. Vorgesetzter»
-und mehrteilige Felder «Bewilligung für», die ohne vorgängige Bearbeitung korrekt
-zugeordnet werden müssen.
+Als Nächstes die Erzeugung von START- und Update-Arbeitsmappen auf das neue
+Dialogmodell umstellen. HR soll dabei einzelne Führungskräfte, Organisationseinheiten
+oder den gesamten Durchlauf auswählen und vor der Erzeugung fehlende beziehungsweise
+widersprüchliche Zuordnungen sehen können.
 
 ## Prüfen und starten
 
@@ -129,7 +133,7 @@ python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
 python run_web.py
 ```
 
-Beim aktuellen Stand waren alle 30 automatisierten Tests erfolgreich.
+Beim aktuellen Stand waren alle 33 automatisierten Tests erfolgreich.
 
 Weitere fachliche Details und Abnahmekriterien stehen in
 [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md).

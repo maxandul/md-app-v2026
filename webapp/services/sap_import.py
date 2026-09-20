@@ -66,6 +66,40 @@ def _column(frame: pd.DataFrame, *candidates: str) -> str | None:
     return next((names[item.casefold()] for item in candidates if item.casefold() in names), None)
 
 
+def _canonicalize_sap_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Bildet den unveränderten kantonalen SAP-Standardexport auf Fachspalten ab."""
+    frame = frame.copy()
+    if "Dir. Vorgesetzter (PN)" not in frame.columns:
+        manager_pn_column = _column(
+            frame,
+            "Dir. Vorgesetzter.1",
+            "Dir. Vorgesetzter (Personalnummer)",
+            "Direkter Vorgesetzter (PN)",
+        )
+        if manager_pn_column:
+            frame["Dir. Vorgesetzter (PN)"] = frame[manager_pn_column]
+
+    if "Beginn Bewilligung" not in frame.columns and "Beginn" in frame.columns:
+        frame["Beginn Bewilligung"] = frame["Beginn"]
+    if "Ende Bewilligung" not in frame.columns and "Ende" in frame.columns:
+        frame["Ende Bewilligung"] = frame["Ende"]
+
+    permission_columns = [
+        column
+        for column in frame.columns
+        if str(column).casefold() == "bewilligung für"
+        or str(column).casefold().startswith("bewilligung für.")
+    ]
+    if permission_columns:
+        frame["Bewilligung für"] = frame[permission_columns].apply(
+            lambda row: "\n".join(
+                value for item in row if (value := clean(item))
+            ),
+            axis=1,
+        )
+    return frame
+
+
 def _first_value(rows: pd.DataFrame, column: str | None) -> str:
     if not column or column not in rows:
         return ""
@@ -93,16 +127,20 @@ def _issue(kind: str, severity: str, row: pd.Series | None = None, **details: An
     }
 
 
-def _classify(frame: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]], dict[str, int], list[str]]:
+def _classify(frame: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]], dict[str, int], list[str], set[str]]:
     issues: list[dict[str, Any]] = []
     warnings: list[str] = []
     counts = {"bg_zero": 0, "exact": 0, "multiple_employment": 0, "permissions": 0, "conflicts": 0}
+    excluded_person_numbers: set[str] = set()
 
     degree_column = _column(frame, "BG", "BsGrd", "Beschäftigungsgrad", "Beschaeftigungsgrad")
     if degree_column:
         values = frame[degree_column].map(clean).str.replace(",", ".", regex=False)
         zero_mask = pd.to_numeric(values, errors="coerce") == 0
         counts["bg_zero"] = int(zero_mask.sum())
+        excluded_person_numbers = {
+            item for item in frame.loc[zero_mask, "_pn"].map(clean) if item
+        }
         frame = frame[~zero_mask].copy()
         if counts["bg_zero"]:
             warnings.append(f"{counts['bg_zero']} Zeile(n) mit BG 0 wurden fachlich ignoriert.")
@@ -143,7 +181,7 @@ def _classify(frame: pd.DataFrame) -> tuple[pd.DataFrame, list[dict[str, Any]], 
                 issues.append(_issue("multiple_permissions", "info", pn=pn, ans=assignment, rows=rows["_source_row"].astype(int).tolist(), permission_variants=len(permission_signatures)))
     if counts["conflicts"]:
         warnings.append(f"{counts['conflicts']} widersprüchliche Dublette(n) müssen durch HR geklärt werden.")
-    return frame, issues, counts, warnings
+    return frame, issues, counts, warnings, excluded_person_numbers
 
 
 def _sync_active_flags(connection: sqlite3.Connection, person_numbers: set[str]) -> None:
@@ -168,6 +206,7 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
 
     source = pd.read_excel(path, dtype=object)
     source.columns = [str(column).strip() for column in source.columns]
+    source = _canonicalize_sap_columns(source)
     missing = sorted(REQUIRED_COLUMNS.difference(source.columns))
     if missing:
         raise ValueError(f"Im SAP-Export fehlen Spalten: {', '.join(missing)}")
@@ -176,12 +215,20 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
     source["_manager_pn"] = source["Dir. Vorgesetzter (PN)"].map(clean)
     assignment_column = _column(source, "Ans.", "Ans", "Anstellung")
     source["_assignment"] = source[assignment_column].map(clean) if assignment_column else ""
-    frame, issues, counts, warnings = _classify(source)
+    frame, issues, counts, warnings, excluded_person_numbers = _classify(source)
 
     valid_people = frame[frame["_pn"] != ""]
     person_groups = list(valid_people.groupby("_pn", sort=False))
     raw_lines = frame[(frame["_pn"] != "") & (frame["_manager_pn"] != "")]
-    line_frame = raw_lines.drop_duplicates(subset=["_pn", "_manager_pn"], keep="first")
+    excluded_lines = raw_lines[raw_lines["_manager_pn"].isin(excluded_person_numbers)]
+    if len(excluded_lines):
+        warnings.append(
+            f"{len(excluded_lines)} Führungslinie(n) zu Personen mit BG 0 wurden vom MD-Prozess ausgeschlossen."
+        )
+    raw_lines = raw_lines[~raw_lines["_manager_pn"].isin(excluded_person_numbers)]
+    line_frame = raw_lines.drop_duplicates(
+        subset=["_pn", "_assignment", "_manager_pn"], keep="first"
+    )
     known_people = {pn for pn, _ in person_groups}
     unknown_managers = sorted(set(line_frame["_manager_pn"]) - known_people)
     if unknown_managers:
@@ -213,6 +260,7 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
             first_name = _first_value(rows, "Rufname")
             last_name = _first_value(rows, "Nachname")
             email = _first_value(rows, "lange ID/Nummer")
+            primary_assignment = _first_value(rows, assignment_column) or "1"
             connection.execute(
                 """INSERT INTO persons (person_number, first_name, last_name, email, active, last_import_id, updated_at)
                 VALUES (?, ?, ?, ?, 1, ?, ?)
@@ -234,7 +282,7 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
                 probation_end=excluded.probation_end, employment_assignment=excluded.employment_assignment,
                 secondary_employment=excluded.secondary_employment, active=1,
                 last_import_id=excluded.last_import_id, updated_at=excluded.updated_at""",
-                (pn, first_name, last_name, email, _first_value(rows, "Plans. Bez."), _first_value(rows, "OE Bez."), _first_value(rows, degree_column), _first_date(rows, "Eintritt"), _first_date(rows, "Austritt"), _first_date(rows, "Ende Probezeit"), _first_value(rows, assignment_column), _first_value(rows, "Bewilligung für"), import_id, timestamp),
+                (pn, first_name, last_name, email, _first_value(rows, "Plans. Bez."), _first_value(rows, "OE Bez."), _first_value(rows, degree_column), _first_date(rows, "Eintritt"), _first_date(rows, "Austritt"), _first_date(rows, "Ende Probezeit"), primary_assignment, _first_value(rows, "Bewilligung für"), import_id, timestamp),
             )
 
             for assignment, employment_rows in rows.groupby("_assignment", sort=False, dropna=False):
@@ -268,9 +316,38 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
                     )
 
         for _, row in line_frame.iterrows():
+            assignment = clean(row["_assignment"]) or "1"
             connection.execute(
-                "INSERT INTO reporting_lines (sap_import_id, employee_pn, manager_pn, org_unit, position) VALUES (?, ?, ?, ?, ?)",
-                (import_id, row["_pn"], row["_manager_pn"], clean(row.get("OE Bez.")), clean(row.get("Plans. Bez."))),
+                """
+                INSERT OR IGNORE INTO reporting_lines (
+                    sap_import_id, employee_pn, employment_assignment,
+                    manager_pn, org_unit, position
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    import_id, row["_pn"], assignment, row["_manager_pn"],
+                    clean(row.get("OE Bez.")), clean(row.get("Plans. Bez.")),
+                ),
+            )
+            employment = connection.execute(
+                """
+                SELECT id, entry_date, exit_date FROM employment_assignments
+                WHERE person_number = ? AND assignment_number = ?
+                """,
+                (row["_pn"], assignment),
+            ).fetchone()
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO manager_assignments (
+                    employment_id, manager_person_number, source, sap_import_id,
+                    valid_from, valid_to, active, reason, created_at, updated_at
+                ) VALUES (?, ?, 'sap', ?, ?, ?, 1, ?, ?, ?)
+                """,
+                (
+                    employment["id"], row["_manager_pn"], import_id,
+                    employment["entry_date"], employment["exit_date"],
+                    "Aus SAP-Standardexport", timestamp, timestamp,
+                ),
             )
         connection.commit()
     except Exception:

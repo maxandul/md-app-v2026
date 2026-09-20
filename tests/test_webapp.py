@@ -16,6 +16,7 @@ from webapp import create_app
 from webapp.db import get_db
 from webapp.services.cycles import create_cycle, cycle_overview
 from webapp.services.cockpit import cockpit_overview
+from webapp.services.dialog_events import set_leading_sap_event
 from webapp.services.documents import (
     confirm_digital_signature,
     import_handwritten_scan,
@@ -119,6 +120,81 @@ class WebAppIntegrationTest(unittest.TestCase):
             data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
             self.assertEqual(data["metrics"]["workbooks_missing"], 3)
 
+    def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            cycle = connection.execute(
+                "SELECT review_due_date, outlook_due_date FROM cycles WHERE id = ?",
+                (cycle_id,),
+            ).fetchone()
+            self.assertEqual(cycle["review_due_date"], "2026-01-31")
+            self.assertEqual(cycle["outlook_due_date"], "2026-02-28")
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM dialog_events WHERE cycle_id = ?",
+                    (cycle_id,),
+                ).fetchone()["count"],
+                10,
+            )
+            event = connection.execute(
+                """
+                SELECT de.id FROM dialog_events de
+                WHERE de.legacy_case_id = '2025-111116-111111'
+                """
+            ).fetchone()
+            obligations = connection.execute(
+                """
+                SELECT document_kind, due_date FROM document_obligations
+                WHERE dialog_event_id = ? ORDER BY document_kind
+                """,
+                (event["id"],),
+            ).fetchall()
+            self.assertEqual(
+                [(row["document_kind"], row["due_date"]) for row in obligations],
+                [("outlook", "2026-02-28"), ("review", "2026-01-31")],
+            )
+
+    def test_manual_dialog_event_can_be_added(self) -> None:
+        cycle_id = self._prepare_cycle()
+        response = self.client.post(
+            "/dialog-events",
+            data={
+                "employee_pn": "111111",
+                "assignment_number": "2",
+                "manager_pn": "111118",
+                "event_type": "probation_review",
+                "required_scope": "review_only",
+                "review_year": "2025",
+                "period_start": "2025-01-01",
+                "period_end": "2025-03-31",
+                "review_due_date": "2025-04-15",
+                "outlook_due_date": "",
+                "cycle_id": str(cycle_id),
+                "reason": "Probezeitfall gemäss HR-Abklärung",
+            },
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Rückblick Probezeit", response.get_data(as_text=True))
+        with self.app.app_context():
+            connection = get_db()
+            event = connection.execute(
+                """
+                SELECT * FROM dialog_events
+                WHERE source = 'manual' AND event_type = 'probation_review'
+                """
+            ).fetchone()
+            self.assertIsNotNone(event)
+            obligation = connection.execute(
+                "SELECT * FROM document_obligations WHERE dialog_event_id = ?",
+                (event["id"],),
+            ).fetchone()
+            self.assertEqual(obligation["document_kind"], "review")
+            self.assertEqual(obligation["due_date"], "2025-04-15")
+            with self.assertRaisesRegex(ValueError, "Arbeitsmappe"):
+                set_leading_sap_event(connection, event["id"])
+
     def test_sap_import_cycle_and_manager_counts(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
@@ -181,6 +257,10 @@ class WebAppIntegrationTest(unittest.TestCase):
                 """,
                 (json.dumps(employee, ensure_ascii=False), cycle_id),
             )
+            event = connection.execute(
+                "SELECT id FROM dialog_events WHERE legacy_case_id = '2025-111116-111112'"
+            ).fetchone()
+            set_leading_sap_event(connection, event["id"])
             connection.commit()
             path = create_sap_upload_file(
                 connection,
@@ -203,7 +283,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(worksheet["I2"].value, "D")
             self.assertTrue(all(worksheet.cell(2, column).value is None for column in range(10, 15)))
 
-    def test_pdf_only_return_is_read_and_staged_for_rpa(self) -> None:
+    def test_pdf_only_return_is_read_and_staged_for_dossier_handoff(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
@@ -252,6 +332,11 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "SELECT status FROM dialog_cases WHERE case_id = '2025-111116-111111'"
             ).fetchone()["status"]
             self.assertEqual(status, "vollstaendig")
+            obligation = connection.execute(
+                "SELECT status FROM document_obligations WHERE fulfilled_document_id = ?",
+                (imported["document_id"],),
+            ).fetchone()
+            self.assertEqual(obligation["status"], "complete")
 
     def test_required_scan_replaces_digital_pdf_for_dossier_handoff(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -287,6 +372,11 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             self.assertTrue(confirmed["scan_required"])
             self.assertEqual(list((root / "dossier_ready").glob("*.pdf")), [])
+            obligation = connection.execute(
+                "SELECT status FROM document_obligations WHERE fulfilled_document_id = ?",
+                (imported["document_id"],),
+            ).fetchone()
+            self.assertEqual(obligation["status"], "scan_pending")
 
             scan_path = root / "scan.pdf"
             write_test_pdf(scan_path, "Handschriftlich unterzeichnet")
@@ -309,6 +399,12 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()
             self.assertTrue(Path(digital["stored_path"]).exists())
             self.assertNotEqual(Path(digital["stored_path"]).parent, root / "dossier_ready")
+            obligation = connection.execute(
+                "SELECT status, fulfilled_document_id FROM document_obligations WHERE id = ?",
+                (digital["document_obligation_id"],),
+            ).fetchone()
+            self.assertEqual(obligation["status"], "complete")
+            self.assertEqual(obligation["fulfilled_document_id"], scan["document_id"])
 
     def test_no_md_pdf_closes_case_without_dossier_handoff(self) -> None:
         cycle_id = self._prepare_cycle()

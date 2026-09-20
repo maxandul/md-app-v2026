@@ -30,6 +30,13 @@ from .services.cycles import (
     manager_case_overview,
 )
 from .services.cockpit import cockpit_overview
+from .services.dialog_events import (
+    EVENT_TYPE_LABELS,
+    SCOPE_LABELS,
+    create_manual_event,
+    dialog_event_rows,
+    set_leading_sap_event,
+)
 from .services.packages import create_package_file, import_returned_package
 from .services.documents import (
     confirm_digital_signature,
@@ -92,12 +99,57 @@ def master_data():
 
 @bp.get("/dialoge")
 def dialogs():
+    data = dashboard_data(get_db())
+    selected_cycle_id = request.args.get("cycle_id", type=int)
+    if selected_cycle_id is None and data["cycles"]:
+        selected_cycle_id = data["cycles"][0]["id"]
     return render_template(
         "dialogs.html",
         active_nav="dialogs",
         now_year=datetime.now().year,
-        **dashboard_data(get_db()),
+        selected_cycle_id=selected_cycle_id,
+        events=dialog_event_rows(get_db(), selected_cycle_id),
+        event_types=EVENT_TYPE_LABELS,
+        scopes=SCOPE_LABELS,
+        **data,
     )
+
+
+@bp.post("/dialog-events")
+def add_dialog_event():
+    cycle_id = request.form.get("cycle_id", type=int)
+    try:
+        event_id = create_manual_event(
+            get_db(),
+            employee_pn=request.form.get("employee_pn", ""),
+            assignment_number=request.form.get("assignment_number", ""),
+            manager_pn=request.form.get("manager_pn", ""),
+            event_type=request.form.get("event_type", ""),
+            required_scope=request.form.get("required_scope", ""),
+            review_year=int(request.form.get("review_year", "")),
+            period_start=request.form.get("period_start", ""),
+            period_end=request.form.get("period_end", ""),
+            reason=request.form.get("reason", ""),
+            review_due_date=request.form.get("review_due_date", ""),
+            outlook_due_date=request.form.get("outlook_due_date", ""),
+            cycle_id=cycle_id,
+        )
+    except (TypeError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+    flash(f"Dialogereignis {event_id} wurde angelegt.", "success")
+    return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+
+
+@bp.post("/dialog-events/<int:event_id>/leading-sap")
+def mark_leading_sap_event(event_id: int):
+    try:
+        set_leading_sap_event(get_db(), event_id)
+    except ValueError as exc:
+        flash(str(exc), "error")
+    else:
+        flash("Das führende SAP-Ereignis wurde festgelegt.", "success")
+    return redirect(request.referrer or url_for("main.dialogs"))
 
 
 @bp.get("/versand")

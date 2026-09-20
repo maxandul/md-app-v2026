@@ -531,6 +531,24 @@
     .source-item strong { display: block; margin-bottom: 2px; }
     .source-item.full { grid-column: 1 / -1; }
 
+    .source-panel {
+      padding: 12px;
+      border-radius: 4px;
+      background: #f0f3f6;
+      font-size: 13px;
+    }
+
+    .source-panel-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .source-panel-value { white-space: pre-line; }
+
     .empty-state {
       padding: 22px;
       text-align: center;
@@ -1320,7 +1338,7 @@
               ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien das Dokument handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan; das digitale PDF muss in diesem Fall nicht zusätzlich elektronisch unterschrieben sein.</div>` : ''}
             </div>
             <div class="subsection" id="review-secondary"><h3>5. Nebenbeschäftigungen und öffentliche Ämter</h3>
-              <div class="suggestion"><strong>Aktueller SAP-Stand:</strong> ${h(secondary || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div>
+              <div class="source-panel"><div class="source-panel-label">Aktueller SAP-Stand</div><div class="source-panel-value">${h(secondary || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div></div>
               <div class="form-grid" style="margin-top:12px">
                 ${field('SAP-Stand aktuell', 'review.secondary_employment_current', employee.review.secondary_employment_current, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
                 ${field('Präzisierungen', 'review.secondary_employment_note', employee.review.secondary_employment_note, { type:'textarea', full:true })}

@@ -433,15 +433,17 @@
     .section-intro { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 
     .subsection {
-      margin-top: 22px;
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-top: 4px solid #d7e5ef;
-      background: #f8fafc;
+      margin-top: 28px;
+      padding: 24px 0 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+      background: transparent;
+      scroll-margin-top: 150px;
     }
 
-    .subsection:first-child { margin-top: 0; }
+    .section-head + .subsection { margin-top: 0; }
     .subsection h3 { margin: 0 0 10px; font-size: 16px; }
+    [id^="dialog-details-"] { scroll-margin-top: 150px; }
 
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -476,10 +478,12 @@
     .goal-card,
     .repeat-card {
       margin-top: 12px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      background: #fbfcfd;
+      padding: 0;
+      border: 0;
+      border-top: 1px solid #d8dee6;
+      border-radius: 0;
+      background: transparent;
+      scroll-margin-top: 150px;
     }
 
     .card-head {
@@ -487,10 +491,21 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 12px;
+      margin: 0;
+      padding: 12px 0;
+      cursor: pointer;
+      list-style: none;
     }
 
+    .card-head::-webkit-details-marker { display: none; }
+    .card-head-main { display:flex; align-items:center; gap:9px; min-width:0; }
+    .card-head-main::before { content:'›'; flex:0 0 auto; color:var(--blue); font-size:20px; line-height:1; transform:rotate(0); transition:transform .15s ease; }
+    details[open] > .card-head .card-head-main::before { transform:rotate(90deg); }
     .card-head h4 { margin: 0; font-size: 15px; }
+    .card-body { padding: 0 0 16px 25px; }
+    .card-state { flex:0 0 auto; color:var(--muted); font-size:12px; font-weight:700; }
+    .card-state.complete { color:var(--success); }
+    .card-actions { display:flex; align-items:center; gap:10px; }
 
     .source-grid {
       display: grid;
@@ -500,6 +515,16 @@
       padding: 12px;
       border-radius: 4px;
       background: #f0f3f6;
+    }
+
+    .source-grid::before {
+      content: 'Vereinbarung aus dem Vorjahr';
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
     }
 
     .source-item { font-size: 13px; }
@@ -1050,10 +1075,21 @@
         return `<div class="source-value ${full ? 'full' : ''}"><strong>${h(label)}</strong>${value ? h(value) : '–'}</div>`;
       }
 
+      function cardState(complete) {
+        return `<span class="card-state ${complete ? 'complete' : ''}">${complete ? 'Vollständig' : 'Offen'}</span>`;
+      }
+
+      function cardTitle(title, fallback) {
+        return h(title && title.trim() ? title.trim() : fallback);
+      }
+
       function renderPreviousGoals(employee) {
-        const cards = employee.previous_goals.map((goal, index) => `
-          <div class="goal-card">
-            <div class="card-head"><h4>Vorjahresziel ${index + 1}${goal.title ? `: ${h(goal.title)}` : ''}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></div>
+        const cards = employee.previous_goals.map((goal, index) => {
+          const complete = Boolean(goal.title && goal.criteria && goal.achievement && goal.review);
+          return `
+          <details class="goal-card" id="review-previous-goal-${index + 1}" ${complete ? '' : 'open'}>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Vorjahresziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></span></summary>
+            <div class="card-body">
             <div class="source-grid">
               ${goal.imported
                 ? `${sourceValue('Ziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
@@ -1063,14 +1099,19 @@
               ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
-          </div>`).join('');
+            </div>
+          </details>`;
+        }).join('');
         return `${cards || '<div class="empty-state">Keine Leistungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-goal">+ Leistungsziel aus dem Vorjahr ergänzen</button>`;
       }
 
       function renderPreviousDevelopmentGoals(employee) {
-        const cards = employee.previous_development_goals.map((goal, index) => `
-          <div class="goal-card">
-            <div class="card-head"><h4>${h(goal.competency || `Entwicklungsziel ${index + 1}`)}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></div>
+        const cards = employee.previous_development_goals.map((goal, index) => {
+          const complete = Boolean(goal.competency && goal.title && goal.criteria && goal.achievement && goal.review);
+          return `
+          <details class="goal-card" id="review-development-goal-${index + 1}" ${complete ? '' : 'open'}>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.competency, `Entwicklungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></span></summary>
+            <div class="card-body">
             <div class="source-grid">
               ${goal.imported
                 ? `${sourceValue('Entwicklungsziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
@@ -1080,7 +1121,9 @@
               ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
               ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
             </div>
-          </div>`).join('');
+            </div>
+          </details>`;
+        }).join('');
         return `<div style="margin-bottom:18px"><h4>Entwicklungsziele aus dem Vorjahr</h4>${cards || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen</button></div>`;
       }
 
@@ -1113,38 +1156,51 @@
       function renderCompetencies(employee) {
         const entries = employee.review.competencies || [];
         const previousDevelopment = employee.dialog_type === 'probation' ? '' : renderPreviousDevelopmentGoals(employee);
-        const cards = entries.map((entry, index) => `
-          <div class="repeat-card">
-            <div class="card-head"><h4>Kompetenzbeobachtung ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="review.competencies" data-index="${index}">Entfernen</button></div>
+        const cards = entries.map((entry, index) => {
+          const complete = Boolean(entry.competency && entry.comment);
+          return `
+          <details class="repeat-card" ${complete ? '' : 'open'}>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(entry.competency, `Kompetenzbeobachtung ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="review.competencies" data-index="${index}">Entfernen</button></span></summary>
+            <div class="card-body">
             ${arrayField('Kompetenz', 'review.competencies', index, 'competency', entry.competency, { type:'select', groupedCompetencies:true })}
             ${renderCompetencyHelp(entry.competency)}
             <div class="form-grid" style="margin-top:12px">
               ${arrayField('Beobachtung und Rückmeldung', 'review.competencies', index, 'comment', entry.comment, { full:true, rows:4 })}
             </div>
-          </div>`).join('');
+            </div>
+          </details>`;
+        }).join('');
         return `${previousDevelopment}<h4>${previousDevelopment ? 'Weitere Kompetenzbeobachtungen' : 'Kompetenzbeobachtungen'}</h4>${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
       }
 
       function renderPerformanceGoals(employee) {
         const goals = employee.outlook.performance_goals || [];
-        const cards = goals.map((goal, index) => `
-          <div class="repeat-card">
-            <div class="card-head"><h4>Leistungsziel ${index + 1}</h4>${goals.length > 1 ? `<button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button>` : ''}</div>
+        const cards = goals.map((goal, index) => {
+          const complete = Boolean(goal.title && goal.criteria && goal.target_date);
+          return `
+          <details class="repeat-card" id="outlook-performance-goal-${index + 1}" ${complete ? '' : 'open'}>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Leistungsziel ${index + 1}`)}</h4>${cardState(complete)}</span>${goals.length > 1 ? `<span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button></span>` : ''}</summary>
+            <div class="card-body">
             <div class="form-grid">
               ${arrayField('Ziel', 'outlook.performance_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
               ${arrayField('Messkriterien', 'outlook.performance_goals', index, 'criteria', goal.criteria, { required:true })}
               ${arrayField('Schritte zum Ziel', 'outlook.performance_goals', index, 'steps', goal.steps)}
               ${arrayField('Termin', 'outlook.performance_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
             </div>
-          </div>`).join('');
+            </div>
+          </details>`;
+        }).join('');
         return `${cards}<button class="button small" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
       }
 
       function renderDevelopmentGoals(employee) {
         const goals = employee.outlook.development_goals || [];
-        const cards = goals.map((goal, index) => `
-          <div class="repeat-card">
-            <div class="card-head"><h4>Entwicklungsziel ${index + 1}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.development_goals" data-index="${index}">Entfernen</button></div>
+        const cards = goals.map((goal, index) => {
+          const complete = Boolean(goal.competency && goal.title && goal.criteria && goal.target_date);
+          return `
+          <details class="repeat-card" id="outlook-development-goal-${index + 1}" ${complete ? '' : 'open'}>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Entwicklungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.development_goals" data-index="${index}">Entfernen</button></span></summary>
+            <div class="card-body">
             ${arrayField('Kompetenz', 'outlook.development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}
             ${renderCompetencyHelp(goal.competency)}
             <div class="form-grid" style="margin-top:12px">
@@ -1153,7 +1209,9 @@
               ${arrayField('Schritte zum Ziel', 'outlook.development_goals', index, 'steps', goal.steps)}
               ${arrayField('Termin', 'outlook.development_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
             </div>
-          </div>`).join('');
+            </div>
+          </details>`;
+        }).join('');
         return `${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
       }
 
@@ -1327,10 +1385,14 @@
       }
 
       function requirementTarget(employee, section, label) {
+        const numberedItem = label.match(/(\d+)$/);
+        const itemNumber = numberedItem ? numberedItem[1] : '';
         if (label.startsWith('Zeitraum') || label.startsWith('Gesprächsdatum')) return { step: section, anchor: `dialog-details-${section}` };
         if (label.startsWith('Begründung')) return { step: 'basics', anchor: 'scope-section' };
         if (section === 'outlook') {
+          if ((label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) && itemNumber) return { step: 'outlook', anchor: `outlook-development-goal-${itemNumber}` };
           if (label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) return { step: 'outlook', anchor: 'outlook-development-goals' };
+          if (label.includes('Leistungsziel') && itemNumber) return { step: 'outlook', anchor: `outlook-performance-goal-${itemNumber}` };
           return { step: 'outlook', anchor: 'outlook-performance-goals' };
         }
         if (employee.dialog_type === 'probation') {
@@ -1338,7 +1400,8 @@
           if (label.includes('Kompetenz') || label.includes('Entwicklungsziel')) return { step: 'review', anchor: 'review-competencies' };
           return { step: 'review', anchor: 'review-performance' };
         }
-        if (label.includes('Vorjahresziel')) return { step: 'review', anchor: 'review-performance-goals' };
+        if (label.includes('Vorjahresziel') && itemNumber) return { step: 'review', anchor: `review-previous-goal-${itemNumber}` };
+        if ((label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) && itemNumber) return { step: 'review', anchor: `review-development-goal-${itemNumber}` };
         if (label.includes('Entwicklungsziel') || label.startsWith('Kompetenz')) return { step: 'review', anchor: 'review-competencies' };
         if (label.includes('Nebenbeschäftigungen')) return { step: 'review', anchor: 'review-secondary' };
         if (label.includes('Gesamteindruck') || label.includes('Gesamtbeurteilung')) return { step: 'review', anchor: 'review-overall' };
@@ -1534,7 +1597,14 @@
           event.preventDefault();
           selectedStepByCase[employee.case_id] = button.dataset.step;
           renderEditor();
-          window.setTimeout(() => document.getElementById(button.dataset.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+          window.setTimeout(() => {
+            const target = document.getElementById(button.dataset.anchor);
+            if (!target) return;
+            if (target.matches('details')) target.open = true;
+            const parentDetails = target.closest('details');
+            if (parentDetails) parentDetails.open = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 0);
           return;
         }
         if (action === 'show-step') {
@@ -1548,6 +1618,8 @@
           return;
         }
         if (action === 'remove-item') {
+          event.preventDefault();
+          event.stopPropagation();
           const array = getPath(employee, button.dataset.array);
           array.splice(Number(button.dataset.index), 1);
           markDirty(employee);

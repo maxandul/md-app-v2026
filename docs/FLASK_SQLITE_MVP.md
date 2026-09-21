@@ -173,15 +173,23 @@ die mit `MD_ANALYTICS_MIN_GROUP_SIZE` konfigurierte Mindestgruppengrösse nicht
 erreicht wird; Standardwert ist 5. Die CSV-Dateien sind UTF-8-codiert und
 verwenden für die deutsche Excel-Umgebung ein Semikolon als Trennzeichen.
 
+## Übernahme früherer Word-Formulare
+
+`import_legacy_forms.py` liest die getaggten Content Controls früherer
+DOCX-/DOCM-Ausblickformulare. Der Standardlauf erstellt nur eine Vorschau. Erst
+`--apply` übernimmt eindeutig über Personalnummer und Anstellung zugeordnete
+Leistungs- und Entwicklungsziele in `historical_goals`. Datei-Prüfsummen
+verhindern Doppelimporte. Nicht eindeutige Mehrfachanstellungen und unbekannte
+Personen bleiben zur Klärung offen. Die neuen Arbeitsmappen zeigen die
+übernommenen Ziele als unveränderte Quelleninformation im Rückblick.
+
 ## Nächste Iterationen
 
-1. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert
-   übernehmen und für den nächsten Jahresdurchlauf bereitstellen.
-2. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
+1. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
    Zertifikaten und der eingesetzten klassischen Outlook-Version testen und
    freigeben. Bis dahin bleibt der automatische Versand gesperrt.
-3. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
+2. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
    danach das Verschieben vollständig verarbeiteter Nachrichten freigeben.
-4. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
-5. Backup-/Restore-Test und Rollen-/Berechtigungskonzept festlegen.
-6. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.
+3. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
+4. Backup-/Restore-Test und Rollen-/Berechtigungskonzept freigeben.
+5. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

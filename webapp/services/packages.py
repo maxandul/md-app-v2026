@@ -60,7 +60,8 @@ def bounded_review_period(
 
 
 def _prior_goals(
-    connection: sqlite3.Connection, *, employee_pn: str, review_year: int
+    connection: sqlite3.Connection, *, employee_pn: str,
+    employment_assignment: str, review_year: int,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     previous = connection.execute(
         """
@@ -73,35 +74,59 @@ def _prior_goals(
         """,
         (employee_pn, review_year),
     ).fetchone()
-    if not previous:
-        return [], []
-    try:
-        old_case = json.loads(previous["data_json"])
-    except (TypeError, json.JSONDecodeError):
-        return [], []
-
     performance: list[dict[str, str]] = []
     development: list[dict[str, str]] = []
-    outlook = old_case.get("outlook") or {}
-    for destination, prefix, sources in (
-        (performance, "previous", outlook.get("performance_goals") or []),
-        (development, "previous-development", outlook.get("development_goals") or []),
-    ):
-        for index, goal in enumerate(sources, start=1):
-            title = str(goal.get("title", "")).strip()
-            if not title:
-                continue
-            destination.append({
-                "id": f"{prefix}-{employee_pn}-{index}",
-                "imported": True,
-                "title": title,
-                "criteria": str(goal.get("criteria", "")),
-                "steps": str(goal.get("steps", "")),
-                "target_date": str(goal.get("target_date", "")),
-                "competency": str(goal.get("competency", "")),
-                "achievement": "",
-                "review": "",
-            })
+    if previous:
+        try:
+            old_case = json.loads(previous["data_json"])
+        except (TypeError, json.JSONDecodeError):
+            old_case = {}
+        outlook = old_case.get("outlook") or {}
+        for destination, prefix, sources in (
+            (performance, "previous", outlook.get("performance_goals") or []),
+            (development, "previous-development", outlook.get("development_goals") or []),
+        ):
+            for index, goal in enumerate(sources, start=1):
+                title = str(goal.get("title", "")).strip()
+                if not title:
+                    continue
+                destination.append({
+                    "id": f"{prefix}-{employee_pn}-{index}",
+                    "imported": True,
+                    "title": title,
+                    "criteria": str(goal.get("criteria", "")),
+                    "steps": str(goal.get("steps", "")),
+                    "target_date": str(goal.get("target_date", "")),
+                    "competency": str(goal.get("competency", "")),
+                    "achievement": "",
+                    "review": "",
+                })
+        if performance or development:
+            return performance, development
+
+    rows = connection.execute(
+        """
+        SELECT * FROM historical_goals
+        WHERE employee_pn = ? AND goal_year = ?
+          AND (assignment_number = ? OR assignment_number = '')
+        ORDER BY goal_kind, sequence, id
+        """,
+        (employee_pn, review_year, employment_assignment),
+    ).fetchall()
+    for row in rows:
+        destination = performance if row["goal_kind"] == "performance" else development
+        prefix = "legacy-previous" if row["goal_kind"] == "performance" else "legacy-development"
+        destination.append({
+            "id": f"{prefix}-{row['id']}",
+            "imported": True,
+            "title": row["title"],
+            "criteria": row["criteria"],
+            "steps": row["steps"],
+            "target_date": row["target_date"],
+            "competency": row["competency"],
+            "achievement": "",
+            "review": "",
+        })
     return performance, development
 
 
@@ -119,7 +144,8 @@ def _new_case(
             review_year, row["entry_date"], row["exit_date"]
         )
     previous_goals, previous_development_goals = _prior_goals(
-        connection, employee_pn=row["employee_pn"], review_year=review_year
+        connection, employee_pn=row["employee_pn"],
+        employment_assignment=row["employment_assignment"], review_year=review_year,
     )
     return {
         "case_id": row["case_id"],

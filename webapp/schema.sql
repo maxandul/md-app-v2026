@@ -146,6 +146,43 @@ CREATE TABLE IF NOT EXISTS reporting_lines (
 CREATE INDEX IF NOT EXISTS idx_reporting_lines_import_manager
     ON reporting_lines (sap_import_id, manager_pn);
 
+CREATE TABLE IF NOT EXISTS legacy_form_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    goal_year INTEGER NOT NULL,
+    document_type TEXT NOT NULL,
+    employee_pn TEXT NOT NULL REFERENCES persons(person_number),
+    assignment_number TEXT NOT NULL DEFAULT '',
+    original_filename TEXT NOT NULL,
+    sha256 TEXT NOT NULL UNIQUE,
+    performance_goal_count INTEGER NOT NULL DEFAULT 0,
+    development_goal_count INTEGER NOT NULL DEFAULT 0,
+    imported_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_legacy_form_imports_person_year
+    ON legacy_form_imports (employee_pn, assignment_number, goal_year);
+
+CREATE TABLE IF NOT EXISTS historical_goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    legacy_form_import_id INTEGER NOT NULL REFERENCES legacy_form_imports(id) ON DELETE CASCADE,
+    employee_pn TEXT NOT NULL REFERENCES persons(person_number),
+    assignment_number TEXT NOT NULL DEFAULT '',
+    goal_year INTEGER NOT NULL,
+    goal_kind TEXT NOT NULL CHECK (goal_kind IN ('performance', 'development')),
+    sequence INTEGER NOT NULL,
+    competency TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    criteria TEXT NOT NULL DEFAULT '',
+    steps TEXT NOT NULL DEFAULT '',
+    target_date TEXT NOT NULL DEFAULT '',
+    source_tag_family TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    UNIQUE (legacy_form_import_id, goal_kind, sequence)
+);
+
+CREATE INDEX IF NOT EXISTS idx_historical_goals_person_year
+    ON historical_goals (employee_pn, assignment_number, goal_year, goal_kind, sequence);
+
 CREATE TABLE IF NOT EXISTS cycles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     review_year INTEGER NOT NULL,

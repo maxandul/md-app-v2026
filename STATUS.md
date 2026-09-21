@@ -72,6 +72,9 @@ Anmeldung und Outlook-Verarbeitung.
   Rollback und erzwungener Neuanmeldung
 - technisches Betriebskonzept mit Rollen, Sicherung, Wiederanlauf, Vorfall und
   Freigabecheckliste
+- Vorschau- und Importskript für Leistungs- und Entwicklungsziele aus früheren
+  Word-Ausblickformularen mit eindeutiger Personen-/Anstellungszuordnung,
+  Prüfsummen und Übernahme in neue Arbeitsmappen
 
 ### Arbeitsmappe
 
@@ -132,8 +135,9 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 ### Nächste Schritte
 
 1. Bürotest mit echten SAP-Strukturen und produktiver Outlook-/S/MIME-Umgebung
-2. Backup-/Restore-Probelauf auf dem vorgesehenen, verschlüsselten HR-Gerät
-3. Fachliche Freigabe von Aufbewahrung, Löschung, RPO, RTO und Verantwortungen
+2. Vorschau des Vorjahresimports mit den ursprünglichen Word-Formularen prüfen
+3. Backup-/Restore-Probelauf auf dem vorgesehenen, verschlüsselten HR-Gerät
+4. Fachliche Freigabe von Aufbewahrung, Löschung, RPO, RTO und Verantwortungen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 

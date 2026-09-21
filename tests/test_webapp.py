@@ -7,6 +7,7 @@ import unittest
 import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from openpyxl import load_workbook
 from reportlab.pdfgen import canvas
@@ -34,6 +35,7 @@ from webapp.services.documents import (
 )
 from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from webapp.services.mail_intake import mail_inbox_overview, process_inbound_messages
+from webapp.services.legacy_forms import import_legacy_forms, scan_legacy_forms
 from webapp.services.case_review import case_review_detail, correct_case_data
 from webapp.services.deadlines import extend_deadlines
 from webapp.services.reminders import (
@@ -80,6 +82,23 @@ def write_test_pdf(path: Path, data_block: str) -> None:
     document.drawString(40, 800, "Mitarbeitenden-Dialog Test")
     document.drawString(40, 770, data_block)
     document.save()
+
+
+def write_legacy_docx(path: Path, controls: list[tuple[str, str]]) -> None:
+    content = "".join(
+        "<w:sdt><w:sdtPr><w:tag w:val=\"{}\"/></w:sdtPr>"
+        "<w:sdtContent><w:p><w:r><w:t>{}</w:t></w:r></w:p></w:sdtContent></w:sdt>".format(
+            escape(tag, {'"': '&quot;'}), escape(value)
+        )
+        for tag, value in controls
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body>{content}</w:body></w:document>"
+    )
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
 
 
 class WebAppIntegrationTest(unittest.TestCase):
@@ -196,6 +215,70 @@ class WebAppIntegrationTest(unittest.TestCase):
                 )
         with self.assertRaisesRegex(ValueError, "Prüfsumme"):
             validate_backup(tampered)
+
+    def test_legacy_word_goals_are_previewed_imported_and_added_to_package(self) -> None:
+        cycle_id = self._prepare_cycle()
+        forms_root = Path(self.temp_dir.name) / "legacy_forms"
+        forms_root.mkdir()
+        with self.app.app_context():
+            connection = get_db()
+            case = connection.execute(
+                """
+                SELECT employee_pn, employment_assignment, manager_pn
+                FROM dialog_cases WHERE cycle_id = ? ORDER BY id LIMIT 1
+                """,
+                (cycle_id,),
+            ).fetchone()
+            write_legacy_docx(
+                forms_root / "Ausblick_Test.docx",
+                [
+                    ("ab_pn", case["employee_pn"]),
+                    ("ab_ziel", "Serviceprozess vereinfachen"),
+                    ("ab_ziel_kriterien", "Durchlaufzeit messbar reduzieren"),
+                    ("ab_ziel_schritte", "Prozess aufnehmen und anpassen"),
+                    ("ab_ziel_termin", "2025-12-31"),
+                    ("ab_entwicklungsfaehigkeit_ziel", "Feedback systematisch nutzen"),
+                    ("ab_entwicklungsfaehigkeit_kriterien", "Quartalsweise Rückmeldung einholen"),
+                    ("ab_entwicklungsfaehigkeit_schritte", "Feedbacktermine vereinbaren"),
+                    ("ab_entwicklungsfaehigkeit_termin", "2025-11-30"),
+                ],
+            )
+            preview = scan_legacy_forms(
+                connection, forms_root=forms_root, goal_year=2025
+            )
+            self.assertEqual(preview["counts"], {"matched": 1})
+            self.assertEqual(preview["performance_goals"], 1)
+            self.assertEqual(preview["development_goals"], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM historical_goals").fetchone()[0], 0
+            )
+
+            imported = import_legacy_forms(
+                connection, forms_root=forms_root, goal_year=2025,
+                imported_at=datetime(2026, 9, 21, 12, 0, tzinfo=timezone.utc),
+            )
+            self.assertEqual(imported["imported"], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM historical_goals").fetchone()[0], 2
+            )
+            payload = build_manager_payload(
+                connection, cycle_id=cycle_id, manager_pn=case["manager_pn"]
+            )
+            employee = next(
+                item for item in payload["employees"]
+                if item["employee"]["pn"] == case["employee_pn"]
+            )
+            self.assertEqual(
+                employee["previous_goals"][0]["title"], "Serviceprozess vereinfachen"
+            )
+            self.assertEqual(
+                employee["previous_development_goals"][0]["competency"],
+                "Entwicklungsfähigkeit",
+            )
+            repeated = scan_legacy_forms(
+                connection, forms_root=forms_root, goal_year=2025
+            )
+            self.assertEqual(repeated["counts"], {"already_imported": 1})
 
     def test_main_navigation_and_module_pages(self) -> None:
         self._prepare_cycle()

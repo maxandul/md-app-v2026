@@ -37,6 +37,8 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - kritische Aktionen in einer geschützten Administrationsansicht prüfen
 - vollständige, prüfsummengesicherte Backups erstellen und kontrolliert
   wiederherstellen
+- Ziele aus früheren Word-Ausblickformularen zunächst als Vorschau prüfen und
+  danach idempotent in den nächsten Rückblick übernehmen
 
 ## Lokal unter Windows starten
 
@@ -127,3 +129,5 @@ Weitere Architektur- und Prozesshinweise stehen in
 [`docs/FLASK_SQLITE_MVP.md`](docs/FLASK_SQLITE_MVP.md). Die betrieblichen
 Schutzmassnahmen, Restore-Schritte und noch notwendigen Freigaben stehen im
 [`docs/BETRIEBSKONZEPT.md`](docs/BETRIEBSKONZEPT.md).
+Die kontrollierte Prüfung mit SAP, Word-Formularen, Outlook und Restore ist in
+[`docs/BUEROTEST.md`](docs/BUEROTEST.md) beschrieben.

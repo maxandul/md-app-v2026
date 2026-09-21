@@ -34,6 +34,9 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
   aggregiert auswerten und als Excel-kompatible CSV-Dateien exportieren
 - aggregierte Auswertungen bei Unterschreitung der konfigurierten
   Mindestgruppengrösse automatisch unterdrücken
+- kritische Aktionen in einer geschützten Administrationsansicht prüfen
+- vollständige, prüfsummengesicherte Backups erstellen und kontrolliert
+  wiederherstellen
 
 ## Lokal unter Windows starten
 
@@ -53,6 +56,9 @@ python run_web.py
 
 Die Anwendung ist danach unter <http://127.0.0.1:5050> erreichbar. Beim ersten
 Start wird die lokale SQLite-Datenbank automatisch unter `instance/` angelegt.
+Systemadministrationen finden Benutzerkonten, Audit, Backup und Restore unter
+`Administration`. Backups enthalten Personaldaten und müssen unmittelbar auf ein
+genehmigtes, verschlüsseltes und getrenntes Medium übertragen werden.
 
 ## Erster Testlauf
 
@@ -118,4 +124,6 @@ python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
 ```
 
 Weitere Architektur- und Prozesshinweise stehen in
-[`docs/FLASK_SQLITE_MVP.md`](docs/FLASK_SQLITE_MVP.md).
+[`docs/FLASK_SQLITE_MVP.md`](docs/FLASK_SQLITE_MVP.md). Die betrieblichen
+Schutzmassnahmen, Restore-Schritte und noch notwendigen Freigaben stehen im
+[`docs/BETRIEBSKONZEPT.md`](docs/BETRIEBSKONZEPT.md).

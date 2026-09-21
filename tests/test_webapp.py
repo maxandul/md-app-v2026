@@ -14,7 +14,7 @@ from reportlab.pdfgen import canvas
 from prototype.html_dialog.generate_package import render_html
 from prototype.html_dialog.validate_package import extract_payload
 from webapp import create_app
-from webapp.db import get_db
+from webapp.db import close_db, connect_database, get_db
 from webapp.adapters.outlook import (
     DraftResult,
     EncryptionVerificationError,
@@ -42,6 +42,11 @@ from webapp.services.reminders import (
     reminder_candidates,
 )
 from webapp.services.analytics import analytics_data
+from webapp.services.operations import (
+    create_system_backup,
+    restore_system_backup,
+    validate_backup,
+)
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -88,6 +93,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "SECRET_KEY": "test-secret",
                 "DATABASE": str(root / "test.sqlite3"),
                 "STORAGE_ROOT": str(root / "data"),
+                "BACKUP_ROOT": str(root / "backups"),
                 "AUTH_DISABLED": True,
             }
         )
@@ -120,6 +126,76 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("SAP-Stammdaten importieren", response.get_data(as_text=True))
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+
+    def test_administration_creates_complete_valid_backup(self) -> None:
+        marker = Path(self.app.config["STORAGE_ROOT"]) / "marker.txt"
+        marker.write_text("vorher", encoding="utf-8")
+        response = self.client.post("/administration/backups")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        response_data = response.get_data()
+        response.close()
+        with zipfile.ZipFile(io.BytesIO(response_data)) as archive:
+            self.assertIn("manifest.json", archive.namelist())
+            self.assertIn("database.sqlite3", archive.namelist())
+            self.assertIn("storage/marker.txt", archive.namelist())
+        page = self.client.get("/administration")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Betrieb und Audit", page.get_data(as_text=True))
+
+    def test_backup_restore_roundtrip_and_tamper_detection(self) -> None:
+        database_path = Path(self.app.config["DATABASE"])
+        storage_root = Path(self.app.config["STORAGE_ROOT"])
+        dossier_root = Path(self.app.config["DOSSIER_HANDOFF_ROOT"])
+        backup_root = Path(self.app.config["BACKUP_ROOT"])
+        marker = storage_root / "marker.txt"
+        marker.write_text("gesichert", encoding="utf-8")
+        with self.app.app_context():
+            connection = get_db()
+            connection.execute(
+                "INSERT INTO audit_log (action, details_json, created_at) VALUES ('vorher', '{}', '2026-09-21T10:00:00+00:00')"
+            )
+            connection.commit()
+            backup = create_system_backup(
+                connection,
+                database_path=database_path,
+                storage_root=storage_root,
+                dossier_root=dossier_root,
+                backup_root=backup_root,
+            )
+            connection.execute(
+                "INSERT INTO audit_log (action, details_json, created_at) VALUES ('nachher', '{}', '2026-09-21T11:00:00+00:00')"
+            )
+            connection.commit()
+            marker.write_text("verändert", encoding="utf-8")
+            close_db()
+            result = restore_system_backup(
+                backup["path"],
+                database_path=database_path,
+                storage_root=storage_root,
+                dossier_root=dossier_root,
+            )
+            self.assertGreaterEqual(result["file_count"], 2)
+
+        restored = connect_database(database_path)
+        try:
+            actions = [row[0] for row in restored.execute("SELECT action FROM audit_log ORDER BY id")]
+        finally:
+            restored.close()
+        self.assertIn("vorher", actions)
+        self.assertNotIn("nachher", actions)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "gesichert")
+
+        tampered = backup_root / "tampered.zip"
+        with zipfile.ZipFile(backup["path"]) as source, zipfile.ZipFile(tampered, "w") as target:
+            for info in source.infolist():
+                content = source.read(info.filename)
+                target.writestr(
+                    info,
+                    b"manipuliert" if info.filename == "database.sqlite3" else content,
+                )
+        with self.assertRaisesRegex(ValueError, "Prüfsumme"):
+            validate_backup(tampered)
 
     def test_main_navigation_and_module_pages(self) -> None:
         self._prepare_cycle()

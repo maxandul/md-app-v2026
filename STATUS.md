@@ -1,6 +1,6 @@
 # Projektstand MD-App v2026
 
-**Stand:** 20. September 2026  
+**Stand:** 21. September 2026
 **Zweck:** Übergabe zwischen Arbeitssitzungen und Ausgangspunkt für die Weiterentwicklung des HR-Cockpits
 
 ## Ziel und Architektur
@@ -65,6 +65,13 @@ Anmeldung und Outlook-Verarbeitung.
   bereits exportierte Dialogereignisse werden nicht erneut ausgegeben
 - operative Gesprächszeitpunkte sowie aggregierte Verteilungen der
   Gesamtbeurteilungen und Kompetenzen mit CSV-Export und Mindestgruppengrösse
+- geschützte Systemadministration mit Auditansicht für kritische Aktionen
+- vollständige ZIP-Backups aus konsistenter SQLite-Kopie, Prozessdateien,
+  Dossier-Übergabe und SHA-256-Manifest
+- kontrollierter Restore mit Validierung, automatischem Sicherheitsbackup,
+  Rollback und erzwungener Neuanmeldung
+- technisches Betriebskonzept mit Rollen, Sicherung, Wiederanlauf, Vorfall und
+  Freigabecheckliste
 
 ### Arbeitsmappe
 
@@ -124,13 +131,16 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 
 ### Nächste Schritte
 
-1. Audit, Backup/Restore und Betriebskonzept vervollständigen
+1. Bürotest mit echten SAP-Strukturen und produktiver Outlook-/S/MIME-Umgebung
+2. Backup-/Restore-Probelauf auf dem vorgesehenen, verschlüsselten HR-Gerät
+3. Fachliche Freigabe von Aufbewahrung, Löschung, RPO, RTO und Verantwortungen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Als Nächstes Audit, Backup/Restore und Betriebskonzept vervollständigen. Die
-vorbereiteten Outlook-Funktionen werden parallel im Büro mit dem produktiven
-HR-Postfach, den Zertifikaten und der konkreten klassischen Outlook-Version geprüft.
+Als Nächstes die Lösung im Büro mit echten Datenstrukturen prüfen. Besonders offen
+sind die fachliche Erkennung ähnlicher beziehungsweise identischer SAP-Einträge,
+der produktive Outlook-/S/MIME-Nachweis und ein protokollierter Restore-Test auf
+dem vorgesehenen HR-Gerät.
 
 ## Prüfen und starten
 
@@ -140,8 +150,8 @@ python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
 python run_web.py
 ```
 
-Beim aktuellen Stand waren alle 36 automatisierten Tests erfolgreich; zusätzlich
-wurde die JavaScript-Syntax der Offline-Arbeitsmappe geprüft.
+Die aktuelle Testzahl wird nach jedem veröffentlichten Stand neu geprüft. Zusätzlich
+wird die JavaScript-Syntax der Offline-Arbeitsmappe automatisiert geprüft.
 
 Weitere fachliche Details und Abnahmekriterien stehen in
 [`docs/ANFORDERUNGEN.md`](docs/ANFORDERUNGEN.md).

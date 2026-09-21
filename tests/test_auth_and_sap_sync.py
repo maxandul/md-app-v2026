@@ -49,6 +49,7 @@ class AuthAndSapSyncTest(unittest.TestCase):
             "SECRET_KEY": "test-secret",
             "DATABASE": str(root / "test.sqlite3"),
             "STORAGE_ROOT": str(root / "data"),
+            "BACKUP_ROOT": str(root / "backups"),
             "AUTH_DISABLED": False,
         })
         self.client = self.app.test_client()
@@ -77,6 +78,26 @@ class AuthAndSapSyncTest(unittest.TestCase):
             "password": "Ein langes Testpasswort 2026!",
         }, follow_redirects=True)
         self.assertIn("Mitarbeitenden-Dialoge verwalten", response.get_data(as_text=True))
+
+    def test_failed_login_is_audited_without_attempted_identity(self) -> None:
+        self.client.post("/auth/setup", data={
+            "email": "hr@example.invalid",
+            "password": "Ein langes Testpasswort 2026!",
+            "confirmation": "Ein langes Testpasswort 2026!",
+        })
+        self.client.post("/auth/logout")
+        self.client.post("/auth/login", data={
+            "email": "unbekannt@example.invalid",
+            "password": "falsch",
+        })
+        with self.app.app_context():
+            row = get_db().execute(
+                "SELECT object_type, object_id, details_json FROM audit_log WHERE action = 'login_failed'"
+            ).fetchone()
+            self.assertIsNotNone(row)
+            self.assertEqual(row["object_type"], "authentication")
+            self.assertEqual(row["object_id"], "")
+            self.assertEqual(row["details_json"], "{}")
 
     def test_sap_rows_are_classified_and_absent_people_become_inactive(self) -> None:
         base = sap_row("100001", permission="bewilligt", permission_for="Mandat A")

@@ -36,7 +36,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         SECRET_KEY=_secret_key(app.instance_path),
         DATABASE=str(Path(app.instance_path) / "md.sqlite3"),
         STORAGE_ROOT=str(Path(app.instance_path) / "data"),
+        BACKUP_ROOT=str(Path(app.instance_path) / "backups"),
         MAX_CONTENT_LENGTH=25 * 1024 * 1024,
+        MAX_BACKUP_CONTENT_LENGTH=2 * 1024 * 1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
@@ -62,6 +64,7 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     Path(app.config["STORAGE_ROOT"]).mkdir(parents=True, exist_ok=True)
+    Path(app.config["BACKUP_ROOT"]).mkdir(parents=True, exist_ok=True)
     Path(app.config["DOSSIER_HANDOFF_ROOT"]).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)

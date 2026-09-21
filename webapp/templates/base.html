@@ -33,7 +33,7 @@
           <a href="{{ url_for('main.returns_overview') }}"{% if active_nav == 'returns' %} class="is-active" aria-current="page"{% endif %}>Rückläufe</a>
           <a href="{{ url_for('main.sap_exports') }}"{% if active_nav == 'sap_export' %} class="is-active" aria-current="page"{% endif %}>SAP-Export</a>
           <a href="{{ url_for('main.analytics') }}"{% if active_nav == 'analytics' %} class="is-active" aria-current="page"{% endif %}>Auswertungen</a>
-          {% if g.user and g.user.role == 'system_admin' %}<a href="{{ url_for('auth.users') }}"{% if active_nav == 'administration' %} class="is-active" aria-current="page"{% endif %}>Administration</a>{% endif %}
+          {% if g.user and g.user.role == 'system_admin' %}<a href="{{ url_for('main.administration') }}"{% if active_nav == 'administration' %} class="is-active" aria-current="page"{% endif %}>Administration</a>{% endif %}
         </div>
       </nav>
     {% endif %}

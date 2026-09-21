@@ -192,6 +192,7 @@ def login():
         key = _client_key()
         remaining = _remaining_lock(key)
         if remaining:
+            audit("login_rate_limited", "authentication")
             flash(f"Zu viele Fehlversuche. Bitte in {remaining // 60 + 1} Minute(n) erneut versuchen.", "error")
             return render_template("auth/login.html"), 429
         email = request.form.get("email", "").strip().lower()
@@ -202,6 +203,7 @@ def login():
         valid = verify_password(password, user["password_hash"]) if user and user["active"] else check_password_hash(_dummy_hash, password)
         if not user or not user["active"] or not valid:
             _failed_login(key)
+            audit("login_failed", "authentication")
             flash("E-Mail-Adresse oder Passwort ist falsch.", "error")
         else:
             with _attempt_lock:

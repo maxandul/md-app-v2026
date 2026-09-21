@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import uuid
 from io import BytesIO
@@ -18,12 +19,13 @@ from flask import (
     render_template,
     request,
     send_file,
+    session,
     url_for,
 )
 from werkzeug.utils import secure_filename
 
-from .auth import audit, login_required
-from .db import get_db
+from .auth import audit, login_required, system_admin_required
+from .db import close_db, connect_database, get_db
 from .services.cycles import (
     create_cycle,
     cycle_overview,
@@ -68,6 +70,12 @@ from .services.reminders import (
     reminder_candidates,
 )
 from .services.analytics import analysis_options, analytics_csv, analytics_data
+from .services.operations import (
+    audit_rows,
+    create_system_backup,
+    list_backups,
+    restore_system_backup,
+)
 
 
 bp = Blueprint("main", __name__)
@@ -98,6 +106,12 @@ def _stored_name(original: str) -> str:
     safe = secure_filename(original) or "datei"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{stamp}_{uuid.uuid4().hex[:8]}_{safe}"
+
+
+def _backup_root() -> Path:
+    path = Path(current_app.config["BACKUP_ROOT"])
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[str]:
@@ -286,6 +300,10 @@ def add_dialog_event():
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+    audit(
+        "dialog_event_created", "dialog_event", str(event_id),
+        cycle_id=cycle_id, event_type=request.form.get("event_type", ""),
+    )
     flash(f"Dialogereignis {event_id} wurde angelegt.", "success")
     return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
 
@@ -393,6 +411,107 @@ def analytics():
     )
 
 
+@bp.get("/administration")
+@system_admin_required
+def administration():
+    return render_template(
+        "administration.html", active_nav="administration",
+        audit_entries=audit_rows(get_db()), backups=list_backups(_backup_root()),
+    )
+
+
+@bp.post("/administration/backups")
+@system_admin_required
+def create_backup():
+    result = create_system_backup(
+        get_db(), database_path=Path(current_app.config["DATABASE"]),
+        storage_root=Path(current_app.config["STORAGE_ROOT"]),
+        dossier_root=Path(current_app.config["DOSSIER_HANDOFF_ROOT"]),
+        backup_root=_backup_root(),
+    )
+    audit(
+        "system_backup_created", "backup", result["filename"],
+        sha256=result["sha256"], file_count=result["file_count"],
+    )
+    return send_file(
+        result["path"], as_attachment=True, download_name=result["filename"],
+        mimetype="application/zip",
+    )
+
+
+@bp.post("/administration/backups/<path:filename>/download")
+@system_admin_required
+def download_backup(filename: str):
+    if filename != Path(filename).name:
+        abort(404)
+    path = _backup_root() / filename
+    if not path.is_file() or not filename.startswith("MD_Backup_"):
+        abort(404)
+    audit("system_backup_downloaded", "backup", filename)
+    return send_file(path, as_attachment=True, download_name=filename, mimetype="application/zip")
+
+
+@bp.post("/administration/restore")
+@system_admin_required
+def restore_backup():
+    request.max_content_length = current_app.config["MAX_BACKUP_CONTENT_LENGTH"]
+    upload = request.files.get("backup_file")
+    if not upload or not upload.filename or not upload.filename.lower().endswith(".zip"):
+        flash("Bitte wähle eine MD-Backup-ZIP-Datei aus.", "error")
+        return redirect(url_for("main.administration"))
+    if request.form.get("confirmation", "").strip() != "WIEDERHERSTELLEN":
+        flash("Bitte bestätige den Restore mit WIEDERHERSTELLEN.", "error")
+        return redirect(url_for("main.administration"))
+    backup_root = _backup_root()
+    uploaded_path = backup_root / f"Restore_Upload_{uuid.uuid4().hex}.zip"
+    upload.save(uploaded_path)
+    current_email = g.user["email"] if g.user else ""
+    try:
+        safety = create_system_backup(
+            get_db(), database_path=Path(current_app.config["DATABASE"]),
+            storage_root=Path(current_app.config["STORAGE_ROOT"]),
+            dossier_root=Path(current_app.config["DOSSIER_HANDOFF_ROOT"]),
+            backup_root=backup_root,
+        )
+        audit(
+            "system_restore_started", "backup", upload.filename,
+            safety_backup=safety["filename"],
+        )
+        close_db()
+        result = restore_system_backup(
+            uploaded_path, database_path=Path(current_app.config["DATABASE"]),
+            storage_root=Path(current_app.config["STORAGE_ROOT"]),
+            dossier_root=Path(current_app.config["DOSSIER_HANDOFF_ROOT"]),
+        )
+        restored = connect_database(current_app.config["DATABASE"])
+        try:
+            user = restored.execute(
+                "SELECT id FROM app_users WHERE email = ? COLLATE NOCASE", (current_email,)
+            ).fetchone()
+            restored.execute(
+                """
+                INSERT INTO audit_log (user_id, action, object_type, object_id, details_json, created_at)
+                VALUES (?, 'system_restore_completed', 'backup', ?, ?, ?)
+                """,
+                (
+                    user["id"] if user else None, upload.filename,
+                    json.dumps({"source_created_at": result["created_at"], "safety_backup": safety["filename"]}, ensure_ascii=False),
+                    datetime.now().astimezone().isoformat(timespec="seconds"),
+                ),
+            )
+            restored.commit()
+        finally:
+            restored.close()
+    except (OSError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.administration"))
+    finally:
+        uploaded_path.unlink(missing_ok=True)
+    session.clear()
+    flash("Das Backup wurde wiederhergestellt. Bitte melde dich erneut an.", "success")
+    return redirect(url_for("auth.login"))
+
+
 @bp.post("/auswertungen/export")
 def export_analytics():
     report = request.form.get("report", "")
@@ -466,6 +585,14 @@ def upload_sap_import():
             f"{synchronized['added']} neue und {synchronized['deactivated']} nicht mehr "
             "aktive Führungslinie(n)."
         )
+    audit(
+        "sap_import_completed", "sap_import", str(result.import_id),
+        employee_count=result.employee_count,
+        reporting_line_count=result.reporting_line_count,
+        exact_duplicate_count=result.exact_duplicate_count,
+        conflict_count=result.conflict_count,
+        synchronized_cycles=synchronized["cycles"],
+    )
     flash(message, "success")
     return redirect(url_for("main.master_data"))
 
@@ -501,6 +628,7 @@ def add_cycle():
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.dialogs"))
+    audit("cycle_created", "cycle", str(cycle_id), review_year=review_year)
     flash(f"Jahresprozess {review_year}/{review_year + 1} wurde angelegt.", "success")
     return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
 
@@ -685,6 +813,10 @@ def download_manager_package(cycle_id: int, manager_pn: str):
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
+    audit(
+        "manager_package_created", "package", payload["package"]["package_id"],
+        cycle_id=cycle_id, manager_pn=manager_pn,
+    )
     response = send_file(
         path,
         as_attachment=True,
@@ -707,6 +839,10 @@ def download_manager_update(cycle_id: int, manager_pn: str):
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    audit(
+        "manager_update_created", "package_update", payload["update"]["update_id"],
+        cycle_id=cycle_id, manager_pn=manager_pn,
+    )
     response = send_file(
         path,
         as_attachment=True,
@@ -738,6 +874,10 @@ def download_package_batch(cycle_id: int):
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    audit(
+        "package_batch_created", "package_batch", path.name,
+        cycle_id=cycle_id, start_count=counts["start"], update_count=counts["update"],
+    )
     response = send_file(
         path,
         as_attachment=True,
@@ -803,6 +943,10 @@ def upload_return():
     accepted = _storage_dir("returns_accepted") / stored_name
     shutil.move(str(temporary), str(accepted))
     counts = result["summary"]["status_counts"]
+    audit(
+        "manager_return_imported", "manager", result["manager_pn"],
+        cycle_id=result["cycle_id"], revision=result["revision"],
+    )
     flash(
         f"Rücklauf von {result['manager_name']} (v{int(result['revision']):02d}) importiert: "
         f"{counts['vollstaendig']} vollständig, {counts['kein_md']} ohne MD, "

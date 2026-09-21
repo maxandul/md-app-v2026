@@ -42,7 +42,6 @@ def cockpit_overview(
         "cases_open": 0,
         "obligations_open": 0,
         "obligations_overdue": 0,
-        "documents_to_check": 0,
         "scans_pending": 0,
         "dossier_ready": 0,
         "master_data_issues": 0,
@@ -237,39 +236,6 @@ def cockpit_overview(
                 }
             )
 
-        documents_to_check = connection.execute(
-            """
-            SELECT od.id, od.case_id, od.manager_pn, od.employee_pn,
-                   od.document_kind, od.received_at,
-                   e.first_name, e.last_name,
-                   COALESCE(NULLIF(TRIM(m.first_name || ' ' || m.last_name), ''),
-                            'VG ' || od.manager_pn) AS manager_name
-            FROM official_documents od
-            JOIN employees e ON e.pn = od.employee_pn
-            LEFT JOIN employees m ON m.pn = od.manager_pn
-            WHERE od.cycle_id = ? AND od.variant = 'digital'
-              AND od.is_current = 1 AND od.signature_checked = 0
-            ORDER BY od.received_at
-            """,
-            (cycle_id,),
-        ).fetchall()
-        metrics["documents_to_check"] = len(documents_to_check)
-        for document in documents_to_check:
-            tasks.append(
-                {
-                    "priority": "hoch",
-                    "priority_rank": 2,
-                    "kind": "Rücklauf",
-                    "title": "Unterschriften prüfen",
-                    "subject": f"{document['first_name']} {document['last_name']}",
-                    "context": document["manager_name"],
-                    "date": document["received_at"],
-                    "target": "manager",
-                    "cycle_id": cycle_id,
-                    "manager_pn": document["manager_pn"],
-                }
-            )
-
         scans_pending = connection.execute(
             """
             SELECT od.case_id, od.manager_pn, od.employee_pn,
@@ -282,7 +248,6 @@ def cockpit_overview(
             LEFT JOIN employees m ON m.pn = od.manager_pn
             WHERE od.cycle_id = ? AND od.variant = 'digital'
               AND od.is_current = 1 AND od.scan_required = 1
-              AND od.signature_checked = 1
               AND NOT EXISTS (
                   SELECT 1 FROM official_documents scan
                   WHERE scan.case_id = od.case_id
@@ -307,6 +272,7 @@ def cockpit_overview(
                     "target": "manager",
                     "cycle_id": cycle_id,
                     "manager_pn": document["manager_pn"],
+                    "case_id": document["case_id"],
                 }
             )
 

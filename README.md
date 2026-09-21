@@ -10,9 +10,9 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
 - pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
 - START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
-- S/MIME-markierte Entwürfe im klassischen Outlook erzeugen und protokollieren
-- Outlook-Posteingang read-only einlesen, sämtliche Anhänge sichern und
-  idempotent klassifizieren
+- S/MIME-markierte Nachrichten direkt versenden oder als Outlook-Entwürfe erzeugen
+- Outlook-Posteingang einlesen, MD-Dokumente verarbeiten und reine MD-Mails
+  idempotent verschieben
 - mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
 - Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
 - Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
@@ -83,11 +83,11 @@ Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
 Personaldaten nicht ungeschützt über `0.0.0.0` im Netzwerk freigeben.
 
 Der Versand und Rückversand von Dateien mit Personaldaten erfolgt gemäss dem
-vorgesehenen Prozess S/MIME-verschlüsselt. Die Anwendung sendet E-Mails nicht
-automatisch: Sie erstellt einen Entwurf, prüft die gespeicherte
-Verschlüsselungsmarkierung und verlangt vor dem manuellen Versand eine sichtbare
-Kontrolle in Outlook. Der vollständige Nachweis ist mit dem produktiven
-HR-Postfach, den Zertifikaten und der konkreten Outlook-Version durchzuführen.
+vorgesehenen Prozess S/MIME-verschlüsselt. Die Anwendung prüft die gespeicherte
+Verschlüsselungsmarkierung vor jedem Direktversand. Alternativ können weiterhin
+Outlook-Entwürfe erzeugt und vor dem manuellen Versand kontrolliert werden. Der
+vollständige Nachweis ist mit dem produktiven HR-Postfach, den Zertifikaten und
+der konkreten Outlook-Version durchzuführen.
 
 Für die Entwurfserstellung sind Windows, klassisches Outlook und `pywin32`
 erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
@@ -96,13 +96,14 @@ erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
 $env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
 $env:MD_OUTLOOK_MAILBOX = "VD-GS HR"
 $env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
+$env:MD_ROBOT_INPUT_ROOT = "K:\VD-GS-PUO-Personal\100 Roboter\Input"
 $env:MD_ANALYTICS_MIN_GROUP_SIZE = "5"
 ```
 
-Das Einlesen verändert das Outlook-Postfach nicht. Nachrichten mit
-Probezeitrückblicken, unbekannten Anhängen oder Verarbeitungsfehlern erscheinen
-als Aufgabe im HR-Cockpit. Auch vollständig verarbeitete Nachrichten werden bis
-zum Bürotest nicht automatisch verschoben.
+Das Einlesen ignoriert Mails ohne MD-Bezug. Erfolgreich verarbeitete reine
+MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails
+werden die MD-Dokumente verarbeitet, die Fremdanlagen aber nicht gespeichert;
+die Mail bleibt bis zur manuellen Prüfung im Posteingang.
 
 ## Dateinamen
 

@@ -46,10 +46,10 @@
                   <div class="document-state">
                     <strong>{{ document.name }}</strong>
                     <span class="status status--{{ document.key }}">{{ document.label }}</span>
-                    {% if document.digital and document.key == 'signature' %}
-                      <div class="muted">Adobe Fill &amp; Sign: {% if document.digital.fill_sign_detected %}erkannt ({{ document.digital.fill_sign_count }}){% else %}nicht erkannt{% endif %}</div>
+                    {% if document.digital and document.key == 'legacy' %}
+                      <div class="muted">Dieses Dokument ging vor der automatischen Roboter-Bereitstellung ein.</div>
                       <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
-                        <button class="button button--small" type="submit">Unterschriften geprüft</button>
+                        <button class="button button--small" type="submit">Nachträglich bereitstellen</button>
                       </form>
                     {% elif document.key == 'scan' %}
                       <form class="scan-form" action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.kind) }}" method="post" enctype="multipart/form-data">

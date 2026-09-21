@@ -48,9 +48,9 @@
       <div class="table-wrap"><table><thead><tr><th>Person</th><th>Dialogart</th><th>Vorgesetzte Person</th><th>Pflichtumfang</th><th>Fristen</th><th>Status</th></tr></thead><tbody>
       {% for event in events %}
         <tr>
-          <td><strong>{{ event.first_name }} {{ event.last_name }}</strong><br><span class="muted">PN {{ event.employee_pn }} · Ans. {{ event.assignment_number }}</span></td>
+          <td><strong>{% if event.legacy_case_id %}<a href="{{ url_for('main.case_detail', cycle_id=event.cycle_id, case_id=event.legacy_case_id) }}">{{ event.first_name }} {{ event.last_name }}</a>{% else %}{{ event.first_name }} {{ event.last_name }}{% endif %}</strong><br><span class="muted">PN {{ event.employee_pn }} · Ans. {{ event.assignment_number }}</span></td>
           <td>{{ event.event_type_label }}{% if event.source == 'manual' %}<br><span class="status status--warning">Manuell</span>{% endif %}</td>
-          <td>{{ event.manager_name }}<br><span class="muted">PN {{ event.manager_pn }}</span></td>
+          <td><a href="{{ url_for('main.manager_detail', cycle_id=event.cycle_id, manager_pn=event.manager_pn) }}">{{ event.manager_name }}</a><br><span class="muted">PN {{ event.manager_pn }}</span></td>
           <td>{{ event.scope_label }}<br><span class="muted">{{ event.obligation_done_count or 0 }} von {{ event.obligation_count or 0 }} Pflichtdokumenten erfüllt</span></td>
           <td>{% if event.review_due_date %}<strong>Rückblick:</strong> {{ event.review_due_date }}{% endif %}{% if event.outlook_due_date %}{% if event.review_due_date %}<br>{% endif %}<strong>Ausblick:</strong> {{ event.outlook_due_date }}{% endif %}{% if not event.review_due_date and not event.outlook_due_date %}–{% endif %}</td>
           <td>

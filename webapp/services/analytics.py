@@ -197,8 +197,24 @@ def analytics_data(
             competency_counts.items(), key=lambda item: (item[0][1], -item[1], item[0][0])
         )
     ]
+    timing_counts = Counter((item["month"], item["dialog_part"]) for item in timings)
+    timing_months = [
+        {
+            "month": month,
+            "review_count": timing_counts.get((month, "Rückblick"), 0),
+            "outlook_count": timing_counts.get((month, "Ausblick"), 0),
+            "location_count": timing_counts.get((month, "Standortgespräch"), 0),
+            "total": sum(
+                count for (value, _part), count in timing_counts.items() if value == month
+            ),
+        }
+        for month in sorted({item["month"] for item in timings})
+    ]
+    timing_max = max((item["total"] for item in timing_months), default=0)
     return {
         "timings": timings,
+        "timing_months": timing_months,
+        "timing_max": timing_max,
         "ratings": ratings,
         "rating_group_size": group_size,
         "ratings_suppressed": ratings_suppressed,

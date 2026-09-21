@@ -62,18 +62,24 @@
   {% if selected_cycle %}
     <section class="content-section" aria-labelledby="mail-title">
       <div class="section-heading"><div><p class="kicker">Outlook</p><h2 id="mail-title">Arbeitsmappen per E-Mail zustellen</h2></div><span class="section-count">{{ mail_candidates|length }} vorbereitete Dateien</span></div>
-      <div class="info-box"><p>Die App erstellt nur Outlook-Entwürfe und prüft, ob Outlook die S/MIME-Verschlüsselungsmarkierung gespeichert hat. Vor dem manuellen Senden müssen Verschlüsselung, Absender, Empfänger und Anhang in Outlook sichtbar kontrolliert werden. Automatischer Versand ist gesperrt.</p></div>
+      <div class="info-box"><p>Du kannst die ausgewählten Nachrichten direkt S/MIME-verschlüsselt versenden oder zunächst als Outlook-Entwürfe erstellen. Beim Direktversand werden Empfänger, Anhang und Verschlüsselungsmarkierung vor dem Senden technisch geprüft.</p></div>
       {% if mail_candidates %}
         <form action="{{ url_for('main.prepare_mail_drafts', cycle_id=selected_cycle.id) }}" method="post">
+          <details class="content-card mail-template"><summary>E-Mailtext bearbeiten</summary>
+            <p class="list-note">Leer lassen für den Standardtext. Verfügbare Platzhalter: <code>{manager_name}</code>, <code>{years}</code>, <code>{review_due}</code>, <code>{outlook_due}</code>, <code>{sender_email}</code> und <code>{introduction}</code>.</p>
+            <label for="subject-template">Eigener Betreff</label><input id="subject-template" name="subject_template" placeholder="Mitarbeitenden-Dialog {years}: Ihre Arbeitsmappe">
+            <label for="body-template">Eigener E-Mailtext</label><textarea id="body-template" name="body_template" rows="9" placeholder="Guten Tag {manager_name}\n\n{introduction}\n\nRückblick: {review_due}\nAusblick: {outlook_due}"></textarea>
+          </details>
           <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Vorgesetzte Person</th><th>Empfänger</th><th>Datei</th><th>Status</th></tr></thead><tbody>
           {% for item in mail_candidates %}
             <tr>
-              <td><input class="table-checkbox" type="checkbox" name="package_event_id" value="{{ item.package_event_id }}" aria-label="Nachricht an {{ item.manager_name }} auswählen"{% if not item.ready or item.delivery_status == 'draft_created' %} disabled{% endif %}></td>
+              <td><input class="table-checkbox" type="checkbox" name="package_event_id" value="{{ item.package_event_id }}" aria-label="Nachricht an {{ item.manager_name }} auswählen"{% if not item.ready or item.delivery_status in ['draft_created', 'sent_confirmed'] %} disabled{% endif %}></td>
               <td><strong>{{ item.manager_name }}</strong><br><span class="muted">PN {{ item.manager_pn }}</span></td>
               <td>{{ item.recipient_email or 'fehlt' }}</td>
               <td>{{ item.filename }}<br><span class="muted">{{ 'Update' if item.package_kind == 'update' else 'START' }}</span></td>
               <td>
-                {% if item.delivery_status == 'draft_created' %}<span class="status status--staged">Entwurf erstellt</span><br><span class="muted">Verschlüsselungsmarkierung geprüft</span>
+                {% if item.delivery_status == 'sent_confirmed' %}<span class="status status--staged">Direkt versendet</span><br><span class="muted">S/MIME-Markierung geprüft</span>
+                {% elif item.delivery_status == 'draft_created' %}<span class="status status--staged">Entwurf erstellt</span><br><span class="muted">Verschlüsselungsmarkierung geprüft</span>
                 {% elif item.delivery_status == 'failed' %}<span class="status status--danger">Fehlgeschlagen</span>{% if item.error_message %}<br><span class="issue-text issue-text--blocking">{{ item.error_message }}</span>{% endif %}
                 {% elif not item.recipient_email %}<span class="status status--danger">E-Mail fehlt</span>
                 {% elif not item.file_available %}<span class="status status--danger">Datei fehlt</span>
@@ -82,7 +88,7 @@
             </tr>
           {% endfor %}
           </tbody></table></div>
-          <div class="form-actions"><button class="button button--primary" type="submit">Markierte S/MIME-Entwürfe für Führungskräfte erstellen</button></div>
+          <div class="form-actions"><button class="button" type="submit" name="delivery_mode" value="draft">Als Outlook-Entwürfe erstellen</button><button class="button button--primary" type="submit" name="delivery_mode" value="send" data-confirm-direct-send>Ausgewählte E-Mails direkt versenden</button></div>
         </form>
       {% else %}
         <div class="empty-state">Noch keine Versanddatei erzeugt.</div>

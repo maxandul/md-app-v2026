@@ -283,6 +283,12 @@ CREATE TABLE IF NOT EXISTS inbound_mail_messages (
 CREATE INDEX IF NOT EXISTS idx_inbound_mail_status
     ON inbound_mail_messages (status, received_at);
 
+CREATE TABLE IF NOT EXISTS ignored_mail_messages (
+    outlook_entry_id TEXT PRIMARY KEY,
+    internet_message_id TEXT NOT NULL DEFAULT '',
+    ignored_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS inbound_mail_attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mail_message_id INTEGER NOT NULL

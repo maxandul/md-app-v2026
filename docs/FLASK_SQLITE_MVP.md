@@ -28,10 +28,10 @@ aus den fest bezeichneten PDF-Abschnitten übernommen.
 - Die elektronischen PDFs bleiben auch in diesen Fällen die maschinenlesbare
   Originalquelle. Der Scan ist ein zusätzlicher Nachweis und wird nicht ausgelesen.
 - Eine einfache Adobe-Unterschrift ist nicht zwingend eine kryptografisch
-  prüfbare digitale Signatur. Deshalb wird der Eingang technisch protokolliert;
-  die sichtbare Unterzeichnung wird von HR kontrolliert und bestätigt.
-- Ohne Scanpflicht wird das elektronische PDF nach der HR-Prüfung in den
-  Übergabeordner für die Personaldossier-Ablage verschoben.
+  prüfbare digitale Signatur. Der Eingang wird technisch protokolliert; eine
+  zusätzliche Unterschriftenprüfung durch HR findet nicht statt.
+- Ohne Scanpflicht wird das elektronische PDF nach erfolgreicher technischer und
+  fachlicher Validierung direkt in den Roboter-Input verschoben.
 - Mit Scanpflicht bleibt das elektronische PDF als Datenquelle im geschützten
   Verarbeitungsarchiv. Erst der handschriftlich unterzeichnete Scan wird in den
   Übergabeordner für die Personaldossier-Ablage verschoben; das elektronische Exemplar gelangt nicht
@@ -55,9 +55,8 @@ aus den fest bezeichneten PDF-Abschnitten übernommen.
 6. HR liest die elektronisch unterzeichneten PDFs ein. Paket-ID, Führungslinie,
    Jahre, Fall-ID, Personalnummer, Ans. und Scanpflicht werden geprüft; die
    offiziellen Daten werden in SQLite übernommen.
-7. HR bestätigt die sichtbaren Unterschriften. Die Anwendung stellt danach
-   entweder das elektronische PDF oder - bei Scanpflicht - ausschliesslich den
-   handschriftlichen Scan für die Personaldossier-Ablage bereit.
+7. Die Anwendung stellt automatisch entweder das elektronische PDF oder - bei
+   Scanpflicht - ausschliesslich den handschriftlichen Scan im Roboter-Input bereit.
 8. Der HTML-Rücklauf bleibt vorläufig als technischer Übergangsweg vorhanden,
    ist aber nicht Teil des Zielprozesses.
 
@@ -124,9 +123,9 @@ dies wird nicht stillschweigend überschrieben.
   Berechtigungen und Laufwerksverschlüsselung.
 - `instance/` enthält SQLite und Prozessdateien und wird nicht in Git
   aufgenommen.
-- Der Übergabeordner für die Personaldossier-Ablage liegt standardmässig unter
-  `instance/data/dossier_ready`. Mit `MD_DOSSIER_HANDOFF_ROOT` kann ein anderer
-  definierter lokaler oder gemounteter Ordner konfiguriert werden.
+- Unter Windows ist der Roboter-Input standardmässig
+  `K:\VD-GS-PUO-Personal\100 Roboter\Input`. Mit `MD_ROBOT_INPUT_ROOT` kann ein
+  anderer definierter lokaler oder gemounteter Ordner konfiguriert werden.
 - Netzwerkzugriff wird erst nach Festlegung von Windows-Authentisierung, TLS,
   Berechtigungsmodell, Backup, Protokollierung und Betriebsverantwortung
   freigegeben.
@@ -185,11 +184,10 @@ Personen bleiben zur Klärung offen. Die neuen Arbeitsmappen zeigen die
 
 ## Nächste Iterationen
 
-1. Die vorbereitete Outlook-Integration mit dem produktiven HR-Postfach,
-   Zertifikaten und der eingesetzten klassischen Outlook-Version testen und
-   freigeben. Bis dahin bleibt der automatische Versand gesperrt.
-2. Das vorbereitete read-only Einlesen des Outlook-Postfachs im Büro testen und
-   danach das Verschieben vollständig verarbeiteter Nachrichten freigeben.
-3. Einzelfallprüfung für Fremdbeilagen und fehlerhafte Zuordnungen ergänzen.
+1. Direktversand und Entwurfserstellung mit dem produktiven HR-Postfach,
+   Zertifikaten und der eingesetzten klassischen Outlook-Version testen.
+2. Automatisches Verschieben vollständig verarbeiteter Nachrichten sowie die
+   manuelle Erledigung gemischter Mails im Büro testen.
+3. Roboter-Input und Übernahme durch den nachgelagerten Prozess testen.
 4. Backup-/Restore-Test und Rollen-/Berechtigungskonzept freigeben.
 5. Barrierefreiheit und Drucklayout mit den finalen CD-Assets prüfen.

@@ -61,7 +61,11 @@ from .services.sap_export import (
     sap_export_batches,
 )
 from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
-from .services.mail_intake import mail_inbox_overview, scan_outlook_inbox
+from .services.mail_intake import (
+    mail_inbox_overview,
+    resolve_inbound_message,
+    scan_outlook_inbox,
+)
 from .services.case_review import case_review_detail, correct_case_data
 from .services.deadlines import extend_deadlines
 from .services.reminders import (
@@ -410,7 +414,12 @@ def returns_overview():
         **cockpit_overview(
             connection, selected_cycle_id=request.args.get("cycle_id", type=int)
         ),
-        **mail_inbox_overview(connection),
+        **mail_inbox_overview(
+            connection,
+            page=request.args.get("mail_page", default=1, type=int) or 1,
+            query=request.args.get("mail_q", ""),
+            status=request.args.get("mail_status", ""),
+        ),
     )
 
 
@@ -926,16 +935,29 @@ def download_package_batch(cycle_id: int):
 
 @bp.post("/cycles/<int:cycle_id>/mail-drafts")
 def prepare_mail_drafts(cycle_id: int):
+    delivery_mode = request.form.get("delivery_mode", "draft")
     try:
         result = create_outlook_drafts(
             get_db(),
             cycle_id=cycle_id,
             package_event_ids=request.form.getlist("package_event_id", type=int),
             sender_email=current_app.config["HR_MAILBOX_EMAIL"],
+            delivery_mode=delivery_mode,
+            subject_template=request.form.get("subject_template", ""),
+            body_template=request.form.get("body_template", ""),
         )
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
     else:
+        if result["sent"]:
+            audit(
+                "workbook_emails_sent", "cycle", str(cycle_id),
+                sent=result["sent"],
+            )
+            flash(
+                f"{result['sent']} S/MIME-markierte Nachricht(en) wurden direkt versendet.",
+                "success",
+            )
         if result["created"]:
             flash(
                 f"{result['created']} verschlüsselt markierte Outlook-Entwurf/Entwürfe "
@@ -1015,6 +1037,7 @@ def upload_pdf_returns():
                     path=temporary,
                     original_filename=original_filename,
                     accepted_dir=_storage_dir("pdf_processed"),
+                    handoff_dir=_handoff_dir(),
                 )
             )
         except Exception as exc:
@@ -1051,6 +1074,7 @@ def scan_mail_inbox():
             target_folder=current_app.config["OUTLOOK_TARGET_FOLDER"],
             inbox_dir=_storage_dir("mail_inbox"),
             pdf_dir=_storage_dir("pdf_processed"),
+            handoff_dir=_handoff_dir(),
         )
     except Exception as exc:
         flash(str(exc), "error")
@@ -1058,13 +1082,36 @@ def scan_mail_inbox():
         flash(
             f"Postfach gelesen: {result['read']} Nachricht(en), "
             f"{result['stored']} neue Anhänge gesichert, "
-            f"{result['ready']} vollständig, {result['review']} zur HR-Prüfung, "
+            f"{result['moved']} verarbeitet und verschoben, "
+            f"{result['review']} zur HR-Prüfung, {result['ignored']} ohne MD-Bezug ignoriert, "
             f"{result['duplicates']} bereits bekannt.",
             "success",
         )
         if result["errors"]:
             flash(" ".join(result["errors"]), "error")
     return redirect(url_for("main.returns_overview"))
+
+
+@bp.post("/mail-inbox/<int:message_id>/resolve")
+def resolve_mail_message(message_id: int):
+    try:
+        result = resolve_inbound_message(
+            get_db(),
+            message_id=message_id,
+            mailbox_name=current_app.config["OUTLOOK_MAILBOX_NAME"],
+            target_folder=current_app.config["OUTLOOK_TARGET_FOLDER"],
+        )
+    except (LookupError, ValueError, RuntimeError) as exc:
+        flash(str(exc), "error")
+    else:
+        audit(
+            "inbound_mail_review_completed",
+            "inbound_mail_message",
+            str(message_id),
+            target_folder=result["target_folder"],
+        )
+        flash("Die E-Mail-Prüfung wurde abgeschlossen und die Nachricht verschoben.", "success")
+    return redirect(url_for("main.returns_overview") + "#postfach")
 
 
 @bp.post("/documents/<int:document_id>/signature-checked")

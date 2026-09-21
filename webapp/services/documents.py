@@ -431,6 +431,7 @@ def import_official_pdf(
     path: Path,
     original_filename: str,
     accepted_dir: Path,
+    handoff_dir: Path | None = None,
     received_at: datetime | None = None,
     replacement_reason: str = "",
 ) -> dict[str, Any]:
@@ -481,11 +482,26 @@ def import_official_pdf(
             "Die Scanpflicht im PDF widerspricht Gesamtbeurteilung oder Einigkeitsstatus."
         )
     variant = "administrative" if document_kind == "no_md" else "digital"
-    handoff_status = "not_applicable" if document_kind == "no_md" else "needs_signature_check"
+    if document_kind == "no_md":
+        handoff_status = "not_applicable"
+    elif handoff_dir is None:
+        handoff_status = "needs_signature_check"
+    elif scan_required:
+        handoff_status = "waiting_scan"
+    else:
+        handoff_status = "staged"
     timestamp = (received_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     digest = file_sha256(path)
     accepted_dir.mkdir(parents=True, exist_ok=True)
-    stored_path = accepted_dir / f"{timestamp[:19].replace(':', '').replace('-', '')}_{digest[:10]}_{Path(original_filename).name}"
+    if handoff_status == "staged" and handoff_dir is not None:
+        handoff_dir.mkdir(parents=True, exist_ok=True)
+        handoff_filename = _handoff_filename(case, document_kind, scan=False)
+        stored_path = handoff_dir / handoff_filename
+        if stored_path.exists():
+            raise ValueError(f"Im Roboter-Input existiert bereits «{handoff_filename}».")
+    else:
+        handoff_filename = ""
+        stored_path = accepted_dir / f"{timestamp[:19].replace(':', '').replace('-', '')}_{digest[:10]}_{Path(original_filename).name}"
 
     try:
         shutil.move(str(path), str(stored_path))
@@ -499,9 +515,11 @@ def import_official_pdf(
             digest=digest,
             received_at=timestamp,
             inspection=inspection,
-            signature_checked=document_kind == "no_md",
+            signature_checked=document_kind == "no_md" or handoff_dir is not None,
             scan_required=scan_required,
             handoff_status=handoff_status,
+            handoff_filename=handoff_filename,
+            handoff_at=timestamp if handoff_status == "staged" else "",
             replacement_reason=replacement_reason,
         )
         if scope:
@@ -529,6 +547,25 @@ def import_official_pdf(
                     case["case_id"],
                 ),
             )
+        if variant == "digital" and handoff_dir is not None:
+            document = connection.execute(
+                "SELECT document_obligation_id FROM official_documents WHERE id = ?",
+                (document_id,),
+            ).fetchone()
+            if document and document["document_obligation_id"]:
+                connection.execute(
+                    """
+                    UPDATE document_obligations
+                    SET status = ?, fulfilled_document_id = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        "scan_pending" if scan_required else "complete",
+                        document_id,
+                        timestamp,
+                        document["document_obligation_id"],
+                    ),
+                )
         refresh_case_status(connection, case["case_id"])
         connection.commit()
     except Exception:
@@ -638,9 +675,6 @@ def import_handwritten_scan(
         raise ValueError("Zuerst muss das elektronische PDF importiert werden.")
     if not digital["scan_required"]:
         raise ValueError("Für dieses Dokument ist kein handschriftlicher Scan erforderlich.")
-    if not digital["signature_checked"]:
-        raise ValueError("Zuerst müssen die elektronischen Unterschriften bestätigt werden.")
-
     inspection = inspect_pdf(path)
     timestamp = (received_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     digest = file_sha256(path)
@@ -691,7 +725,7 @@ def _document_state(digital: sqlite3.Row | None, scan: sqlite3.Row | None) -> di
     if not digital:
         return {"key": "missing", "label": "Elektronisches PDF fehlt", "digital": None, "scan": scan}
     if not digital["signature_checked"]:
-        return {"key": "signature", "label": "Unterschriften prüfen", "digital": digital, "scan": scan}
+        return {"key": "legacy", "label": "Vor Umstellung eingegangen", "digital": digital, "scan": scan}
     if digital["scan_required"] and not scan:
         return {"key": "scan", "label": "Handschriftlicher Scan ausstehend", "digital": digital, "scan": None}
     if digital["scan_required"]:

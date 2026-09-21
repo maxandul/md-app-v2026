@@ -1,4 +1,4 @@
-"""Fachlogik für Versandvorschau und sicher vorbereitete Outlook-Entwürfe."""
+"""Fachlogik für S/MIME-Direktversand und bearbeitbare Outlook-Entwürfe."""
 
 from __future__ import annotations
 
@@ -14,23 +14,41 @@ from webapp.adapters.outlook import OutlookDraftAdapter
 DEFAULT_SENDER = "hr@vd.zh.ch"
 
 
-def _message_text(row: sqlite3.Row, *, sender_email: str = DEFAULT_SENDER) -> tuple[str, str]:
+def _message_text(
+    row: sqlite3.Row,
+    *,
+    sender_email: str = DEFAULT_SENDER,
+    subject_template: str = "",
+    body_template: str = "",
+) -> tuple[str, str]:
     years = f"{row['review_year']}/{row['outlook_year']}"
     if row["package_kind"] == "update":
-        subject = f"Mitarbeitenden-Dialog {years}: Update Ihrer Arbeitsmappe"
+        default_subject = f"Mitarbeitenden-Dialog {years}: Update Ihrer Arbeitsmappe"
         introduction = (
             "Für Ihre bestehende Arbeitsmappe liegt ein Update vor. Öffnen Sie Ihre "
             "zuletzt gespeicherte Arbeitsmappe und wählen Sie dort «Update einlesen»."
         )
     else:
-        subject = f"Mitarbeitenden-Dialog {years}: Ihre Arbeitsmappe"
+        default_subject = f"Mitarbeitenden-Dialog {years}: Ihre Arbeitsmappe"
         introduction = (
             "Im Anhang erhalten Sie Ihre persönliche Arbeitsmappe für den "
             f"Mitarbeitenden-Dialog {years}."
         )
-    manager_name = html.escape(row["manager_name"] or f"PN {row['manager_pn']}")
-    review_due = html.escape(row["review_due_date"] or "noch nicht festgelegt")
-    outlook_due = html.escape(row["outlook_due_date"] or "noch nicht festgelegt")
+    raw_values = {
+        "manager_name": row["manager_name"] or f"PN {row['manager_pn']}",
+        "years": years,
+        "review_due": row["review_due_date"] or "noch nicht festgelegt",
+        "outlook_due": row["outlook_due_date"] or "noch nicht festgelegt",
+        "sender_email": sender_email,
+        "introduction": introduction,
+    }
+    try:
+        subject = subject_template.format_map(raw_values) if subject_template.strip() else default_subject
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"Ungültiger Platzhalter im E-Mail-Betreff: {exc}") from exc
+    manager_name = html.escape(raw_values["manager_name"])
+    review_due = html.escape(raw_values["review_due"])
+    outlook_due = html.escape(raw_values["outlook_due"])
     body = f"""
     <p>Guten Tag {manager_name}</p>
     <p>{html.escape(introduction)}</p>
@@ -46,6 +64,16 @@ def _message_text(row: sqlite3.Row, *, sender_email: str = DEFAULT_SENDER) -> tu
     S/MIME-verschlüsselt erfolgen.</p>
     <p>Freundliche Grüsse<br>Human Resources</p>
     """
+    if body_template.strip():
+        try:
+            rendered = body_template.format_map(raw_values)
+        except (KeyError, ValueError) as exc:
+            raise ValueError(f"Ungültiger Platzhalter im E-Mailtext: {exc}") from exc
+        body = "".join(
+            f"<p>{html.escape(paragraph).replace(chr(10), '<br>')}</p>"
+            for paragraph in rendered.replace("\r\n", "\n").split("\n\n")
+            if paragraph.strip()
+        )
     return subject, "".join(line.strip() for line in body.splitlines())
 
 
@@ -99,9 +127,14 @@ def create_outlook_drafts(
     cycle_id: int,
     package_event_ids: list[int],
     sender_email: str = DEFAULT_SENDER,
+    delivery_mode: str = "draft",
+    subject_template: str = "",
+    body_template: str = "",
     adapter: OutlookDraftAdapter | None = None,
     created_at: datetime | None = None,
 ) -> dict[str, Any]:
+    if delivery_mode not in {"draft", "send"}:
+        raise ValueError("Die gewählte Versandart ist ungültig.")
     selected = {int(value) for value in package_event_ids}
     if not selected:
         raise ValueError("Bitte wähle mindestens eine vorbereitete Nachricht aus.")
@@ -115,9 +148,18 @@ def create_outlook_drafts(
     missing_ids = selected.difference(candidates)
     if missing_ids:
         raise ValueError("Mindestens eine gewählte Versanddatei ist nicht mehr aktuell.")
+    for candidate in candidates.values():
+        subject, body_html = _message_text(
+            candidate,
+            sender_email=sender_email,
+            subject_template=subject_template,
+            body_template=body_template,
+        )
+        candidate["subject"] = subject
+        candidate["body_html"] = body_html
     outlook = adapter or OutlookDraftAdapter()
     timestamp = (created_at or datetime.now().astimezone()).isoformat(timespec="seconds")
-    results = {"created": 0, "failed": 0, "errors": []}
+    results = {"created": 0, "sent": 0, "failed": 0, "errors": []}
     for event_id in sorted(selected):
         candidate = candidates[event_id]
         if not candidate["recipient_email"]:
@@ -158,7 +200,12 @@ def create_outlook_drafts(
             results["errors"].append(f"{candidate['manager_name']}: {error}")
             continue
         try:
-            draft = outlook.create_encrypted_draft(
+            create_message = (
+                outlook.send_encrypted
+                if delivery_mode == "send"
+                else outlook.create_encrypted_draft
+            )
+            draft = create_message(
                 sender_email=sender_email,
                 recipient_email=candidate["recipient_email"],
                 subject=candidate["subject"],
@@ -196,12 +243,17 @@ def create_outlook_drafts(
             connection.execute(
                 """
                 UPDATE mail_deliveries
-                SET status = 'draft_created', encryption_flag_verified = 1,
+                SET status = ?, encryption_flag_verified = 1,
                     outlook_entry_id = ?, error_message = '', updated_at = ?
                 WHERE package_event_id = ?
                 """,
-                (draft.entry_id, timestamp, event_id),
+                (
+                    "sent_confirmed" if delivery_mode == "send" else "draft_created",
+                    draft.entry_id,
+                    timestamp,
+                    event_id,
+                ),
             )
-            results["created"] += 1
+            results["sent" if delivery_mode == "send" else "created"] += 1
     connection.commit()
     return results

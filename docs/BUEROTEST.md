@@ -113,12 +113,17 @@ Das produktive Outlook-Postfach wird standardmässig über den Anzeigenamen
 Falls der Anzeigename lokal abweicht, wird er über `MD_OUTLOOK_MAILBOX` gesetzt.
 
 1. START- und Update-Dateien zunächst an ein internes Testkonto adressieren.
-2. Im Outlook-Entwurf Absender, Empfänger, Anhang und S/MIME-Markierung prüfen.
-3. Verschlüsselung vor dem manuellen Versand sichtbar kontrollieren.
+2. Direktversand zunächst an interne Testkonten prüfen: Absender, Empfänger,
+   Anhang, E-Mailtext und S/MIME-Markierung.
+3. Zusätzlich die weiterhin verfügbare Erstellung bearbeitbarer Entwürfe testen.
 4. Rücklauf mit einem Standard-PDF, D/E-/Uneinigkeitsfall und einer zusätzlichen
    Fremdbeilage testen.
 5. Prüfen, dass ein wiederholter Postfachscan keine Dubletten erzeugt.
-6. Nachrichten werden bis zur separaten Freigabe nicht automatisch verschoben.
+6. Reine, erfolgreich verarbeitete MD-Mails müssen automatisch nach
+   `12 Mitarbeitenden-Dialog` verschoben werden. Gemischte Mails bleiben bis zur
+   manuellen Bestätigung im Posteingang; Fremdanlagen werden nicht gespeichert.
+7. Standard-PDFs müssen direkt im Roboter-Input erscheinen. Bei D/E oder
+   Uneinigkeit darf nur der fehlende handschriftliche Scan offen bleiben.
 
 ## 6. Backup und Restore
 

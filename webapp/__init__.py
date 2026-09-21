@@ -57,9 +57,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.config.update(test_config)
 
     if "DOSSIER_HANDOFF_ROOT" not in (test_config or {}):
+        windows_robot_input = r"K:\VD-GS-PUO-Personal\100 Roboter\Input"
+        default_handoff = (
+            windows_robot_input
+            if os.name == "nt"
+            else str(Path(app.config["STORAGE_ROOT"]) / "dossier_ready")
+        )
         app.config["DOSSIER_HANDOFF_ROOT"] = os.environ.get(
-            "MD_DOSSIER_HANDOFF_ROOT",
-            str(Path(app.config["STORAGE_ROOT"]) / "dossier_ready"),
+            "MD_ROBOT_INPUT_ROOT",
+            os.environ.get("MD_DOSSIER_HANDOFF_ROOT", default_handoff),
         )
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)

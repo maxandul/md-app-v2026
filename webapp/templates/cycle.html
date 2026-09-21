@@ -39,7 +39,7 @@
             <td>
               {{ manager.done_count or 0 }} abgeschlossen
               {% if manager.progress_count %}<br><span class="muted">{{ manager.progress_count }} in Bearbeitung</span>{% endif %}
-              {% if manager.signature_check_count %}<br><span class="status status--warning">{{ manager.signature_check_count }} Unterschriftenprüfung(en)</span>{% endif %}
+              {% if manager.signature_check_count %}<br><span class="status status--warning">{{ manager.signature_check_count }} Altbestand/Altbestände bereitstellen</span>{% endif %}
               {% if manager.scan_pending_count %}<br><span class="status status--danger">{{ manager.scan_pending_count }} Scan(s) ausstehend</span>{% endif %}
             </td>
             <td>{{ manager.sent_at or '–' }}</td>

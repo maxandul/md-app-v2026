@@ -17,13 +17,19 @@
     </div>
     <aside class="info-box">
       <h2>Postfachbearbeitung</h2>
-      <p>Das Postfach wird ausschliesslich gelesen. Alle Anhänge werden gesichert und protokolliert. Zusätzliche Dateien und Probezeitrückblicke bleiben als Prüfaufgabe sichtbar. Automatisches Verschieben ist bis zum Bürotest gesperrt.</p>
+      <p>Mails ohne MD-Bezug werden ignoriert. Gültige MD-PDFs werden verarbeitet; reine MD-Mails werden anschliessend nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails bleiben nur die Fremdanlagen als Prüfaufgabe offen.</p>
       <form action="{{ url_for('main.scan_mail_inbox') }}" method="post"><button class="button" type="submit">Outlook-Postfach jetzt prüfen</button></form>
     </aside>
   </section>
 
   <section class="content-section" id="postfach" aria-labelledby="mail-inbox-title">
-    <div class="section-heading"><div><p class="kicker">Postfacheingang</p><h2 id="mail-inbox-title">Gesicherte Nachrichten</h2></div><span class="section-count">{{ mail_messages|length }} protokolliert</span></div>
+    <div class="section-heading"><div><p class="kicker">Postfacheingang</p><h2 id="mail-inbox-title">MD-relevante Nachrichten</h2></div><span class="section-count">{{ mail_total }} protokolliert</span></div>
+    <form class="compact-filter" method="get" action="{{ url_for('main.returns_overview') }}#postfach">
+      {% if selected_cycle %}<input type="hidden" name="cycle_id" value="{{ selected_cycle.id }}">{% endif %}
+      <div><label for="mail-search">Suche</label><input id="mail-search" name="mail_q" value="{{ mail_query }}" placeholder="Absender oder Betreff"></div>
+      <div><label for="mail-status">Status</label><select id="mail-status" name="mail_status"><option value="">Alle</option>{% for key, label in mail_status_labels.items() %}<option value="{{ key }}"{% if key == selected_mail_status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <button class="button button--small" type="submit">Filtern</button>
+    </form>
     {% if mail_messages %}
       <div class="table-wrap"><table><thead><tr><th>Eingang</th><th>Absender und Betreff</th><th>Anhänge</th><th>Status</th></tr></thead><tbody>
       {% for message in mail_messages %}
@@ -33,29 +39,30 @@
           <td>
             {% if message.attachments %}
               {% for attachment in message.attachments %}
-                <div class="mail-attachment"><strong>{{ attachment.original_filename }}</strong><br><span class="muted">{{ attachment.file_kind }} · {{ attachment.status }}</span>{% if attachment.error_message %}<br><span class="issue-text issue-text--blocking">{{ attachment.error_message }}</span>{% endif %}</div>
+                <div class="mail-attachment"><strong>{{ attachment.original_filename }}</strong><br><span class="muted">{{ attachment.file_kind }} · {{ attachment.status }}</span>{% if attachment.status == 'imported' %}<br><span class="status status--staged">MD-Dokument bereits verarbeitet</span>{% endif %}{% if attachment.error_message %}<br><span class="issue-text{% if attachment.stored_path %} issue-text--blocking{% endif %}">{{ attachment.error_message }}</span>{% endif %}</div>
               {% endfor %}
             {% else %}<span class="muted">Keine Anhänge</span>{% endif %}
           </td>
           <td>
-            {% if message.status == 'ready_to_move' %}<span class="status status--staged">{{ message.status_label }}</span><br><span class="muted">Verschieben noch gesperrt</span>
-            {% elif message.status == 'review_required' %}<span class="status status--warning">{{ message.status_label }}</span>
+            {% if message.status == 'ready_to_move' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><button class="button button--small" type="submit">Jetzt verschieben</button></form>
+            {% elif message.status == 'review_required' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><button class="button button--small" type="submit">Prüfung abschliessen und verschieben</button></form>
             {% elif message.status == 'failed' %}<span class="status status--danger">{{ message.status_label }}</span>
             {% else %}<span class="status">{{ message.status_label }}</span>{% endif %}
-            {% if message.contains_probation %}<br><span class="issue-text issue-text--blocking">Probezeitrückblick: im Posteingang belassen</span>{% endif %}
+            {% if message.error_message %}<br><span class="issue-text issue-text--blocking">{{ message.error_message }}</span>{% endif %}
           </td>
         </tr>
       {% endfor %}
       </tbody></table></div>
+      {% if mail_pages > 1 %}<nav class="pagination" aria-label="Seiten der MD-Nachrichten">{% if mail_page > 1 %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id if selected_cycle else '', mail_q=mail_query, mail_status=selected_mail_status, mail_page=mail_page-1) }}#postfach">Zurück</a>{% endif %}<span>Seite {{ mail_page }} von {{ mail_pages }}</span>{% if mail_page < mail_pages %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id if selected_cycle else '', mail_q=mail_query, mail_status=selected_mail_status, mail_page=mail_page+1) }}#postfach">Weiter</a>{% endif %}</nav>{% endif %}
     {% else %}<div class="empty-state">Noch keine Outlook-Nachrichten eingelesen.</div>{% endif %}
   </section>
 
   <section class="content-section" id="pruefen" aria-labelledby="review-title">
-    <div class="section-heading"><div><p class="kicker">Dokumentprüfung</p><h2 id="review-title">Offene Rücklaufaufgaben</h2></div><span class="section-count">{{ metrics.documents_to_check + metrics.scans_pending }}</span></div>
+    <div class="section-heading"><div><p class="kicker">Dokumentprüfung</p><h2 id="review-title">Offene Rücklaufaufgaben</h2></div><span class="section-count">{{ metrics.scans_pending }}</span></div>
     {% set return_tasks = tasks|selectattr('kind', 'equalto', 'Rücklauf')|list %}
     {% if return_tasks %}
       <div class="task-list">
-        {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Bearbeiten</a></div></article>{% endfor %}
+        {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('main.case_detail', cycle_id=task.cycle_id, case_id=task.case_id) }}">Person öffnen</a><br><a class="compact-action" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Führungslinie</a></div></article>{% endfor %}
       </div>
     {% else %}<div class="empty-state empty-state--success">Keine eingegangenen Dokumente benötigen aktuell eine manuelle Prüfung.</div>{% endif %}
   </section>

@@ -141,7 +141,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | MAIL-003 | MUSS | E-Mails mit Arbeitsmappen oder Update-Dateien müssen vor dem Versand tatsächlich S/MIME-verschlüsselt sein. Ein unverschlüsselter Versand wird blockiert. |
 | MAIL-004 | MUSS | HR kann Update-Dateien, beispielsweise für Neueintritte und Probezeitgespräche, ebenfalls einzeln oder gesammelt S/MIME-verschlüsselt versenden. |
 | MAIL-005 | MUSS | Jeder Versand wird mit Empfänger, Paket-/Update-ID, Dateiname, Prüfsumme, Zeitpunkt und Status protokolliert. |
-| MAIL-006 | MUSS | Vor einem Massenversand erhält HR eine Vorschau der Empfänger, Dateien, Fristen und allfälligen Fehler. |
+| MAIL-006 | MUSS | Vor einem Massenversand erhält HR eine Vorschau der Empfänger, Dateien, Fristen und allfälligen Fehler. Der E-Mailtext ist bearbeitbar; Direktversand und Entwurfserstellung stehen zur Wahl. |
 | MAIL-007 | MUSS | HR kann aus dem Cockpit Erinnerungen an ausgewählte oder alle überfälligen Führungskräfte versenden. Versand und Ergebnis werden protokolliert. |
 
 ## 9. PDF-Erzeugung und Unterschriften
@@ -162,8 +162,8 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 |---|---|---|
 | IN-001 | MUSS | Das System kann neue Nachrichten aus dem definierten HR-Postfach automatisiert einlesen und MD-Anhänge in einen kontrollierten Eingangsbereich herunterladen. |
 | IN-002 | MUSS | Erkannte MD-Dateien werden nach Fall, Person, Dokumenttyp, Jahr und Version klassifiziert. |
-| IN-003 | MUSS | Weitere Anhänge in derselben E-Mail werden nicht ignoriert oder gelöscht. Sie werden sichtbar als «zusätzliche Datei – HR-Prüfung erforderlich» ausgewiesen. |
-| IN-004 | MUSS | Eine E-Mail wird erst aus dem Posteingang in den definierten Zielordner verschoben, wenn alle Anhänge gesichert und klassifiziert sind. Bei Fehlern bleibt sie im Posteingang oder in einem klaren Prüfstatus. |
+| IN-003 | MUSS | Weitere Anhänge in derselben E-Mail werden nicht lokal gespeichert. Sie werden mit Dateiname und Prüfsumme sichtbar als «Fremdanlage – HR-Prüfung erforderlich» ausgewiesen, während gültige MD-Dokumente bereits verarbeitet werden. |
+| IN-004 | MUSS | Eine reine MD-E-Mail wird nach erfolgreicher Verarbeitung in den definierten Zielordner verschoben. Bei Fremdanlagen oder Fehlern bleibt sie bis zur manuellen Bestätigung im Posteingang. |
 | IN-005 | MUSS | Die Verarbeitung derselben E-Mail oder desselben Anhangs ist idempotent. Erneutes Scannen erzeugt keine doppelten Dokumente oder Daten. |
 | IN-006 | MUSS | Für jede Nachricht werden Nachrichten-ID, Absender, Empfangszeit, Anhänge, Prüfsummen, Verarbeitungsresultat und Zielordner protokolliert. |
 | IN-007 | MUSS | Eine E-Mail, die ausschliesslich erfolgreich gesicherte und klassifizierte MD-Dokumente enthält, kann aus dem Posteingang in den Postfachordner «12 Mitarbeitenden-Dialog» verschoben werden. |
@@ -319,9 +319,9 @@ solange als offen an.
 
 ### AS-06 – E-Mail mit zusätzlichem Anhang
 
-Eine Rücklaufmail enthält zwei MD-PDFs und eine weitere Datei. Alle Anhänge werden
-gesichert. Die zusätzliche Datei erscheint als Prüfaufgabe und die E-Mail wird
-nicht stillschweigend als vollständig verarbeitet.
+Eine Rücklaufmail enthält zwei MD-PDFs und eine weitere Datei. Die MD-PDFs werden
+verarbeitet; die Fremdanlage wird nicht gespeichert und erscheint als
+Prüfhinweis. Die E-Mail bleibt bis zur manuellen Bestätigung im Posteingang.
 
 ### AS-07 – Doppelte und korrigierte Zustellung
 

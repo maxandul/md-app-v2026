@@ -1,4 +1,4 @@
-"""Gekapselte Outlook-COM-Anbindung für verschlüsselte Entwürfe."""
+"""Gekapselte Outlook-COM-Anbindung für S/MIME-Versand und Postfacheingang."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def _resolve_inbox(namespace, mailbox_name: str):
 
 
 class OutlookDraftAdapter:
-    """Erzeugt Entwürfe; ein automatischer Versand ist absichtlich nicht möglich."""
+    """Erzeugt oder versendet S/MIME-markierte Outlook-Nachrichten."""
 
     def create_encrypted_draft(
         self,
@@ -119,6 +119,43 @@ class OutlookDraftAdapter:
         subject: str,
         body_html: str,
         attachments: list[Path],
+    ) -> DraftResult:
+        return self._create_encrypted_message(
+            sender_email=sender_email,
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            attachments=attachments,
+            send_now=False,
+        )
+
+    def send_encrypted(
+        self,
+        *,
+        sender_email: str,
+        recipient_email: str,
+        subject: str,
+        body_html: str,
+        attachments: list[Path],
+    ) -> DraftResult:
+        return self._create_encrypted_message(
+            sender_email=sender_email,
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            attachments=attachments,
+            send_now=True,
+        )
+
+    def _create_encrypted_message(
+        self,
+        *,
+        sender_email: str,
+        recipient_email: str,
+        subject: str,
+        body_html: str,
+        attachments: list[Path],
+        send_now: bool,
     ) -> DraftResult:
         try:
             import pythoncom
@@ -157,10 +194,10 @@ class OutlookDraftAdapter:
                 raise EncryptionVerificationError(
                     "Outlook hat den Entwurf nicht als S/MIME-verschlüsselt gespeichert."
                 )
-            return DraftResult(
-                entry_id=str(getattr(mail, "EntryID", "") or ""),
-                encryption_flag_verified=True,
-            )
+            entry_id = str(getattr(mail, "EntryID", "") or "")
+            if send_now:
+                mail.Send()
+            return DraftResult(entry_id=entry_id, encryption_flag_verified=True)
         except (EncryptionVerificationError, FileNotFoundError):
             raise
         except Exception as exc:
@@ -169,24 +206,18 @@ class OutlookDraftAdapter:
                     mail.Delete()
                 except Exception:
                     pass
+            action = "versendet" if send_now else "als Entwurf erstellt"
             raise OutlookUnavailableError(
-                "Der verschlüsselte Outlook-Entwurf konnte nicht erstellt werden: "
-                f"{exc}"
+                f"Die verschlüsselte Outlook-Nachricht konnte nicht {action} werden: {exc}"
             ) from exc
         finally:
             pythoncom.CoUninitialize()
 
-    def send(self, *_args, **_kwargs) -> None:
-        raise EncryptionVerificationError(
-            "Der automatische Versand ist bis zum S/MIME-Integrationstest gesperrt."
-        )
-
-
 class OutlookInboxAdapter:
-    """Liest Nachrichten und Anhänge, verändert das Outlook-Postfach aber nicht."""
+    """Liest Nachrichten/Anhänge und verschiebt abschliessend verarbeitete Mails."""
 
     def read_messages(
-        self, *, mailbox_name: str, limit: int = 100
+        self, *, mailbox_name: str, limit: int = 1000
     ) -> list[InboundMessage]:
         try:
             import pythoncom
@@ -250,7 +281,32 @@ class OutlookInboxAdapter:
         finally:
             pythoncom.CoUninitialize()
 
-    def move_message(self, *_args, **_kwargs) -> None:
-        raise OutlookUnavailableError(
-            "Das automatische Verschieben bleibt bis zum Outlook-Integrationstest gesperrt."
-        )
+    def move_message(
+        self, *, mailbox_name: str, entry_id: str, target_folder: str
+    ) -> str:
+        try:
+            import pythoncom
+            import win32com.client as win32
+        except ImportError as exc:
+            raise OutlookUnavailableError(
+                "Die Outlook-Integration benötigt Windows, klassisches Outlook und pywin32."
+            ) from exc
+
+        pythoncom.CoInitialize()
+        try:
+            namespace = win32.Dispatch("Outlook.Application").GetNamespace("MAPI")
+            inbox = _resolve_inbox(namespace, mailbox_name)
+            try:
+                destination = inbox.Folders.Item(target_folder)
+            except Exception:
+                destination = inbox.Parent.Folders.Item(target_folder)
+            store_id = str(getattr(inbox.Store, "StoreID", "") or "")
+            message = namespace.GetItemFromID(entry_id, store_id)
+            moved = message.Move(destination)
+            return str(getattr(moved, "EntryID", "") or entry_id)
+        except Exception as exc:
+            raise OutlookUnavailableError(
+                f"Die Outlook-Nachricht konnte nicht nach «{target_folder}» verschoben werden: {exc}"
+            ) from exc
+        finally:
+            pythoncom.CoUninitialize()

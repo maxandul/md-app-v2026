@@ -18,12 +18,8 @@ from webapp import create_app
 from webapp.db import close_db, connect_database, get_db
 from webapp.adapters.outlook import (
     DraftResult,
-    EncryptionVerificationError,
     InboundAttachment,
     InboundMessage,
-    OutlookDraftAdapter,
-    OutlookInboxAdapter,
-    OutlookUnavailableError,
     _resolve_inbox,
 )
 from webapp.services.cycles import create_cycle, cycle_overview
@@ -35,7 +31,11 @@ from webapp.services.documents import (
     import_official_pdf,
 )
 from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
-from webapp.services.mail_intake import mail_inbox_overview, process_inbound_messages
+from webapp.services.mail_intake import (
+    mail_inbox_overview,
+    process_inbound_messages,
+    resolve_inbound_message,
+)
 from webapp.services.legacy_forms import import_legacy_forms, scan_legacy_forms
 from webapp.services.case_review import case_review_detail, correct_case_data
 from webapp.services.deadlines import extend_deadlines
@@ -74,6 +74,13 @@ class FakeOutlookDraftAdapter:
         self.calls.append(message)
         return DraftResult(
             entry_id=f"draft-{len(self.calls)}",
+            encryption_flag_verified=self.encryption_flag_verified,
+        )
+
+    def send_encrypted(self, **message) -> DraftResult:
+        self.calls.append(message)
+        return DraftResult(
+            entry_id=f"sent-{len(self.calls)}",
             encryption_flag_verified=self.encryption_flag_verified,
         )
 
@@ -513,7 +520,9 @@ class WebAppIntegrationTest(unittest.TestCase):
                 sender_email="md-test@vd.zh.ch",
                 adapter=adapter,
             )
-            self.assertEqual(result, {"created": 1, "failed": 0, "errors": []})
+            self.assertEqual(
+                result, {"created": 1, "sent": 0, "failed": 0, "errors": []}
+            )
             self.assertEqual(adapter.calls[0]["attachments"], [package_path])
             self.assertEqual(adapter.calls[0]["sender_email"], "md-test@vd.zh.ch")
             delivery = connection.execute(
@@ -527,7 +536,8 @@ class WebAppIntegrationTest(unittest.TestCase):
         page = self.client.get(f"/versand?cycle_id={cycle_id}")
         body = page.get_data(as_text=True)
         self.assertIn("Entwurf erstellt", body)
-        self.assertIn("Automatischer Versand ist gesperrt", body)
+        self.assertIn("direkt S/MIME-verschlüsselt versenden", body)
+        self.assertIn("E-Mailtext bearbeiten", body)
         self.assertIn("Arbeitsmappen per E-Mail zustellen", body)
         self.assertIn("data-refresh-after-download", body)
         self.assertIn("dispatch.js", body)
@@ -560,13 +570,36 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(adapter.calls, [])
             self.assertIn("E-Mail-Adresse fehlt", result["errors"][0])
 
-    def test_outlook_adapter_never_sends_automatically(self) -> None:
-        with self.assertRaisesRegex(
-            EncryptionVerificationError, "automatische Versand"
-        ):
-            OutlookDraftAdapter().send()
-        with self.assertRaisesRegex(OutlookUnavailableError, "Verschieben"):
-            OutlookInboxAdapter().move_message()
+    def test_selected_workbooks_can_be_sent_directly(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            create_package_file(
+                connection, cycle_id=cycle_id, manager_pn="111116",
+                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
+            )
+            candidate = next(
+                row for row in dispatch_candidates(connection, cycle_id=cycle_id)
+                if row["manager_pn"] == "111116"
+            )
+            adapter = FakeOutlookDraftAdapter()
+            result = create_outlook_drafts(
+                connection,
+                cycle_id=cycle_id,
+                package_event_ids=[candidate["package_event_id"]],
+                delivery_mode="send",
+                subject_template="MD {years} für {manager_name}",
+                body_template="Guten Tag {manager_name}\n\n{introduction}",
+                adapter=adapter,
+            )
+            self.assertEqual(result["sent"], 1)
+            self.assertEqual(result["created"], 0)
+            self.assertEqual(adapter.calls[0]["subject"], "MD 2025/2026 für Rufname6 Nachname6")
+            delivery = connection.execute(
+                "SELECT status FROM mail_deliveries WHERE package_event_id = ?",
+                (candidate["package_event_id"],),
+            ).fetchone()
+            self.assertEqual(delivery["status"], "sent_confirmed")
 
     def test_outlook_mailbox_is_resolved_by_display_name(self) -> None:
         class FakeStore:
@@ -624,17 +657,23 @@ class WebAppIntegrationTest(unittest.TestCase):
                     InboundAttachment(1, "Rueckblick_111111.pdf", pdf_path.read_bytes()),
                 ),
             )
+            moved: list[tuple[str, str]] = []
             first = process_inbound_messages(
                 connection,
                 messages=[message],
                 inbox_dir=root / "mail_inbox",
                 pdf_dir=root / "pdf_processed",
                 target_folder="12 Mitarbeitenden-Dialog",
+                move_message=lambda entry_id, folder: (
+                    moved.append((entry_id, folder)) or "entry-001-moved"
+                ),
             )
             self.assertEqual(first["ready"], 1)
+            self.assertEqual(first["moved"], 1)
+            self.assertEqual(moved, [("entry-001", "12 Mitarbeitenden-Dialog")])
             self.assertEqual(first["stored"], 1)
             overview = mail_inbox_overview(connection)
-            self.assertEqual(overview["mail_messages"][0]["status"], "ready_to_move")
+            self.assertEqual(overview["mail_messages"][0]["status"], "moved")
             self.assertEqual(
                 overview["mail_messages"][0]["attachments"][0]["status"],
                 "imported",
@@ -664,8 +703,41 @@ class WebAppIntegrationTest(unittest.TestCase):
         page = self.client.get(f"/ruecklaeufe?cycle_id={cycle_id}")
         body = page.get_data(as_text=True)
         self.assertIn("MD Rücklauf", body)
-        self.assertIn("Vollständig gesichert", body)
-        self.assertIn("Verschieben noch gesperrt", body)
+        self.assertIn("Verarbeitet und in Outlook verschoben", body)
+
+    def test_mail_without_md_reference_is_ignored_without_storing_attachment(self) -> None:
+        self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            message = InboundMessage(
+                entry_id="entry-unrelated",
+                internet_message_id="<unrelated@example.invalid>",
+                sender_email="someone@example.invalid",
+                subject="Allgemeine Information",
+                received_at=datetime(2026, 1, 22, 12, 0, tzinfo=timezone.utc),
+                attachments=(InboundAttachment(1, "Information.txt", b"Kein MD"),),
+            )
+            result = process_inbound_messages(
+                connection,
+                messages=[message],
+                inbox_dir=root / "mail_inbox",
+                pdf_dir=root / "pdf_processed",
+                target_folder="12 Mitarbeitenden-Dialog",
+            )
+            self.assertEqual(result["ignored"], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM inbound_mail_messages").fetchone()[0],
+                0,
+            )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM inbound_mail_attachments").fetchone()[0],
+                0,
+            )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM ignored_mail_messages").fetchone()[0],
+                1,
+            )
 
     def test_mail_intake_keeps_probation_and_extra_files_for_review(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -708,7 +780,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             self.assertEqual(result["review"], 1)
             stored = connection.execute(
-                "SELECT status, contains_probation FROM inbound_mail_messages"
+                "SELECT id, status, contains_probation FROM inbound_mail_messages"
             ).fetchone()
             self.assertEqual(stored["status"], "review_required")
             self.assertEqual(stored["contains_probation"], 1)
@@ -718,7 +790,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 any(task["kind"] == "Postfach" for task in cockpit["tasks"])
             )
             attachments = connection.execute(
-                "SELECT original_filename, status FROM inbound_mail_attachments ORDER BY attachment_index"
+                "SELECT original_filename, status, stored_path FROM inbound_mail_attachments ORDER BY attachment_index"
             ).fetchall()
             self.assertEqual(
                 [(row["original_filename"], row["status"]) for row in attachments],
@@ -727,6 +799,26 @@ class WebAppIntegrationTest(unittest.TestCase):
                     ("Begleitnotiz.txt", "review_required"),
                 ],
             )
+            self.assertEqual(attachments[1]["stored_path"], "")
+            self.assertIn("nicht gespeichert", connection.execute(
+                "SELECT error_message FROM inbound_mail_attachments WHERE attachment_index = 2"
+            ).fetchone()["error_message"])
+
+            class FakeInboxAdapter:
+                def move_message(self, **values):
+                    self.values = values
+                    return "entry-probation-moved"
+
+            inbox_adapter = FakeInboxAdapter()
+            resolved = resolve_inbound_message(
+                connection,
+                message_id=stored["id"],
+                mailbox_name="VD-GS HR",
+                target_folder="12 Mitarbeitenden-Dialog",
+                adapter=inbox_adapter,
+            )
+            self.assertEqual(resolved["status"], "moved")
+            self.assertEqual(inbox_adapter.values["target_folder"], "12 Mitarbeitenden-Dialog")
 
     def test_case_correction_is_reasoned_and_preserves_original_pdf_data(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -1131,6 +1223,8 @@ class WebAppIntegrationTest(unittest.TestCase):
         page = self.client.get(f"/auswertungen?cycle_id={cycle_id}").get_data(as_text=True)
         self.assertIn("Gesprächszeitpunkte", page)
         self.assertIn("Kooperationsfähigkeit", page)
+        self.assertIn("<progress", page)
+        self.assertIn("table_controls.js", page)
 
     def test_workbook_pdf_data_block_contains_structured_competencies(self) -> None:
         template = (PROJECT_ROOT / "prototype" / "html_dialog" / "template.html").read_text(
@@ -1350,6 +1444,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 path=pdf_path,
                 original_filename="Rueckblick_2025_Nachname1_Rufname1_111111.pdf",
                 accepted_dir=root / "processed",
+                handoff_dir=root / "dossier_ready",
             )
             self.assertFalse(pdf_path.exists())
             case = connection.execute(
@@ -1357,13 +1452,11 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()
             self.assertEqual(case["official_scope"], "review_only")
             self.assertEqual(case["overall_rating_code"], "B")
-            self.assertEqual(case["status"], "in_bearbeitung")
-
-            staged = confirm_digital_signature(
-                connection,
-                document_id=imported["document_id"],
-                handoff_dir=root / "dossier_ready",
-            )
+            self.assertEqual(case["status"], "vollstaendig")
+            staged = connection.execute(
+                "SELECT handoff_filename FROM official_documents WHERE id = ?",
+                (imported["document_id"],),
+            ).fetchone()
             self.assertEqual(
                 staged["handoff_filename"],
                 "Rueckblick_2025_Nachname1_Rufname1_111111.pdf",
@@ -1405,13 +1498,9 @@ class WebAppIntegrationTest(unittest.TestCase):
                 path=pdf_path,
                 original_filename="Rueckblick_2025_Nachname1_Rufname1_111111.pdf",
                 accepted_dir=root / "processed",
-            )
-            confirmed = confirm_digital_signature(
-                connection,
-                document_id=imported["document_id"],
                 handoff_dir=root / "dossier_ready",
             )
-            self.assertTrue(confirmed["scan_required"])
+            self.assertTrue(imported["scan_required"])
             self.assertEqual(list((root / "dossier_ready").glob("*.pdf")), [])
             obligation = connection.execute(
                 "SELECT status FROM document_obligations WHERE fulfilled_document_id = ?",

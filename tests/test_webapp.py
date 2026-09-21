@@ -24,6 +24,7 @@ from webapp.adapters.outlook import (
     OutlookDraftAdapter,
     OutlookInboxAdapter,
     OutlookUnavailableError,
+    _resolve_inbox,
 )
 from webapp.services.cycles import create_cycle, cycle_overview
 from webapp.services.cockpit import cockpit_overview
@@ -363,6 +364,11 @@ class WebAppIntegrationTest(unittest.TestCase):
 
     def test_start_and_update_files_are_detected_and_generated(self) -> None:
         cycle_id = self._prepare_cycle()
+        manager_page = self.client.get(
+            f"/cycles/{cycle_id}/managers/111116"
+        ).get_data(as_text=True)
+        self.assertIn("data-refresh-after-download", manager_page)
+        self.assertIn("dispatch.js", manager_page)
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
             create_package_file(
@@ -398,6 +404,44 @@ class WebAppIntegrationTest(unittest.TestCase):
                 )["state"],
                 "current",
             )
+
+    def test_package_prefills_required_scope_and_all_secondary_permissions(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            employment = connection.execute(
+                """
+                SELECT id, last_import_id FROM employment_assignments
+                WHERE person_number = '111111' AND assignment_number = '2'
+                """
+            ).fetchone()
+            for fingerprint, permission_for, valid_from, valid_to in (
+                ("perm-a", "Vereinsvorstand", "2025-01-01", "2026-12-31"),
+                ("perm-b", "Dozententätigkeit", "2025-06-01", "2027-05-31"),
+            ):
+                connection.execute(
+                    """
+                    INSERT INTO secondary_activity_permissions (
+                        employment_id, valid_from, valid_to, permission,
+                        permission_for, source_fingerprint, last_import_id
+                    ) VALUES (?, ?, ?, 'Bewilligt', ?, ?, ?)
+                    """,
+                    (
+                        employment["id"], valid_from, valid_to, permission_for,
+                        fingerprint, employment["last_import_id"],
+                    ),
+                )
+            connection.commit()
+            payload = build_manager_payload(
+                connection, cycle_id=cycle_id, manager_pn="111116"
+            )
+            employee = next(
+                item for item in payload["employees"]
+                if item["employee"]["pn"] == "111111"
+            )
+            self.assertEqual(employee["scope"], employee["suggestion"]["scope"])
+            self.assertIn("Vereinsvorstand", employee["employee"]["secondary_employment"])
+            self.assertIn("Dozententätigkeit", employee["employee"]["secondary_employment"])
 
     def test_new_sap_import_marks_existing_workbook_for_update(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -481,8 +525,12 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(delivery["outlook_entry_id"], "draft-1")
 
         page = self.client.get(f"/versand?cycle_id={cycle_id}")
-        self.assertIn("Entwurf erstellt", page.get_data(as_text=True))
-        self.assertIn("Automatischer Versand ist gesperrt", page.get_data(as_text=True))
+        body = page.get_data(as_text=True)
+        self.assertIn("Entwurf erstellt", body)
+        self.assertIn("Automatischer Versand ist gesperrt", body)
+        self.assertIn("Arbeitsmappen per E-Mail zustellen", body)
+        self.assertIn("data-refresh-after-download", body)
+        self.assertIn("dispatch.js", body)
 
     def test_missing_recipient_blocks_outlook_draft(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -519,6 +567,31 @@ class WebAppIntegrationTest(unittest.TestCase):
             OutlookDraftAdapter().send()
         with self.assertRaisesRegex(OutlookUnavailableError, "Verschieben"):
             OutlookInboxAdapter().move_message()
+
+    def test_outlook_mailbox_is_resolved_by_display_name(self) -> None:
+        class FakeStore:
+            DisplayName = "VD-GS HR"
+
+            def GetDefaultFolder(self, folder_kind):
+                self.folder_kind = folder_kind
+                return "HR-INBOX"
+
+        class FakeRoot:
+            Name = "Postfach - VD-GS HR"
+            Store = FakeStore()
+
+        class FakeFolders:
+            Count = 1
+
+            def Item(self, key):
+                if key == 1:
+                    return FakeRoot()
+                raise RuntimeError("nicht direkt adressierbar")
+
+        class FakeNamespace:
+            Folders = FakeFolders()
+
+        self.assertEqual(_resolve_inbox(FakeNamespace(), "VD-GS HR"), "HR-INBOX")
 
     def test_mail_intake_imports_pdf_and_is_idempotent(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -864,14 +937,23 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(len(changes), result["changed"])
             self.assertTrue(all(row["old_due_date"] == "2026-01-31" for row in changes))
             self.assertTrue(all(row["new_due_date"] == "2026-03-31" for row in changes))
-            with self.assertRaisesRegex(ValueError, "nach allen bisherigen"):
+            shortened = extend_deadlines(
+                connection,
+                cycle_id=cycle_id,
+                scope="cycle",
+                document_kind="review",
+                new_due_date="2026-03-01",
+                reason="Begründete Korrektur der zuvor gesetzten Frist",
+            )
+            self.assertGreater(shortened["changed"], 0)
+            with self.assertRaisesRegex(ValueError, "bestehenden Frist"):
                 extend_deadlines(
                     connection,
                     cycle_id=cycle_id,
                     scope="cycle",
                     document_kind="review",
                     new_due_date="2026-03-01",
-                    reason="Diese Frist wäre keine echte Verlängerung",
+                    reason="Keine tatsächliche Änderung der Frist",
                 )
 
     def test_manager_and_case_deadline_extensions_are_scoped(self) -> None:
@@ -957,7 +1039,10 @@ class WebAppIntegrationTest(unittest.TestCase):
         response = self.client.get(f"/dialoge?cycle_id={cycle_id}")
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn("Frist für ganzen Durchlauf verlängern", page)
+        self.assertIn("Fristen des regulären Durchlaufs", page)
+        self.assertIn("Rückblick:</strong> 2026-01-31", page)
+        self.assertIn("Ausblick:</strong> 2026-02-28", page)
+        self.assertIn("maximal 50 pro Seite", page)
         self.assertIn("Erinnerungsentwürfe", page)
         self.assertIn("S/MIME-markierte Outlook-Entwürfe", page)
 

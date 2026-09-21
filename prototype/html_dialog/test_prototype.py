@@ -157,12 +157,8 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         employee = self.payload["employees"][0]
         employee["scope"] = "full"
         employee["dialog_date"] = "2025-12-10"
-        for goal in employee["previous_goals"]:
-            goal["achievement"] = "Erreicht"
-            goal["review"] = "Ziel wurde erreicht."
-        for goal in employee["previous_development_goals"]:
-            goal["achievement"] = "Erreicht"
-            goal["review"] = "Entwicklungsziel wurde erreicht."
+        # Vorjahresziele bleiben bewusst unbeurteilt; sie sind keine
+        # Pflichtfelder für den Abschluss des Rückblicks.
         employee["review"]["performance"] = "Die Leistung war sehr gut."
         employee["review"]["overall_rating"] = "B – sehr gut"
         employee["review"]["agreement"] = "Ja"
@@ -199,6 +195,8 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertNotIn('id="employee-search"', template)
         self.assertNotIn("Interne Übertritte", template)
         self.assertIn("Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.", template)
+        self.assertIn('class="suggestion warning guidance-save-note"', template)
+        self.assertIn("Vorjahresziele unterstützen das Gespräch", template)
         self.assertIn('data-action="close-case"', template)
         self.assertIn('data-action="reopen-case"', template)
         self.assertIn('data-action="go-requirement"', template)

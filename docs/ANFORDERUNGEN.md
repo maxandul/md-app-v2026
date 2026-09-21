@@ -191,7 +191,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | COC-001 | MUSS | HR sieht den Stand nach Durchlauf, Führungskraft, Person, Anstellung und Dialogereignis. |
 | COC-002 | MUSS | Angezeigt werden mindestens erforderliche Dokumente, Versandstatus, Eingangsstatus, Vollständigkeit, Scanpflicht, Scanstatus, Frist und Erinnerungsstatus. |
 | COC-003 | MUSS | Standardfrist im regulären Durchlauf ist der 31. Januar für Rückblicke und der 28. Februar für Ausblicke. Das Jahr wird aus dem Durchlauf abgeleitet. |
-| COC-004 | MUSS | HR kann Fristen für den gesamten Durchlauf, ausgewählte Führungskräfte oder einzelne Dialogereignisse verlängern. Änderungen werden protokolliert. |
+| COC-004 | MUSS | HR kann Rückblick- und Ausblickfristen für den gesamten Durchlauf, ausgewählte Führungskräfte oder einzelne Dialogereignisse mit Begründung anpassen. Änderungen werden protokolliert. |
 | COC-005 | MUSS | Überfällige und demnächst fällige Fälle sind klar filterbar. |
 | COC-006 | MUSS | Erinnerungen können zunächst als Vorschau/Entwurf geprüft und danach gesammelt versendet werden. |
 | COC-007 | MUSS | Suche und Filter unterstützen mindestens Name, Personalnummer, `Ans.`, Führungskraft, Organisationseinheit, Status, Dokumenttyp, Jahr und Frist. |
@@ -335,9 +335,9 @@ HR erstellt unterjährig mehrere Exportbatches. Jeder abgeschlossene und noch ni
 exportierte führende Rückblick erscheint genau einmal. Fehlerhafte oder bereits
 exportierte Datensätze werden nicht erneut ausgegeben.
 
-### AS-09 – Fristverlängerung und Erinnerung
+### AS-09 – Fristanpassung und Erinnerung
 
-HR verlängert die Ausblickfrist für ausgewählte Führungskräfte und versendet eine
+HR passt die Ausblickfrist für ausgewählte Führungskräfte an und versendet eine
 Erinnerung. Cockpit, Arbeitsstand und Erinnerungsprotokoll zeigen die neue Frist.
 
 ### AS-10 – Passwortzurücksetzung

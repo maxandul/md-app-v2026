@@ -68,6 +68,46 @@ def _sender_email(mail) -> str:
     )
 
 
+def _normalise_mailbox_name(value: object) -> str:
+    return " ".join(str(value or "").casefold().split())
+
+
+def _resolve_inbox(namespace, mailbox_name: str):
+    """Findet ein Postfach über Root- oder Store-Anzeigename und liefert Inbox."""
+    requested = _normalise_mailbox_name(mailbox_name)
+    if not requested:
+        raise OutlookUnavailableError("Der konfigurierte Outlook-Postfachname ist leer.")
+
+    try:
+        root = namespace.Folders.Item(mailbox_name)
+        return root.Store.GetDefaultFolder(6)
+    except Exception:
+        pass
+
+    available: list[str] = []
+    for index in range(1, int(namespace.Folders.Count) + 1):
+        try:
+            root = namespace.Folders.Item(index)
+            root_name = str(getattr(root, "Name", "") or "").strip()
+            store = getattr(root, "Store", None)
+            store_name = str(getattr(store, "DisplayName", "") or "").strip()
+            labels = [label for label in (root_name, store_name) if label]
+            available.extend(labels)
+            normalised = [_normalise_mailbox_name(label) for label in labels]
+            if requested in normalised or any(
+                requested in label or label in requested for label in normalised
+            ):
+                return store.GetDefaultFolder(6)
+        except Exception:
+            continue
+
+    names = ", ".join(dict.fromkeys(available)) or "keine lesbaren Postfächer"
+    raise OutlookUnavailableError(
+        f"Das konfigurierte Outlook-Postfach «{mailbox_name}» wurde nicht gefunden. "
+        f"Verfügbar: {names}. Bei Bedarf MD_OUTLOOK_MAILBOX anpassen."
+    )
+
+
 class OutlookDraftAdapter:
     """Erzeugt Entwürfe; ein automatischer Versand ist absichtlich nicht möglich."""
 
@@ -159,8 +199,7 @@ class OutlookInboxAdapter:
         pythoncom.CoInitialize()
         try:
             namespace = win32.Dispatch("Outlook.Application").GetNamespace("MAPI")
-            mailbox = namespace.Folders.Item(mailbox_name)
-            inbox = mailbox.Store.GetDefaultFolder(6)
+            inbox = _resolve_inbox(namespace, mailbox_name)
             items = inbox.Items
             items.Sort("[ReceivedTime]", True)
             messages: list[InboundMessage] = []

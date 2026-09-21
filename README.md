@@ -20,8 +20,8 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
 - fehlerhaft übernommene Angaben vor der Freigabe begründet korrigieren
 - korrigierte PDF-Versionen kontrolliert ersetzen, ohne die Vorversion zu löschen
-- Fristen für den Durchlauf, eine Führungslinie oder einen Einzelfall begründet
-  verlängern und jede betroffene Pflicht protokollieren
+- Rückblick- und Ausblickfristen für den Durchlauf, eine Führungslinie oder einen
+  Einzelfall begründet anpassen und jede betroffene Pflicht protokollieren
 - überfällige Pflichten als Vorschau bündeln und ausgewählte oder alle
   Erinnerungen als S/MIME-markierte Outlook-Entwürfe vorbereiten
 - bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
@@ -94,7 +94,7 @@ erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
 
 ```powershell
 $env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
-$env:MD_OUTLOOK_MAILBOX = "hr@vd.zh.ch"
+$env:MD_OUTLOOK_MAILBOX = "VD-GS HR"
 $env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
 $env:MD_ANALYTICS_MIN_GROUP_SIZE = "5"
 ```

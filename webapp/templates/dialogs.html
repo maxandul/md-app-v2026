@@ -35,23 +35,24 @@
       <div><p class="kicker">Pflichten</p><h2 id="events-title">Dialogereignisse</h2></div>
       {% if cycles %}
         <form class="compact-filter" method="get">
-          <label for="event-cycle">Durchlauf</label>
-          <select id="event-cycle" name="cycle_id">
-            {% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}
-          </select>
-          <button class="button button--small" type="submit">Anzeigen</button>
+          <div><label for="event-cycle">Durchlauf</label><select id="event-cycle" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>
+          <div><label for="event-search">Suche</label><input id="event-search" name="q" value="{{ event_query }}" placeholder="Name oder Personalnummer"></div>
+          <div><label for="event-type">Dialogart</label><select id="event-type" name="event_type"><option value="">Alle</option>{% for key, label in event_types.items() %}<option value="{{ key }}"{% if key == selected_event_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+          <div><label for="event-status">Status</label><select id="event-status" name="status"><option value="">Alle</option><option value="planned"{% if selected_event_status == 'planned' %} selected{% endif %}>Geplant</option><option value="open"{% if selected_event_status == 'open' %} selected{% endif %}>Offen</option><option value="in_progress"{% if selected_event_status == 'in_progress' %} selected{% endif %}>In Bearbeitung</option><option value="completed"{% if selected_event_status == 'completed' %} selected{% endif %}>Abgeschlossen</option><option value="no_md"{% if selected_event_status == 'no_md' %} selected{% endif %}>Kein MD</option><option value="cancelled"{% if selected_event_status == 'cancelled' %} selected{% endif %}>Aufgehoben</option></select></div>
+          <button class="button button--small" type="submit">Filtern</button>
         </form>
       {% endif %}
     </div>
     {% if events %}
-      <div class="table-wrap"><table><thead><tr><th>Person</th><th>Dialogart</th><th>Vorgesetzte Person</th><th>Pflichtumfang</th><th>Frist</th><th>Status</th></tr></thead><tbody>
+      <p class="list-note">{{ event_total }} Ereignis(se) · Seite {{ event_page }} von {{ event_pages }} · maximal 50 pro Seite</p>
+      <div class="table-wrap"><table><thead><tr><th>Person</th><th>Dialogart</th><th>Vorgesetzte Person</th><th>Pflichtumfang</th><th>Fristen</th><th>Status</th></tr></thead><tbody>
       {% for event in events %}
         <tr>
           <td><strong>{{ event.first_name }} {{ event.last_name }}</strong><br><span class="muted">PN {{ event.employee_pn }} · Ans. {{ event.assignment_number }}</span></td>
           <td>{{ event.event_type_label }}{% if event.source == 'manual' %}<br><span class="status status--warning">Manuell</span>{% endif %}</td>
           <td>{{ event.manager_name }}<br><span class="muted">PN {{ event.manager_pn }}</span></td>
           <td>{{ event.scope_label }}<br><span class="muted">{{ event.obligation_done_count or 0 }} von {{ event.obligation_count or 0 }} Pflichtdokumenten erfüllt</span></td>
-          <td>{{ event.next_due_date or '–' }}</td>
+          <td>{% if event.review_due_date %}<strong>Rückblick:</strong> {{ event.review_due_date }}{% endif %}{% if event.outlook_due_date %}{% if event.review_due_date %}<br>{% endif %}<strong>Ausblick:</strong> {{ event.outlook_due_date }}{% endif %}{% if not event.review_due_date and not event.outlook_due_date %}–{% endif %}</td>
           <td>
             <span class="status">{{ event.status }}</span>
             {% if event.sap_leading %}<br><span class="muted">Führend für SAP</span>
@@ -61,25 +62,33 @@
         </tr>
       {% endfor %}
       </tbody></table></div>
+      {% if event_pages > 1 %}<nav class="pagination" aria-label="Seiten der Dialogereignisse">{% if event_page > 1 %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page-1) }}">Zurück</a>{% endif %}<span>Seite {{ event_page }} von {{ event_pages }}</span>{% if event_page < event_pages %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page+1) }}">Weiter</a>{% endif %}</nav>{% endif %}
     {% else %}<div class="empty-state">Für den gewählten Durchlauf sind keine Dialogereignisse vorhanden.</div>{% endif %}
   </section>
 
   {% if selected_cycle_id %}
   <section class="split-layout">
     <div class="content-card">
-      <p class="kicker">Friststeuerung</p><h2>Frist für ganzen Durchlauf verlängern</h2>
-      <p>Ändert nur offene Pflichten der gewählten Dokumentart. Jede einzelne Änderung wird mit alter Frist und Begründung protokolliert.</p>
-      <form action="{{ url_for('main.change_deadlines', cycle_id=selected_cycle_id) }}" method="post">
-        <input type="hidden" name="scope" value="cycle">
-        <div class="form-grid form-grid--three">
-          <div><label for="cycle-deadline-kind">Dokumentart</label><select id="cycle-deadline-kind" name="document_kind" required><option value="review">Rückblick</option><option value="outlook">Ausblick</option></select></div>
-          <div><label for="cycle-new-due">Neue Frist</label><input id="cycle-new-due" name="new_due_date" type="date" required></div>
-          <div><label for="cycle-deadline-reason">Begründung</label><input id="cycle-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird verlängert?"></div>
-        </div>
-        <button class="button" type="submit">Frist nachvollziehbar verlängern</button>
-      </form>
+      <p class="kicker">Friststeuerung</p><h2>Fristen des regulären Durchlaufs</h2>
+      <p>Rückblick und Ausblick haben getrennte Fristen. Jede Anpassung wird mit alter Frist und Begründung protokolliert und gilt nur für noch offene Pflichten.</p>
+      <div class="deadline-grid">
+        <form class="content-card" action="{{ url_for('main.change_deadlines', cycle_id=selected_cycle_id) }}" method="post">
+          <input type="hidden" name="scope" value="cycle"><input type="hidden" name="document_kind" value="review">
+          <h3>Rückblick</h3><p>Reguläre Frist: 31. Januar</p>
+          <label for="review-new-due">Neue Frist</label><input id="review-new-due" name="new_due_date" type="date" value="{{ selected_cycle.review_due_date if selected_cycle else '' }}" required>
+          <label for="review-deadline-reason">Begründung</label><input id="review-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird die Frist angepasst?">
+          <button class="button" type="submit">Rückblickfrist anpassen</button>
+        </form>
+        <form class="content-card" action="{{ url_for('main.change_deadlines', cycle_id=selected_cycle_id) }}" method="post">
+          <input type="hidden" name="scope" value="cycle"><input type="hidden" name="document_kind" value="outlook">
+          <h3>Ausblick</h3><p>Reguläre Frist: 28. Februar</p>
+          <label for="outlook-new-due">Neue Frist</label><input id="outlook-new-due" name="new_due_date" type="date" value="{{ selected_cycle.outlook_due_date if selected_cycle else '' }}" required>
+          <label for="outlook-deadline-reason">Begründung</label><input id="outlook-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird die Frist angepasst?">
+          <button class="button" type="submit">Ausblickfrist anpassen</button>
+        </form>
+      </div>
     </div>
-    <aside class="info-box"><h2>Bewusste Schutzregel</h2><p>Eine Frist kann hier nur verlängert, nicht verkürzt werden. Bereits vollständige oder erlassene Pflichten bleiben unverändert.</p></aside>
+    <aside class="info-box"><h2>Nachvollziehbarkeit</h2><p>Die beiden Fristen können unabhängig voneinander angepasst werden. Bereits vollständige oder erlassene Pflichten bleiben unverändert.</p></aside>
   </section>
 
   <section class="content-section" aria-labelledby="reminders-title">

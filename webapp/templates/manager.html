@@ -11,13 +11,13 @@
     <h1>{{ manager.manager_name }}</h1>
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Vorschläge aus den SAP-Daten bleiben Hinweise und werden in der HTML-Datei bestätigt.</p>
     {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
-    {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
-    {% elif package_state.state == 'update_required' %}<form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--primary" type="submit">Update-Datei erzeugen</button></form>
+    {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
+    {% elif package_state.state == 'update_required' %}<form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Update-Datei erzeugen</button></form>
     {% else %}<span class="status status--staged">Arbeitsmappe aktuell</span>{% endif %}
   </section>
 
   <section class="content-section" aria-labelledby="manager-deadline-title">
-    <div class="section-heading"><div><p class="kicker">Friststeuerung</p><h2 id="manager-deadline-title">Frist dieser Führungslinie verlängern</h2></div></div>
+    <div class="section-heading"><div><p class="kicker">Friststeuerung</p><h2 id="manager-deadline-title">Frist dieser Führungslinie anpassen</h2></div></div>
     <form action="{{ url_for('main.change_deadlines', cycle_id=cycle.id) }}" method="post">
       <input type="hidden" name="scope" value="manager"><input type="hidden" name="manager_pn" value="{{ manager.manager_pn }}">
       <div class="form-grid form-grid--three">
@@ -25,7 +25,7 @@
         <div><label for="manager-new-due">Neue Frist</label><input id="manager-new-due" name="new_due_date" type="date" required></div>
         <div><label for="manager-deadline-reason">Begründung</label><input id="manager-deadline-reason" name="reason" minlength="10" required></div>
       </div>
-      <button class="button" type="submit">Frist nachvollziehbar verlängern</button>
+      <button class="button" type="submit">Frist begründet anpassen</button>
     </form>
   </section>
 
@@ -90,3 +90,4 @@
     {% endif %}
   </section>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='dispatch.js') }}" defer></script>{% endblock %}

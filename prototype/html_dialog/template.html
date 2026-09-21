@@ -880,19 +880,8 @@
           addRequirement(list, 'Einigkeit zum Anstellungsentscheid', employee.review.agreement);
           return list;
         }
-        employee.previous_goals.forEach((goal, index) => {
-          addRequirement(list, `Bezeichnung für Vorjahresziel ${index + 1}`, goal.title && goal.title.trim());
-          addRequirement(list, `Messkriterien für Vorjahresziel ${index + 1}`, goal.criteria && goal.criteria.trim());
-          addRequirement(list, `Zielerreichung für Vorjahresziel ${index + 1}`, goal.achievement);
-          addRequirement(list, `Rückblick für Vorjahresziel ${index + 1}`, goal.review && goal.review.trim());
-        });
-        employee.previous_development_goals.forEach((goal, index) => {
-          addRequirement(list, `Kompetenz für Entwicklungsziel ${index + 1}`, goal.competency);
-          addRequirement(list, `Bezeichnung für Entwicklungsziel ${index + 1}`, goal.title && goal.title.trim());
-          addRequirement(list, `Messkriterien für Entwicklungsziel ${index + 1}`, goal.criteria && goal.criteria.trim());
-          addRequirement(list, `Zielerreichung für Entwicklungsziel ${index + 1}`, goal.achievement);
-          addRequirement(list, `Rückblick für Entwicklungsziel ${index + 1}`, goal.review && goal.review.trim());
-        });
+        // Vorjahresziele unterstützen das Gespräch, gehören aber nicht zu den
+        // Pflichtangaben des Rückblicks.
         addRequirement(list, 'Allgemeiner Leistungsrückblick', employee.review.performance && employee.review.performance.trim());
         addRequirement(list, 'Gesamteindruck', employee.review.overall_rating);
         addRequirement(list, 'Einigkeit zur Gesamtbeurteilung', employee.review.agreement);
@@ -1101,6 +1090,10 @@
         return `<span class="card-state ${complete ? 'complete' : ''}">${complete ? 'Vollständig' : 'Offen'}</span>`;
       }
 
+      function optionalCardState(complete) {
+        return `<span class="card-state ${complete ? 'complete' : ''}">${complete ? 'Bearbeitet' : 'Optional'}</span>`;
+      }
+
       function cardTitle(title, fallback) {
         return h(title && title.trim() ? title.trim() : fallback);
       }
@@ -1110,16 +1103,16 @@
           const complete = Boolean(goal.title && goal.criteria && goal.achievement && goal.review);
           return `
           <details class="goal-card" id="review-previous-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Vorjahresziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></span></summary>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Vorjahresziel ${index + 1}`)}</h4>${optionalCardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></span></summary>
             <div class="card-body">
             <div class="source-grid">
               ${goal.imported
                 ? `${sourceValue('Ziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
-                : `${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria, { required:true })}${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}`}
+                : `${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2 })}${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria)}${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}`}
             </div>
             <div class="form-grid">
-              ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
-              ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
+              ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions })}
+              ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4 })}
             </div>
             </div>
           </details>`;
@@ -1132,16 +1125,16 @@
           const complete = Boolean(goal.competency && goal.title && goal.criteria && goal.achievement && goal.review);
           return `
           <details class="goal-card" id="review-development-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.competency, `Entwicklungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></span></summary>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.competency, `Entwicklungsziel ${index + 1}`)}</h4>${optionalCardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></span></summary>
             <div class="card-body">
             <div class="source-grid">
               ${goal.imported
                 ? `${sourceValue('Entwicklungsziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
-                : `${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria, { required:true })}${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}`}
+                : `${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true })}${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2 })}${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria)}${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}`}
             </div>
             <div class="form-grid">
-              ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions, required:true })}
-              ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4, required:true })}
+              ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions })}
+              ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4 })}
             </div>
             </div>
           </details>`;
@@ -1398,7 +1391,7 @@
           <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
           <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift.</li>
           <li>Sende die unterzeichneten Dokumente in einer S/MIME-verschlüsselten E-Mail an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
-        </ol><div class="suggestion guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
+        </ol><div class="suggestion warning guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
       }
 
       function progressDocumentLabel(employee, section) {

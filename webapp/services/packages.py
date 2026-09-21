@@ -42,6 +42,43 @@ def _empty_goal(goal_id: str) -> dict[str, str]:
     return {"id": goal_id, "title": "", "criteria": "", "steps": "", "target_date": ""}
 
 
+def _secondary_employment_text(
+    connection: sqlite3.Connection, *, employee_pn: str,
+    employment_assignment: str, fallback: str = "",
+) -> str:
+    rows = connection.execute(
+        """
+        SELECT p.valid_from, p.valid_to, p.permission, p.permission_for
+        FROM secondary_activity_permissions p
+        JOIN employment_assignments ea ON ea.id = p.employment_id
+        WHERE ea.person_number = ? AND ea.assignment_number = ?
+        ORDER BY p.valid_from, p.valid_to, p.id
+        """,
+        (employee_pn, employment_assignment),
+    ).fetchall()
+    entries: list[str] = []
+    for row in rows:
+        description = " · ".join(
+            dict.fromkeys(
+                value.strip() for value in (
+                    str(row["permission_for"] or ""),
+                    str(row["permission"] or ""),
+                ) if value.strip()
+            )
+        )
+        period = "–".join(
+            value for value in (
+                str(row["valid_from"] or "").strip(),
+                str(row["valid_to"] or "").strip(),
+            ) if value
+        )
+        text = description or "Nebenbeschäftigung/öffentliches Amt"
+        if period:
+            text += f" ({period})"
+        entries.append(text)
+    return "\n".join(entries) if entries else str(fallback or "")
+
+
 def bounded_review_period(
     review_year: int, entry_date: str = "", exit_date: str = ""
 ) -> tuple[str, str]:
@@ -163,9 +200,17 @@ def _new_case(
             "exit_date": row["exit_date"],
             "probation_end": row["probation_end"],
             "employment_assignment": row["employment_assignment"],
-            "secondary_employment": row["secondary_employment"],
+            "secondary_employment": _secondary_employment_text(
+                connection,
+                employee_pn=row["employee_pn"],
+                employment_assignment=row["employment_assignment"],
+                fallback=row["secondary_employment"],
+            ),
         },
-        "scope": "",
+        # Der aus den Stammdaten abgeleitete Mindestumfang ist die sichere
+        # Ausgangsauswahl. Führungskräfte können zusätzliche Teile wählen oder
+        # einen Pflichtteil nur mit dokumentierter Begründung weglassen.
+        "scope": row["suggested_scope"],
         "dialog_type": "probation" if str(row["event_type"] or "").startswith("probation_") else "annual",
         "scope_reason": "",
         "no_md_reason": "",

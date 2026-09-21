@@ -100,7 +100,17 @@ Mindestens folgende Konstellationen prüfen:
 - sehr lange Texte gemäss P95 der Textfeldanalyse,
 - Speichern, erneutes Öffnen sowie Rückblick- und Ausblick-PDF.
 
+Der aus den SAP-Stammdaten abgeleitete Mindestumfang muss bei einer neu
+erzeugten START-Datei bereits ausgewählt sein. Vorjahresziele sind optionale
+Gesprächsgrundlagen und dürfen den Abschluss nicht blockieren. Bei mehreren
+Nebenbeschäftigungen beziehungsweise Bewilligungen müssen alle Einträge der
+betreffenden Anstellung in den Grundlagen erscheinen.
+
 ## 5. Outlook und Rücklauf
+
+Das produktive Outlook-Postfach wird standardmässig über den Anzeigenamen
+`VD-GS HR` geöffnet; die Absenderadresse bleibt davon getrennt `hr@vd.zh.ch`.
+Falls der Anzeigename lokal abweicht, wird er über `MD_OUTLOOK_MAILBOX` gesetzt.
 
 1. START- und Update-Dateien zunächst an ein internes Testkonto adressieren.
 2. Im Outlook-Entwurf Absender, Empfänger, Anhang und S/MIME-Markierung prüfen.

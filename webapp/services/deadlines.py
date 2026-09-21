@@ -1,4 +1,4 @@
-"""Begründete Fristverlängerungen für Dokumentpflichten."""
+"""Begründete Fristanpassungen für Dokumentpflichten."""
 
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ def extend_deadlines(
     case_id: str = "",
     changed_at: datetime | None = None,
 ) -> dict[str, Any]:
-    """Verlängert offene Fristen und schreibt je Pflicht eine unveränderliche Spur."""
+    """Ändert offene Fristen und schreibt je Pflicht eine unveränderliche Spur."""
     if scope not in SCOPES:
-        raise ValueError("Der Geltungsbereich der Fristverlängerung ist ungültig.")
+        raise ValueError("Der Geltungsbereich der Fristanpassung ist ungültig.")
     if document_kind not in DOCUMENT_KINDS:
         raise ValueError("Die Dokumentart ist ungültig.")
     reason = reason.strip()
@@ -70,8 +70,9 @@ def extend_deadlines(
     ).fetchall()
     if not rows:
         raise ValueError("Für diese Auswahl gibt es keine offene Dokumentpflicht.")
-    if any(row["due_date"] and new_due_date <= row["due_date"] for row in rows):
-        raise ValueError("Die neue Frist muss nach allen bisherigen Fristen liegen.")
+    rows = [row for row in rows if row["due_date"] != new_due_date]
+    if not rows:
+        raise ValueError("Die neue Frist entspricht bereits der bestehenden Frist.")
 
     timestamp = (changed_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     try:

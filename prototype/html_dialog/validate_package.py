@@ -103,26 +103,8 @@ def _section_status(
             if not _filled(review.get("agreement")):
                 missing.append("Einigkeit zum Anstellungsentscheid")
             return not missing, missing
-        for index, goal in enumerate(employee.get("previous_goals", []), start=1):
-            if not _filled(goal.get("title")):
-                missing.append(f"Bezeichnung Vorjahresziel {index}")
-            if not _filled(goal.get("criteria")):
-                missing.append(f"Messkriterien Vorjahresziel {index}")
-            if not _filled(goal.get("achievement")):
-                missing.append(f"Zielerreichung Vorjahresziel {index}")
-            if not _filled(goal.get("review")):
-                missing.append(f"Rückblick Vorjahresziel {index}")
-        for index, goal in enumerate(employee.get("previous_development_goals", []), start=1):
-            if not _filled(goal.get("competency")):
-                missing.append(f"Kompetenz Entwicklungsziel {index}")
-            if not _filled(goal.get("title")):
-                missing.append(f"Bezeichnung Entwicklungsziel {index}")
-            if not _filled(goal.get("criteria")):
-                missing.append(f"Messkriterien Entwicklungsziel {index}")
-            if not _filled(goal.get("achievement")):
-                missing.append(f"Zielerreichung Entwicklungsziel {index}")
-            if not _filled(goal.get("review")):
-                missing.append(f"Rückblick Entwicklungsziel {index}")
+        # Vorjahresziele sind eine optionale Gesprächsgrundlage. Fehlende
+        # Beurteilungen dürfen den Rückblick nicht als unvollständig markieren.
         if not _filled(review.get("performance")):
             missing.append("Leistungsrückblick")
         if not _filled(review.get("overall_rating")):

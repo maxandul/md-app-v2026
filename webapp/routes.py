@@ -177,12 +177,47 @@ def dialogs():
     selected_cycle_id = request.args.get("cycle_id", type=int)
     if selected_cycle_id is None and data["cycles"]:
         selected_cycle_id = data["cycles"][0]["id"]
+    query = request.args.get("q", "").strip()
+    event_type = request.args.get("event_type", "").strip()
+    event_status = request.args.get("status", "").strip()
+    page = max(1, request.args.get("page", default=1, type=int) or 1)
+    per_page = 50
+    all_events = dialog_event_rows(connection, selected_cycle_id)
+    if query:
+        needle = query.casefold()
+        all_events = [
+            item for item in all_events
+            if needle in " ".join(
+                str(item.get(key, "")) for key in (
+                    "first_name", "last_name", "employee_pn", "assignment_number",
+                    "manager_name", "manager_pn",
+                )
+            ).casefold()
+        ]
+    if event_type:
+        all_events = [item for item in all_events if item["event_type"] == event_type]
+    if event_status:
+        all_events = [item for item in all_events if item["status"] == event_status]
+    event_total = len(all_events)
+    event_pages = max(1, (event_total + per_page - 1) // per_page)
+    page = min(page, event_pages)
+    events = all_events[(page - 1) * per_page:page * per_page]
+    selected_cycle = next(
+        (cycle for cycle in data["cycles"] if cycle["id"] == selected_cycle_id), None
+    )
     return render_template(
         "dialogs.html",
         active_nav="dialogs",
         now_year=datetime.now().year,
         selected_cycle_id=selected_cycle_id,
-        events=dialog_event_rows(connection, selected_cycle_id),
+        selected_cycle=selected_cycle,
+        events=events,
+        event_total=event_total,
+        event_page=page,
+        event_pages=event_pages,
+        event_query=query,
+        selected_event_type=event_type,
+        selected_event_status=event_status,
         reminder_rows=(
             reminder_candidates(
                 connection,
@@ -220,7 +255,7 @@ def change_deadlines(cycle_id: int):
             new_due_date=result["new_due_date"], changed=result["changed"],
             reason=result["reason"],
         )
-        flash(f"{result['changed']} Frist(en) wurden nachvollziehbar verlängert.", "success")
+        flash(f"{result['changed']} Frist(en) wurden nachvollziehbar angepasst.", "success")
     return redirect(request.referrer or url_for("main.dialogs", cycle_id=cycle_id))
 
 

@@ -130,9 +130,14 @@ code { padding: 2px 5px; background: var(--zh-black-10); font-family: Consolas, 
 .auth-card { width: min(560px, 100%); margin: 64px auto; padding: 28px; border: 1px solid var(--zh-black-20); }
 .inline-form { display: flex; align-items: center; gap: 8px; }
 .inline-form input { min-width: 220px; }
-.compact-filter { display: grid; grid-template-columns: minmax(150px, 220px) auto; align-items: end; gap: 8px; }
-.compact-filter label { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+.compact-filter { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.compact-filter > div { min-width: 150px; }
+.compact-filter label { margin: 0 0 4px; font-size: 13px; }
 .compact-filter .button { margin: 0; }
+.deadline-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.deadline-grid .content-card { display: grid; gap: 8px; padding: 18px; }
+.deadline-grid .content-card h3, .deadline-grid .content-card p { margin: 0; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; }
 .form-grid { display: grid; gap: 0 16px; }
 .form-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .form-grid__wide { grid-column: 1 / -1; }
@@ -173,6 +178,7 @@ code { padding: 2px 5px; background: var(--zh-black-10); font-family: Consolas, 
   .task-row { grid-template-columns: 80px minmax(0, 1fr) auto; }
   .task-row__date { display: none; }
   .form-grid--three { grid-template-columns: 1fr 1fr; }
+  .deadline-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
   .app-shell { width: min(100% - 36px, 1180px); }

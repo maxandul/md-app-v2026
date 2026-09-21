@@ -9,7 +9,7 @@
   <section class="info-box info-box--wide"><h2>START oder Update?</h2><p>Beim ersten Bereitstellen erhält die Führungskraft eine vollständige HTML-Arbeitsmappe. Ändern sich danach Stammdaten oder Dialogpflichten, erzeugt die App eine JSON-Update-Datei. Die Führungskraft liest diese in ihrer zuletzt gespeicherten Arbeitsmappe ein; vorhandene Eingaben bleiben erhalten. «Erstellt» bedeutet noch nicht «per E-Mail versendet».</p></section>
 
   {% if managers %}
-    <form action="{{ url_for('main.download_package_batch', cycle_id=selected_cycle.id) }}" method="post">
+    <form action="{{ url_for('main.download_package_batch', cycle_id=selected_cycle.id) }}" method="post" data-refresh-after-download>
       <section class="content-section" aria-labelledby="batch-title">
         <div class="section-heading"><div><p class="kicker">Sammelerzeugung</p><h2 id="batch-title">Auswahl festlegen</h2></div></div>
         <div class="selection-panel">
@@ -61,7 +61,7 @@
 
   {% if selected_cycle %}
     <section class="content-section" aria-labelledby="mail-title">
-      <div class="section-heading"><div><p class="kicker">Outlook</p><h2 id="mail-title">S/MIME-Entwürfe vorbereiten</h2></div><span class="section-count">{{ mail_candidates|length }} vorbereitete Dateien</span></div>
+      <div class="section-heading"><div><p class="kicker">Outlook</p><h2 id="mail-title">Arbeitsmappen per E-Mail zustellen</h2></div><span class="section-count">{{ mail_candidates|length }} vorbereitete Dateien</span></div>
       <div class="info-box"><p>Die App erstellt nur Outlook-Entwürfe und prüft, ob Outlook die S/MIME-Verschlüsselungsmarkierung gespeichert hat. Vor dem manuellen Senden müssen Verschlüsselung, Absender, Empfänger und Anhang in Outlook sichtbar kontrolliert werden. Automatischer Versand ist gesperrt.</p></div>
       {% if mail_candidates %}
         <form action="{{ url_for('main.prepare_mail_drafts', cycle_id=selected_cycle.id) }}" method="post">
@@ -82,7 +82,7 @@
             </tr>
           {% endfor %}
           </tbody></table></div>
-          <div class="form-actions"><button class="button button--primary" type="submit">Markierte Outlook-Entwürfe erstellen</button></div>
+          <div class="form-actions"><button class="button button--primary" type="submit">Markierte S/MIME-Entwürfe für Führungskräfte erstellen</button></div>
         </form>
       {% else %}
         <div class="empty-state">Noch keine Versanddatei erzeugt.</div>
@@ -90,3 +90,4 @@
     </section>
   {% endif %}
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='dispatch.js') }}" defer></script>{% endblock %}

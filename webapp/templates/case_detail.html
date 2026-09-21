@@ -35,7 +35,7 @@
     <div class="section-heading"><div><p class="kicker">Soll und Ist</p><h2 id="obligations-title">Dokumentpflichten</h2></div></div>
     {% if obligations %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Erforderlich</th><th>Frist</th><th>Status</th></tr></thead><tbody>{% for obligation in obligations %}<tr><td>{{ obligation.document_name }}</td><td>{{ 'Ja' if obligation.required else 'Nein' }}</td><td>{{ obligation.due_date or '–' }}</td><td><span class="status{% if obligation.status in ['open','scan_pending','rejected'] %} status--warning{% else %} status--staged{% endif %}">{{ obligation.status_label }}</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Für diesen Fall sind keine Dokumentpflichten erfasst.</div>{% endif %}
     <div class="content-card version-upload">
-      <h3>Frist dieses Falls verlängern</h3>
+      <h3>Frist dieses Falls anpassen</h3>
       <form action="{{ url_for('main.change_deadlines', cycle_id=cycle_id) }}" method="post">
         <input type="hidden" name="scope" value="case"><input type="hidden" name="case_id" value="{{ case.case_id }}">
         <div class="form-grid form-grid--three">
@@ -43,7 +43,7 @@
           <div><label for="case-new-due">Neue Frist</label><input id="case-new-due" name="new_due_date" type="date" required></div>
           <div><label for="case-deadline-reason">Begründung</label><input id="case-deadline-reason" name="reason" minlength="10" required></div>
         </div>
-        <button class="button" type="submit">Frist nachvollziehbar verlängern</button>
+        <button class="button" type="submit">Frist begründet anpassen</button>
       </form>
     </div>
   </section>

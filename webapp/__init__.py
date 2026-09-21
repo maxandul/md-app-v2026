@@ -48,7 +48,7 @@ def create_app(test_config: dict | None = None) -> Flask:
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
         ),
         HR_MAILBOX_EMAIL=os.environ.get("MD_HR_MAILBOX_EMAIL", "hr@vd.zh.ch"),
-        OUTLOOK_MAILBOX_NAME=os.environ.get("MD_OUTLOOK_MAILBOX", "hr@vd.zh.ch"),
+        OUTLOOK_MAILBOX_NAME=os.environ.get("MD_OUTLOOK_MAILBOX", "VD-GS HR"),
         OUTLOOK_TARGET_FOLDER=os.environ.get(
             "MD_OUTLOOK_TARGET_FOLDER", "12 Mitarbeitenden-Dialog"
         ),

@@ -452,7 +452,9 @@ def dialog_event_rows(connection: sqlite3.Connection, cycle_id: int | None = Non
                         'VG ' || ma.manager_person_number) AS manager_name,
                SUM(CASE WHEN o.required = 1 THEN 1 ELSE 0 END) AS obligation_count,
                SUM(CASE WHEN o.required = 1 AND o.status IN ('complete', 'waived') THEN 1 ELSE 0 END) AS obligation_done_count,
-               MIN(CASE WHEN o.required = 1 AND o.status NOT IN ('complete', 'waived') THEN o.due_date END) AS next_due_date
+               MIN(CASE WHEN o.required = 1 AND o.status NOT IN ('complete', 'waived') THEN o.due_date END) AS next_due_date,
+               MAX(CASE WHEN o.required = 1 AND o.document_kind = 'review' THEN o.due_date END) AS review_due_date,
+               MAX(CASE WHEN o.required = 1 AND o.document_kind = 'outlook' THEN o.due_date END) AS outlook_due_date
         FROM dialog_events de
         JOIN employment_assignments ea ON ea.id = de.employment_id
         JOIN persons p ON p.person_number = ea.person_number

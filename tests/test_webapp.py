@@ -41,6 +41,7 @@ from webapp.services.reminders import (
     create_reminder_drafts,
     reminder_candidates,
 )
+from webapp.services.analytics import analytics_data
 from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
@@ -757,6 +758,99 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("Erinnerungsentwürfe", page)
         self.assertIn("S/MIME-markierte Outlook-Entwürfe", page)
 
+    def test_analytics_filters_aggregates_and_exports_without_small_groups(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            cases = connection.execute(
+                """
+                SELECT dc.case_id, e.org_unit, dc.employee_pn
+                FROM dialog_cases dc
+                JOIN dialog_events de ON de.legacy_case_id = dc.case_id
+                JOIN employees e ON e.pn = dc.employee_pn
+                WHERE dc.cycle_id = ? AND de.required_scope = 'full'
+                ORDER BY dc.id LIMIT 5
+                """,
+                (cycle_id,),
+            ).fetchall()
+            self.assertEqual(len(cases), 5)
+            ratings = ["A", "B", "B", "C", "D"]
+            for index, case in enumerate(cases):
+                payload = {
+                    "scope": "full",
+                    "review": {
+                        "dialog_date": f"2026-01-{10 + index:02d}",
+                        "overall_rating": ratings[index],
+                        "competencies": [{"competency": "Kooperationsfähigkeit"}],
+                    },
+                    "previous_development_goals": [],
+                    "outlook": {
+                        "dialog_date": f"2026-02-{10 + index:02d}",
+                        "development_goals": [
+                            {"competency": "Entwicklungsfähigkeit"}
+                        ],
+                    },
+                }
+                connection.execute(
+                    """
+                    UPDATE dialog_cases SET data_json = ?, official_scope = 'full',
+                        dialog_date = ?, overall_rating_code = ?, status = 'vollstaendig'
+                    WHERE case_id = ?
+                    """,
+                    (
+                        json.dumps(payload, ensure_ascii=False),
+                        payload["review"]["dialog_date"], ratings[index], case["case_id"],
+                    ),
+                )
+            connection.commit()
+
+            data = analytics_data(
+                connection, cycle_id=cycle_id, minimum_group_size=5
+            )
+            self.assertEqual(data["rating_group_size"], 5)
+            self.assertFalse(data["ratings_suppressed"])
+            self.assertEqual(
+                {row["rating"]: row["count"] for row in data["ratings"]}["B"], 2
+            )
+            self.assertEqual(len(data["timings"]), 10)
+            competency_counts = {
+                (row["competency"], row["usage"]): row["count"]
+                for row in data["competencies"]
+            }
+            self.assertEqual(
+                competency_counts[("Kooperationsfähigkeit", "Im Rückblick thematisiert")],
+                5,
+            )
+            self.assertEqual(
+                competency_counts[("Entwicklungsfähigkeit", "Als Entwicklungsziel vereinbart")],
+                5,
+            )
+            small = analytics_data(
+                connection,
+                cycle_id=cycle_id,
+                org_unit=cases[0]["org_unit"],
+                minimum_group_size=5,
+            )
+            self.assertTrue(small["ratings_suppressed"])
+
+        response = self.client.post(
+            "/auswertungen/export",
+            data={"report": "ratings", "cycle_id": str(cycle_id)},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data.startswith(b"\xef\xbb\xbf"))
+        self.assertIn(b"Gesamtbeurteilung;Anzahl;Anteil Prozent", response.data)
+        page = self.client.get(f"/auswertungen?cycle_id={cycle_id}").get_data(as_text=True)
+        self.assertIn("Gesprächszeitpunkte", page)
+        self.assertIn("Kooperationsfähigkeit", page)
+
+    def test_workbook_pdf_data_block_contains_structured_competencies(self) -> None:
+        template = (PROJECT_ROOT / "prototype" / "html_dialog" / "template.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("review_competencies=", template)
+        self.assertIn("development_competencies=", template)
+
     def test_manual_dialog_event_can_be_added(self) -> None:
         cycle_id = self._prepare_cycle()
         response = self.client.post(
@@ -770,6 +864,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "review_year": "2025",
                 "period_start": "2025-01-01",
                 "period_end": "2025-03-31",
+                "dialog_date": "2025-03-20",
                 "review_due_date": "2025-04-15",
                 "outlook_due_date": "",
                 "cycle_id": str(cycle_id),
@@ -788,6 +883,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 """
             ).fetchone()
             self.assertIsNotNone(event)
+            self.assertEqual(event["dialog_date"], "2025-03-20")
             obligation = connection.execute(
                 "SELECT * FROM document_obligations WHERE dialog_event_id = ?",
                 (event["id"],),

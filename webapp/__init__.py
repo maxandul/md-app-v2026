@@ -42,6 +42,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
+        ANALYTICS_MIN_GROUP_SIZE=max(
+            1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
+        ),
         HR_MAILBOX_EMAIL=os.environ.get("MD_HR_MAILBOX_EMAIL", "hr@vd.zh.ch"),
         OUTLOOK_MAILBOX_NAME=os.environ.get("MD_OUTLOOK_MAILBOX", "hr@vd.zh.ch"),
         OUTLOOK_TARGET_FOLDER=os.environ.get(

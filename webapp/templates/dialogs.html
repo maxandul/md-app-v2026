@@ -116,6 +116,7 @@
         <div><label for="manual-year">Rückblickjahr</label><input id="manual-year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year }}" required></div>
         <div><label for="manual-start">Beurteilungsbeginn</label><input id="manual-start" name="period_start" type="date" required></div>
         <div><label for="manual-end">Beurteilungsende</label><input id="manual-end" name="period_end" type="date" required></div>
+        <div><label for="manual-dialog-date">Gesprächsdatum (falls erfolgt)</label><input id="manual-dialog-date" name="dialog_date" type="date"></div>
         <div><label for="manual-cycle">Zuordnung zum Durchlauf</label><select id="manual-cycle" name="cycle_id"><option value="">Ausserhalb eines Durchlaufs</option>{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>
         <div><label for="manual-review-due">Frist Rückblick</label><input id="manual-review-due" name="review_due_date" type="date"></div>
         <div><label for="manual-outlook-due">Frist Ausblick</label><input id="manual-outlook-due" name="outlook_due_date" type="date"></div>

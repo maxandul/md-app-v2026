@@ -157,6 +157,22 @@ Klärung des SAP-Zielprozesses nicht automatisch erneut exportiert.
 Sobald das technische SAP-Anstellungsdatum beziehungsweise dessen Gültigkeitslogik
 geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 
+## Auswertungen
+
+Die Auswertungsseite bietet drei filterbare Tabellen über Durchlauf,
+Organisationseinheit und Dialogart:
+
+- operative, personenbezogene Gesprächszeitpunkte mit Kalenderwoche und Monat
+- aggregierte Verteilung der Gesamtbeurteilungen A bis E
+- aggregierte Nennungen thematisierter Kompetenzen und vereinbarter
+  Entwicklungsziele
+
+Die operative Liste ist nur innerhalb des angemeldeten HR-Cockpits verfügbar.
+Aggregierte Tabellen und ihre CSV-Exporte werden automatisch unterdrückt, wenn
+die mit `MD_ANALYTICS_MIN_GROUP_SIZE` konfigurierte Mindestgruppengrösse nicht
+erreicht wird; Standardwert ist 5. Die CSV-Dateien sind UTF-8-codiert und
+verwenden für die deutsche Excel-Umgebung ein Semikolon als Trennzeichen.
+
 ## Nächste Iterationen
 
 1. Inhalte und Ziele aus den fest bezeichneten PDF-Abschnitten normalisiert

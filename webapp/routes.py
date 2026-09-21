@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import uuid
+from io import BytesIO
 from datetime import datetime
 from pathlib import Path
 
@@ -66,6 +67,7 @@ from .services.reminders import (
     create_reminder_drafts,
     reminder_candidates,
 )
+from .services.analytics import analysis_options, analytics_csv, analytics_data
 
 
 bp = Blueprint("main", __name__)
@@ -276,6 +278,7 @@ def add_dialog_event():
             period_start=request.form.get("period_start", ""),
             period_end=request.form.get("period_end", ""),
             reason=request.form.get("reason", ""),
+            dialog_date=request.form.get("dialog_date", ""),
             review_due_date=request.form.get("review_due_date", ""),
             outlook_due_date=request.form.get("outlook_due_date", ""),
             cycle_id=cycle_id,
@@ -371,10 +374,51 @@ def sap_exports():
 
 @bp.get("/auswertungen")
 def analytics():
+    connection = get_db()
+    cycle_id = request.args.get("cycle_id", type=int)
+    org_unit = request.args.get("org_unit", "").strip()
+    event_type = request.args.get("event_type", "").strip()
+    minimum_group_size = current_app.config["ANALYTICS_MIN_GROUP_SIZE"]
     return render_template(
         "analytics.html",
         active_nav="analytics",
-        **dashboard_data(get_db()),
+        selected_cycle_id=cycle_id,
+        selected_org_unit=org_unit,
+        selected_event_type=event_type,
+        **analysis_options(connection),
+        **analytics_data(
+            connection, cycle_id=cycle_id, org_unit=org_unit,
+            event_type=event_type, minimum_group_size=minimum_group_size,
+        ),
+    )
+
+
+@bp.post("/auswertungen/export")
+def export_analytics():
+    report = request.form.get("report", "")
+    cycle_id = request.form.get("cycle_id", type=int)
+    org_unit = request.form.get("org_unit", "").strip()
+    event_type = request.form.get("event_type", "").strip()
+    try:
+        data = analytics_data(
+            get_db(), cycle_id=cycle_id, org_unit=org_unit, event_type=event_type,
+            minimum_group_size=current_app.config["ANALYTICS_MIN_GROUP_SIZE"],
+        )
+        filename, content = analytics_csv(report, data)
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for(
+            "main.analytics", cycle_id=cycle_id, org_unit=org_unit,
+            event_type=event_type,
+        ))
+    audit(
+        "analytics_exported", "analytics", report,
+        cycle_id=cycle_id, org_unit=org_unit, event_type=event_type,
+        row_count=len(data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
+    )
+    return send_file(
+        BytesIO(content), as_attachment=True, download_name=filename,
+        mimetype="text/csv; charset=utf-8",
     )
 
 

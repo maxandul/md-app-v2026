@@ -30,6 +30,10 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - protokollierte SAP-Exportbatches aus abgeschlossenen Rückblicken erzeugen;
   Doppelverarbeitung wird verhindert und der Zeitraum auf Eintritts- und
   Austrittsdatum begrenzt
+- Gesprächszeitpunkte personenbezogen sowie Gesamtbeurteilungen und Kompetenzen
+  aggregiert auswerten und als Excel-kompatible CSV-Dateien exportieren
+- aggregierte Auswertungen bei Unterschreitung der konfigurierten
+  Mindestgruppengrösse automatisch unterdrücken
 
 ## Lokal unter Windows starten
 
@@ -84,6 +88,7 @@ erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
 $env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
 $env:MD_OUTLOOK_MAILBOX = "hr@vd.zh.ch"
 $env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
+$env:MD_ANALYTICS_MIN_GROUP_SIZE = "5"
 ```
 
 Das Einlesen verändert das Outlook-Postfach nicht. Nachrichten mit

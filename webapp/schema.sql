@@ -345,6 +345,7 @@ CREATE TABLE IF NOT EXISTS dialog_events (
     )),
     period_start TEXT NOT NULL DEFAULT '',
     period_end TEXT NOT NULL DEFAULT '',
+    dialog_date TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN (
         'planned', 'open', 'in_progress', 'completed', 'no_md', 'cancelled'
     )),

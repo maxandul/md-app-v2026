@@ -318,6 +318,7 @@ def create_manual_event(
     period_start: str,
     period_end: str,
     reason: str,
+    dialog_date: str = "",
     review_due_date: str = "",
     outlook_due_date: str = "",
     cycle_id: int | None = None,
@@ -338,6 +339,11 @@ def create_manual_event(
         raise ValueError("Beurteilungsbeginn und -ende müssen gültige Daten sein.") from exc
     if start > end:
         raise ValueError("Der Beurteilungsbeginn liegt nach dem Beurteilungsende.")
+    if dialog_date:
+        try:
+            date.fromisoformat(dialog_date)
+        except ValueError as exc:
+            raise ValueError("Das Gesprächsdatum muss ein gültiges Datum sein.") from exc
     employment = connection.execute(
         """
         SELECT entry_date, exit_date FROM employment_assignments
@@ -409,12 +415,12 @@ def create_manual_event(
         INSERT INTO dialog_events (
             event_id, cycle_id, legacy_case_id, employment_id, manager_assignment_id, review_year,
             event_type, source, source_reason, required_scope, period_start,
-            period_end, status, sap_leading, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, 'open', 0, ?, ?)
+            period_end, dialog_date, status, sap_leading, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, ?, 'open', 0, ?, ?)
         """,
         (
             event_id, cycle_id, legacy_case_id, employment_id, manager_assignment_id, review_year,
-            event_type, reason.strip(), required_scope, period_start, period_end,
+            event_type, reason.strip(), required_scope, period_start, period_end, dialog_date,
             timestamp, timestamp,
         ),
     )

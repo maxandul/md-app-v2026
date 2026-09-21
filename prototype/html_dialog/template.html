@@ -1719,6 +1719,8 @@
           `period_start=${employee.period_start}`,
           `period_end=${employee.period_end}`,
           `dialog_date=${documentType.startsWith('RUECKBLICK') ? employee.review.dialog_date : documentType === 'AUSBLICK' ? employee.outlook.dialog_date : ''}`,
+          `review_competencies=${documentType.startsWith('RUECKBLICK') ? [...new Set([...(employee.review.competencies || []).map(item => item.competency), ...(employee.previous_development_goals || []).map(item => item.competency)].filter(Boolean))].join('|') : ''}`,
+          `development_competencies=${documentType === 'AUSBLICK' ? [...new Set((employee.outlook.development_goals || []).map(item => item.competency).filter(Boolean))].join('|') : ''}`,
           `rating=${overallRatingCode(employee)}`,
           `agreement=${employee.review.agreement === 'Ja' ? 'JA' : employee.review.agreement === 'Nein' ? 'NEIN' : ''}`,
           `handwritten_scan_required=${requiresHandwrittenScan(employee) ? 'JA' : 'NEIN'}`,

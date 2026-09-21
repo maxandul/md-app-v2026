@@ -83,6 +83,13 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
             connection.execute(
                 f"ALTER TABLE cycles ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
             )
+    event_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(dialog_events)").fetchall()
+    }
+    if "dialog_date" not in event_columns:
+        connection.execute(
+            "ALTER TABLE dialog_events ADD COLUMN dialog_date TEXT NOT NULL DEFAULT ''"
+        )
     document_columns = {
         row["name"]
         for row in connection.execute("PRAGMA table_info(official_documents)").fetchall()

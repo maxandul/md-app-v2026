@@ -47,6 +47,7 @@ def cockpit_overview(
         "dossier_ready": 0,
         "master_data_issues": 0,
         "mail_review_required": 0,
+        "sap_exports_pending": 0,
     }
     tasks: list[dict] = []
 
@@ -109,6 +110,39 @@ def cockpit_overview(
 
     if selected_cycle:
         cycle_id = selected_cycle["id"]
+        metrics["sap_exports_pending"] = connection.execute(
+            """
+            SELECT COUNT(DISTINCT de.id) AS count
+            FROM dialog_cases dc
+            JOIN dialog_events de ON de.legacy_case_id = dc.case_id
+            WHERE dc.cycle_id = ? AND dc.status = 'vollstaendig'
+              AND COALESCE(
+                  NULLIF(dc.official_scope, ''),
+                  CASE WHEN json_valid(dc.data_json)
+                       THEN json_extract(dc.data_json, '$.scope') END,
+                  ''
+              ) IN ('full', 'review_only')
+              AND de.sap_leading = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM sap_export_rows ser WHERE ser.dialog_event_id = de.id
+              )
+            """,
+            (cycle_id,),
+        ).fetchone()["count"]
+        if metrics["sap_exports_pending"]:
+            tasks.append(
+                {
+                    "priority": "mittel",
+                    "priority_rank": 4,
+                    "kind": "SAP-Export",
+                    "title": "Massenupload erstellen",
+                    "subject": f"{metrics['sap_exports_pending']} neue Datensätze",
+                    "context": "Noch nicht exportierte Rückblicke",
+                    "date": selected_cycle["created_at"],
+                    "target": "sap_export",
+                    "cycle_id": cycle_id,
+                }
+            )
         metrics["cases_open"] = connection.execute(
             """
             SELECT COUNT(*) AS count

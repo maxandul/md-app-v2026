@@ -61,7 +61,8 @@ Anmeldung und Outlook-Verarbeitung.
 - Nachverfolgung und Import erforderlicher handschriftlicher Scans
 - Bereitstellung des massgebenden Dokuments im Übergabeordner für die
   Personaldossier-Ablage
-- grundlegender SAP-Massenupload mit Begrenzung auf Ein- und Austrittsdatum
+- protokollierte SAP-Exportbatches mit Quellversion und Datensatz-Snapshots;
+  bereits exportierte Dialogereignisse werden nicht erneut ausgegeben
 
 ### Arbeitsmappe
 
@@ -121,13 +122,12 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 
 ### Nächste Schritte
 
-1. SAP-Exportbatches gegen Doppelverarbeitung absichern
-2. drei Muss-Auswertungen und tabellarische Exporte umsetzen
-3. Audit, Backup/Restore und Betriebskonzept vervollständigen
+1. drei Muss-Auswertungen und tabellarische Exporte umsetzen
+2. Audit, Backup/Restore und Betriebskonzept vervollständigen
 
 ## Empfohlener Einstieg für die nächste Sitzung
 
-Als Nächstes die SAP-Exportbatches gegen Doppelverarbeitung absichern. Die
+Als Nächstes die drei Muss-Auswertungen und tabellarischen Exporte umsetzen. Die
 vorbereiteten Outlook-Funktionen werden parallel im Büro mit dem produktiven
 HR-Postfach, den Zertifikaten und der konkreten klassischen Outlook-Version geprüft.
 

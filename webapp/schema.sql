@@ -382,6 +382,43 @@ CREATE TABLE IF NOT EXISTS document_obligations (
 CREATE INDEX IF NOT EXISTS idx_document_obligations_due
     ON document_obligations (status, due_date, document_kind);
 
+CREATE TABLE IF NOT EXISTS sap_export_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL UNIQUE,
+    row_count INTEGER NOT NULL CHECK (row_count > 0),
+    status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created')),
+    user_id INTEGER REFERENCES app_users(id),
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sap_export_batches_cycle
+    ON sap_export_batches (cycle_id, created_at);
+
+CREATE TABLE IF NOT EXISTS sap_export_rows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id INTEGER NOT NULL REFERENCES sap_export_batches(id) ON DELETE CASCADE,
+    dialog_event_id INTEGER NOT NULL REFERENCES dialog_events(id),
+    case_id TEXT NOT NULL REFERENCES dialog_cases(case_id),
+    source_document_id INTEGER REFERENCES official_documents(id),
+    source_version TEXT NOT NULL,
+    employee_pn TEXT NOT NULL,
+    employment_assignment TEXT NOT NULL,
+    assessment_type INTEGER NOT NULL DEFAULT 1 CHECK (assessment_type = 1),
+    it9075_start TEXT NOT NULL,
+    it9075_end TEXT NOT NULL,
+    dialog_date TEXT NOT NULL,
+    assessment_period_start TEXT NOT NULL,
+    assessment_period_end TEXT NOT NULL,
+    overall_rating TEXT NOT NULL CHECK (overall_rating IN ('A', 'B', 'C', 'D', 'E')),
+    UNIQUE (dialog_event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sap_export_rows_batch
+    ON sap_export_rows (batch_id, employee_pn);
+
 CREATE TABLE IF NOT EXISTS deadline_changes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,

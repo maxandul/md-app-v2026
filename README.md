@@ -27,8 +27,9 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
   unterzeichneten Scan nachverfolgen
 - nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen
-- SAP-Massenupload aus abgeschlossenen Rückblicken erzeugen; der Zeitraum wird
-  auf Eintritts- und Austrittsdatum begrenzt
+- protokollierte SAP-Exportbatches aus abgeschlossenen Rückblicken erzeugen;
+  Doppelverarbeitung wird verhindert und der Zeitraum auf Eintritts- und
+  Austrittsdatum begrenzt
 
 ## Lokal unter Windows starten
 

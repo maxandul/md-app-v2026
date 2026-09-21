@@ -872,6 +872,12 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()
             set_leading_sap_event(connection, event["id"])
             connection.commit()
+            self.assertEqual(
+                cockpit_overview(connection, selected_cycle_id=cycle_id)["metrics"][
+                    "sap_exports_pending"
+                ],
+                1,
+            )
             path = create_sap_upload_file(
                 connection,
                 cycle_id=cycle_id,
@@ -892,6 +898,47 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(worksheet["H2"].value.date().isoformat(), "2025-10-31")
             self.assertEqual(worksheet["I2"].value, "D")
             self.assertTrue(all(worksheet.cell(2, column).value is None for column in range(10, 15)))
+
+            batch = connection.execute(
+                "SELECT * FROM sap_export_batches WHERE cycle_id = ?", (cycle_id,)
+            ).fetchone()
+            self.assertIsNotNone(batch)
+            self.assertEqual(batch["row_count"], 1)
+            self.assertEqual(batch["filename"], path.name)
+            exported_row = connection.execute(
+                "SELECT * FROM sap_export_rows WHERE batch_id = ?", (batch["id"],)
+            ).fetchone()
+            self.assertEqual(exported_row["employee_pn"], "111112")
+            self.assertEqual(exported_row["overall_rating"], "D")
+            self.assertTrue(exported_row["source_version"])
+            self.assertEqual(
+                cockpit_overview(connection, selected_cycle_id=cycle_id)["metrics"][
+                    "sap_exports_pending"
+                ],
+                0,
+            )
+
+            with self.assertRaisesRegex(ValueError, "keine neuen"):
+                create_sap_upload_file(
+                    connection,
+                    cycle_id=cycle_id,
+                    template_path=PROJECT_ROOT / "templates" / "massenupload.xlsx",
+                    output_dir=Path(temp),
+                    created_at=datetime(2026, 2, 2, 10, 31, tzinfo=timezone.utc),
+                )
+
+            response = self.client.post(
+                f"/sap-export-batches/{batch['id']}/download"
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(
+                path.name,
+                response.headers["Content-Disposition"],
+            )
+            response.close()
+            page = self.client.get("/sap-export").get_data(as_text=True)
+            self.assertIn("Schutz vor Doppelverarbeitung", page)
+            self.assertIn(path.name, page)
 
     def test_pdf_only_return_is_read_and_staged_for_dossier_handoff(self) -> None:
         cycle_id = self._prepare_cycle()

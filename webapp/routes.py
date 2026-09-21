@@ -52,7 +52,11 @@ from .services.documents import (
     inspect_pdf,
 )
 from .services.sap_import import import_sap_workbook
-from .services.sap_export import create_sap_upload_file
+from .services.sap_export import (
+    create_sap_upload_batch,
+    get_sap_export_batch,
+    sap_export_batches,
+)
 from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from .services.mail_intake import mail_inbox_overview, scan_outlook_inbox
 from .services.case_review import case_review_detail, correct_case_data
@@ -356,10 +360,12 @@ def returns_overview():
 
 @bp.get("/sap-export")
 def sap_exports():
+    connection = get_db()
     return render_template(
         "sap_exports.html",
         active_nav="sap_export",
-        **dashboard_data(get_db()),
+        export_batches=sap_export_batches(connection),
+        **dashboard_data(connection),
     )
 
 
@@ -471,7 +477,9 @@ def cycle_detail(cycle_id: int):
         item["package_blocking"] = state["blocking"]
         manager_rows.append(item)
     return render_template(
-        "cycle.html", cycle=cycle, managers=manager_rows, active_nav="dialogs"
+        "cycle.html", cycle=cycle, managers=manager_rows,
+        export_batches=sap_export_batches(get_db(), cycle_id=cycle_id),
+        active_nav="dialogs"
     )
 
 
@@ -581,19 +589,42 @@ def replace_case_pdf(cycle_id: int, case_id: str):
 @bp.post("/cycles/<int:cycle_id>/sap-export")
 def download_sap_export(cycle_id: int):
     try:
-        path = create_sap_upload_file(
+        batch = create_sap_upload_batch(
             get_db(),
             cycle_id=cycle_id,
             template_path=Path(current_app.root_path).parent / "templates" / "massenupload.xlsx",
             output_dir=_storage_dir("sap_exports"),
+            user_id=g.user["id"] if g.user else None,
         )
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
-        return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
+        return redirect(request.referrer or url_for("main.sap_exports"))
+    audit(
+        "sap_export_batch_created", "sap_export_batch", str(batch["id"]),
+        cycle_id=cycle_id, row_count=batch["row_count"], sha256=batch["sha256"],
+    )
     return send_file(
-        path,
+        batch["path"],
         as_attachment=True,
-        download_name=path.name,
+        download_name=batch["filename"],
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@bp.post("/sap-export-batches/<int:batch_id>/download")
+def download_existing_sap_export(batch_id: int):
+    try:
+        batch = get_sap_export_batch(get_db(), batch_id)
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.sap_exports"))
+    audit(
+        "sap_export_batch_downloaded", "sap_export_batch", str(batch_id),
+        cycle_id=batch["cycle_id"], sha256=batch["sha256"],
+    )
+    return send_file(
+        Path(batch["stored_path"]), as_attachment=True,
+        download_name=batch["filename"],
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 

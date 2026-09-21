@@ -54,6 +54,7 @@
       <a class="metric-card{% if metrics.scans_pending %} metric-card--critical{% endif %}" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#pruefen"><span class="metric-card__value">{{ metrics.scans_pending }}</span><span class="metric-card__label">Scans ausstehend</span><span class="metric-card__detail">Bei D/E oder Uneinigkeit</span></a>
       <a class="metric-card{% if metrics.mail_review_required %} metric-card--attention{% endif %}" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#postfach"><span class="metric-card__value">{{ metrics.mail_review_required }}</span><span class="metric-card__label">E-Mails prüfen</span><span class="metric-card__detail">Probezeit oder Zusatzdateien</span></a>
       <a class="metric-card{% if metrics.master_data_issues %} metric-card--critical{% endif %}" href="{{ url_for('main.master_data') }}#importe"><span class="metric-card__value">{{ metrics.master_data_issues }}</span><span class="metric-card__label">Stammdaten prüfen</span><span class="metric-card__detail">Konflikte und Warnungen</span></a>
+      <a class="metric-card{% if metrics.sap_exports_pending %} metric-card--attention{% endif %}" href="{{ url_for('main.sap_exports') }}"><span class="metric-card__value">{{ metrics.sap_exports_pending }}</span><span class="metric-card__label">SAP-exportbereit</span><span class="metric-card__detail">Noch nie exportierte Rückblicke</span></a>
     </section>
 
     <section class="content-section" id="aufgaben" aria-labelledby="tasks-title">
@@ -69,7 +70,7 @@
               <div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }}{% if task.context %} · {{ task.context }}{% endif %}</p></div>
               <div class="task-row__date"><span class="context-label">Seit</span>{{ task.date }}</div>
               <div>
-                {% if task.target == 'import' %}<a class="button button--small" href="{{ url_for('main.import_detail', import_id=task.import_id) }}">Prüfen</a>{% elif task.target == 'dialogs' %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=task.cycle_id) }}#events-title">Anzeigen</a>{% elif task.target == 'mail' %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#postfach">Prüfen</a>{% else %}<a class="button button--small" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Bearbeiten</a>{% endif %}
+                {% if task.target == 'import' %}<a class="button button--small" href="{{ url_for('main.import_detail', import_id=task.import_id) }}">Prüfen</a>{% elif task.target == 'dialogs' %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=task.cycle_id) }}#events-title">Anzeigen</a>{% elif task.target == 'mail' %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id) }}#postfach">Prüfen</a>{% elif task.target == 'sap_export' %}<a class="button button--small" href="{{ url_for('main.sap_exports') }}">Exportieren</a>{% else %}<a class="button button--small" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Bearbeiten</a>{% endif %}
               </div>
             </article>
           {% endfor %}

@@ -147,6 +147,13 @@ Für den vorläufigen Gültigkeitszeitraum gilt:
 - fehlt das Eintrittsdatum oder `Ans.`, wird der Export für den Fall blockiert
 - liegt kein Tag des Rückblickjahres innerhalb der Anstellung, wird der Fall blockiert
 
+Jede erzeugte Datei wird als Exportbatch mit Prüfsumme, Erstellungszeitpunkt,
+ausführender HR-Person und den enthaltenen Datensatz-Snapshots protokolliert.
+Ein führendes Dialogereignis kann nur einem Batch zugeordnet werden. Bereits
+exportierte Zeilen erscheinen deshalb nicht in späteren Batches; die bestehende
+Datei bleibt erneut herunterladbar. Nachträgliche Korrekturen werden bis zur
+Klärung des SAP-Zielprozesses nicht automatisch erneut exportiert.
+
 Sobald das technische SAP-Anstellungsdatum beziehungsweise dessen Gültigkeitslogik
 geklärt ist, wird diese Regel an einer zentralen Stelle ergänzt.
 

@@ -17,10 +17,11 @@
     <div class="section-heading">
       <div><p class="kicker">SAP</p><h2 id="sap-export-title">Massenupload erzeugen</h2></div>
     </div>
-    <p>Der Export enthält ausschliesslich abgeschlossene Rückblicke. Zeitraum und IT9075-Gültigkeit werden automatisch auf Rückblickjahr sowie Ein- und Austrittsdatum begrenzt.</p>
+    <p>Der Export enthält ausschliesslich abgeschlossene, noch nicht exportierte Rückblicke. Zeitraum und IT9075-Gültigkeit werden automatisch auf Rückblickjahr sowie Ein- und Austrittsdatum begrenzt.</p>
     <form action="{{ url_for('main.download_sap_export', cycle_id=cycle.id) }}" method="post">
-      <button class="button button--primary" type="submit">SAP-Massenupload herunterladen</button>
+      <button class="button button--primary" type="submit">Neuen SAP-Exportbatch erstellen</button>
     </form>
+    {% if export_batches %}<div class="table-wrap"><table><thead><tr><th>Bestehender Batch</th><th>Datensätze</th><th>Prüfsumme</th><th></th></tr></thead><tbody>{% for batch in export_batches %}<tr><td>{{ batch.created_at }}<br><span class="muted">{{ batch.filename }}</span></td><td>{{ batch.row_count }}</td><td><code>{{ batch.sha256[:12] }}…</code></td><td><form action="{{ url_for('main.download_existing_sap_export', batch_id=batch.id) }}" method="post"><button class="button button--small" type="submit">Erneut herunterladen</button></form></td></tr>{% endfor %}</tbody></table></div>{% endif %}
   </section>
 
   <section class="content-section" aria-labelledby="managers-title">

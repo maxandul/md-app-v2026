@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
+import uuid
 from copy import copy
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -45,6 +47,10 @@ class SapUploadRow:
     assessment_period_start: date
     assessment_period_end: date
     overall_rating: str
+    dialog_event_id: int = 0
+    case_id: str = ""
+    source_document_id: int | None = None
+    source_version: str = ""
 
     def as_excel_row(self) -> list[Any]:
         return [
@@ -102,12 +108,29 @@ def collect_sap_upload_rows(
                dc.dialog_date, dc.overall_rating_code,
                e.entry_date, e.exit_date,
                COALESCE(NULLIF(dc.employment_assignment, ''), NULLIF(e.employment_assignment, ''), '1') AS employment_assignment,
-               COALESCE(de.sap_leading, 0) AS sap_leading
+               de.id AS dialog_event_id, COALESCE(de.sap_leading, 0) AS sap_leading,
+               (
+                   SELECT od.id FROM official_documents od
+                   WHERE od.case_id = dc.case_id AND od.document_kind = 'review'
+                     AND od.is_current = 1
+                   ORDER BY CASE od.variant WHEN 'digital' THEN 0 ELSE 1 END, od.id DESC
+                   LIMIT 1
+               ) AS source_document_id,
+               (
+                   SELECT od.sha256 FROM official_documents od
+                   WHERE od.case_id = dc.case_id AND od.document_kind = 'review'
+                     AND od.is_current = 1
+                   ORDER BY CASE od.variant WHEN 'digital' THEN 0 ELSE 1 END, od.id DESC
+                   LIMIT 1
+               ) AS source_document_sha
         FROM dialog_cases dc
         JOIN employees e ON e.pn = dc.employee_pn
         LEFT JOIN dialog_events de ON de.legacy_case_id = dc.case_id
         WHERE dc.cycle_id = ?
           AND dc.status = 'vollstaendig'
+          AND NOT EXISTS (
+              SELECT 1 FROM sap_export_rows ser WHERE ser.dialog_event_id = de.id
+          )
         ORDER BY CAST(dc.employee_pn AS INTEGER), dc.employee_pn, dc.manager_pn
         """,
         (cycle_id,),
@@ -163,6 +186,23 @@ def collect_sap_upload_rows(
         dialog_date = case["dialog_date"] or payload.get("dialog_date")
         overall_rating = case["overall_rating_code"] or review.get("overall_rating")
 
+        source_version = case["source_document_sha"] or hashlib.sha256(
+            json.dumps(
+                {
+                    "case_id": case["case_id"],
+                    "source_document_sha": case["source_document_sha"] or "",
+                    "data_json": case["data_json"],
+                    "official_scope": case["official_scope"],
+                    "employment_assignment": assignment,
+                    "dialog_date": dialog_date,
+                    "overall_rating": overall_rating,
+                    "period_start": period_start.isoformat(),
+                    "period_end": period_end.isoformat(),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
         rows.append(
             SapUploadRow(
                 personal_number=_required_integer(pn, "Personalnummer", pn),
@@ -174,11 +214,15 @@ def collect_sap_upload_rows(
                 assessment_period_start=period_start,
                 assessment_period_end=period_end,
                 overall_rating=_rating_code(overall_rating, pn),
+                dialog_event_id=int(case["dialog_event_id"]),
+                case_id=case["case_id"],
+                source_document_id=case["source_document_id"],
+                source_version=source_version,
             )
         )
 
     if not rows:
-        raise ValueError("Es gibt noch keine abgeschlossenen SAP-relevanten Rückblicke.")
+        raise ValueError("Es gibt keine neuen, noch nicht exportierten SAP-relevanten Rückblicke.")
     return rows
 
 
@@ -231,13 +275,109 @@ def create_sap_upload_file(
     output_dir: Path,
     created_at: datetime | None = None,
 ) -> Path:
+    return create_sap_upload_batch(
+        connection,
+        cycle_id=cycle_id,
+        template_path=template_path,
+        output_dir=output_dir,
+        created_at=created_at,
+    )["path"]
+
+
+def create_sap_upload_batch(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    template_path: Path,
+    output_dir: Path,
+    user_id: int | None = None,
+    created_at: datetime | None = None,
+) -> dict[str, Any]:
     cycle = connection.execute(
         "SELECT review_year FROM cycles WHERE id = ?", (cycle_id,)
     ).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
-    timestamp = (created_at or datetime.now().astimezone()).strftime("%Y%m%d_%H%M%S")
-    output_path = output_dir / f"SAP_Massenupload_MD_{cycle['review_year']}_{timestamp}.xlsx"
-    return write_sap_upload(
-        collect_sap_upload_rows(connection, cycle_id), template_path, output_path
+    created = created_at or datetime.now().astimezone()
+    timestamp = created.strftime("%Y%m%d_%H%M%S")
+    token = uuid.uuid4().hex[:8]
+    output_path = output_dir / (
+        f"SAP_Massenupload_MD_{cycle['review_year']}_{timestamp}_{token}.xlsx"
     )
+    rows = collect_sap_upload_rows(connection, cycle_id)
+    write_sap_upload(rows, template_path, output_path)
+    file_hash = hashlib.sha256(output_path.read_bytes()).hexdigest()
+    try:
+        cursor = connection.execute(
+            """
+            INSERT INTO sap_export_batches (
+                cycle_id, filename, stored_path, sha256, row_count, user_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                cycle_id, output_path.name, str(output_path), file_hash, len(rows), user_id,
+                created.isoformat(timespec="seconds"),
+            ),
+        )
+        batch_id = cursor.lastrowid
+        for row in rows:
+            connection.execute(
+                """
+                INSERT INTO sap_export_rows (
+                    batch_id, dialog_event_id, case_id, source_document_id,
+                    source_version, employee_pn, employment_assignment,
+                    assessment_type, it9075_start, it9075_end, dialog_date,
+                    assessment_period_start, assessment_period_end, overall_rating
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    batch_id, row.dialog_event_id, row.case_id, row.source_document_id,
+                    row.source_version, str(row.personal_number),
+                    str(row.employment_assignment), row.assessment_type,
+                    row.it9075_start.isoformat(), row.it9075_end.isoformat(),
+                    row.dialog_date.isoformat(), row.assessment_period_start.isoformat(),
+                    row.assessment_period_end.isoformat(), row.overall_rating,
+                ),
+            )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        output_path.unlink(missing_ok=True)
+        raise
+    return {
+        "id": batch_id,
+        "path": output_path,
+        "filename": output_path.name,
+        "sha256": file_hash,
+        "row_count": len(rows),
+    }
+
+
+def sap_export_batches(
+    connection: sqlite3.Connection, *, cycle_id: int | None = None
+) -> list[sqlite3.Row]:
+    where = "WHERE seb.cycle_id = ?" if cycle_id is not None else ""
+    params = (cycle_id,) if cycle_id is not None else ()
+    return connection.execute(
+        f"""
+        SELECT seb.*, c.review_year, c.outlook_year,
+               COALESCE(u.email, 'System/Testbetrieb') AS user_email
+        FROM sap_export_batches seb
+        JOIN cycles c ON c.id = seb.cycle_id
+        LEFT JOIN app_users u ON u.id = seb.user_id
+        {where}
+        ORDER BY seb.created_at DESC, seb.id DESC
+        """,
+        params,
+    ).fetchall()
+
+
+def get_sap_export_batch(connection: sqlite3.Connection, batch_id: int) -> sqlite3.Row:
+    row = connection.execute(
+        "SELECT * FROM sap_export_batches WHERE id = ?", (batch_id,)
+    ).fetchone()
+    if not row:
+        raise LookupError("SAP-Exportbatch nicht gefunden.")
+    if not Path(row["stored_path"]).is_file():
+        raise ValueError("Die Datei dieses Exportbatches wurde lokal nicht gefunden.")
+    return row

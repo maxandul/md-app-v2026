@@ -8,8 +8,10 @@ Ablage. Produktive Daten bleiben ausschliesslich auf dem verwalteten HR-Gerät.
 
 ## 1. Teststand vorbereiten
 
-1. Den aktuellen Stand von `main` beziehen und die Python-Umgebung aktualisieren.
+1. Den aktuellen Stand von `main` beziehen und einmalig `INSTALL_MD.bat`
+   ausführen. Für den Produktivstarter wird keine virtuelle Umgebung benötigt.
 2. Prüfen, dass die Anwendung nur unter `127.0.0.1:5050` erreichbar ist.
+   Das parallel laufende ABW-Tool muss einen anderen Port verwenden.
 3. Ein persönliches Systemadministrationskonto anlegen.
 4. Unter **Administration** ein Backup erstellen und auf einem genehmigten,
    verschlüsselten Medium ablegen.
@@ -116,4 +118,3 @@ Den Restore ausschliesslich mit einer Testkopie durchführen:
 Für jede Abweichung mindestens Bildschirm, betroffene Personalnummer,
 Anstellungsnummer, erwartetes Ergebnis und tatsächliches Ergebnis notieren. Keine
 produktiven Dateien oder Personendaten in GitHub oder ungeschützte Kanäle laden.
-

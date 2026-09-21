@@ -12,6 +12,13 @@ Personaldaten. Sie läuft auf einem verwalteten Windows-HR-Gerät und bindet nur
 Ablegen in einem nicht genehmigten Cloud-Speicher ist nicht Bestandteil dieses
 Betriebsmodells.
 
+Die produktive App verwendet das über das AFI Service Portal bereitgestellte
+System-Python ohne virtuelle Umgebung. Die festgelegten Pakete werden einmalig
+für das aktuelle Windows-Konto installiert. Sie kann parallel zum ABW-Tool auf
+demselben Gerät betrieben werden. Beide Anwendungen müssen unterschiedliche
+Ports sowie vollständig getrennte Daten-, Konfigurations- und Logverzeichnisse
+verwenden; für die MD-App ist `127.0.0.1:5050` vorgesehen.
+
 Die Anwendung umfasst die SQLite-Datenbank, alle Dateien unter `instance/data`,
 den konfigurierten Dossier-Übergabeordner sowie lokale Backups. Outlook und die
 nachgelagerte Dossier-RPA bleiben eigenständige Systeme.
@@ -129,4 +136,3 @@ Arbeitstag (RPO) und ein Wiederanlauf innerhalb von vier Arbeitsstunden (RTO).
 - [ ] RPO, RTO, Backup-Rotation, Aufbewahrung und Löschung freigegeben
 - [ ] Incident- und Stellvertretungsweg bekannt
 - [ ] keine echten Personaldaten im Git-Repository vorhanden
-

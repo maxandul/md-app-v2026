@@ -57,6 +57,7 @@ Wichtige Statuswerte:
 |---|---|
 | `matched` | Person und Anstellung sind eindeutig; Import ist möglich. |
 | `already_imported` | Identischer Dateiinhalt wurde bereits übernommen. |
+| `duplicate_in_batch` | Identischer Dateiinhalt kommt im aktuellen Ordner mehrfach vor; nur die erste Datei wird berücksichtigt. |
 | `ambiguous_assignment` | Mehrere aktive Anstellungen, aber keine Anstellungsnummer im Formular; manuell klären. |
 | `assignment_not_found` | Formular und aktueller SAP-Stand enthalten unterschiedliche Anstellungsnummern. |
 | `person_not_active` | Personalnummer ist im aktuellen SAP-Stand nicht aktiv. |
@@ -74,6 +75,12 @@ python import_legacy_forms.py "K:\Pfad\zu\den\Formularen" `
   --report "K:\Geschuetzter_Pfad\MD_Vorjahresimport_Ergebnis.json" `
   --apply
 ```
+
+Der Import ist fehlertolerant: Nur Dateien mit Status `matched` werden
+übernommen. Dubletten, Rückblicke, leere beziehungsweise nicht auslesbare
+Formulare sowie nicht eindeutig zuordenbare Fälle werden im Bericht ausgewiesen
+und automatisch übersprungen. Identische Kopien müssen nicht vorgängig manuell
+bereinigt werden.
 
 Der Import übernimmt Leistungs- und Entwicklungsziele, Messkriterien, Schritte,
 Termine und die zugehörige Kompetenz. Er ist anhand der Datei-Prüfsumme

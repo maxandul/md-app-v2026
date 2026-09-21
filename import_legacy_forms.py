@@ -60,6 +60,7 @@ def main() -> None:
                     "assignment_number": item["assignment_number"],
                     "resolved_assignment": item["resolved_assignment"],
                     "status": item["status"],
+                    "duplicate_of": item.get("duplicate_of", ""),
                     "performance_goals": len(item["performance_goals"]),
                     "development_goals": len(item["development_goals"]),
                     "error": item["error"],

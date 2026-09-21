@@ -280,6 +280,50 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             self.assertEqual(repeated["counts"], {"already_imported": 1})
 
+    def test_legacy_import_skips_identical_files_within_same_batch(self) -> None:
+        cycle_id = self._prepare_cycle()
+        forms_root = Path(self.temp_dir.name) / "legacy_duplicates"
+        forms_root.mkdir()
+        duplicate_root = forms_root / "test"
+        duplicate_root.mkdir()
+        with self.app.app_context():
+            connection = get_db()
+            case = connection.execute(
+                """
+                SELECT employee_pn FROM dialog_cases
+                WHERE cycle_id = ? ORDER BY id LIMIT 1
+                """,
+                (cycle_id,),
+            ).fetchone()
+            original = forms_root / "Ausblick_Original.docx"
+            write_legacy_docx(
+                original,
+                [("ab_pn", case["employee_pn"]), ("ab_ziel", "Einmal importieren")],
+            )
+            duplicate = duplicate_root / "Ausblick_Kopie.docx"
+            duplicate.write_bytes(original.read_bytes())
+
+            preview = scan_legacy_forms(
+                connection, forms_root=forms_root, goal_year=2025
+            )
+            self.assertEqual(
+                preview["counts"], {"matched": 1, "duplicate_in_batch": 1}
+            )
+            duplicate_item = next(
+                item for item in preview["items"]
+                if item["status"] == "duplicate_in_batch"
+            )
+            self.assertEqual(duplicate_item["duplicate_of"], "Ausblick_Original.docx")
+
+            imported = import_legacy_forms(
+                connection, forms_root=forms_root, goal_year=2025
+            )
+            self.assertEqual(imported["imported"], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM legacy_form_imports").fetchone()[0],
+                1,
+            )
+
     def test_main_navigation_and_module_pages(self) -> None:
         self._prepare_cycle()
         pages = {

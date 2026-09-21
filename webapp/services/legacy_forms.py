@@ -235,6 +235,7 @@ def scan_legacy_forms(
         and not path.name.startswith("~$")
     )
     items = []
+    seen_hashes: dict[str, str] = {}
     for path in paths:
         try:
             item = parse_legacy_form(path)
@@ -243,6 +244,9 @@ def scan_legacy_forms(
             ).fetchone()
             if existing:
                 status, resolved_assignment = "already_imported", ""
+            elif item["sha256"] in seen_hashes:
+                status, resolved_assignment = "duplicate_in_batch", ""
+                item["duplicate_of"] = seen_hashes[item["sha256"]]
             elif item["document_type"] != "outlook":
                 status, resolved_assignment = "not_outlook", ""
             elif not item["performance_goals"] and not item["development_goals"]:
@@ -253,6 +257,8 @@ def scan_legacy_forms(
                     employee_pn=item["employee_pn"],
                     assignment_number=item["assignment_number"],
                 )
+            seen_hashes.setdefault(item["sha256"], item["filename"])
+            item.setdefault("duplicate_of", "")
             item.update(status=status, resolved_assignment=resolved_assignment, error="")
         except (OSError, ValueError) as exc:
             item = {
@@ -260,7 +266,7 @@ def scan_legacy_forms(
                 "document_type": "unknown", "employee_pn": "",
                 "assignment_number": "", "performance_goals": [],
                 "development_goals": [], "status": "read_error",
-                "resolved_assignment": "", "error": str(exc),
+                "resolved_assignment": "", "duplicate_of": "", "error": str(exc),
             }
         items.append(item)
     counts: dict[str, int] = {}

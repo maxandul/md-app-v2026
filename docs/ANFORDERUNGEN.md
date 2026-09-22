@@ -130,8 +130,9 @@ flowchart TD
 | MAP-015 | MUSS | Die vorgesetzte Person kann pro Fall eine eigenständige, personalisierte Offline-HTML-Datei «Vorbereitung MA» erzeugen und beispielsweise mit der Gesprächseinladung an die mitarbeitende Person senden. Die Datei enthält keine Eingaben aus der Arbeitsmappe der vorgesetzten Person. |
 | MAP-016 | MUSS | Der Inhalt der Vorbereitung richtet sich nach dem Fallumfang: Bei Rückblick und Ausblick sind Rückblickreflexion, Ausblickvorbereitung und Feedback enthalten; bei nur Rückblick Rückblickreflexion und Feedback; bei nur Ausblick ausschliesslich die Ausblickvorbereitung. Ohne Rückblick wird kein Feedback angeboten. |
 | MAP-017 | MUSS | Die Vorbereitung erzeugt zwei getrennte Ausgaben: eine private Gesprächsvorbereitung und, sofern ein Rückblick stattfindet, ein separates Feedback-PDF. Die private Vorbereitung wird nicht automatisch an die vorgesetzte Person oder HR übermittelt. |
+| MAP-018 | MUSS | HR kann eine bereits erzeugte START-Datei unverändert erneut herunterladen. Die App prüft dabei die gespeicherte Datei gegen ihre Prüfsumme und legt keinen zweiten Versanddatensatz an. |
 
-Umsetzungsstand: MAP-001 bis MAP-013 sowie MAP-015 bis MAP-017 sind für reguläre und eindeutig verknüpfbare
+Umsetzungsstand: MAP-001 bis MAP-013 sowie MAP-015 bis MAP-018 sind für reguläre und eindeutig verknüpfbare
 manuelle Fälle umgesetzt. Bei lokal bereits bearbeiteten Beurteilungszeiträumen zeigt
 die Update-Vorschau den Konflikt an und bewahrt den lokalen Wert. Die weitergehende
 feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.

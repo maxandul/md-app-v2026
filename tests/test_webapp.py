@@ -466,6 +466,46 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "current",
             )
 
+    def test_existing_start_file_can_be_downloaded_again_without_new_event(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            path, _payload = create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
+            )
+            expected = path.read_bytes()
+            event_count = connection.execute(
+                "SELECT COUNT(*) AS count FROM package_events"
+            ).fetchone()["count"]
+
+        page = self.client.get(f"/versand?cycle_id={cycle_id}")
+        self.assertIn("START erneut", page.get_data(as_text=True))
+        response = self.client.post(
+            f"/cycles/{cycle_id}/managers/111116/package/redownload"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "text/html")
+        self.assertEqual(response.data, expected)
+        response.close()
+
+        with self.app.app_context():
+            connection = get_db()
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) AS count FROM package_events"
+                ).fetchone()["count"],
+                event_count,
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT action FROM audit_log ORDER BY id DESC LIMIT 1"
+                ).fetchone()["action"],
+                "manager_package_redownloaded",
+            )
+
     def test_package_prefills_required_scope_and_all_secondary_permissions(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context():

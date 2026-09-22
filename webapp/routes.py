@@ -47,6 +47,7 @@ from .services.packages import (
     create_package_batch,
     create_package_file,
     create_update_file,
+    existing_start_file,
     import_returned_package,
     manager_package_state,
 )
@@ -905,6 +906,27 @@ def download_manager_package(cycle_id: int, manager_pn: str):
     )
     response.headers["X-MD-Package-ID"] = payload["package"]["package_id"]
     return response
+
+
+@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/package/redownload")
+def redownload_manager_package(cycle_id: int, manager_pn: str):
+    try:
+        path, event = existing_start_file(
+            get_db(), cycle_id=cycle_id, manager_pn=manager_pn
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(request.referrer or url_for("main.dispatch", cycle_id=cycle_id))
+    audit(
+        "manager_package_redownloaded", "package", event["package_id"],
+        cycle_id=cycle_id, manager_pn=manager_pn, sha256=event["sha256"],
+    )
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=event["filename"],
+        mimetype="text/html; charset=utf-8",
+    )
 
 
 @bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/update")

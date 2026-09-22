@@ -403,6 +403,29 @@ def _latest_outbound_event(
     ).fetchone()
 
 
+def existing_start_file(
+    connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
+) -> tuple[Path, sqlite3.Row]:
+    """Liefert die unveränderte, bereits erzeugte START-Datei erneut aus."""
+    event = _latest_start_event(
+        connection, cycle_id=cycle_id, manager_pn=manager_pn
+    )
+    if not event:
+        raise LookupError("Für diese Führungskraft wurde noch keine START-Datei erzeugt.")
+    path = Path(event["stored_path"] or "")
+    if not path.is_file():
+        raise ValueError(
+            "Die gespeicherte START-Datei ist nicht mehr verfügbar. "
+            "Bitte stelle das System aus einer Sicherung wieder her."
+        )
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != event["sha256"]:
+        raise ValueError(
+            "Die gespeicherte START-Datei stimmt nicht mehr mit ihrer Prüfsumme überein."
+        )
+    return path, event
+
+
 def manager_package_state(
     connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
 ) -> dict[str, Any]:

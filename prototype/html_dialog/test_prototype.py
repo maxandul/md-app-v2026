@@ -154,7 +154,8 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
 
     def test_no_md_can_be_exported_as_administrative_pdf(self) -> None:
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
-        self.assertIn('data-action="print-no-md"', template)
+        self.assertIn('class="button primary" type="button" data-action="print-no-md"', template)
+        self.assertIn('data-action="close-case"', template)
         self.assertIn("isNoMd ? 'KEIN_MD'", template)
         self.assertIn("Sie wird nicht an das Personaldossier übergeben.", template)
         self.assertIn("`scope=${employee.scope || ''}`", template)

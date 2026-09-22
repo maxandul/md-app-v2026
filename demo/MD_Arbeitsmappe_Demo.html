@@ -1259,16 +1259,20 @@
 
       function renderNoMd(employee) {
         const reasonRequired = needsScopeReason(employee);
+        const completion = getCompletion(employee);
         return `
           <section class="section" id="no-md-section">
             <div class="section-head">
               <div><h2 class="section-title">Kein Mitarbeitenden-Dialog</h2><p class="section-intro">${reasonRequired ? 'Damit wird ein gemäss Stammdaten verpflichtender Gesprächsteil weggelassen. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen.' : 'Gemäss Stammdaten ist kein Gespräch verpflichtend. Ein freiwilliger Rückblick oder Ausblick ist trotzdem möglich.'}</p></div>
-              ${reasonRequired ? '<button class="button" type="button" data-action="print-no-md">Bestätigung als PDF</button>' : ''}
             </div>
             ${reasonRequired ? `<div class="form-grid">
               ${field('Grund', 'no_md_reason', employee.no_md_reason, { type:'select', items:state.configuration.no_md_reasons, required:true })}
               ${field('Ergänzende Bemerkung', 'no_md_note', employee.no_md_note, { type:'textarea', full:true, required:employee.no_md_reason === 'Anderer Grund' })}
             </div>` : ''}
+            <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
+              ${reasonRequired ? '<button class="button primary" type="button" data-action="print-no-md">Bestätigung als PDF</button>' : ''}
+              ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete ? '' : 'disabled title="Zuerst alle Pflichtangaben ergänzen"'}>Abschliessen</button>`}
+            </div>
           </section>`;
       }
 

@@ -6,7 +6,7 @@
     {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
   </section>
 
-  <section class="info-box info-box--wide"><h2>START oder Update?</h2><p>Beim ersten Bereitstellen erhält die Führungskraft eine vollständige HTML-Arbeitsmappe. Ändern sich danach Stammdaten oder Dialogpflichten, erzeugt die App eine JSON-Update-Datei. Die Führungskraft liest diese in ihrer zuletzt gespeicherten Arbeitsmappe ein; vorhandene Eingaben bleiben erhalten. Eine verlorene START-Datei kann unverändert erneut heruntergeladen werden. Bereits erzeugte Updates müssen danach wieder eingelesen werden. «Erstellt» bedeutet noch nicht «per E-Mail versendet».</p></section>
+  <section class="info-box info-box--wide"><h2>START oder Update?</h2><p>Beim ersten Bereitstellen erhält die Führungskraft eine vollständige HTML-Arbeitsmappe. Ändern sich danach Stammdaten oder Dialogpflichten, erzeugt die App eine JSON-Update-Datei. Die Führungskraft liest diese in ihrer zuletzt gespeicherten Arbeitsmappe ein; vorhandene Eingaben bleiben erhalten. Wurde die Arbeitsmappe gelöscht, erzeugt «START neu» eine vollständige Ersatzdatei aus dem aktuellen Cockpit-Stand. Frühere Arbeitsmappen und Updates werden dadurch abgelöst. «Erstellt» bedeutet noch nicht «per E-Mail versendet».</p></section>
 
   {% if managers %}
     <form action="{{ url_for('main.download_package_batch', cycle_id=selected_cycle.id) }}" method="post" data-refresh-after-download>
@@ -48,8 +48,8 @@
                 <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">START-Datei</button>
               {% elif manager.package_state == 'update_required' %}
                 <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_update', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">Update-Datei</button>
-                <button class="button button--small" type="submit" formaction="{{ url_for('main.redownload_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">START erneut</button>
-              {% else %}<button class="button button--small" type="submit" formaction="{{ url_for('main.redownload_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">START erneut</button>{% endif %}
+                <button class="button button--small" type="submit" formaction="{{ url_for('main.recreate_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}" data-confirm-recreate>START neu</button>
+              {% else %}<button class="button button--small" type="submit" formaction="{{ url_for('main.recreate_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}" data-confirm-recreate>START neu</button>{% endif %}
             </td>
           </tr>
         {% endfor %}

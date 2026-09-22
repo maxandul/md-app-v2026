@@ -55,6 +55,7 @@ from webapp.services.packages import (
     build_manager_payload,
     create_package_file,
     create_update_file,
+    import_returned_package,
     manager_package_state,
 )
 from webapp.services.sap_export import create_sap_upload_file
@@ -466,45 +467,74 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "current",
             )
 
-    def test_existing_start_file_can_be_downloaded_again_without_new_event(self) -> None:
+    def test_replacement_start_uses_current_state_and_supersedes_old_package(self) -> None:
         cycle_id = self._prepare_cycle()
-        with self.app.app_context():
+        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
-            path, _payload = create_package_file(
+            _path, original_payload = create_package_file(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
                 output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
             )
-            expected = path.read_bytes()
+            original_package_id = original_payload["package"]["package_id"]
             event_count = connection.execute(
                 "SELECT COUNT(*) AS count FROM package_events"
             ).fetchone()["count"]
+            connection.execute(
+                "UPDATE employees SET org_unit = 'abt-aktuell' WHERE pn = '111111'"
+            )
+            connection.commit()
 
         page = self.client.get(f"/versand?cycle_id={cycle_id}")
-        self.assertIn("START erneut", page.get_data(as_text=True))
+        self.assertIn("START neu", page.get_data(as_text=True))
         response = self.client.post(
-            f"/cycles/{cycle_id}/managers/111116/package/redownload"
+            f"/cycles/{cycle_id}/managers/111116/package/recreate"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "text/html")
-        self.assertEqual(response.data, expected)
+        replacement_package_id = response.headers["X-MD-Package-ID"]
+        self.assertNotEqual(replacement_package_id, original_package_id)
+        self.assertIn(b"abt-aktuell", response.data)
         response.close()
 
-        with self.app.app_context():
+        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
             self.assertEqual(
                 connection.execute(
                     "SELECT COUNT(*) AS count FROM package_events"
                 ).fetchone()["count"],
-                event_count,
+                event_count + 1,
             )
             self.assertEqual(
                 connection.execute(
                     "SELECT action FROM audit_log ORDER BY id DESC LIMIT 1"
                 ).fetchone()["action"],
-                "manager_package_redownloaded",
+                "manager_package_recreated",
             )
+            self.assertEqual(
+                manager_package_state(
+                    connection, cycle_id=cycle_id, manager_pn="111116"
+                )["state"],
+                "current",
+            )
+            replacement_candidate = next(
+                item for item in dispatch_candidates(connection, cycle_id=cycle_id)
+                if item["manager_pn"] == "111116"
+            )
+            self.assertEqual(replacement_candidate["package_kind"], "start")
+            self.assertTrue(replacement_candidate["ready"])
+            self.assertIsNone(replacement_candidate["delivery_status"])
+            original_payload["package"]["revision"] = 1
+            original_payload["package"]["saved_at"] = datetime.now().isoformat()
+            old_return = Path(temp) / "alte_arbeitsmappe.html"
+            old_return.write_text(render_html(original_payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "neuere START-Datei ersetzt"):
+                import_returned_package(
+                    connection,
+                    path=old_return,
+                    original_filename=old_return.name,
+                )
 
     def test_package_prefills_required_scope_and_all_secondary_permissions(self) -> None:
         cycle_id = self._prepare_cycle()

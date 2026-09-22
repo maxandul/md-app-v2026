@@ -18,4 +18,12 @@
       }
     });
   });
+
+  document.querySelectorAll('button[data-confirm-recreate]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      if (!window.confirm('Eine neue vollständige START-Datei erzeugen? Frühere Arbeitsmappen und Update-Dateien werden dadurch abgelöst.')) {
+        event.preventDefault();
+      }
+    });
+  });
 })();

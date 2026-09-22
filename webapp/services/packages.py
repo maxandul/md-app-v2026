@@ -403,29 +403,6 @@ def _latest_outbound_event(
     ).fetchone()
 
 
-def existing_start_file(
-    connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
-) -> tuple[Path, sqlite3.Row]:
-    """Liefert die unveränderte, bereits erzeugte START-Datei erneut aus."""
-    event = _latest_start_event(
-        connection, cycle_id=cycle_id, manager_pn=manager_pn
-    )
-    if not event:
-        raise LookupError("Für diese Führungskraft wurde noch keine START-Datei erzeugt.")
-    path = Path(event["stored_path"] or "")
-    if not path.is_file():
-        raise ValueError(
-            "Die gespeicherte START-Datei ist nicht mehr verfügbar. "
-            "Bitte stelle das System aus einer Sicherung wieder her."
-        )
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != event["sha256"]:
-        raise ValueError(
-            "Die gespeicherte START-Datei stimmt nicht mehr mit ihrer Prüfsumme überein."
-        )
-    return path, event
-
-
 def manager_package_state(
     connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
 ) -> dict[str, Any]:
@@ -638,11 +615,17 @@ def create_package_file(
     cycle_id: int,
     manager_pn: str,
     output_dir: Path,
+    replace_existing: bool = False,
 ) -> tuple[Path, dict[str, Any]]:
     readiness = manager_package_state(
         connection, cycle_id=cycle_id, manager_pn=manager_pn
     )
-    if readiness["state"] != "start_missing":
+    if replace_existing and readiness["state"] == "start_missing":
+        raise ValueError(
+            "Für diese Führungskraft besteht noch keine START-Datei. "
+            "Erzeuge zuerst die reguläre START-Datei."
+        )
+    if not replace_existing and readiness["state"] != "start_missing":
         raise ValueError(
             "Für diese Führungskraft besteht bereits eine START-Datei. "
             "Erzeuge bei Änderungen eine Update-Datei."
@@ -686,6 +669,23 @@ def create_package_file(
     return path, payload
 
 
+def create_replacement_package_file(
+    connection: sqlite3.Connection,
+    *,
+    cycle_id: int,
+    manager_pn: str,
+    output_dir: Path,
+) -> tuple[Path, dict[str, Any]]:
+    """Erzeugt eine neue vollständige START-Datei aus dem aktuellen HR-Stand."""
+    return create_package_file(
+        connection,
+        cycle_id=cycle_id,
+        manager_pn=manager_pn,
+        output_dir=output_dir,
+        replace_existing=True,
+    )
+
+
 def import_returned_package(
     connection: sqlite3.Connection,
     *,
@@ -714,6 +714,14 @@ def import_returned_package(
         raise ValueError("Die Paket-ID ist in dieser Datenbank nicht als Versand registriert.")
     if sent["manager_pn"] != str(package["manager_pn"]):
         raise ValueError("Die VG-Personalnummer stimmt nicht mit dem Versandpaket überein.")
+    latest_start = _latest_start_event(
+        connection, cycle_id=sent["cycle_id"], manager_pn=sent["manager_pn"]
+    )
+    if latest_start and latest_start["package_id"] != package["package_id"]:
+        raise ValueError(
+            "Diese Arbeitsmappe wurde durch eine neuere START-Datei ersetzt. "
+            "Bitte verwende ausschliesslich die neu bereitgestellte Arbeitsmappe."
+        )
 
     latest_return = connection.execute(
         """

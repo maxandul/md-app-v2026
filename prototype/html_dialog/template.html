@@ -1376,7 +1376,7 @@
         return `<section class="section">
           <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erzeuge eine eigenständige HTML-Datei und sende sie der mitarbeitenden Person mit der Gesprächseinladung. Eingaben in dieser Datei werden nicht in deine Arbeitsmappe zurückgeschrieben.</p></div></div>
           <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value"><ul style="margin:0;padding-left:20px">${parts.map(part => `<li>${h(part)}</li>`).join('')}</ul></div></div>
-          ${hasReview(employee.scope) ? '<div class="suggestion"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die eingegangenen Feedbacks gesammelt und S/MIME-verschlüsselt an HR. HR fordert fehlende Feedbacks nicht nach.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
+          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die eingegangenen Feedbacks gesammelt und S/MIME-verschlüsselt an HR.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
         </section>`;
       }
@@ -1508,8 +1508,8 @@
         }
         const status = statusFor(employee);
         const person = employee.employee;
-        let selectedStep = selectedStepByCase[employee.case_id] || recommendedStep(employee);
-        if (!workflowSteps(employee).some(step => step.key === selectedStep && step.available)) selectedStep = recommendedStep(employee);
+        let selectedStep = selectedStepByCase[employee.case_id] || 'basics';
+        if (!workflowSteps(employee).some(step => step.key === selectedStep && step.available)) selectedStep = 'basics';
         selectedStepByCase[employee.case_id] = selectedStep;
         let stepContent = '';
         if (selectedStep === 'basics') {
@@ -1544,7 +1544,7 @@
           ${employee.meta.archived ? '<div class="archive-note"><strong>Archivierte Person:</strong> Die vorhandenen Angaben bleiben einsehbar, können aber nicht mehr bearbeitet werden.</div>' : ''}
           ${employee.meta.closed && !employee.meta.archived ? '<div class="archive-note closed-note"><span><strong>Fall abgeschlossen:</strong> Die Angaben sind schreibgeschützt. Du kannst die PDFs weiterhin öffnen.</span><button class="button small" type="button" data-action="reopen-case">Wieder öffnen</button></div>' : ''}
           ${renderWorkflowNav(employee, selectedStep)}
-          ${selectedStep === 'basics' ? '' : '<div id="inline-completion-panel"></div>'}
+          ${selectedStep === 'basics' || selectedStep === 'preparation' ? '' : '<div id="inline-completion-panel"></div>'}
           ${stepContent}`;
         if (employee.meta.archived || employee.meta.closed) {
           editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
@@ -1555,7 +1555,11 @@
       function renderCompletionPanel() {
         const employee = selectedEmployee();
         if (!employee) return;
-        const selectedStep = selectedStepByCase[employee.case_id] || recommendedStep(employee);
+        const selectedStep = selectedStepByCase[employee.case_id] || 'basics';
+        if (selectedStep === 'preparation') {
+          completionPanel.innerHTML = '';
+          return;
+        }
         const html = progressPanelHtml(employee, selectedStep);
         const inline = document.getElementById('inline-completion-panel');
         if (inline) {

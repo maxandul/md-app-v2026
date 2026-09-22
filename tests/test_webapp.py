@@ -1712,10 +1712,18 @@ class WebAppIntegrationTest(unittest.TestCase):
         preparation_template = payload["configuration"]["preparation_template"]
         self.assertIn("Gesprächsvorbereitung als PDF", preparation_template)
         self.assertIn("Feedback als PDF", preparation_template)
+        self.assertIn("Teilkompetenzen und Formulierungshilfen", preparation_template)
+        self.assertIn('data-action="print-preparation">Gesprächsvorbereitung als PDF', preparation_template)
+        self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.", preparation_template)
+        self.assertNotIn("gesammelt und S/MIME-verschlüsselt", preparation_template)
         self.assertIn("Die Führungskräfte sammeln", self.client.get(
             f"/ruecklaeufe?cycle_id={cycle_id}"
         ).get_data(as_text=True))
         self.assertIn("2 · Vorbereitung MA", start_html)
+        self.assertIn("selectedStepByCase[employee.case_id] || 'basics'", start_html)
+        self.assertIn("selectedStep === 'preparation'", start_html)
+        self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)
+        self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.</div>", start_html)
         self.assertIn("if (hasReview)", preparation_template)
         self.assertIn("if (hasOutlook)", preparation_template)
         payload["package"]["revision"] = 1

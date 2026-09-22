@@ -48,7 +48,11 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
     if exit_date:
         parsed = date.fromisoformat(exit_date)
         if date(review_year, 10, 1) <= parsed <= date(review_year + 1, 1, 31):
-            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}."
+            return (
+                "review_only",
+                f"Austritt am {parsed.strftime('%d.%m.%Y')}. "
+                "Auf Wunsch des Mitarbeitenden kann auf den Rückblick verzichtet werden.",
+            )
     if probation_end:
         parsed = date.fromisoformat(probation_end)
         if parsed.year == review_year and parsed <= date(review_year, 6, 30):

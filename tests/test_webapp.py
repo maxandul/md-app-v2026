@@ -1443,6 +1443,11 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             self.assertEqual(exiting["period_start"], "2025-01-01")
             self.assertEqual(exiting["period_end"], "2025-10-31")
+            self.assertEqual(exiting["suggestion"]["scope"], "review_only")
+            self.assertIn(
+                "Auf Wunsch des Mitarbeitenden kann auf den Rückblick verzichtet werden.",
+                exiting["suggestion"]["reason"],
+            )
 
             entry_payload = build_manager_payload(
                 connection, cycle_id=cycle_id, manager_pn="111118"

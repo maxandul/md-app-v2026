@@ -159,7 +159,11 @@ def _suggested_scope(row: pd.Series, rb_year: int) -> tuple[str, str]:
     if exit_date:
         parsed = date.fromisoformat(exit_date)
         if date(rb_year, 10, 1) <= parsed <= date(rb_year + 1, 1, 31):
-            return "review_only", f"Austritt am {parsed.strftime('%d.%m.%Y')}."
+            return (
+                "review_only",
+                f"Austritt am {parsed.strftime('%d.%m.%Y')}. "
+                "Auf Wunsch des Mitarbeitenden kann auf den Rückblick verzichtet werden.",
+            )
     if probation_end:
         parsed = date.fromisoformat(probation_end)
         if parsed.year == rb_year and parsed <= date(rb_year, 6, 30):

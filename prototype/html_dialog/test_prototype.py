@@ -65,6 +65,17 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertEqual(scope, "outlook_only")
         self.assertIn("nur der Ausblick", reason)
 
+    def test_departure_hint_mentions_optional_waiver(self) -> None:
+        scope, reason = _suggested_scope(
+            pd.Series({"Austritt": "2025-10-31", "Ende Probezeit": None}),
+            2025,
+        )
+        self.assertEqual(scope, "review_only")
+        self.assertEqual(
+            reason,
+            "Austritt am 31.10.2025. Auf Wunsch des Mitarbeitenden kann auf den Rückblick verzichtet werden.",
+        )
+
     def test_only_omitting_a_mandatory_part_requires_a_reason(self) -> None:
         employee = self.payload["employees"][0]
         employee["suggestion"]["scope"] = "review_only"

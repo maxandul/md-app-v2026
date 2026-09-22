@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Vorbereitung Mitarbeitenden-Dialog</title>
+  <style>
+    :root { --blue:#0070b4; --blue-dark:#00407c; --blue-soft:#edf5fa; --ink:#000; --muted:#666; --line:#ccc; --surface:#fff; --canvas:#f7f7f7; --success:#1a7f1f; --warning:#7a4b00; --warning-soft:#fff6df; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--canvas); font:16px/1.55 "Helvetica Neue",Arial,sans-serif; }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid #009ee0; outline-offset:2px; }
+    .topbar { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 24px; color:#fff; background:var(--blue-dark); }
+    .topbar h1 { margin:0; font-size:20px; }
+    .topbar p { margin:2px 0 0; color:#d9e9f7; font-size:13px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:9px 14px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); font-weight:700; }
+    .button.primary { color:#fff; border-color:var(--blue); background:var(--blue); }
+    .button:disabled { cursor:not-allowed; opacity:.45; }
+    .content { max-width:1040px; margin:0 auto; padding:24px 24px 80px; }
+    .intro,.section { margin-bottom:18px; padding:22px; border:1px solid var(--line); border-radius:4px; background:var(--surface); }
+    .intro h2,.section h2 { margin:0; font-size:22px; }
+    .intro p,.section-intro { margin:6px 0 0; color:var(--muted); }
+    .privacy-note { margin-top:16px; padding:13px 15px; border-left:4px solid var(--blue); background:var(--blue-soft); }
+    .warning-note { margin-top:16px; padding:13px 15px; border-left:4px solid #e0a526; background:var(--warning-soft); color:#65430b; }
+    .meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 20px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+    .meta span { color:var(--muted); font-size:13px; }
+    .meta strong { display:block; color:var(--ink); }
+    .section-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+    .eyebrow { margin:0 0 3px; color:var(--blue); font-size:12px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+    .subsection { margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
+    .section-head + .subsection { margin-top:0; padding-top:0; border-top:0; }
+    .subsection h3 { margin:0 0 10px; font-size:17px; }
+    .questions { margin:0 0 12px; padding-left:22px; color:#333; }
+    .questions li + li { margin-top:4px; }
+    .field { margin-top:12px; }
+    .field label { display:block; margin-bottom:5px; font-size:14px; font-weight:700; }
+    .field textarea,.field select { width:100%; padding:10px 11px; border:1px solid #b9c2cf; border-radius:4px; background:#fff; }
+    .field textarea { min-height:130px; resize:vertical; }
+    .competency-row { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(0,1.5fr); gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid #dde2e8; }
+    .competency-row:first-of-type { margin-top:0; padding-top:0; border-top:0; }
+    .competency-row textarea { min-height:112px; }
+    .actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+    .save-state { align-self:center; color:var(--muted); font-size:13px; }
+    #print-root { display:none; }
+    @media (max-width:760px) { .topbar { position:static; align-items:flex-start; flex-direction:column; } .content { padding:16px; } .meta,.competency-row { grid-template-columns:1fr; } }
+    @media print {
+      @page { size:A4; margin:16mm 15mm 18mm; }
+      body { background:#fff; font:10.5pt/1.42 Arial,Helvetica,sans-serif; }
+      body.printing #app { display:none !important; }
+      body.printing #print-root { display:block !important; }
+      .print-header { padding-bottom:8mm; border-bottom:1.5pt solid #1f4e79; }
+      .print-kicker { color:#1f4e79; font-size:8.5pt; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+      .print-title { margin:2mm 0 0; font-size:20pt; line-height:1.2; }
+      .print-subtitle { margin:2mm 0 0; color:#444; }
+      .print-meta { display:grid; grid-template-columns:repeat(2,1fr); gap:2mm 8mm; margin:7mm 0; padding:4mm; background:#f1f4f7; }
+      .print-meta strong { display:block; font-size:8.5pt; }
+      .print-section { margin-top:7mm; }
+      .print-section h2 { margin:0 0 3mm; padding-bottom:1.5mm; color:#1f4e79; border-bottom:.7pt solid #9fbad2; font-size:14pt; }
+      .print-block { break-inside:avoid; margin:0 0 4mm; padding:3.5mm; border:.7pt solid #c9d1da; }
+      .print-label { margin-top:3mm; font-weight:700; }
+      .print-value { white-space:pre-wrap; overflow-wrap:anywhere; }
+      .print-empty { color:#666; font-style:italic; }
+      .print-footer { margin-top:12mm; padding-top:2mm; color:#666; border-top:.5pt solid #c9d1da; font-size:6pt; overflow-wrap:anywhere; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div><h1>Vorbereitung Mitarbeitenden-Dialog</h1><p id="topbar-meta"></p></div>
+      <div class="toolbar"><button id="save-html" class="button" type="button">Zwischenstand speichern</button></div>
+    </header>
+    <main class="content">
+      <section class="intro">
+        <p class="eyebrow">Persönliche Vorbereitung</p>
+        <h2 id="person-title"></h2>
+        <p>Nutze die Leitfragen, um deine Sicht auf den Mitarbeitenden-Dialog vorzubereiten. Du entscheidest, welche Gedanken du in das Gespräch einbringst.</p>
+        <div class="privacy-note"><strong>Deine Vorbereitungsnotizen bleiben bei dir.</strong> Diese Datei übermittelt keine Daten automatisch. Nur ein von dir ausdrücklich erzeugtes Feedback-PDF ist zur Weitergabe bestimmt.</div>
+        <div class="meta"><span><strong>Vorgesetzte Person</strong><span id="manager-name"></span></span><span><strong>Gesprächsumfang</strong><span id="scope-label"></span></span><span><strong>Zeitraum</strong><span id="period-label"></span></span></div>
+      </section>
+
+      <div id="preparation-sections"></div>
+      <div id="feedback-section"></div>
+    </main>
+  </div>
+  <div id="print-root" aria-hidden="true"></div>
+  <script id="prep-data" type="application/json">__MD_PREPARATION_JSON__</script>
+  <script>
+    (() => {
+      'use strict';
+      const dataNode = document.getElementById('prep-data');
+      const state = JSON.parse(dataNode.textContent);
+      const fields = state.fields || (state.fields = {});
+      const h = value => String(value == null ? '' : value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+      const safeJson = value => JSON.stringify(value).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026');
+      const hasReview = state.scope === 'full' || state.scope === 'review_only';
+      const hasOutlook = state.scope === 'full' || state.scope === 'outlook_only';
+      const value = key => String(fields[key] || '');
+      const text = (key,label,questions,rows=6) => `<div class="subsection"><h3>${h(label)}</h3>${questions && questions.length ? `<ul class="questions">${questions.map(item=>`<li>${h(item)}</li>`).join('')}</ul>` : ''}<div class="field"><label for="${h(key)}">Deine Gedanken</label><textarea id="${h(key)}" data-field="${h(key)}" rows="${rows}">${h(value(key))}</textarea></div></div>`;
+      const optionList = selected => {
+        let html = '<option value="">Kompetenz auswählen</option>';
+        (state.competency_model || []).forEach(group => {
+          html += `<optgroup label="${h(group.category || 'Weitere Kompetenzen')}">`;
+          (group.competencies || []).forEach(item => { html += `<option value="${h(item.name)}" ${item.name === selected ? 'selected' : ''}>${h(item.name)}</option>`; });
+          html += '</optgroup>';
+        });
+        return html;
+      };
+      const scopeLabels = { full:'Rückblick und Ausblick', review_only:'Nur Rückblick', outlook_only:'Nur Ausblick' };
+      document.getElementById('person-title').textContent = state.employee.full_name;
+      document.getElementById('manager-name').textContent = state.manager.name;
+      document.getElementById('scope-label').textContent = scopeLabels[state.scope] || state.scope;
+      document.getElementById('period-label').textContent = [state.period_start,state.period_end].filter(Boolean).join(' bis ') || '–';
+      document.getElementById('topbar-meta').textContent = `${state.employee.full_name} · ${state.review_year}/${state.outlook_year}`;
+
+      let preparation = '';
+      if (hasReview) {
+        const reviewTitle = state.dialog_type === 'probation' ? 'Rückblick auf die Probezeit' : `Rückblick ${state.review_year}`;
+        preparation += `<section class="section"><div class="section-head"><div><p class="eyebrow">${h(reviewTitle)}</p><h2>Auf den Rückblick vorbereiten</h2></div></div>`;
+        preparation += text('review_performance','Leistung und Zielerreichung', state.dialog_type === 'probation' ? ['Wie erlebst du deine Einarbeitung und die bisherige Leistung?','Welche Ziele des Einführungsprogramms hast du erreicht?','Wo brauchst du noch Unterstützung?'] : ['Inwiefern hast du die vereinbarten Ziele erreicht?','Was waren deine wichtigsten Erfolge?','Welche Herausforderungen oder Hindernisse sind aufgetreten?']);
+        preparation += text('review_competencies','Kompetenzen und Zusammenarbeit',['Mit welchen Kompetenzen konntest du besonders überzeugen?','Wo siehst du bei dir Entwicklungspotenzial?','Was hast du über dich selbst gelernt?']);
+        preparation += '</section>';
+      }
+      if (hasOutlook) {
+        preparation += `<section class="section"><div class="section-head"><div><p class="eyebrow">Ausblick ${h(state.outlook_year)}</p><h2>Auf den Ausblick vorbereiten</h2></div></div>`;
+        preparation += text('outlook_goals','Ziele und Aufgaben',['Welche Ziele möchtest du erreichen?','Woran erkennst du, dass du sie erreicht hast?','Wie möchtest du vorgehen und welche Unterstützung brauchst du?']);
+        preparation += text('outlook_development','Persönliche Entwicklung',['Welche Kompetenzen möchtest du weiterentwickeln?','Woran wirst du Fortschritte erkennen?','Welche Lerngelegenheiten oder Unterstützung helfen dir dabei?']);
+        preparation += text('outlook_interests','Weitere berufliche Interessen',['Gibt es Aufgaben, Verantwortungsbereiche oder andere berufliche Ziele, die dich interessieren?','Worauf freust du dich im kommenden Zeitraum besonders?'],4);
+        preparation += '</section>';
+      }
+      document.getElementById('preparation-sections').innerHTML = preparation;
+
+      if (hasReview) {
+        const rows = [1,2,3].map(index => `<div class="competency-row"><div class="field"><label for="feedback_competency_${index}">Kompetenz ${index}</label><select id="feedback_competency_${index}" data-field="feedback_competency_${index}">${optionList(value(`feedback_competency_${index}`))}</select></div><div class="field"><label for="feedback_competency_text_${index}">Konkrete Beobachtung oder Rückmeldung</label><textarea id="feedback_competency_text_${index}" data-field="feedback_competency_text_${index}">${h(value(`feedback_competency_text_${index}`))}</textarea></div></div>`).join('');
+        document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><p class="section-intro">Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</p></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Wähle bei Bedarf ein bis drei Kompetenzen aus und beschreibe konkrete Beobachtungen.</p>${rows}</div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge nach dem Gespräch das Feedback-PDF und sende es deiner vorgesetzten Person. Sie übermittelt die eingegangenen Feedbacks gesammelt und S/MIME-verschlüsselt an HR. Deine übrigen Vorbereitungsnotizen werden nicht mitgesendet.</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button><span class="save-state">HR fordert fehlende Feedbacks nicht nach.</span></div></section>`;
+      }
+      const preparationActions = document.createElement('section');
+      preparationActions.className = 'section';
+      preparationActions.innerHTML = `<div class="section-head"><div><h2>Eigene Unterlagen</h2><p class="section-intro">Dieser Export ist nur für dich bestimmt und wird nicht an HR übermittelt.</p></div></div><div class="actions"><button class="button" type="button" data-action="print-preparation">Gesprächsvorbereitung als PDF</button></div>`;
+      document.getElementById('preparation-sections').appendChild(preparationActions);
+
+      document.addEventListener('input', event => { const control = event.target.closest('[data-field]'); if (control) fields[control.dataset.field] = control.value; });
+      document.addEventListener('change', event => { const control = event.target.closest('[data-field]'); if (control) fields[control.dataset.field] = control.value; });
+      document.addEventListener('click', event => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        if (button.dataset.action === 'print-preparation') printDocument('preparation');
+        if (button.dataset.action === 'print-feedback') printDocument('feedback');
+      });
+
+      const printValue = (label,key) => `<div class="print-label">${h(label)}</div><div class="print-value">${value(key) ? h(value(key)) : '<span class="print-empty">Keine Notiz</span>'}</div>`;
+      const printHeader = (title,subtitle) => `<header class="print-header"><div class="print-kicker">Volkswirtschaftsdirektion · Mitarbeitenden-Dialog</div><h1 class="print-title">${h(title)}</h1><p class="print-subtitle">${h(subtitle)}</p></header><div class="print-meta"><div><strong>Mitarbeitende Person</strong>${h(state.employee.full_name)}</div><div><strong>Vorgesetzte Person</strong>${h(state.manager.name)}</div></div>`;
+      function preparationPrint() {
+        let html = printHeader('Gesprächsvorbereitung', `${state.review_year}/${state.outlook_year}`);
+        if (hasReview) html += `<section class="print-section"><h2>Rückblick</h2><div class="print-block">${printValue('Leistung und Zielerreichung','review_performance')}${printValue('Kompetenzen und Zusammenarbeit','review_competencies')}</div></section>`;
+        if (hasOutlook) html += `<section class="print-section"><h2>Ausblick</h2><div class="print-block">${printValue('Ziele und Aufgaben','outlook_goals')}${printValue('Persönliche Entwicklung','outlook_development')}${printValue('Weitere berufliche Interessen','outlook_interests')}</div></section>`;
+        return html;
+      }
+      function feedbackPrint() {
+        let competencyHtml = '';
+        [1,2,3].forEach(index => { const competency = value(`feedback_competency_${index}`); const comment = value(`feedback_competency_text_${index}`); if (competency || comment) competencyHtml += `<div class="print-block"><strong>${h(competency || 'Kompetenz')}</strong><div class="print-value">${comment ? h(comment) : '<span class="print-empty">Keine Bemerkung</span>'}</div></div>`; });
+        return `${printHeader('Feedback an die vorgesetzte Person', state.manager.name)}<section class="print-section"><h2>Offenes Feedback</h2><div class="print-block">${printValue('Unbedingt beibehalten','feedback_keep')}${printValue('Wunsch für die Zukunft','feedback_wish')}${printValue('Veränderungen seit dem letzten Gespräch','feedback_change')}${printValue('Weitere Bemerkungen','feedback_general')}</div></section>${competencyHtml ? `<section class="print-section"><h2>Kompetenzorientiertes Feedback</h2>${competencyHtml}</section>` : ''}`;
+      }
+      function feedbackDataBlock() {
+        const parts = ['MD-DATENBLOCK','version=1','document=FEEDBACK',`case_id=${state.case_id}`,`package_id=${state.package_id}`,`pn=${state.employee.pn}`,`manager_pn=${state.manager.pn}`,`year=${state.review_year}`,`scope=${state.scope}`];
+        return `<div class="print-footer">${h(parts.join(' ; '))}</div>`;
+      }
+      function filenamePart(input) { return String(input || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9_-]+/g,'_').replace(/^_+|_+$/g,'') || 'Unbekannt'; }
+      function printDocument(kind) {
+        const root = document.getElementById('print-root');
+        root.innerHTML = kind === 'feedback' ? feedbackPrint() + feedbackDataBlock() : preparationPrint();
+        document.body.classList.add('printing');
+        const employee = state.employee;
+        document.title = kind === 'feedback' ? `${filenamePart(employee.last_name)}_${filenamePart(employee.first_name)}_Feedback_an_${filenamePart(state.manager.last_name)}_${filenamePart(state.manager.first_name)}_${filenamePart(state.manager.pn)}` : `Vorbereitung_MD_${state.review_year}_${filenamePart(employee.last_name)}_${filenamePart(employee.first_name)}`;
+        window.setTimeout(() => window.print(),60);
+      }
+      window.addEventListener('afterprint', () => { document.body.classList.remove('printing'); document.getElementById('print-root').innerHTML = ''; document.title = 'Vorbereitung Mitarbeitenden-Dialog'; });
+      document.getElementById('save-html').addEventListener('click', () => {
+        document.querySelectorAll('[data-field]').forEach(control => { fields[control.dataset.field] = control.value; if (control.tagName === 'TEXTAREA') control.textContent = control.value; else if (control.tagName === 'SELECT') [...control.options].forEach(option => { option.toggleAttribute('selected', option.value === control.value); }); });
+        dataNode.textContent = safeJson(state);
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelector('#prep-data').textContent = safeJson(state);
+        clone.querySelector('#print-root').innerHTML = '';
+        clone.querySelector('body').classList.remove('printing');
+        const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], {type:'text/html;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Vorbereitung_MD_${state.review_year}_${filenamePart(state.employee.last_name)}_${filenamePart(state.employee.first_name)}_BEARBEITET.html`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url),1500);
+      });
+    })();
+  </script>
+</body>
+</html>

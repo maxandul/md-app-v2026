@@ -17,8 +17,15 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 - S/MIME-markierte Nachrichten direkt versenden oder als Outlook-Entwürfe erzeugen
 - Outlook-Posteingang einlesen, MD-Dokumente verarbeiten und reine MD-Mails
   idempotent verschieben
+- gemeinsam eingereichte Feedback-PDFs je vorgesetzter Person mit Deckblatt zu
+  einem RPA-bereiten PDF zusammenführen, ohne fehlende Feedbacks zu mahnen
 - mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
 - Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
+- pro Person eine eigenständige Offline-Datei zur Gesprächsvorbereitung erzeugen;
+  ihr Inhalt passt sich an Rückblick und/oder Ausblick an
+- Gesprächsvorbereitung und Feedback getrennt als PDF ausgeben; Feedback wird
+  nur bei einem Rückblick angeboten und von der mitarbeitenden Person an die
+  vorgesetzte Person übermittelt
 - Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
 - elektronisch unterzeichnete PDFs einlesen und ihren MD-Datenblock übernehmen
 - Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
@@ -109,6 +116,11 @@ MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mai
 werden die MD-Dokumente verarbeitet, die Fremdanlagen aber nicht gespeichert;
 die Mail bleibt bis zur manuellen Prüfung im Posteingang.
 
+Mitarbeitende senden ihr separates Feedback-PDF standardmässig an ihre
+vorgesetzte Person. Diese übermittelt die gesammelten Feedbacks in einer
+S/MIME-verschlüsselten E-Mail an HR. Die Anwendung führt die eingegangenen
+Feedbacks pro Führungskraft zusammen; HR verfolgt deren Vollständigkeit nicht.
+
 ## Dateinamen
 
 - Versand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_START.html`
@@ -117,6 +129,9 @@ die Mail bleibt bis zur manuellen Prüfung im Posteingang.
 - Ausblick: `Ausblick_2026_Nachname_Rufname_123456.pdf`
 - Handschriftlicher Scan: `Rueckblick_2025_Nachname_Rufname_HANDSCAN_123456.pdf`
 - Kein MD: `Kein_MD_2025_Nachname_Rufname_123456.pdf`
+- Vorbereitung MA: `Vorbereitung_MD_2025_Nachname_Rufname_123456.html`
+- Einzelnes Feedback: `MA-Nachname_MA-Rufname_Feedback_an_VG-Nachname_VG-Rufname_123456.pdf`
+- Feedback-Sammeldatei: `Feedback_2025_VG-Nachname_VG-Rufname_123456.pdf`
 
 Die Personalnummer steht bei dossierrelevanten PDFs am Ende des Dateinamens.
 

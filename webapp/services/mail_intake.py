@@ -14,6 +14,10 @@ from werkzeug.utils import secure_filename
 
 from webapp.adapters.outlook import InboundMessage, OutlookInboxAdapter
 from webapp.services.documents import import_official_pdf, inspect_pdf
+from webapp.services.feedback import (
+    create_feedback_bundles_for_message,
+    import_feedback_pdf,
+)
 
 
 STATUS_LABELS = {
@@ -45,7 +49,7 @@ def _md_hint(value: str) -> bool:
     folded = value.casefold().replace("ü", "ue")
     return any(
         word in folded
-        for word in ("rueckblick", "ausblick", "mitarbeitenden-dialog", "mitarbeitendendialog", "kein_md", "probezeit")
+        for word in ("rueckblick", "ausblick", "mitarbeitenden-dialog", "mitarbeitendendialog", "kein_md", "probezeit", "feedback")
     )
 
 
@@ -117,6 +121,7 @@ def process_inbound_messages(
         "review": 0,
         "ignored": 0,
         "duplicates": 0,
+        "feedback_bundles": 0,
         "failed": 0,
         "errors": [],
     }
@@ -209,14 +214,26 @@ def process_inbound_messages(
                 temporary_path.write_bytes(attachment.content)
                 if file_kind == "md_pdf":
                     try:
-                        imported = import_official_pdf(
-                            connection,
-                            path=temporary_path,
-                            original_filename=filename,
-                            accepted_dir=pdf_dir,
-                            handoff_dir=handoff_dir,
-                            received_at=message.received_at,
-                        )
+                        inspection = inspect_pdf(temporary_path)
+                        is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
+                        if is_feedback:
+                            imported = import_feedback_pdf(
+                                connection,
+                                path=temporary_path,
+                                original_filename=filename,
+                                accepted_dir=pdf_dir / "feedback",
+                                source_message_id=message_id,
+                                received_at=received_at,
+                            )
+                        else:
+                            imported = import_official_pdf(
+                                connection,
+                                path=temporary_path,
+                                original_filename=filename,
+                                accepted_dir=pdf_dir,
+                                handoff_dir=handoff_dir,
+                                received_at=message.received_at,
+                            )
                     except Exception as exc:
                         try:
                             has_md_data = bool(inspect_pdf(temporary_path).data)
@@ -245,29 +262,34 @@ def process_inbound_messages(
                         else:
                             foreign_attachments.append((attachment, filename, digest))
                     else:
-                        document = connection.execute(
-                            "SELECT stored_path FROM official_documents WHERE id = ?",
-                            (imported["document_id"],),
-                        ).fetchone()
+                        if is_feedback:
+                            stored_path = imported["stored_path"]
+                        else:
+                            document = connection.execute(
+                                "SELECT stored_path FROM official_documents WHERE id = ?",
+                                (imported["document_id"],),
+                            ).fetchone()
+                            stored_path = document["stored_path"]
                         _insert_attachment(
                             connection,
                             message_id=message_id,
                             index=attachment.index,
                             filename=filename,
-                            stored_path=document["stored_path"],
+                            stored_path=stored_path,
                             digest=digest,
                             file_kind=file_kind,
                             status="imported",
                             created_at=created_at,
                         )
-                        connection.execute(
-                            """
-                            UPDATE inbound_mail_attachments
-                            SET official_document_id = ?
-                            WHERE mail_message_id = ? AND attachment_index = ?
-                            """,
-                            (imported["document_id"], message_id, attachment.index),
-                        )
+                        if not is_feedback:
+                            connection.execute(
+                                """
+                                UPDATE inbound_mail_attachments
+                                SET official_document_id = ?
+                                WHERE mail_message_id = ? AND attachment_index = ?
+                                """,
+                                (imported["document_id"], message_id, attachment.index),
+                            )
                         connection.commit()
                         md_relevant = True
                         result["stored"] += 1
@@ -293,6 +315,31 @@ def process_inbound_messages(
                     result["stored"] += 1
                 else:
                     foreign_attachments.append((attachment, filename, digest))
+
+        try:
+            bundles = create_feedback_bundles_for_message(
+                connection,
+                message_id=message_id,
+                handoff_dir=handoff_dir,
+                created_at=created_at,
+            )
+        except Exception as exc:
+            connection.execute(
+                """
+                UPDATE inbound_mail_attachments
+                SET status = 'review_required', error_message = ?
+                WHERE mail_message_id = ? AND stored_path IN (
+                    SELECT stored_path FROM feedback_submissions
+                    WHERE source_message_id = ? AND bundle_id IS NULL
+                )
+                """,
+                (str(exc), message_id, message_id),
+            )
+            connection.commit()
+            needs_review = True
+            result["errors"].append(str(exc))
+        else:
+            result["feedback_bundles"] += len(bundles)
 
         if not md_relevant:
             connection.execute("DELETE FROM inbound_mail_messages WHERE id = ?", (message_id,))

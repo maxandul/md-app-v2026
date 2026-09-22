@@ -22,6 +22,16 @@
     </aside>
   </section>
 
+  <section class="content-section" id="feedbacks" aria-labelledby="feedback-title">
+    <div class="section-heading"><div><p class="kicker">Feedback an vorgesetzte Personen</p><h2 id="feedback-title">Erstellte Sammel-PDFs</h2></div><span class="section-count">{{ feedback_bundles|length }}</span></div>
+    <p>Die Führungskräfte sammeln die Feedback-PDFs ihrer Mitarbeitenden und senden sie gemeinsam und S/MIME-verschlüsselt an HR. Das System führt alle Feedbacks derselben Nachricht automatisch zu einem dossierfähigen PDF zusammen. Fehlende Feedbacks werden nicht überwacht oder angemahnt.</p>
+    {% if feedback_bundles %}
+      <div class="table-wrap"><table><thead><tr><th>Erstellt</th><th>Vorgesetzte Person</th><th>Feedbacks</th><th>RPA-Datei</th></tr></thead><tbody>
+      {% for bundle in feedback_bundles %}<tr><td>{{ bundle.created_at }}</td><td><strong>{{ bundle.manager_name }}</strong><br><span class="muted">PN {{ bundle.manager_pn }} · Rückblick {{ bundle.review_year }}</span></td><td>{{ bundle.submission_count }}</td><td><span class="status status--staged">Bereitgestellt</span><br><span class="muted">{{ bundle.filename }}</span></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="empty-state">Noch keine Feedback-Sammel-PDFs erstellt. Es entstehen keine offenen Aufgaben, solange keine Feedbacks eingehen.</div>{% endif %}
+  </section>
+
   <section class="content-section" id="postfach" aria-labelledby="mail-inbox-title">
     <div class="section-heading"><div><p class="kicker">Postfacheingang</p><h2 id="mail-inbox-title">MD-relevante Nachrichten</h2></div><span class="section-count">{{ mail_total }} protokolliert</span></div>
     <form class="compact-filter" method="get" action="{{ url_for('main.returns_overview') }}#postfach">

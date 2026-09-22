@@ -8,6 +8,7 @@ funktionsfähige HTML-Datei ein. Es werden keine externen Ressourcen geladen.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import unicodedata
@@ -28,6 +29,7 @@ PROTOTYPE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = PROTOTYPE_DIR.parent.parent
 DEFAULT_SAP_PATH = PROJECT_ROOT / "sap_stammdaten" / "EXPORT.XLSX"
 DEFAULT_TEMPLATE_PATH = PROTOTYPE_DIR / "template.html"
+DEFAULT_PREPARATION_TEMPLATE_PATH = PROTOTYPE_DIR / "preparation_template.html"
 
 COMPETENCIES = [
     "Entwicklungsfähigkeit",
@@ -399,7 +401,16 @@ def json_for_script(payload: dict[str, Any]) -> str:
     )
 
 
-def render_html(payload: dict[str, Any], template_path: Path = DEFAULT_TEMPLATE_PATH) -> str:
+def render_html(
+    payload: dict[str, Any],
+    template_path: Path = DEFAULT_TEMPLATE_PATH,
+    preparation_template_path: Path = DEFAULT_PREPARATION_TEMPLATE_PATH,
+) -> str:
+    payload = copy.deepcopy(payload)
+    configuration = payload.setdefault("configuration", {})
+    configuration["preparation_template"] = preparation_template_path.read_text(
+        encoding="utf-8"
+    )
     template = template_path.read_text(encoding="utf-8")
     marker = "__MD_PACKAGE_JSON__"
     if template.count(marker) != 1:

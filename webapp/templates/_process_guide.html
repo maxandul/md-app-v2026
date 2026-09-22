@@ -57,10 +57,10 @@
       <article>
         <h3>Regulärer Jahresdurchlauf</h3>
         <ol>
-          <li><strong>Oktober:</strong> SAP-Daten importieren, Durchlauf eröffnen, vorgeschlagenen Pflichtumfang prüfen und Arbeitsmappen versenden.</li>
-          <li><strong>November bis 31. Januar:</strong> Rückblicke durchführen und als elektronisch unterzeichnete PDFs an HR senden.</li>
+          <li><strong>Oktober:</strong> SAP-Daten importieren, Durchlauf eröffnen, vorgeschlagenen Pflichtumfang prüfen und Arbeitsmappen versenden. Die vorgesetzten Personen erzeugen daraus die persönlichen Vorbereitungsdateien und senden sie mit den Gesprächseinladungen.</li>
+          <li><strong>November bis 31. Januar:</strong> Mitarbeitende bereiten den Rückblick und gegebenenfalls den Ausblick vor. Bei einem Rückblick senden sie das separate Feedback-PDF an ihre vorgesetzte Person. Rückblicke werden durchgeführt und als elektronisch unterzeichnete PDFs an HR gesendet.</li>
           <li><strong>Bis 28. Februar:</strong> Ausblicke durchführen und zurücksenden. Rückblick- und Ausblickfrist können begründet getrennt angepasst werden.</li>
-          <li><strong>Verarbeitung:</strong> Das System ordnet die PDFs zu, stellt sie für die Personaldossier-Ablage bereit und erstellt aus abgeschlossenen Rückblicken SAP-Exportbatches.</li>
+          <li><strong>Verarbeitung:</strong> Die vorgesetzte Person sendet die gesammelten Feedback-PDFs in einer S/MIME-verschlüsselten E-Mail an HR. Das System ordnet die Dialog-PDFs zu, bündelt Feedbacks je Führungskraft für die RPA-Ablage und erstellt aus abgeschlossenen Rückblicken SAP-Exportbatches. Fehlende Feedbacks werden nicht verfolgt oder gemahnt.</li>
         </ol>
       </article>
       <article>
@@ -78,8 +78,8 @@
       <ul>
         <li><strong>Datei erzeugen:</strong> legt nur eine START-, Update- oder Exportdatei bereit; dadurch wurde noch keine E-Mail versendet und noch nichts in SAP hochgeladen.</li>
         <li><strong>Direkt versenden:</strong> übergibt die Nachricht an das klassische Outlook und sendet sie S/MIME-verschlüsselt. «Entwurf erstellen» sendet nicht.</li>
-        <li><strong>Postfach scannen:</strong> verarbeitet nur MD-Dokumente. Reine, erfolgreich verarbeitete MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben; gemischte Mails bleiben zur Prüfung sichtbar.</li>
-        <li><strong>PDF übernehmen:</strong> stellt geeignete Dokumente im Roboter-Input für die nachgelagerte Personaldossier-Ablage bereit. Die nachgelagerte Übernahme selbst liegt ausserhalb der App.</li>
+        <li><strong>Postfach scannen:</strong> verarbeitet MD-Dokumente und erkennt Feedback-PDFs. Mehrere Feedbacks derselben Nachricht werden je Führungskraft mit einem Deckblatt zusammengeführt. Reine, erfolgreich verarbeitete MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben; gemischte Mails bleiben zur Prüfung sichtbar.</li>
+        <li><strong>PDF übernehmen:</strong> stellt geeignete Dialogdokumente sowie die erzeugten Feedback-Sammeldateien im Roboter-Input für die nachgelagerte Personaldossier-Ablage bereit. Die nachgelagerte Übernahme selbst liegt ausserhalb der App.</li>
         <li><strong>SAP-Export erzeugen:</strong> erstellt einen nachvollziehbaren Massenupload-Batch; der eigentliche Import in SAP erfolgt separat.</li>
       </ul>
     </div>

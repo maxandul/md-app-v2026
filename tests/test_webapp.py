@@ -10,6 +10,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from openpyxl import load_workbook
+from pypdf import PdfReader
 from reportlab.pdfgen import canvas
 
 from prototype.html_dialog.generate_package import render_html
@@ -757,6 +758,75 @@ class WebAppIntegrationTest(unittest.TestCase):
         body = page.get_data(as_text=True)
         self.assertIn("MD Rücklauf", body)
         self.assertIn("Verarbeitet und in Outlook verschoben", body)
+
+    def test_feedbacks_are_grouped_per_manager_without_completeness_tracking(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            root = Path(self.app.config["STORAGE_ROOT"])
+            _package_path, payload = create_package_file(
+                connection,
+                cycle_id=cycle_id,
+                manager_pn="111116",
+                output_dir=root / "packages",
+            )
+            employees = payload["employees"][:2]
+            attachments = []
+            for index, employee in enumerate(employees, start=1):
+                pdf_path = root / f"feedback-{index}.pdf"
+                write_test_pdf(
+                    pdf_path,
+                    "MD-DATENBLOCK ; version=1 ; document=FEEDBACK ; "
+                    f"case_id={employee['case_id']} ; "
+                    f"package_id={payload['package']['package_id']} ; "
+                    f"pn={employee['employee']['pn']} ; manager_pn=111116 ; "
+                    "year=2025 ; scope=full",
+                )
+                attachments.append(
+                    InboundAttachment(
+                        index,
+                        f"{employee['employee']['last_name']}_Feedback_an_VG_111116.pdf",
+                        pdf_path.read_bytes(),
+                    )
+                )
+            message = InboundMessage(
+                entry_id="entry-feedback",
+                internet_message_id="<feedback@example.invalid>",
+                sender_email="manager@example.invalid",
+                subject="MD Feedbacks gesammelt",
+                received_at=datetime(2026, 2, 20, 9, 0, tzinfo=timezone.utc),
+                attachments=tuple(attachments),
+            )
+            result = process_inbound_messages(
+                connection,
+                messages=[message],
+                inbox_dir=root / "mail_inbox",
+                pdf_dir=root / "pdf_processed",
+                handoff_dir=root / "rpa",
+                target_folder="12 Mitarbeitenden-Dialog",
+                move_message=lambda entry_id, folder: "entry-feedback-moved",
+            )
+            self.assertEqual(result["feedback_bundles"], 1)
+            self.assertEqual(result["stored"], 2)
+            self.assertEqual(result["moved"], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM feedback_submissions").fetchone()[0],
+                2,
+            )
+            bundle = connection.execute("SELECT * FROM feedback_bundles").fetchone()
+            self.assertEqual(bundle["manager_pn"], "111116")
+            self.assertEqual(bundle["submission_count"], 2)
+            self.assertTrue(bundle["filename"].startswith("Feedback_2025_"))
+            self.assertEqual(len(PdfReader(bundle["stored_path"]).pages), 3)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM official_documents").fetchone()[0],
+                0,
+            )
+
+        page = self.client.get(f"/ruecklaeufe?cycle_id={cycle_id}")
+        body = page.get_data(as_text=True)
+        self.assertIn("Erstellte Sammel-PDFs", body)
+        self.assertIn("Fehlende Feedbacks werden nicht überwacht", body)
 
     def test_mail_without_md_reference_is_ignored_without_storing_attachment(self) -> None:
         self._prepare_cycle()
@@ -1637,7 +1707,17 @@ class WebAppIntegrationTest(unittest.TestCase):
             start_path = Path(temp) / "start.html"
             start_path.write_bytes(response.data)
             payload = extract_payload(start_path)
+            start_html = start_path.read_text(encoding="utf-8")
         response.close()
+        preparation_template = payload["configuration"]["preparation_template"]
+        self.assertIn("Gesprächsvorbereitung als PDF", preparation_template)
+        self.assertIn("Feedback als PDF", preparation_template)
+        self.assertIn("Die Führungskräfte sammeln", self.client.get(
+            f"/ruecklaeufe?cycle_id={cycle_id}"
+        ).get_data(as_text=True))
+        self.assertIn("2 · Vorbereitung MA", start_html)
+        self.assertIn("if (hasReview)", preparation_template)
+        self.assertIn("if (hasOutlook)", preparation_template)
         payload["package"]["revision"] = 1
         payload["package"]["saved_at"] = "2025-09-17T12:30:00+00:00"
         returned_html = render_html(payload).encode("utf-8")

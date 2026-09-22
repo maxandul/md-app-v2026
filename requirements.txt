@@ -2,6 +2,7 @@
 pandas==2.2.2
 openpyxl==3.1.5
 pypdf>=6.0,<7
+reportlab>=4.2,<5
 Flask>=3.1,<4
 waitress==3.0.2
 pywin32>=306; platform_system == "Windows"

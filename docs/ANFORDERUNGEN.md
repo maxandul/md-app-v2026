@@ -1,7 +1,7 @@
 # Anforderungen MD-App v2026
 
-**Status:** Lebender Entwurf 0.3
-**Stand:** 20. September 2026
+**Status:** Lebender Entwurf 0.4
+**Stand:** 22. September 2026
 **Verantwortung:** Human Resources  
 **Zweck:** Fachliche Grundlage für Konzeption, Umsetzung, Tests und Abnahme
 
@@ -55,6 +55,7 @@ flowchart TD
 | Arbeitsmappe | Offline-HTML-Datei einer vorgesetzten Person mit ihren Direct Reports |
 | Update-Datei | Von HR erzeugte Datei, welche eine vorhandene Arbeitsmappe mit neuen Stammdaten und Zuordnungen aktualisiert |
 | Digitales PDF | Direkt aus der Arbeitsmappe erzeugtes, maschinenlesbares PDF |
+| Vorbereitung MA | Personenbezogene Offline-HTML-Datei zur privaten Gesprächsvorbereitung und, bei einem Rückblick, zur Erstellung des Feedbacks an die vorgesetzte Person |
 | Handschriftlicher Scan | Eingescanntes PDF mit handschriftlichen Unterschriften beider Parteien |
 | Führendes SAP-Ereignis | Derjenige abgeschlossene Rückblick, der in den SAP-Massenupload aufgenommen wird |
 
@@ -126,8 +127,11 @@ flowchart TD
 | MAP-012 | MUSS | Personen, die nicht mehr zur Führungskraft gehören, werden in der Arbeitsmappe archiviert. Vorhandene Einträge gehen nicht unbemerkt verloren. |
 | MAP-013 | MUSS | Beim Einspielen eines Updates werden Änderungen, neue Personen, archivierte Personen und Konflikte vor der Übernahme zusammengefasst. |
 | MAP-014 | SOLL | Die Arbeitsmappe kann bei einem Konflikt zwischen lokalen Eingaben und einem HR-Update die betroffenen Felder anzeigen und eine sichere Entscheidung ermöglichen. |
+| MAP-015 | MUSS | Die vorgesetzte Person kann pro Fall eine eigenständige, personalisierte Offline-HTML-Datei «Vorbereitung MA» erzeugen und beispielsweise mit der Gesprächseinladung an die mitarbeitende Person senden. Die Datei enthält keine Eingaben aus der Arbeitsmappe der vorgesetzten Person. |
+| MAP-016 | MUSS | Der Inhalt der Vorbereitung richtet sich nach dem Fallumfang: Bei Rückblick und Ausblick sind Rückblickreflexion, Ausblickvorbereitung und Feedback enthalten; bei nur Rückblick Rückblickreflexion und Feedback; bei nur Ausblick ausschliesslich die Ausblickvorbereitung. Ohne Rückblick wird kein Feedback angeboten. |
+| MAP-017 | MUSS | Die Vorbereitung erzeugt zwei getrennte Ausgaben: eine private Gesprächsvorbereitung und, sofern ein Rückblick stattfindet, ein separates Feedback-PDF. Die private Vorbereitung wird nicht automatisch an die vorgesetzte Person oder HR übermittelt. |
 
-Umsetzungsstand: MAP-001 bis MAP-013 sind für reguläre und eindeutig verknüpfbare
+Umsetzungsstand: MAP-001 bis MAP-013 sowie MAP-015 bis MAP-017 sind für reguläre und eindeutig verknüpfbare
 manuelle Fälle umgesetzt. Bei lokal bereits bearbeiteten Beurteilungszeiträumen zeigt
 die Update-Vorschau den Konflikt an und bewahrt den lokalen Wert. Die weitergehende
 feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
@@ -155,6 +159,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | PDF-005 | MUSS | Bei Uneinigkeit oder Gesamtbeurteilung D/E wird zusätzlich ein von beiden Parteien handschriftlich unterzeichnetes und eingescanntes PDF an HR geschickt. Das maschinenlesbare digitale PDF wird weiterhin für die Datenübernahme benötigt, muss in diesem Fall aber nicht elektronisch unterzeichnet sein. |
 | PDF-006 | MUSS | Die Scanpflicht wird bereits bei der PDF-Erzeugung erkennbar ausgewiesen und später im HR-Cockpit separat nachverfolgt. |
 | PDF-007 | MUSS | Eine Kein-MD-Bestätigung enthält Grund, Person, Führungskraft, Zeitraum und technische Fall-ID, wird jedoch nicht ans Personaldossier übergeben. |
+| PDF-008 | MUSS | Das Feedback-PDF enthält einen maschinenlesbaren Datenblock mit Fall-, Paket-, Personen- und Führungskraftidentität sowie Jahr und Fallumfang. Sein Dateiname macht die zugehörige vorgesetzte Person eindeutig identifizierbar. |
 
 ## 10. Automatisierter E-Mail-Rücklauf
 
@@ -169,6 +174,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | IN-007 | MUSS | Eine E-Mail, die ausschliesslich erfolgreich gesicherte und klassifizierte MD-Dokumente enthält, kann aus dem Posteingang in den Postfachordner «12 Mitarbeitenden-Dialog» verschoben werden. |
 | IN-008 | MUSS | E-Mails mit einem Rückblick Probezeit bleiben auch nach erfolgreicher Sicherung im Posteingang, weil der Dokumenteingang weitere HR-Prozesse auslöst. |
 | IN-009 | MUSS | Enthält eine E-Mail zusätzliche oder nicht eindeutig klassifizierbare Anhänge, werden diese als Prüfaufgabe ausgewiesen und die Nachricht wird nicht automatisch aus dem Posteingang verschoben. |
+| IN-010 | MUSS | Sendet eine vorgesetzte Person mehrere gültige Feedback-PDFs in einer Nachricht, gruppiert die Anwendung diese nach vorgesetzter Person, ergänzt ein Deckblatt und stellt je Führungskraft ein zusammengeführtes PDF im RPA-Übergabeordner bereit. Der Dateiname enthält die Personalnummer der vorgesetzten Person. |
 
 ## 11. PDF-Verarbeitung, Korrekturen und Ablage
 
@@ -197,6 +203,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | COC-007 | MUSS | Suche und Filter unterstützen mindestens Name, Personalnummer, `Ans.`, Führungskraft, Organisationseinheit, Status, Dokumenttyp, Jahr und Frist. |
 | COC-008 | MUSS | Das Cockpit zeigt Import-, Mail-, PDF- und Exportfehler in einer bearbeitbaren Aufgabenliste. Der nachgelagerte RPA-Prozess selbst liegt ausserhalb der Anwendung. |
 | COC-009 | MUSS | Das Cockpit zeigt für den gewählten Durchlauf die aktuelle Phase im Gesamtprozess, die nächste Handlung sowie den regulären und den unterjährigen Ablauf. Bei Aktionen wird verständlich unterschieden, was nur innerhalb der App vorbereitet wird und was einen Vorgang in Outlook, Robotereingang, Personaldossier oder SAP auslöst. |
+| COC-010 | MUSS | Eingegangene Feedbacks und erzeugte Sammel-PDFs werden angezeigt. Feedback ist ein fixer Prozessbestandteil bei einem Rückblick, wird von HR jedoch weder auf Vollständigkeit überwacht noch aktiv eingefordert oder gemahnt. |
 
 ## 13. SAP-Massenupload
 

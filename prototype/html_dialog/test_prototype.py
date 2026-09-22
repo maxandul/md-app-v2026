@@ -94,13 +94,15 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
             external_links,
             [
                 "https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle",
-                "https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#unterlagen",
             ],
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "package.html"
             path.write_text(html, encoding="utf-8")
             extracted = extract_payload(path)
+        preparation_template = extracted["configuration"].pop("preparation_template")
+        self.assertIn("__MD_PREPARATION_JSON__", preparation_template)
+        self.assertIn("Feedback als PDF", preparation_template)
         self.assertEqual(extracted, self.payload)
 
     def test_json_embedding_escapes_script_endings(self) -> None:

@@ -5,8 +5,6 @@ offline funktionsfähige HTML-Arbeitsdatei pro vorgesetzter Person ersetzt
 werden können. Die HTML-Datei enthält alle direkt unterstellten Mitarbeitenden,
 Vorjahresziele, Rückblick, Ausblick, Prozessausnahmen und den Bearbeitungsstand.
 
-Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
-
 ## Enthaltene Funktionen
 
 - Teamübersicht und Gesamtfortschritt
@@ -24,6 +22,12 @@ Die bestehende produktive Anwendung wird dadurch noch nicht verändert.
 - getrennte Vollständigkeitsprüfung für Rückblick und Ausblick
 - kompakte, dokumentbezogene Fortschrittsblöcke mit verlinkten offenen Punkten
 - freiwilliger Dokumentstand für die persönliche Arbeitsorganisation
+- Erzeugung einer eigenständigen, personalisierten Datei `Vorbereitung MA`, die
+  der Gesprächseinladung beigelegt werden kann
+- fallabhängige Vorbereitung: Rückblickreflexion und Feedback nur bei Rückblick,
+  Ausblickvorbereitung nur bei Ausblick
+- getrennte PDF-Ausgaben für die private Gesprächsvorbereitung und das Feedback
+  an die vorgesetzte Person
 - manuelles Abschliessen und Wiedereröffnen eines Falls; abgeschlossene Fälle
   werden schreibgeschützt am Ende der aktiven Liste angezeigt
 - Druckansichten für ein Rückblick- oder Ausblick-PDF je Person
@@ -63,8 +67,9 @@ Die Demo wird reproduzierbar neu erzeugt mit:
 python prototype/html_dialog/create_demo.py
 ```
 
-Die Arbeitsmappe führt pro Person über die Schritte `Grundlagen`, `Rückblick`,
-`Ausblick` und `Prüfen und PDF`. Nicht benötigte Schritte werden ausgeblendet.
+Die Arbeitsmappe führt pro Person über die Schritte `Grundlagen`,
+`Vorbereitung MA`, `Rückblick`, `Ausblick` und `Prüfen und PDF`. Nicht benötigte
+Schritte werden ausgeblendet.
 
 ### Arbeitsmappe aus SAP-Beispieldaten erzeugen
 
@@ -155,12 +160,16 @@ Für die spätere Umsetzung gelten folgende Regeln:
 2. Für eine Person den vorgeschlagenen Umfang übernehmen.
 3. Pflichtfelder ausfüllen und den Fortschritt beobachten.
 4. Eine Kompetenzbeobachtung und ein zusätzliches Ziel ergänzen.
-5. `Arbeitsmappe speichern` wählen.
-6. Die neu heruntergeladene HTML-Datei schliessen und erneut öffnen.
-7. Prüfen, ob Eingaben und Fortschritt erhalten geblieben sind.
-8. `Rückblick als PDF` beziehungsweise `Ausblick als PDF` wählen.
-9. Im Edge-Druckdialog `Als PDF speichern` verwenden.
-10. PDF-Seitenumbrüche, lange Texte, Umlaute und vorgeschlagenen Dateinamen prüfen.
+5. Unter `Vorbereitung MA` die personalisierte Vorbereitungsdatei erzeugen und
+   darin die zum Fallumfang passenden Abschnitte prüfen.
+6. In der Vorbereitungsdatei Gesprächsvorbereitung und – bei einem Rückblick –
+   Feedback getrennt als PDF ausgeben.
+7. `Arbeitsmappe speichern` wählen.
+8. Die neu heruntergeladene HTML-Datei schliessen und erneut öffnen.
+9. Prüfen, ob Eingaben und Fortschritt erhalten geblieben sind.
+10. `Rückblick als PDF` beziehungsweise `Ausblick als PDF` wählen.
+11. Im Edge-Druckdialog `Als PDF speichern` verwenden und Seitenumbrüche, lange
+    Texte, Umlaute sowie die vorgeschlagenen Dateinamen prüfen.
 
 Jeder Speichervorgang erhöht die Versionsnummer und ergänzt einen Zeitstempel.
 Damit bleiben Startdatei und Bearbeitungsstände auch ausserhalb der Anwendung
@@ -222,7 +231,8 @@ Die Prüfung kontrolliert unter anderem:
 - Digital oder handschriftlich unterzeichnete PDFs bleiben separate Dateien.
 - Es gibt noch keinen SQLite-Import und keine automatische Zuordnung der
   unterschriebenen PDFs.
-- Feedback an die vorgesetzte Person bleibt ausserhalb dieser Arbeitsdatei,
-  damit die Vertraulichkeit des Feedbackprozesses nicht verändert wird.
+- Die Vorbereitungsdatei versendet keine Daten automatisch. Mitarbeitende geben
+  nur das separate Feedback-PDF an ihre vorgesetzte Person weiter; ihre private
+  Gesprächsvorbereitung verbleibt bei ihnen.
 
 Diese Punkte werden erst nach dem Edge-/Outlook-/S/MIME-Test entschieden.

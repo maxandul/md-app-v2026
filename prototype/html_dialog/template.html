@@ -738,6 +738,7 @@
         employee.meta = employee.meta || {};
         employee.meta.archived = Boolean(employee.meta.archived);
         employee.meta.closed = Boolean(employee.meta.closed);
+        employee.meta.preparation_created_at = employee.meta.preparation_created_at || '';
         employee.document_tracking = employee.document_tracking || {};
         ['review', 'outlook', 'no_md'].forEach(section => {
           employee.document_tracking[section] = employee.document_tracking[section] || { status: '', note: '' };
@@ -1361,21 +1362,42 @@
           </section>`;
       }
 
+      function preparationContents(employee) {
+        const parts = [];
+        if (hasReview(employee.scope)) parts.push(employee.dialog_type === 'probation' ? 'Reflexion zur Probezeit' : `Reflexion zum Rückblick ${state.package.rb_year}`);
+        if (hasOutlook(employee.scope)) parts.push(`Vorbereitung auf den Ausblick ${outlookYear(employee)}`);
+        if (hasReview(employee.scope)) parts.push('Feedback an die vorgesetzte Person');
+        return parts;
+      }
+
+      function renderEmployeePreparation(employee) {
+        const parts = preparationContents(employee);
+        const templateAvailable = Boolean(state.configuration.preparation_template);
+        return `<section class="section">
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erzeuge eine eigenständige HTML-Datei und sende sie der mitarbeitenden Person mit der Gesprächseinladung. Eingaben in dieser Datei werden nicht in deine Arbeitsmappe zurückgeschrieben.</p></div></div>
+          <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value"><ul style="margin:0;padding-left:20px">${parts.map(part => `<li>${h(part)}</li>`).join('')}</ul></div></div>
+          ${hasReview(employee.scope) ? '<div class="suggestion"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die eingegangenen Feedbacks gesammelt und S/MIME-verschlüsselt an HR. HR fordert fehlende Feedbacks nicht nach.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
+          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+        </section>`;
+      }
+
       function recommendedStep(employee) {
         if (!employee.scope) return 'basics';
         if (employee.scope === 'none') return 'finish';
+        if (!employee.meta.preparation_created_at) return 'preparation';
         if (hasReview(employee.scope) && !getSectionCompletion(employee, 'review').complete) return 'review';
         if (hasOutlook(employee.scope) && !getSectionCompletion(employee, 'outlook').complete) return 'outlook';
         return 'finish';
       }
 
       function workflowSteps(employee) {
-        const reviewLabel = employee.dialog_type === 'probation' ? '2 · Rückblick Probezeit' : `2 · Rückblick ${state.package.rb_year}`;
+        const reviewLabel = employee.dialog_type === 'probation' ? '3 · Rückblick Probezeit' : `3 · Rückblick ${state.package.rb_year}`;
         return [
           { key: 'basics', label: '1 · Grundlagen', available: true },
+          { key: 'preparation', label: '2 · Vorbereitung MA', available: Boolean(employee.scope && employee.scope !== 'none') },
           { key: 'review', label: reviewLabel, available: hasReview(employee.scope) },
-          { key: 'outlook', label: `3 · Ausblick ${outlookYear(employee)}`, available: hasOutlook(employee.scope) },
-          { key: 'finish', label: employee.scope === 'none' ? '2 · Kein MD abschliessen' : '4 · Prüfen und PDF', available: Boolean(employee.scope) }
+          { key: 'outlook', label: `4 · Ausblick ${outlookYear(employee)}`, available: hasOutlook(employee.scope) },
+          { key: 'finish', label: employee.scope === 'none' ? '2 · Kein MD abschliessen' : '5 · Prüfen und PDF', available: Boolean(employee.scope) }
         ];
       }
 
@@ -1387,10 +1409,11 @@
 
       function renderGuidance() {
         return `<details class="guidance"><summary>Kurzanleitung anzeigen</summary><ol>
-          <li>Bereite Rückblick und Ausblick vor dem Gespräch aus deiner Sicht vor. Bitte die mitarbeitende Person, sich ebenfalls Gedanken zu machen; dafür kann das <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#unterlagen" target="_blank" rel="noopener">Reflexionsformular</a> als Hilfe dienen.</li>
+          <li>Lege den Umfang fest und erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei. Sende sie mit der Gesprächseinladung.</li>
+          <li>Bereite Rückblick und Ausblick vor dem Gespräch auch aus deiner Sicht vor.</li>
           <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
           <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift.</li>
-          <li>Sende die unterzeichneten Dokumente in einer S/MIME-verschlüsselten E-Mail an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
+          <li>Sammle die Feedback-PDFs deiner Mitarbeitenden. Sende die unterzeichneten MD-Dokumente und die Feedbacks gesammelt in einer S/MIME-verschlüsselten E-Mail an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
         </ol><div class="suggestion warning guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
       }
 
@@ -1491,6 +1514,8 @@
         let stepContent = '';
         if (selectedStep === 'basics') {
           stepContent = `${renderScope(employee)}${renderGuidance()}`;
+        } else if (selectedStep === 'preparation') {
+          stepContent = renderEmployeePreparation(employee);
         } else if (selectedStep === 'review') {
           stepContent = `${renderDialogDetails(employee, 'review')}${renderReview(employee)}`;
         } else if (selectedStep === 'outlook') {
@@ -1670,6 +1695,10 @@
         }
         if (action === 'save-package') {
           savePackage();
+          return;
+        }
+        if (action === 'download-preparation') {
+          downloadEmployeePreparation(employee);
           return;
         }
         if (action === 'print-review') printEmployee(employee, 'review');
@@ -1877,6 +1906,63 @@
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^A-Za-z0-9_-]+/g, '_')
           .replace(/^_+|_+$/g, '') || 'Unbekannt';
+      }
+
+      function preparationFilename(employee) {
+        return `Vorbereitung_MD_${state.package.rb_year}_${filenamePart(employee.employee.last_name)}_${filenamePart(employee.employee.first_name)}_${filenamePart(employee.employee.pn)}.html`;
+      }
+
+      function downloadEmployeePreparation(employee) {
+        if (!employee.scope || employee.scope === 'none') {
+          showToast('Lege zuerst einen Gesprächsumfang mit Rückblick oder Ausblick fest.');
+          return;
+        }
+        const template = state.configuration.preparation_template || '';
+        const marker = '__MD_PREPARATION_JSON__';
+        if (!template || template.split(marker).length !== 2) {
+          showToast('Die Vorlage für die Mitarbeitendenvorbereitung fehlt. Bitte verwende eine neu erzeugte Arbeitsmappe.');
+          return;
+        }
+        const payload = {
+          version: 1,
+          preparation_id: `PREP-${employee.case_id}`,
+          package_id: state.package.package_id,
+          case_id: employee.case_id,
+          scope: employee.scope,
+          dialog_type: employee.dialog_type || 'annual',
+          review_year: state.package.rb_year,
+          outlook_year: outlookYear(employee),
+          period_start: employee.period_start || '',
+          period_end: employee.period_end || '',
+          employee: {
+            pn: employee.employee.pn,
+            first_name: employee.employee.first_name,
+            last_name: employee.employee.last_name,
+            full_name: employee.employee.full_name
+          },
+          manager: {
+            pn: state.package.manager_pn,
+            first_name: state.package.manager_first_name || '',
+            last_name: state.package.manager_last_name || '',
+            name: state.package.manager_name
+          },
+          competency_model: state.configuration.competency_model || [],
+          fields: {}
+        };
+        const html = template.replace(marker, safeJson(payload));
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = preparationFilename(employee);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        employee.meta.preparation_created_at = nowIso();
+        markDirty(employee);
+        renderEditor();
+        showToast('Die persönliche Vorbereitungsdatei wurde erstellt. Du kannst sie mit der Gesprächseinladung versenden.');
       }
 
       function packageFilename() {

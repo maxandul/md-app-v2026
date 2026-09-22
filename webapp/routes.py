@@ -68,6 +68,7 @@ from .services.mail_intake import (
     resolve_inbound_message,
     scan_outlook_inbox,
 )
+from .services.feedback import feedback_overview
 from .services.case_review import case_review_detail, correct_case_data
 from .services.deadlines import extend_deadlines
 from .services.reminders import (
@@ -411,11 +412,17 @@ def dispatch():
 @bp.get("/ruecklaeufe")
 def returns_overview():
     connection = get_db()
+    cockpit = cockpit_overview(
+        connection, selected_cycle_id=request.args.get("cycle_id", type=int)
+    )
+    selected_cycle = cockpit.get("selected_cycle")
     return render_template(
         "returns.html",
         active_nav="returns",
-        **cockpit_overview(
-            connection, selected_cycle_id=request.args.get("cycle_id", type=int)
+        **cockpit,
+        feedback_bundles=feedback_overview(
+            connection,
+            cycle_id=selected_cycle["id"] if selected_cycle else None,
         ),
         **mail_inbox_overview(
             connection,
@@ -1113,7 +1120,8 @@ def scan_mail_inbox():
             f"{result['stored']} neue Anhänge gesichert, "
             f"{result['moved']} verarbeitet und verschoben, "
             f"{result['review']} zur HR-Prüfung, {result['ignored']} ohne MD-Bezug ignoriert, "
-            f"{result['duplicates']} bereits bekannt.",
+            f"{result['duplicates']} bereits bekannt, "
+            f"{result['feedback_bundles']} Feedback-Sammel-PDF(s) erstellt.",
             "success",
         )
         if result["errors"]:

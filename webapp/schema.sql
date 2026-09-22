@@ -310,6 +310,39 @@ CREATE TABLE IF NOT EXISTS inbound_mail_attachments (
 CREATE INDEX IF NOT EXISTS idx_inbound_attachment_sha
     ON inbound_mail_attachments (sha256, status);
 
+CREATE TABLE IF NOT EXISTS feedback_bundles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+    manager_pn TEXT NOT NULL,
+    source_message_id INTEGER REFERENCES inbound_mail_messages(id) ON DELETE SET NULL,
+    filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL UNIQUE,
+    submission_count INTEGER NOT NULL CHECK (submission_count > 0),
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_bundles_manager
+    ON feedback_bundles (cycle_id, manager_pn, created_at);
+
+CREATE TABLE IF NOT EXISTS feedback_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id) ON DELETE CASCADE,
+    case_id TEXT NOT NULL REFERENCES dialog_cases(case_id) ON DELETE CASCADE,
+    employee_pn TEXT NOT NULL,
+    manager_pn TEXT NOT NULL,
+    source_message_id INTEGER REFERENCES inbound_mail_messages(id) ON DELETE SET NULL,
+    bundle_id INTEGER REFERENCES feedback_bundles(id) ON DELETE SET NULL,
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL UNIQUE,
+    data_block_json TEXT NOT NULL DEFAULT '{}',
+    received_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_manager
+    ON feedback_submissions (cycle_id, manager_pn, source_message_id);
+
 CREATE TABLE IF NOT EXISTS official_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     case_id TEXT NOT NULL REFERENCES dialog_cases(case_id) ON DELETE CASCADE,

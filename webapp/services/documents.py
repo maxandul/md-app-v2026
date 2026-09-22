@@ -36,6 +36,7 @@ DATA_KEYS = (
     "case_id",
     "package_id",
     "pn",
+    "manager_pn",
     "ans",
     "year",
     "scope",

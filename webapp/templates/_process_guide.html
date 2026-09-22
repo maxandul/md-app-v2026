@@ -1,0 +1,87 @@
+{% set phase_number = {'vorbereitung': 1, 'versand': 2, 'ruecklauf': 3, 'abgeschlossen': 4}[process_cycle.status] %}
+<section class="process-guide" aria-labelledby="process-guide-title">
+  <div class="section-heading process-guide__heading">
+    <div>
+      <p class="kicker">Orientierung im Gesamtprozess</p>
+      <h2 id="process-guide-title">Wo befindet sich dieser Durchlauf?</h2>
+    </div>
+    <span class="status status--phase">Phase {{ phase_number }} von 4</span>
+  </div>
+
+  <ol class="process-steps">
+    <li class="process-step{% if phase_number > 1 %} is-complete{% elif phase_number == 1 %} is-current{% endif %}">
+      <span class="process-step__number">1</span>
+      <div><strong>Vorbereitung</strong><span>SAP prüfen, Umfang festlegen und START-Dateien erzeugen</span></div>
+      {% if phase_number == 1 %}<span class="process-step__marker">Sie sind hier</span>{% endif %}
+    </li>
+    <li class="process-step{% if phase_number > 2 %} is-complete{% elif phase_number == 2 %} is-current{% endif %}">
+      <span class="process-step__number">2</span>
+      <div><strong>Versand</strong><span>Arbeitsmappen S/MIME-verschlüsselt bereitstellen</span></div>
+      {% if phase_number == 2 %}<span class="process-step__marker">Sie sind hier</span>{% endif %}
+    </li>
+    <li class="process-step{% if phase_number > 3 %} is-complete{% elif phase_number == 3 %} is-current{% endif %}">
+      <span class="process-step__number">3</span>
+      <div><strong>Rücklauf und Verarbeitung</strong><span>PDFs, Scans, Fristen, Dossierablage und SAP-Export</span></div>
+      {% if phase_number == 3 %}<span class="process-step__marker">Sie sind hier</span>{% endif %}
+    </li>
+    <li class="process-step{% if phase_number == 4 %} is-current is-complete{% endif %}">
+      <span class="process-step__number">4</span>
+      <div><strong>Abschluss</strong><span>Offene Punkte klären und Durchlauf dokumentiert schliessen</span></div>
+      {% if phase_number == 4 %}<span class="process-step__marker">Sie sind hier</span>{% endif %}
+    </li>
+  </ol>
+
+  <div class="current-phase">
+    <div>
+      <span class="context-label">Aktuelle Bedeutung</span>
+      {% if process_cycle.status == 'vorbereitung' %}
+        <strong>Die Grundlagen werden vorbereitet; erzeugte Dateien sind noch nicht automatisch versendet.</strong>
+        <p>Prüfe SAP-Konflikte und Pflichtumfang, erzeuge die benötigten START-Dateien und wechsle erst vor dem tatsächlichen Versand in die nächste Phase.</p>
+      {% elif process_cycle.status == 'versand' %}
+        <strong>Die Arbeitsmappen werden an die vorgesetzten Personen verteilt.</strong>
+        <p>Direktversand sendet über Outlook S/MIME-verschlüsselt. Ein Entwurf bleibt dagegen in Outlook und ist noch nicht versendet.</p>
+      {% elif process_cycle.status == 'ruecklauf' %}
+        <strong>HR überwacht Fristen und verarbeitet die zurückgesendeten PDF-Dokumente.</strong>
+        <p>Standard-PDFs werden für die Personaldossier-Ablage bereitgestellt. Bei D/E oder Uneinigkeit bleibt zusätzlich der handschriftliche Scan offen.</p>
+      {% else %}
+        <strong>Der Jahresprozess ist abgeschlossen und wird nicht mehr mit neuen SAP-Importen synchronisiert.</strong>
+        <p>Der Abschluss versendet nichts und löscht keine Daten. Für Nachbearbeitungen kann der Durchlauf wieder in die Rücklaufphase geöffnet werden.</p>
+      {% endif %}
+    </div>
+    {% if process_action_url %}<a class="button button--small" href="{{ process_action_url }}">Phase und Details öffnen</a>{% endif %}
+  </div>
+
+  <details class="process-explanation">
+    <summary>Regulären und unterjährigen Ablauf anzeigen</summary>
+    <div class="process-explanation__grid">
+      <article>
+        <h3>Regulärer Jahresdurchlauf</h3>
+        <ol>
+          <li><strong>Oktober:</strong> SAP-Daten importieren, Durchlauf eröffnen, vorgeschlagenen Pflichtumfang prüfen und Arbeitsmappen versenden.</li>
+          <li><strong>November bis 31. Januar:</strong> Rückblicke durchführen und als elektronisch unterzeichnete PDFs an HR senden.</li>
+          <li><strong>Bis 28. Februar:</strong> Ausblicke durchführen und zurücksenden. Rückblick- und Ausblickfrist können begründet getrennt angepasst werden.</li>
+          <li><strong>Verarbeitung:</strong> Das System ordnet die PDFs zu, stellt sie für die Personaldossier-Ablage bereit und erstellt aus abgeschlossenen Rückblicken SAP-Exportbatches.</li>
+        </ol>
+      </article>
+      <article>
+        <h3>Unterjährige Ereignisse</h3>
+        <ol>
+          <li>Ein Neueintritt, Austritt, Wechsel, Übertritt oder Probezeitende löst ein eigenes Dialogereignis aus; der reguläre Jahresfall bleibt separat bestehen.</li>
+          <li>Ein neuer SAP-Import aktualisiert offene Durchläufe. Wo die Ableitung nicht eindeutig ist, ergänzt HR das Ereignis manuell.</li>
+          <li>Die Führungskraft erhält je nach Situation eine neue START-Datei oder eine Update-Datei für ihre bestehende Arbeitsmappe.</li>
+          <li>Rücklauf und Ablage funktionieren anschliessend gleich wie im regulären Prozess. Bei mehreren Rückblicken wird genau ein Ereignis als führend für SAP bestimmt.</li>
+        </ol>
+      </article>
+    </div>
+    <div class="external-effects">
+      <h3>Was bewirkt die App ausserhalb des Cockpits?</h3>
+      <ul>
+        <li><strong>Datei erzeugen:</strong> legt nur eine START-, Update- oder Exportdatei bereit; dadurch wurde noch keine E-Mail versendet und noch nichts in SAP hochgeladen.</li>
+        <li><strong>Direkt versenden:</strong> übergibt die Nachricht an das klassische Outlook und sendet sie S/MIME-verschlüsselt. «Entwurf erstellen» sendet nicht.</li>
+        <li><strong>Postfach scannen:</strong> verarbeitet nur MD-Dokumente. Reine, erfolgreich verarbeitete MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben; gemischte Mails bleiben zur Prüfung sichtbar.</li>
+        <li><strong>PDF übernehmen:</strong> stellt geeignete Dokumente im Roboter-Input für die nachgelagerte Personaldossier-Ablage bereit. Die nachgelagerte Übernahme selbst liegt ausserhalb der App.</li>
+        <li><strong>SAP-Export erzeugen:</strong> erstellt einen nachvollziehbaren Massenupload-Batch; der eigentliche Import in SAP erfolgt separat.</li>
+      </ul>
+    </div>
+  </details>
+</section>

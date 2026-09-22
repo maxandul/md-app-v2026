@@ -8,6 +8,10 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 
 - SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern
 - einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
+- den Jahresprozess sichtbar durch Vorbereitung, Versand, Rücklauf/Verarbeitung
+  und Abschluss führen; die Phase kann kontrolliert vor- und zurückgesetzt werden
+- den regulären und den unterjährigen Ablauf sowie Auswirkungen auf Outlook,
+  Roboter-Input, Personaldossier und SAP direkt im Cockpit erklären
 - pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
 - START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
 - S/MIME-markierte Nachrichten direkt versenden oder als Outlook-Entwürfe erzeugen

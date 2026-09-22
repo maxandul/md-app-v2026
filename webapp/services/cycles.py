@@ -6,6 +6,44 @@ import sqlite3
 from datetime import date, datetime
 
 
+CYCLE_STATUS_LABELS = {
+    "vorbereitung": "Vorbereitung",
+    "versand": "Versand",
+    "ruecklauf": "Rücklauf und Verarbeitung",
+    "abgeschlossen": "Abgeschlossen",
+}
+
+_CYCLE_STATUS_TRANSITIONS = {
+    "vorbereitung": {"versand"},
+    "versand": {"vorbereitung", "ruecklauf"},
+    "ruecklauf": {"versand", "abgeschlossen"},
+    "abgeschlossen": {"ruecklauf"},
+}
+
+
+def change_cycle_status(
+    connection: sqlite3.Connection, *, cycle_id: int, new_status: str
+) -> tuple[str, str]:
+    """Ändert die steuernde Prozessphase kontrolliert um genau einen Schritt."""
+    cycle = connection.execute(
+        "SELECT status FROM cycles WHERE id = ?", (cycle_id,)
+    ).fetchone()
+    if not cycle:
+        raise LookupError("Jahresprozess nicht gefunden.")
+    old_status = cycle["status"]
+    if new_status == old_status:
+        return old_status, new_status
+    if new_status not in _CYCLE_STATUS_TRANSITIONS.get(old_status, set()):
+        raise ValueError(
+            "Die Prozessphase kann nur um einen Schritt vor- oder zurückgesetzt werden."
+        )
+    connection.execute(
+        "UPDATE cycles SET status = ? WHERE id = ?", (new_status, cycle_id)
+    )
+    connection.commit()
+    return old_status, new_status
+
+
 def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tuple[str, str]:
     if exit_date:
         parsed = date.fromisoformat(exit_date)

@@ -27,6 +27,8 @@ from werkzeug.utils import secure_filename
 from .auth import audit, login_required, system_admin_required
 from .db import close_db, connect_database, get_db
 from .services.cycles import (
+    CYCLE_STATUS_LABELS,
+    change_cycle_status,
     create_cycle,
     cycle_overview,
     dashboard_data,
@@ -222,6 +224,7 @@ def dialogs():
         event_query=query,
         selected_event_type=event_type,
         selected_event_status=event_status,
+        cycle_status_labels=CYCLE_STATUS_LABELS,
         reminder_rows=(
             reminder_candidates(
                 connection,
@@ -429,6 +432,7 @@ def sap_exports():
     return render_template(
         "sap_exports.html",
         active_nav="sap_export",
+        cycle_status_labels=CYCLE_STATUS_LABELS,
         export_batches=sap_export_batches(connection),
         **dashboard_data(connection),
     )
@@ -695,8 +699,33 @@ def cycle_detail(cycle_id: int):
     return render_template(
         "cycle.html", cycle=cycle, managers=manager_rows,
         export_batches=sap_export_batches(get_db(), cycle_id=cycle_id),
+        cycle_status_labels=CYCLE_STATUS_LABELS,
         active_nav="dialogs"
     )
+
+
+@bp.post("/cycles/<int:cycle_id>/status")
+def set_cycle_status(cycle_id: int):
+    try:
+        old_status, new_status = change_cycle_status(
+            get_db(), cycle_id=cycle_id,
+            new_status=request.form.get("status", "").strip(),
+        )
+    except LookupError:
+        abort(404)
+    except ValueError as exc:
+        flash(str(exc), "error")
+    else:
+        audit(
+            "cycle_status_changed", "cycle", str(cycle_id),
+            old_status=old_status, new_status=new_status,
+        )
+        flash(
+            f"Der Durchlauf befindet sich jetzt in der Phase "
+            f"«{CYCLE_STATUS_LABELS[new_status]}».",
+            "success",
+        )
+    return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
 
 
 @bp.get("/cycles/<int:cycle_id>/managers/<manager_pn>")

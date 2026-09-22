@@ -5,15 +5,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date, datetime
 
-from .cycles import dashboard_data
-
-
-CYCLE_STATUS_LABELS = {
-    "vorbereitung": "Vorbereitung",
-    "versand": "Versand",
-    "ruecklauf": "Rücklauf",
-    "abgeschlossen": "Abgeschlossen",
-}
+from .cycles import CYCLE_STATUS_LABELS, dashboard_data
 
 
 def _selected_cycle(cycles: list[sqlite3.Row], selected_cycle_id: int | None):

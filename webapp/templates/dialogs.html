@@ -25,7 +25,7 @@
     <div class="section-heading"><div><p class="kicker">Prozessübersicht</p><h2 id="processes-title">Durchläufe</h2></div></div>
     {% if cycles %}
       <div class="table-wrap"><table><thead><tr><th>Zeitraum</th><th>Status</th><th>Führungskräfte</th><th>Fälle</th><th>Abgeschlossen</th><th></th></tr></thead><tbody>
-      {% for cycle in cycles %}<tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td><span class="status">{{ cycle.status }}</span></td><td>{{ cycle.manager_count }}</td><td>{{ cycle.case_count }}</td><td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td><td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td></tr>{% endfor %}
+      {% for cycle in cycles %}<tr><td><strong>{{ cycle.review_year }}/{{ cycle.outlook_year }}</strong></td><td><span class="status">{{ cycle_status_labels[cycle.status] }}</span></td><td>{{ cycle.manager_count }}</td><td>{{ cycle.case_count }}</td><td>{{ cycle.done_count or 0 }} von {{ cycle.case_count }}</td><td><a href="{{ url_for('main.cycle_detail', cycle_id=cycle.id) }}">Öffnen</a></td></tr>{% endfor %}
       </tbody></table></div>
     {% else %}<div class="empty-state">Noch kein Durchlauf angelegt.</div>{% endif %}
   </section>

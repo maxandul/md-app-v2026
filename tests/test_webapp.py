@@ -22,7 +22,7 @@ from webapp.adapters.outlook import (
     InboundMessage,
     _resolve_inbox,
 )
-from webapp.services.cycles import create_cycle, cycle_overview
+from webapp.services.cycles import change_cycle_status, create_cycle, cycle_overview
 from webapp.services.cockpit import cockpit_overview
 from webapp.services.dialog_events import set_leading_sap_event
 from webapp.services.documents import (
@@ -368,6 +368,59 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
             self.assertEqual(data["metrics"]["workbooks_missing"], 2)
+
+    def test_process_guide_and_controlled_cycle_phase_changes(self) -> None:
+        cycle_id = self._prepare_cycle()
+        dashboard = self.client.get("/").get_data(as_text=True)
+        self.assertIn("Wo befindet sich dieser Durchlauf?", dashboard)
+        self.assertIn("Phase 1 von 4", dashboard)
+        self.assertIn("Regulären und unterjährigen Ablauf anzeigen", dashboard)
+        self.assertIn("Was bewirkt die App ausserhalb des Cockpits?", dashboard)
+
+        page = self.client.get(f"/cycles/{cycle_id}").get_data(as_text=True)
+        self.assertIn("Versandphase starten", page)
+        response = self.client.post(
+            f"/cycles/{cycle_id}/status",
+            data={"status": "versand"},
+            follow_redirects=True,
+        )
+        self.assertIn("Phase «Versand»", response.get_data(as_text=True))
+        self.assertIn("Rücklaufphase starten", response.get_data(as_text=True))
+        with self.app.app_context():
+            connection = get_db()
+            self.assertEqual(
+                connection.execute(
+                    "SELECT status FROM cycles WHERE id = ?", (cycle_id,)
+                ).fetchone()["status"],
+                "versand",
+            )
+            audit_row = connection.execute(
+                "SELECT action, details_json FROM audit_log ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            self.assertEqual(audit_row["action"], "cycle_status_changed")
+            self.assertIn('"new_status": "versand"', audit_row["details_json"])
+
+        response = self.client.post(
+            f"/cycles/{cycle_id}/status",
+            data={"status": "abgeschlossen"},
+            follow_redirects=True,
+        )
+        self.assertIn(
+            "nur um einen Schritt vor- oder zurückgesetzt", response.get_data(as_text=True)
+        )
+
+    def test_cycle_status_service_can_reopen_completed_cycle(self) -> None:
+        cycle_id = self._prepare_cycle()
+        with self.app.app_context():
+            connection = get_db()
+            for status in ("versand", "ruecklauf", "abgeschlossen", "ruecklauf"):
+                change_cycle_status(
+                    connection, cycle_id=cycle_id, new_status=status
+                )
+            current = connection.execute(
+                "SELECT status FROM cycles WHERE id = ?", (cycle_id,)
+            ).fetchone()["status"]
+            self.assertEqual(current, "ruecklauf")
 
     def test_start_and_update_files_are_detected_and_generated(self) -> None:
         cycle_id = self._prepare_cycle()

@@ -105,6 +105,13 @@ Arbeitsoberfläche. Als Nächstes wird das fachliche Fall- und Dialogmodell erwe
 - Die Startseite zeigt den gewählten Durchlauf, den SAP-Datenstand, heute bereits
   belastbar berechenbare Kennzahlen sowie direkte Aufgaben für SAP-Konflikte,
   START-Dateien, Unterschriftenprüfungen und fehlende Scans.
+- Eine vierstufige Prozessleiste zeigt Vorbereitung, Versand, Rücklauf/Verarbeitung
+  und Abschluss. HR schaltet die Phase bewusst weiter oder einen Schritt zurück;
+  die Änderung wird protokolliert.
+- Eine aufklappbare Prozesshilfe erklärt den regulären Jahresablauf, unterjährige
+  Ereignisse und die Auswirkungen auf Outlook, Roboter-Input, Personaldossier und
+  SAP. Dateierzeugung, Entwurf, Direktversand und externer Upload werden klar
+  unterschieden.
 - Fristen, Überfälligkeit und Erinnerungsstatus werden aus den getrennten
   Dokumentpflichten berechnet und in der Dialogsteuerung angezeigt.
 - Die Übergabe wird fachlich als Bereitstellung für die Personaldossier-Ablage

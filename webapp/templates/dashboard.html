@@ -46,6 +46,10 @@
       <a href="{{ url_for('main.cycle_detail', cycle_id=selected_cycle.id) }}">Durchlauf öffnen</a>
     </section>
 
+    {% set process_cycle = selected_cycle %}
+    {% set process_action_url = url_for('main.cycle_detail', cycle_id=selected_cycle.id) %}
+    {% include '_process_guide.html' %}
+
     <section class="metric-grid" aria-label="Operative Kennzahlen">
       <a class="metric-card" href="{{ url_for('main.dispatch', cycle_id=selected_cycle.id) }}"><span class="metric-card__value">{{ metrics.workbooks_missing }}</span><span class="metric-card__label">START-Dateien fehlen</span><span class="metric-card__detail">Noch nicht bereitgestellt</span></a>
       <a class="metric-card" href="{{ url_for('main.dialogs', cycle_id=selected_cycle.id) }}#events-title"><span class="metric-card__value">{{ metrics.obligations_open }}</span><span class="metric-card__label">Pflichtdokumente offen</span><span class="metric-card__detail">Rückblicke und Ausblicke</span></a>

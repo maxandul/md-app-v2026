@@ -8,6 +8,31 @@
     <p class="lead">SAP-Datenstand «{{ cycle.original_filename }}» vom {{ cycle.imported_at }}.</p>
   </section>
 
+  {% set process_cycle = cycle %}
+  {% set process_action_url = none %}
+  {% include '_process_guide.html' %}
+
+  <section class="phase-control" aria-labelledby="phase-control-title">
+    <div>
+      <span class="context-label">Prozessphase steuern</span>
+      <h2 id="phase-control-title">{{ cycle_status_labels[cycle.status] }}</h2>
+      <p>Die Phase dient der Orientierung und löst selbst keinen Versand und keinen Export aus. «Abgeschlossen» beendet zusätzlich die automatische Synchronisierung mit späteren SAP-Importen.</p>
+    </div>
+    <div class="phase-control__actions">
+      {% if cycle.status == 'vorbereitung' %}
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="versand"><button class="button button--primary" type="submit">Versandphase starten</button></form>
+      {% elif cycle.status == 'versand' %}
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="ruecklauf"><button class="button button--primary" type="submit">Rücklaufphase starten</button></form>
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="vorbereitung"><button class="button" type="submit">Zurück zur Vorbereitung</button></form>
+      {% elif cycle.status == 'ruecklauf' %}
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="abgeschlossen"><button class="button button--primary" type="submit">Durchlauf abschliessen</button></form>
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="versand"><button class="button" type="submit">Zurück zum Versand</button></form>
+      {% else %}
+        <form action="{{ url_for('main.set_cycle_status', cycle_id=cycle.id) }}" method="post"><input type="hidden" name="status" value="ruecklauf"><button class="button" type="submit">Für Nachbearbeitung öffnen</button></form>
+      {% endif %}
+    </div>
+  </section>
+
   <section class="security-note" aria-labelledby="package-note-title">
     <h2 id="package-note-title">Versandablauf</h2>
     <p>Die HTML-Arbeitsmappe bleibt bei der vorgesetzten Person und kann versioniert gespeichert werden. An HR zurückgesendet werden ausschliesslich die daraus erzeugten PDFs - immer das elektronisch unterzeichnete PDF und bei D/E oder Uneinigkeit zusätzlich der handschriftlich unterzeichnete Scan.</p>

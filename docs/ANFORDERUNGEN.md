@@ -196,6 +196,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | COC-006 | MUSS | Erinnerungen können zunächst als Vorschau/Entwurf geprüft und danach gesammelt versendet werden. |
 | COC-007 | MUSS | Suche und Filter unterstützen mindestens Name, Personalnummer, `Ans.`, Führungskraft, Organisationseinheit, Status, Dokumenttyp, Jahr und Frist. |
 | COC-008 | MUSS | Das Cockpit zeigt Import-, Mail-, PDF- und Exportfehler in einer bearbeitbaren Aufgabenliste. Der nachgelagerte RPA-Prozess selbst liegt ausserhalb der Anwendung. |
+| COC-009 | MUSS | Das Cockpit zeigt für den gewählten Durchlauf die aktuelle Phase im Gesamtprozess, die nächste Handlung sowie den regulären und den unterjährigen Ablauf. Bei Aktionen wird verständlich unterschieden, was nur innerhalb der App vorbereitet wird und was einen Vorgang in Outlook, Robotereingang, Personaldossier oder SAP auslöst. |
 
 ## 13. SAP-Massenupload
 

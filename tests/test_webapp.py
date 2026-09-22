@@ -1722,6 +1722,9 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("Feedback als PDF", preparation_template)
         self.assertIn("Teilkompetenzen und Formulierungshilfen", preparation_template)
         self.assertIn('data-action="print-preparation">Gesprächsvorbereitung als PDF', preparation_template)
+        self.assertIn("Ungespeicherte Angaben", preparation_template)
+        self.assertIn("Schliesse diese bisherige Datei", preparation_template)
+        self.assertIn("const markDirty", preparation_template)
         self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.", preparation_template)
         self.assertNotIn("gesammelt und S/MIME-verschlüsselt", preparation_template)
         self.assertIn("Die Führungskräfte sammeln", self.client.get(

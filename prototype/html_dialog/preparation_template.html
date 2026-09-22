@@ -15,7 +15,7 @@
     .topbar { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 24px; color:#fff; background:var(--blue-dark); }
     .topbar h1 { margin:0; font-size:20px; }
     .topbar p { margin:2px 0 0; color:#d9e9f7; font-size:13px; }
-    .toolbar { display:flex; flex-wrap:wrap; gap:8px; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
     .button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:9px 14px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); font-weight:700; }
     .button.primary { color:#fff; border-color:var(--blue); background:var(--blue); }
     .button:disabled { cursor:not-allowed; opacity:.45; }
@@ -47,7 +47,10 @@
     .competency-help h4 { margin:12px 0 3px; font-size:13px; }
     .competency-help ul { margin:3px 0 0; padding-left:20px; }
     .actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
-    .save-state { align-self:center; color:var(--muted); font-size:13px; }
+    .save-state { display:inline-flex; align-items:center; gap:7px; padding:7px 9px; border-radius:4px; color:#d9e9f7; font-size:12px; }
+    .save-state.dirty { color:#fff; background:#a8322d; }
+    .save-dot { width:9px; height:9px; border-radius:50%; background:#aebdca; }
+    .save-state.dirty .save-dot { background:#fff; }
     #print-root { display:none; }
     @media (max-width:760px) { .topbar { position:static; align-items:flex-start; flex-direction:column; } .content { padding:16px; } .meta,.competency-row { grid-template-columns:1fr; } }
     @media print {
@@ -75,7 +78,7 @@
   <div id="app">
     <header class="topbar">
       <div><h1>Vorbereitung Mitarbeitenden-Dialog</h1><p id="topbar-meta"></p></div>
-      <div class="toolbar"><button id="save-html" class="button" type="button">Zwischenstand speichern</button></div>
+      <div class="toolbar"><span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span><button id="save-html" class="button" type="button" disabled>Zwischenstand speichern</button></div>
     </header>
     <main class="content">
       <section class="intro">
@@ -98,11 +101,18 @@
       const dataNode = document.getElementById('prep-data');
       const state = JSON.parse(dataNode.textContent);
       const fields = state.fields || (state.fields = {});
+      let dirty = false;
       const h = value => String(value == null ? '' : value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
       const safeJson = value => JSON.stringify(value).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026');
       const hasReview = state.scope === 'full' || state.scope === 'review_only';
       const hasOutlook = state.scope === 'full' || state.scope === 'outlook_only';
       const value = key => String(fields[key] || '');
+      const updateSaveState = () => {
+        document.getElementById('save-state').classList.toggle('dirty', dirty);
+        document.getElementById('save-state-text').textContent = dirty ? 'Ungespeicherte Angaben' : 'Keine ungespeicherten Angaben';
+        document.getElementById('save-html').disabled = !dirty;
+      };
+      const markDirty = () => { dirty = true; updateSaveState(); };
       const text = (key,label,questions,rows=6) => `<div class="subsection"><h3>${h(label)}</h3>${questions && questions.length ? `<ul class="questions">${questions.map(item=>`<li>${h(item)}</li>`).join('')}</ul>` : ''}<div class="field"><label for="${h(key)}">Deine Gedanken</label><textarea id="${h(key)}" data-field="${h(key)}" rows="${rows}">${h(value(key))}</textarea></div></div>`;
       const optionList = selected => {
         let html = '<option value="">Kompetenz auswählen</option>';
@@ -157,11 +167,17 @@
       preparationActions.innerHTML = `<div class="section-head"><div><h2>Eigene Unterlagen</h2><p class="section-intro">Dieser Export ist nur für dich bestimmt und wird nicht an HR übermittelt.</p></div></div><div class="actions"><button class="button primary" type="button" data-action="print-preparation">Gesprächsvorbereitung als PDF</button></div>`;
       document.getElementById('preparation-sections').appendChild(preparationActions);
 
-      document.addEventListener('input', event => { const control = event.target.closest('[data-field]'); if (control) fields[control.dataset.field] = control.value; });
+      document.addEventListener('input', event => {
+        const control = event.target.closest('[data-field]');
+        if (!control) return;
+        fields[control.dataset.field] = control.value;
+        markDirty();
+      });
       document.addEventListener('change', event => {
         const control = event.target.closest('[data-field]');
         if (!control) return;
         fields[control.dataset.field] = control.value;
+        markDirty();
         const match = control.dataset.field.match(/^feedback_competency_(\d+)$/);
         if (match) document.getElementById(`feedback_competency_help_${match[1]}`).innerHTML = competencyHelp(control.value);
       });
@@ -213,7 +229,11 @@
         link.download = `Vorbereitung_MD_${state.review_year}_${filenamePart(state.employee.last_name)}_${filenamePart(state.employee.first_name)}_BEARBEITET.html`;
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(url),1500);
+        dirty = false;
+        updateSaveState();
+        window.setTimeout(() => window.alert('Eine neue HTML-Datei wurde heruntergeladen. Schliesse diese bisherige Datei und arbeite ab jetzt ausschliesslich in der neu heruntergeladenen Datei weiter.'), 150);
       });
+      updateSaveState();
     })();
   </script>
 </body>

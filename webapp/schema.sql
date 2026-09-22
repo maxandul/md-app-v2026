@@ -276,6 +276,7 @@ CREATE TABLE IF NOT EXISTS inbound_mail_messages (
     contains_probation INTEGER NOT NULL DEFAULT 0 CHECK (contains_probation IN (0, 1)),
     target_folder TEXT NOT NULL DEFAULT '',
     error_message TEXT NOT NULL DEFAULT '',
+    review_completed_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

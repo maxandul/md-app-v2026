@@ -24,6 +24,7 @@ STATUS_LABELS = {
     "new": "Neu",
     "ready_to_move": "Verarbeitet – Verschieben ausstehend",
     "review_required": "HR-Prüfung erforderlich",
+    "review_completed": "Prüfung abgeschlossen",
     "moved": "Verarbeitet und in Outlook verschoben",
     "ignored": "Ohne MD-Bezug ignoriert",
     "failed": "Fehlgeschlagen",
@@ -456,6 +457,20 @@ def resolve_inbound_message(
     ).fetchone()
     if not message:
         raise LookupError("Die Outlook-Nachricht wurde nicht gefunden.")
+    if message["status"] == "review_required":
+        if message["review_completed_at"]:
+            raise ValueError("Diese Outlook-Nachricht ist bereits erledigt.")
+        timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+        connection.execute(
+            """
+            UPDATE inbound_mail_messages
+            SET review_completed_at = ?, error_message = '', updated_at = ?
+            WHERE id = ?
+            """,
+            (timestamp, timestamp, message_id),
+        )
+        connection.commit()
+        return {"id": message_id, "status": "review_completed"}
     if message["status"] not in {"review_required", "ready_to_move", "failed"}:
         raise ValueError("Diese Outlook-Nachricht ist bereits erledigt.")
     outlook = adapter or OutlookInboxAdapter()
@@ -492,7 +507,11 @@ def mail_inbox_overview(
     if query:
         where.append("(m.sender_email LIKE ? OR m.subject LIKE ?)")
         params.extend((f"%{query}%", f"%{query}%"))
-    if status in STATUS_LABELS:
+    if status == "review_completed":
+        where.append("m.status = 'review_required' AND m.review_completed_at <> ''")
+    elif status == "review_required":
+        where.append("m.status = 'review_required' AND m.review_completed_at = ''")
+    elif status in STATUS_LABELS:
         where.append("m.status = ?")
         params.append(status)
     condition = "WHERE " + " AND ".join(where) if where else ""
@@ -518,6 +537,8 @@ def mail_inbox_overview(
     messages: list[dict[str, Any]] = []
     for row in message_rows:
         item = dict(row)
+        if item["status"] == "review_required" and item["review_completed_at"]:
+            item["status"] = "review_completed"
         item["status_label"] = STATUS_LABELS.get(item["status"], item["status"])
         item["attachments"] = [
             dict(attachment)
@@ -530,12 +551,16 @@ def mail_inbox_overview(
             ).fetchall()
         ]
         messages.append(item)
-    counts = {
-        row["status"]: row["count"]
-        for row in connection.execute(
-            "SELECT status, COUNT(*) AS count FROM inbound_mail_messages GROUP BY status"
-        ).fetchall()
-    }
+    counts: dict[str, int] = {}
+    for row in connection.execute(
+        "SELECT status, review_completed_at FROM inbound_mail_messages"
+    ).fetchall():
+        row_status = (
+            "review_completed"
+            if row["status"] == "review_required" and row["review_completed_at"]
+            else row["status"]
+        )
+        counts[row_status] = counts.get(row_status, 0) + 1
     return {
         "mail_messages": messages,
         "mail_status_counts": counts,

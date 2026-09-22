@@ -1141,13 +1141,21 @@ def resolve_mail_message(message_id: int):
     except (LookupError, ValueError, RuntimeError) as exc:
         flash(str(exc), "error")
     else:
-        audit(
-            "inbound_mail_review_completed",
-            "inbound_mail_message",
-            str(message_id),
-            target_folder=result["target_folder"],
-        )
-        flash("Die E-Mail-Prüfung wurde abgeschlossen und die Nachricht verschoben.", "success")
+        if result["status"] == "review_completed":
+            audit(
+                "inbound_mail_review_completed",
+                "inbound_mail_message",
+                str(message_id),
+            )
+            flash("Die E-Mail-Prüfung wurde als erledigt markiert.", "success")
+        else:
+            audit(
+                "inbound_mail_moved",
+                "inbound_mail_message",
+                str(message_id),
+                target_folder=result["target_folder"],
+            )
+            flash("Die Nachricht wurde in Outlook verschoben.", "success")
     return redirect(url_for("main.returns_overview") + "#postfach")
 
 

@@ -929,8 +929,7 @@ class WebAppIntegrationTest(unittest.TestCase):
 
             class FakeInboxAdapter:
                 def move_message(self, **values):
-                    self.values = values
-                    return "entry-probation-moved"
+                    raise AssertionError("Beim Abschluss der Prüfung darf Outlook nicht angesprochen werden.")
 
             inbox_adapter = FakeInboxAdapter()
             resolved = resolve_inbound_message(
@@ -940,8 +939,17 @@ class WebAppIntegrationTest(unittest.TestCase):
                 target_folder="12 Mitarbeitenden-Dialog",
                 adapter=inbox_adapter,
             )
-            self.assertEqual(resolved["status"], "moved")
-            self.assertEqual(inbox_adapter.values["target_folder"], "12 Mitarbeitenden-Dialog")
+            self.assertEqual(resolved["status"], "review_completed")
+            reviewed = connection.execute(
+                "SELECT status, review_completed_at FROM inbound_mail_messages WHERE id = ?",
+                (stored["id"],),
+            ).fetchone()
+            self.assertEqual(reviewed["status"], "review_required")
+            self.assertTrue(reviewed["review_completed_at"])
+            overview = mail_inbox_overview(connection)
+            self.assertEqual(overview["mail_messages"][0]["status"], "review_completed")
+            cockpit = cockpit_overview(connection, selected_cycle_id=cycle_id)
+            self.assertEqual(cockpit["metrics"]["mail_review_required"], 0)
 
     def test_case_correction_is_reasoned_and_preserves_original_pdf_data(self) -> None:
         cycle_id = self._prepare_cycle()

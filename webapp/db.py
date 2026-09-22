@@ -125,6 +125,15 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         connection.execute(
             "ALTER TABLE package_events ADD COLUMN stored_path TEXT NOT NULL DEFAULT ''"
         )
+    inbound_mail_columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(inbound_mail_messages)").fetchall()
+    }
+    if "review_completed_at" not in inbound_mail_columns:
+        connection.execute(
+            "ALTER TABLE inbound_mail_messages "
+            "ADD COLUMN review_completed_at TEXT NOT NULL DEFAULT ''"
+        )
     connection.commit()
     from .services.dialog_events import backfill_dialog_model
 

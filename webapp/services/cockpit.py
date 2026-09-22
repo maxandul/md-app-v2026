@@ -46,7 +46,8 @@ def cockpit_overview(
         """
         SELECT id, sender_email, subject, received_at, contains_probation
         FROM inbound_mail_messages
-        WHERE status IN ('review_required', 'failed')
+        WHERE (status = 'review_required' AND review_completed_at = '')
+           OR status = 'failed'
         ORDER BY received_at
         """
     ).fetchall()

@@ -55,7 +55,7 @@
           </td>
           <td>
             {% if message.status == 'ready_to_move' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><button class="button button--small" type="submit">Jetzt verschieben</button></form>
-            {% elif message.status == 'review_required' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><button class="button button--small" type="submit">Prüfung abschliessen und verschieben</button></form>
+            {% elif message.status == 'review_required' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><button class="button button--small" type="submit">Prüfung als erledigt markieren</button></form>
             {% elif message.status == 'failed' %}<span class="status status--danger">{{ message.status_label }}</span>
             {% else %}<span class="status">{{ message.status_label }}</span>{% endif %}
             {% if message.error_message %}<br><span class="issue-text issue-text--blocking">{{ message.error_message }}</span>{% endif %}

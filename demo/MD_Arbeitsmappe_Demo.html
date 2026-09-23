@@ -343,7 +343,6 @@
     .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
     .guidance summary { cursor: pointer; font-weight: 700; }
     .guidance ol { margin-bottom: 0; }
-    .guidance-save-note { margin: 14px 0 0; }
     .master-data { margin-top: 12px; padding: 0; border: 0; background: transparent; }
     .master-data summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
@@ -362,6 +361,12 @@
       color: #65430b;
       border-left-color: #e0a526;
       background: var(--warning-soft);
+    }
+
+    .suggestion.storage-warning {
+      color: #8a2716;
+      border-left-color: var(--danger);
+      background: var(--danger-soft);
     }
 
     .scan-warning {
@@ -1437,7 +1442,7 @@
           <li>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
           <li>E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</li>
           <li>Melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>, wenn dir Mitarbeitende fehlen. Wir senden dir eine Update-Datei zum Einlesen.</li>
-        </ol><div class="suggestion warning guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div><div class="suggestion"><strong>Wo werden deine Angaben gespeichert?</strong> Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt. Mit «Arbeitsmappe speichern» wird eine neue HTML-Datei mit deinen Änderungen lokal auf deinem Gerät gespeichert (in der Regel im Download-Ordner). Arbeite danach nur mit der neuesten Datei weiter.</div></details>`;
+        </ol><div class="suggestion storage-warning"><strong>Wo werden deine Angaben gespeichert?</strong> Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt. Mit «Arbeitsmappe speichern» wird eine neue HTML-Datei mit deinen Änderungen lokal auf deinem Gerät gespeichert (in der Regel im Download-Ordner). Arbeite danach nur mit der neuesten Datei weiter.</div></details>`;
       }
 
       function progressDocumentLabel(employee, section) {

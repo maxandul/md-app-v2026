@@ -184,6 +184,10 @@
     .package-title { margin: 0; font-size: 18px; }
     .package-meta { margin-top: 14px; color: #d9e9f7; font-size: 12px; }
     .package-meta summary { cursor: pointer; font-weight: 700; }
+    .package-meta dl { display: grid; gap: 9px; margin: 10px 0 0; }
+    .package-meta div { min-width: 0; }
+    .package-meta dt { color: #fff; font-weight: 700; }
+    .package-meta dd { margin: 2px 0 0; line-height: 1.35; overflow-wrap: anywhere; }
 
     .toolbar {
       display: flex;
@@ -687,7 +691,7 @@
 
       <div id="employee-list" class="employee-list"></div>
       <details id="archive-list" class="archive-list"><summary id="archive-summary">Archivierte Personen</summary><div id="archived-employee-list" class="employee-list"></div></details>
-      <details class="package-meta"><summary>Technische Angaben</summary><span id="package-meta"></span></details>
+      <details class="package-meta"><summary>Technische Angaben</summary><dl id="package-meta"></dl></details>
     </aside>
 
     <main class="main">
@@ -1012,9 +1016,22 @@
         const histories = Array.isArray(pkg.previous_cycles) ? pkg.previous_cycles : [];
         cycleSelect.innerHTML = `<option value="current">Rückblick ${h(pkg.rb_year)} · Ausblick ${h(pkg.ab_year)}</option>${histories.map(cycle => `<option value="${h(cycle.file || '')}">${h(cycle.label)}</option>`).join('')}`;
         document.getElementById('package-title').textContent = pkg.manager_name;
-        const saved = pkg.saved_at ? ` · gespeichert ${new Date(pkg.saved_at).toLocaleString('de-CH')}` : '';
-        const version = pkg.revision ? ` · Bearbeitungsstand v${String(pkg.revision).padStart(2, '0')}` : ' · Startdatei';
-        document.getElementById('package-meta').textContent = `VG-PN ${pkg.manager_pn} · Paket ${pkg.package_id}${version}${saved}`;
+        const version = pkg.revision ? `v${String(pkg.revision).padStart(2, '0')}` : 'Startdatei';
+        const fileDate = pkg.saved_at || pkg.created_at;
+        const fileDateLabel = fileDate ? new Date(fileDate).toLocaleString('de-CH') : 'Nicht verfügbar';
+        const technicalDetails = [
+          ['Anwendungstyp', 'Clientseitige Standalone-Webanwendung'],
+          ['Laufzeitumgebung', 'Lokaler Webbrowser'],
+          ['Persistenz', 'Serialisierung des aktuellen Bearbeitungsstands in eine neue HTML-Datei'],
+          ['Dateizugriff', 'Browserbasierter Download; kein direktes Überschreiben der Quelldatei'],
+          ['Schnittstellen', 'Kein Backend, keine API und keine zentrale Datenbank'],
+          ['Dokumentenerzeugung', 'Clientseitige Generierung der PDF-Dateien'],
+          ['Datenübertragung', 'Keine automatische Übertragung von Eingabe- oder Dokumentdaten'],
+          ['Paketnummer', pkg.package_id],
+          ['Arbeitsmappenversion', version],
+          ['Dateistand', fileDateLabel]
+        ];
+        document.getElementById('package-meta').innerHTML = technicalDetails.map(([label, value]) => `<div><dt>${h(label)}</dt><dd>${h(value)}</dd></div>`).join('');
         document.title = `MD ${pkg.rb_year}/${pkg.ab_year} – ${pkg.manager_name}`;
         previousTitle = document.title;
       }
@@ -1420,7 +1437,7 @@
           <li>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
           <li>E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</li>
           <li>Melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>, wenn dir Mitarbeitende fehlen. Wir senden dir eine Update-Datei zum Einlesen.</li>
-        </ol><div class="suggestion warning guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div></details>`;
+        </ol><div class="suggestion warning guidance-save-note"><strong>Arbeitsstand sichern:</strong> Speichere die Arbeitsmappe, wenn du deine Arbeit unterbrichst (oben rechts). Dabei wird eine neue HTML-Datei mit höherer Versionsnummer heruntergeladen; arbeite danach nur mit dieser neuesten Datei weiter. Die Eingaben bleiben sonst nur in deiner aktuellen Browsersession gespeichert.</div><div class="suggestion"><strong>Wo werden deine Angaben gespeichert?</strong> Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt. Mit «Arbeitsmappe speichern» wird eine neue HTML-Datei mit deinen Änderungen lokal auf deinem Gerät gespeichert (in der Regel im Download-Ordner). Arbeite danach nur mit der neuesten Datei weiter.</div></details>`;
       }
 
       function progressDocumentLabel(employee, section) {

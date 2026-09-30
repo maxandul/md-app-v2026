@@ -208,7 +208,7 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 | COC-007 | MUSS | Suche und Filter unterstützen mindestens Name, Personalnummer, `Ans.`, Führungskraft, Organisationseinheit, Status, Dokumenttyp, Jahr und Frist. |
 | COC-008 | MUSS | Das Cockpit zeigt Import-, Mail-, PDF- und Exportfehler in einer bearbeitbaren Aufgabenliste. Der nachgelagerte RPA-Prozess selbst liegt ausserhalb der Anwendung. |
 | COC-009 | MUSS | Das Cockpit zeigt für den gewählten Durchlauf die aktuelle Phase im Gesamtprozess, die nächste Handlung sowie den regulären und den unterjährigen Ablauf. Bei Aktionen wird verständlich unterschieden, was nur innerhalb der App vorbereitet wird und was einen Vorgang in Outlook, Robotereingang, Personaldossier oder SAP auslöst. |
-| COC-010 | MUSS | Eingegangene Feedbacks und erzeugte Sammel-PDFs werden angezeigt. Feedback ist ein fixer Prozessbestandteil bei einem Rückblick, wird von HR jedoch weder auf Vollständigkeit überwacht noch aktiv eingefordert oder gemahnt. |
+| COC-010 | MUSS | Eingegangene Feedbacks und erzeugte Sammel-PDFs werden angezeigt. Die vorgesetzte Person kann Feedback-PDFs einzeln, gesammelt oder in Chargen übermitteln und muss sie vor dem Versand nicht selbst zusammenführen. Feedback ist ein fixer Prozessbestandteil bei einem Rückblick, wird von HR jedoch weder auf Vollständigkeit überwacht noch aktiv eingefordert oder gemahnt. |
 
 ## 13. SAP-Massenupload
 

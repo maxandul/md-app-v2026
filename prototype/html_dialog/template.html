@@ -223,8 +223,9 @@
 
     .button.complete-action { color: #fff; border-color: var(--success); background: var(--success); }
     .button.complete-action:hover { background: #126818; }
-    .button.guidance-button { min-height: 34px; padding: 6px 10px; color: #fff; border-color: var(--success); background: var(--success); font-size: 13px; }
+    .button.guidance-button { gap: 8px; min-height: 34px; padding: 6px 11px; color: #fff; border-color: var(--success); background: var(--success); font-size: 13px; }
     .button.guidance-button:hover { background: #126818; }
+    .info-icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 50%; font: 700 12px/1 Georgia, serif; }
 
     .button.danger { color: var(--danger); border-color: #f1b8b2; }
     .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
@@ -361,9 +362,6 @@
     .checkpoint-note-expiry { margin: 0 0 10px; color: #8a2716; font-size: 12px; font-weight: 700; }
     .checkpoint-note.fixed { border: 1px solid #d8dee6; border-left: 4px solid #8a97a6; background: #f0f3f6; }
     .checkpoint-note.fixed .card-body { color: #384452; white-space: pre-wrap; }
-    .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
-    .guidance summary { cursor: pointer; font-weight: 700; }
-    .guidance ol { margin-bottom: 0; }
     .master-data { margin-top: 12px; padding: 0; border: 0; background: transparent; }
     .master-data summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
@@ -394,12 +392,6 @@
       color: #65430b;
       border-left-color: #e0a526;
       background: var(--warning-soft);
-    }
-
-    .suggestion.storage-warning {
-      color: #8a2716;
-      border-left-color: var(--danger);
-      background: var(--danger-soft);
     }
 
     .scan-warning {
@@ -736,7 +728,7 @@
       <header class="topbar">
         <div class="package-heading">
           <h2 id="package-title" class="package-title"></h2>
-          <button id="guidance-button" class="button guidance-button" type="button" aria-haspopup="dialog"><span aria-hidden="true">ⓘ</span> Kurzanleitung</button>
+          <button id="guidance-button" class="button guidance-button" type="button" aria-haspopup="dialog"><span class="info-icon" aria-hidden="true">i</span><span>Kurzanleitung</span></button>
         </div>
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
@@ -758,17 +750,17 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <dialog id="guidance-dialog" class="guidance-dialog" aria-labelledby="guidance-title">
-    <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div><button class="button small" type="button" data-guidance-close aria-label="Kurzanleitung schliessen">Schliessen</button></div>
+    <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
     <div class="guidance-dialog-body">
       <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
-      <details class="guidance-step" open><summary>1 · Umfang und Vorbereitung</summary><p>Prüfe unter «Grundlagen», welche Dialogteile erforderlich sind. Erzeuge danach unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung.</p></details>
-      <details class="guidance-step"><summary>2 · Rückblick und Ausblick bearbeiten</summary><p>Bereite deine Sicht vor, führe das Gespräch und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt. Standortgesprächsnotizen dienen dabei nur als lokale Gedächtnisstütze.</p></details>
-      <details class="guidance-step"><summary>3 · Dokumente prüfen und versenden</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
-      <details class="guidance-step"><summary>4 · Rücklauf an HR</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
-      <details class="guidance-step"><summary>5 · Speichern und Aktualisieren</summary><p>Die HTML-Arbeitsmappe bleibt bei dir und wird nicht an HR gesendet. «Arbeitsmappe speichern» lädt eine neue Datei herunter, in der Regel in den Download-Ordner. Arbeite anschliessend nur mit der neuesten Datei. Fehlen Mitarbeitende, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>; eine erhaltene Update-Datei kannst du oben einlesen.</p></details>
-      <div class="suggestion storage-warning"><strong>Wo werden deine Angaben gespeichert?</strong> Alle Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt.</div>
+      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Dadurch wird der aktuelle Stand als neue Datei in deinen Download-Ordner heruntergeladen. Arbeite anschliessend nur mit der neuesten Datei. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step"><summary>2 · Umfang bestimmen</summary><p>Bestimme unter «Grundlagen», welche Dialoge erforderlich sind. Erfasse eine Begründung, falls du vom Pflichtteil abweichst. Falls gar kein MD stattfindet, kannst du direkt das PDF generieren und an HR senden. Sprich dich vorgängig mit deiner oder deinem HR-Verantwortlichen ab, falls es sich nicht um einen der dokumentierten Spezialfälle handelt.</p></details>
+      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Die Vorbereitungsdatei enthält eine freiwillige Reflexion sowie ein verpflichtendes Feedback an dich. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
+      <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
+      <details class="guidance-step"><summary>5 · PDFs erstellen und unterschreiben</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
+      <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
     </div>
-    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button primary" type="button" data-guidance-close>Verstanden</button></div>
+    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button primary" type="button" data-guidance-close>Schliessen</button></div>
   </dialog>
 
   <script id="md-data" type="application/json">__MD_PACKAGE_JSON__</script>
@@ -1522,7 +1514,7 @@
         return `<section class="section">
           <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erzeuge eine eigenständige HTML-Datei und sende sie der mitarbeitenden Person mit der Gesprächseinladung. Eingaben in dieser Datei werden nicht in deine Arbeitsmappe zurückgeschrieben.</p></div></div>
           <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value"><ul style="margin:0;padding-left:20px">${parts.map(part => `<li>${h(part)}</li>`).join('')}</ul></div></div>
-          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die eingegangenen Feedbacks gesammelt und S/MIME-verschlüsselt an HR.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
+          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du kannst die eingegangenen PDFs einzeln, gesammelt oder in Chargen S/MIME-verschlüsselt an HR weiterleiten; ein Zusammenführen zu einem PDF ist nicht nötig.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
         </section>`;
       }

@@ -255,6 +255,9 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("selectedStep === 'basics' || selectedStep === 'preparation'", template)
         self.assertIn("Lege hier fest, welche Dialoge du in diesem Durchlauf", template)
         self.assertEqual(template.count("Bestimmungen bei Spezialfällen"), 1)
+        self.assertIn("falls es sich nicht um einen der dokumentierten Spezialfälle handelt", template)
+        self.assertIn("Der Download-Ordner wird regelmässig automatisch geleert", template)
+        self.assertIn("Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.", template)
 
     def test_checkpoint_notes_are_local_optional_and_importable(self) -> None:
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
@@ -265,10 +268,12 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn('data-action="lock-checkpoint"', template)
         self.assertIn('data-action="edit-checkpoint"', template)
         self.assertIn("Notiz festhalten", template)
-        self.assertIn("Personalnummer + Ans.", template)
+        self.assertNotIn("Bei der Übernahme werden Mitarbeitende über Personalnummer + Ans.", template)
         self.assertIn("weder an HR übermittelt noch in PDFs", template)
         self.assertIn("selectedStep !== 'checkpoints'", template)
         self.assertIn("checkpointExpired", template)
+        self.assertIn("function checkpointNotesForReview", template)
+        self.assertIn("date >= start && date <= end", template)
         self.assertIn("mergeCheckpointNotes(existing.checkpoint_notes, incoming.checkpoint_notes)", template)
 
         demo_notes = [

@@ -753,7 +753,7 @@
     <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
     <div class="guidance-dialog-body">
       <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
-      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Dadurch wird der aktuelle Stand als neue Datei in deinen Download-Ordner heruntergeladen. Arbeite anschliessend nur mit der neuesten Datei. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Dies lädt den aktuellen Stand als neue Datei in deinen Download-Ordner herunter. Arbeite anschliessend nur mit der neuesten Datei (Achtung: Der Download-Ordner wird regelmässig automatisch geleert). Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
       <details class="guidance-step"><summary>2 · Umfang bestimmen</summary><p>Bestimme unter «Grundlagen», welche Dialoge erforderlich sind. Erfasse eine Begründung, falls du vom Pflichtteil abweichst. Falls gar kein MD stattfindet, kannst du direkt das PDF generieren und an HR senden. Sprich dich vorgängig mit deiner oder deinem HR-Verantwortlichen ab, falls es sich nicht um einen der dokumentierten Spezialfälle handelt.</p></details>
       <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Die Vorbereitungsdatei enthält eine freiwillige Reflexion sowie ein verpflichtendes Feedback an dich. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
       <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
@@ -900,6 +900,16 @@
 
       function activeCheckpointNotes(employee) {
         return (employee.checkpoint_notes || []).filter(note => !checkpointExpired(note));
+      }
+
+      function checkpointNotesForReview(employee) {
+        const start = String(employee.period_start || '');
+        const end = String(employee.period_end || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return [];
+        return activeCheckpointNotes(employee).filter(note => {
+          const date = String(note.date || '');
+          return /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= start && date <= end;
+        });
       }
 
       function selectedEmployee() {
@@ -1243,7 +1253,7 @@
       }
 
       function renderCheckpointNotes(employee) {
-        const notes = activeCheckpointNotes(employee);
+        const notes = checkpointNotesForReview(employee);
         if (!notes.length) return '';
         return `<div class="subsection"><h3>Hinweise aus Standortgesprächen</h3>
           <p class="section-intro">Diese Notizen wurden unterjährig festgehalten und dienen als Gedächtnisstütze für den Rückblick.</p>
@@ -1276,7 +1286,6 @@
           </details>`;
         }).join('');
         return `<section class="section"><div class="section-head"><div><p class="eyebrow">Freiwillige lokale Notizen</p><h2 class="section-title">Standortgespräche</h2><p class="section-intro">Diese Notizen sind eine persönliche Gedächtnisstütze der Führungskraft. Sie werden weder an HR übermittelt noch in PDFs oder den Abschlussstatus des Mitarbeitenden-Dialogs übernommen.</p></div></div>
-          <p class="section-intro" style="margin-bottom:12px">Bei der Übernahme werden Mitarbeitende über Personalnummer + Ans. zugeordnet. Dubletten sowie Notizen ohne gültiges Datum oder älter als zwei Jahre werden übersprungen.</p>
           <div class="toolbar" style="justify-content:flex-start;margin-bottom:16px">
             <button class="button primary" type="button" data-action="add-checkpoint">+ Notiz hinzufügen</button>
             <button class="button" type="button" data-action="import-checkpoints">Notizen aus älterer Arbeitsmappe übernehmen</button>
@@ -1387,7 +1396,7 @@
                 </label>`).join('')}
             </div>
             <div class="suggestion warning">${employee.suggestion ? `<strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))}` : ''}</div>
-            ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
+            ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen, falls es sich nicht um einen der dokumentierten Spezialfälle handelt. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
           </section>`;
       }
 
@@ -1514,7 +1523,7 @@
         return `<section class="section">
           <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erzeuge eine eigenständige HTML-Datei und sende sie der mitarbeitenden Person mit der Gesprächseinladung. Eingaben in dieser Datei werden nicht in deine Arbeitsmappe zurückgeschrieben.</p></div></div>
           <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value"><ul style="margin:0;padding-left:20px">${parts.map(part => `<li>${h(part)}</li>`).join('')}</ul></div></div>
-          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du kannst die eingegangenen PDFs einzeln, gesammelt oder in Chargen S/MIME-verschlüsselt an HR weiterleiten; ein Zusammenführen zu einem PDF ist nicht nötig.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
+          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
         </section>`;
       }

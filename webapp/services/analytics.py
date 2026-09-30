@@ -123,6 +123,8 @@ def analytics_data(
     rating_cases: dict[str, str] = {}
     competency_cases: dict[str, tuple[set[str], set[str]]] = {}
     for row in rows:
+        if row["event_type"] == "location_meeting":
+            continue
         payload = _json(row["data_json"])
         review_doc = _json(row["review_document_data"])
         outlook_doc = _json(row["outlook_document_data"])
@@ -131,13 +133,10 @@ def analytics_data(
         case_key = row["legacy_case_id"] or f"event-{row['event_id']}"
 
         parts: list[tuple[str, str]] = []
-        if row["event_type"] == "location_meeting":
-            parts.append(("Standortgespräch", row["event_dialog_date"]))
-        else:
-            if row["required_scope"] in {"full", "review_only"}:
-                parts.append(("Rückblick", row["case_dialog_date"] or review.get("dialog_date") or review_doc.get("dialog_date")))
-            if row["required_scope"] in {"full", "outlook_only"}:
-                parts.append(("Ausblick", outlook.get("dialog_date") or outlook_doc.get("dialog_date") or row["event_dialog_date"]))
+        if row["required_scope"] in {"full", "review_only"}:
+            parts.append(("Rückblick", row["case_dialog_date"] or review.get("dialog_date") or review_doc.get("dialog_date")))
+        if row["required_scope"] in {"full", "outlook_only"}:
+            parts.append(("Ausblick", outlook.get("dialog_date") or outlook_doc.get("dialog_date") or row["event_dialog_date"]))
         for part, raw_date in parts:
             dialog_date = _valid_date(raw_date)
             if not dialog_date:
@@ -203,7 +202,6 @@ def analytics_data(
             "month": month,
             "review_count": timing_counts.get((month, "Rückblick"), 0),
             "outlook_count": timing_counts.get((month, "Ausblick"), 0),
-            "location_count": timing_counts.get((month, "Standortgespräch"), 0),
             "total": sum(
                 count for (value, _part), count in timing_counts.items() if value == month
             ),

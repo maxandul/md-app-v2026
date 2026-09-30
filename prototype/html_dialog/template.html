@@ -318,6 +318,20 @@
     .workflow-step.active { color: #fff; background: var(--blue-dark); }
     .workflow-step:disabled { cursor: not-allowed; opacity: .42; }
 
+    .companion-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .companion-nav span { color: var(--muted); font-size: 13px; font-weight: 700; }
+    .companion-nav .workflow-step { flex: 0 1 auto; min-width: 230px; }
+
     .next-step {
       display: flex;
       align-items: center;
@@ -340,6 +354,8 @@
     }
 
     .checkpoint-note strong { display: block; margin-bottom: 3px; }
+    .checkpoint-note.expired { border-left-color: var(--danger); background: var(--danger-soft); }
+    .checkpoint-note-expiry { margin: 0 0 10px; color: #8a2716; font-size: 12px; font-weight: 700; }
     .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
     .guidance summary { cursor: pointer; font-weight: 700; }
     .guidance ol { margin-bottom: 0; }
@@ -707,6 +723,7 @@
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
           <input id="update-file" type="file" accept=".json,application/json" hidden>
+          <input id="checkpoint-import-file" type="file" accept=".html,text/html" hidden>
           <button id="update-button" class="button" type="button">Update einlesen</button>
           <button id="save-button" class="button primary" type="button" disabled>Arbeitsmappe speichern</button>
         </div>
@@ -746,6 +763,13 @@
         employee.employee = employee.employee || {};
         if (typeof employee.employee.employment_assignment !== 'string') employee.employee.employment_assignment = '';
         employee.checkpoint_notes = Array.isArray(employee.checkpoint_notes) ? employee.checkpoint_notes : [];
+        employee.checkpoint_notes = employee.checkpoint_notes.map(note => ({
+          id: checkpointId(note),
+          date: String(note.date || ''),
+          title: String(note.title || ''),
+          text: String(note.text || ''),
+          created_at: String(note.created_at || '')
+        }));
         employee.meta = employee.meta || {};
         employee.meta.archived = Boolean(employee.meta.archived);
         employee.meta.closed = Boolean(employee.meta.closed);
@@ -824,6 +848,32 @@
       function uid(prefix) {
         if (window.crypto && window.crypto.randomUUID) return `${prefix}-${window.crypto.randomUUID()}`;
         return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function checkpointFingerprint(note) {
+        return [note.date || '', note.title || '', note.text || ''].map(value => String(value).trim()).join('\u001f');
+      }
+
+      function checkpointId(note) {
+        if (note && note.id) return String(note.id);
+        const value = checkpointFingerprint(note || {});
+        let hash = 2166136261;
+        for (let index = 0; index < value.length; index += 1) {
+          hash ^= value.charCodeAt(index);
+          hash = Math.imul(hash, 16777619);
+        }
+        return `checkpoint-legacy-${(hash >>> 0).toString(16)}`;
+      }
+
+      function checkpointExpired(note, reference = new Date()) {
+        const value = String(note && note.date || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const cutoff = new Date(reference.getFullYear() - 2, reference.getMonth(), reference.getDate());
+        return value < [cutoff.getFullYear(), String(cutoff.getMonth() + 1).padStart(2, '0'), String(cutoff.getDate()).padStart(2, '0')].join('-');
+      }
+
+      function activeCheckpointNotes(employee) {
+        return (employee.checkpoint_notes || []).filter(note => !checkpointExpired(note));
       }
 
       function selectedEmployee() {
@@ -1167,11 +1217,39 @@
       }
 
       function renderCheckpointNotes(employee) {
-        if (!employee.checkpoint_notes.length) return '';
+        const notes = activeCheckpointNotes(employee);
+        if (!notes.length) return '';
         return `<div class="subsection"><h3>Hinweise aus Standortgesprächen</h3>
           <p class="section-intro">Diese Notizen wurden unterjährig festgehalten und dienen als Gedächtnisstütze für den Rückblick.</p>
-          ${employee.checkpoint_notes.map(note => `<div class="checkpoint-note"><strong>${h(formatDate(note.date))}${note.title ? ` · ${h(note.title)}` : ''}</strong>${h(note.text || '')}</div>`).join('')}
+          ${notes.map(note => `<div class="checkpoint-note"><strong>${h(formatDate(note.date))}${note.title ? ` · ${h(note.title)}` : ''}</strong>${h(note.text || '')}</div>`).join('')}
         </div>`;
+      }
+
+      function renderCheckpointWorkspace(employee) {
+        const notes = (employee.checkpoint_notes || []).map((note, index) => ({ note, index }))
+          .sort((left, right) => String(right.note.date || '').localeCompare(String(left.note.date || '')));
+        const cards = notes.map(({ note, index }) => {
+          const expired = checkpointExpired(note);
+          return `<details class="repeat-card checkpoint-note${expired ? ' expired' : ''}" open>
+            <summary class="card-head"><span class="card-head-main"><h4>${h(formatDate(note.date))}${note.title ? ` · ${h(note.title)}` : ''}</h4></span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="checkpoint_notes" data-index="${index}">Entfernen</button></span></summary>
+            <div class="card-body">
+              ${expired ? '<p class="checkpoint-note-expiry">Älter als zwei Jahre: Bitte prüfen und löschen, wenn die Notiz nicht mehr benötigt wird.</p>' : ''}
+              <div class="form-grid">
+                ${arrayField('Datum', 'checkpoint_notes', index, 'date', note.date, { type:'date', required:true })}
+                ${arrayField('Titel (optional)', 'checkpoint_notes', index, 'title', note.title)}
+                ${arrayField('Erkenntnisse und Vereinbarungen', 'checkpoint_notes', index, 'text', note.text, { full:true, rows:5, required:true })}
+              </div>
+            </div>
+          </details>`;
+        }).join('');
+        return `<section class="section"><div class="section-head"><div><p class="eyebrow">Freiwillige lokale Notizen</p><h2 class="section-title">Standortgespräche</h2><p class="section-intro">Diese Notizen sind eine persönliche Gedächtnisstütze der Führungskraft. Sie werden weder an HR übermittelt noch in PDFs oder den Abschlussstatus des Mitarbeitenden-Dialogs übernommen.</p></div></div>
+          <p class="section-intro" style="margin-bottom:12px">Bei der Übernahme werden Mitarbeitende über Personalnummer + Ans. zugeordnet. Dubletten sowie Notizen ohne gültiges Datum oder älter als zwei Jahre werden übersprungen.</p>
+          <div class="toolbar" style="justify-content:flex-start;margin-bottom:16px">
+            <button class="button primary" type="button" data-action="add-checkpoint">+ Notiz hinzufügen</button>
+            <button class="button" type="button" data-action="import-checkpoints">Notizen aus älterer Arbeitsmappe übernehmen</button>
+          </div>
+          ${cards || '<div class="empty-state">Noch keine Standortgesprächsnotiz erfasst. Füge bei Bedarf eine Notiz hinzu.</div>'}
+        </section>`;
       }
 
       function renderCompetencyHelp(name) {
@@ -1431,7 +1509,7 @@
       function renderWorkflowNav(employee, selectedStep) {
         return `<nav class="workflow-nav" aria-label="Arbeitsschritte">
           ${workflowSteps(employee).map(step => `<button class="workflow-step ${step.key === selectedStep ? 'active' : ''}" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}>${h(step.label)}</button>`).join('')}
-        </nav>`;
+        </nav><nav class="companion-nav" aria-label="Begleitung im Jahresverlauf"><span>Begleitung im Jahresverlauf</span><button class="workflow-step ${selectedStep === 'checkpoints' ? 'active' : ''}" type="button" data-action="show-step" data-step="checkpoints">Standortgespräche (${employee.checkpoint_notes.length})</button></nav>`;
       }
 
       function renderGuidance() {
@@ -1538,7 +1616,7 @@
         const status = statusFor(employee);
         const person = employee.employee;
         let selectedStep = selectedStepByCase[employee.case_id] || 'basics';
-        if (!workflowSteps(employee).some(step => step.key === selectedStep && step.available)) selectedStep = 'basics';
+        if (selectedStep !== 'checkpoints' && !workflowSteps(employee).some(step => step.key === selectedStep && step.available)) selectedStep = 'basics';
         selectedStepByCase[employee.case_id] = selectedStep;
         let stepContent = '';
         if (selectedStep === 'basics') {
@@ -1549,6 +1627,8 @@
           stepContent = `${renderDialogDetails(employee, 'review')}${renderReview(employee)}`;
         } else if (selectedStep === 'outlook') {
           stepContent = `${renderDialogDetails(employee, 'outlook')}${renderOutlook(employee)}`;
+        } else if (selectedStep === 'checkpoints') {
+          stepContent = renderCheckpointWorkspace(employee);
         } else if (employee.scope === 'none') {
           stepContent = renderNoMd(employee);
         } else {
@@ -1571,11 +1651,11 @@
             <span class="status-badge ${status.className}">${h(status.label)}</span>
           </section>
           ${employee.meta.archived ? '<div class="archive-note"><strong>Archivierte Person:</strong> Die vorhandenen Angaben bleiben einsehbar, können aber nicht mehr bearbeitet werden.</div>' : ''}
-          ${employee.meta.closed && !employee.meta.archived ? '<div class="archive-note closed-note"><span><strong>Fall abgeschlossen:</strong> Die Angaben sind schreibgeschützt. Du kannst die PDFs weiterhin öffnen.</span><button class="button small" type="button" data-action="reopen-case">Wieder öffnen</button></div>' : ''}
+          ${employee.meta.closed && !employee.meta.archived ? '<div class="archive-note closed-note"><span><strong>Fall abgeschlossen:</strong> Der Mitarbeitenden-Dialog ist schreibgeschützt. Standortgesprächsnotizen können weiterhin bearbeitet werden.</span><button class="button small" type="button" data-action="reopen-case">Wieder öffnen</button></div>' : ''}
           ${renderWorkflowNav(employee, selectedStep)}
-          ${selectedStep === 'basics' || selectedStep === 'preparation' ? '' : '<div id="inline-completion-panel"></div>'}
+          ${selectedStep === 'basics' || selectedStep === 'preparation' || selectedStep === 'checkpoints' ? '' : '<div id="inline-completion-panel"></div>'}
           ${stepContent}`;
-        if (employee.meta.archived || employee.meta.closed) {
+        if (employee.meta.archived || (employee.meta.closed && selectedStep !== 'checkpoints')) {
           editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
         }
         renderCompletionPanel();
@@ -1585,7 +1665,7 @@
         const employee = selectedEmployee();
         if (!employee) return;
         const selectedStep = selectedStepByCase[employee.case_id] || 'basics';
-        if (selectedStep === 'preparation') {
+        if (selectedStep === 'preparation' || selectedStep === 'checkpoints') {
           completionPanel.innerHTML = '';
           return;
         }
@@ -1654,6 +1734,8 @@
           employee.outlook.performance_goals.push({ id: uid('goal'), title: '', criteria: '', steps: '', target_date: '' });
         } else if (action === 'add-development-goal') {
           employee.outlook.development_goals.push({ id: uid('development'), competency: '', title: '', criteria: '', steps: '', target_date: '' });
+        } else if (action === 'add-checkpoint') {
+          employee.checkpoint_notes.push({ id: uid('checkpoint'), date: new Date().toISOString().slice(0, 10), title: '', text: '', created_at: nowIso() });
         }
         markDirty(employee);
         renderEditor();
@@ -1684,6 +1766,10 @@
           selectedStepByCase[employee.case_id] = button.dataset.step;
           renderEditor();
           window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+        if (action === 'import-checkpoints') {
+          document.getElementById('checkpoint-import-file').click();
           return;
         }
         if (action.startsWith('add-')) {
@@ -2053,6 +2139,104 @@
         });
       }
 
+      function mergeCheckpointNotes(existingNotes, incomingNotes) {
+        const result = (existingNotes || []).map(note => ({ ...note, id: checkpointId(note) }));
+        const identities = new Set(result.flatMap(note => [checkpointId(note), checkpointFingerprint(note)]));
+        (incomingNotes || []).forEach(note => {
+          const id = checkpointId(note);
+          const fingerprint = checkpointFingerprint(note);
+          if (identities.has(id) || identities.has(fingerprint)) return;
+          result.push({ ...note, id });
+          identities.add(id);
+          identities.add(fingerprint);
+        });
+        return result;
+      }
+
+      function employmentKey(employee) {
+        const person = employee && employee.employee || {};
+        return `${String(person.pn || '')}\u001f${String(person.employment_assignment || '')}`;
+      }
+
+      function applyCheckpointImport(source) {
+        if (!source || !source.package || !Array.isArray(source.employees)) {
+          throw new Error('Die gewählte Datei ist keine gültige MD-Arbeitsmappe.');
+        }
+        if (String(source.package.manager_pn || '') !== String(state.package.manager_pn || '')) {
+          throw new Error('Die Arbeitsmappe gehört zu einer anderen vorgesetzten Person. Es wurden keine Notizen übernommen.');
+        }
+        const currentByEmployment = new Map(state.employees.map(employee => [employmentKey(employee), employee]));
+        let imported = 0;
+        let duplicates = 0;
+        let expired = 0;
+        const unmatched = new Set();
+        const affected = new Set();
+        source.employees.forEach(sourceEmployee => {
+          const notes = Array.isArray(sourceEmployee.checkpoint_notes) ? sourceEmployee.checkpoint_notes : [];
+          if (!notes.length) return;
+          const key = employmentKey(sourceEmployee);
+          const target = currentByEmployment.get(key);
+          if (!target || target.meta.archived) {
+            unmatched.add(key);
+            return;
+          }
+          const identities = new Set((target.checkpoint_notes || []).flatMap(note => [checkpointId(note), checkpointFingerprint(note)]));
+          notes.forEach(note => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(note.date || '')) || checkpointExpired(note)) {
+              expired += 1;
+              return;
+            }
+            const id = checkpointId(note);
+            const fingerprint = checkpointFingerprint(note);
+            if (identities.has(id) || identities.has(fingerprint)) {
+              duplicates += 1;
+              return;
+            }
+            target.checkpoint_notes.push({
+              id,
+              date: String(note.date || ''),
+              title: String(note.title || ''),
+              text: String(note.text || ''),
+              created_at: String(note.created_at || ''),
+              imported_at: nowIso()
+            });
+            identities.add(id);
+            identities.add(fingerprint);
+            imported += 1;
+            affected.add(key);
+          });
+        });
+        if (imported) markDirty(selectedEmployee());
+        renderSidebar();
+        renderEditor();
+        const summary = [
+          `${imported} Notizen bei ${affected.size} Mitarbeitenden übernommen`,
+          `${duplicates} bereits vorhandene Notizen übersprungen`,
+          `${expired} Notizen ohne gültiges Datum oder älter als zwei Jahre übersprungen`,
+          `${unmatched.size} Anstellungen nicht gefunden oder archiviert`
+        ].join('\n');
+        window.alert(`${summary}\n\n${imported ? 'Bitte speichere die Arbeitsmappe als neue HTML-Datei.' : 'Es wurden keine Änderungen vorgenommen.'}`);
+      }
+
+      function readCheckpointImportFile(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const documentNode = new DOMParser().parseFromString(String(reader.result || ''), 'text/html');
+            const sourceNode = documentNode.getElementById('md-data');
+            if (!sourceNode) throw new Error('Die gewählte Datei enthält keine MD-Arbeitsmappe.');
+            applyCheckpointImport(JSON.parse(sourceNode.textContent));
+          } catch (error) {
+            window.alert(error && error.message ? error.message : 'Die Arbeitsmappe konnte nicht gelesen werden.');
+          }
+        };
+        reader.onerror = () => window.alert('Die Arbeitsmappe konnte nicht gelesen werden.');
+        reader.readAsText(file, 'utf-8');
+      }
+
       function applyUpdate(updatePayload) {
         if (!updatePayload || updatePayload.schema_version !== '1.0-update' || !updatePayload.update || !Array.isArray(updatePayload.employees)) {
           throw new Error('Die gewählte Datei ist keine gültige MD-Update-Datei.');
@@ -2110,7 +2294,7 @@
           existing.suggestion = incoming.suggestion;
           existing.previous_goals = mergeGoalSources(existing.previous_goals, incoming.previous_goals);
           existing.previous_development_goals = mergeGoalSources(existing.previous_development_goals, incoming.previous_development_goals);
-          existing.checkpoint_notes = incoming.checkpoint_notes;
+          existing.checkpoint_notes = mergeCheckpointNotes(existing.checkpoint_notes, incoming.checkpoint_notes);
           if (!started) {
             existing.period_start = incoming.period_start;
             existing.period_end = incoming.period_end;
@@ -2180,6 +2364,7 @@
       document.getElementById('save-button').addEventListener('click', savePackage);
       document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
       document.getElementById('update-file').addEventListener('change', readUpdateFile);
+      document.getElementById('checkpoint-import-file').addEventListener('change', readCheckpointImportFile);
       window.addEventListener('afterprint', cleanupPrint);
       window.addEventListener('beforeunload', event => {
         if (!dirty) return;

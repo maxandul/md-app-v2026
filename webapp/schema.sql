@@ -413,7 +413,7 @@ CREATE TABLE IF NOT EXISTS dialog_events (
     review_year INTEGER NOT NULL,
     event_type TEXT NOT NULL CHECK (event_type IN (
         'annual', 'probation_review', 'probation_outlook', 'interim',
-        'transfer_review', 'departure_review', 'location_meeting'
+        'transfer_review', 'departure_review'
     )),
     source TEXT NOT NULL CHECK (source IN ('rule', 'manual', 'workbook')),
     source_reason TEXT NOT NULL DEFAULT '',

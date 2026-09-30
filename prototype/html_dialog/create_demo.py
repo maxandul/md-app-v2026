@@ -182,8 +182,8 @@ def build_demo() -> dict:
     farid["scope_reason"] = "Der Probezeitrückblick wurde unterjährig bereits abgeschlossen; am Jahresende folgt der Ausblick."
     farid["suggestion"] = {"scope": "outlook_only", "reason": "Der Probezeitrückblick wurde unterjährig bereits durchgeführt; im Jahresdialog ist nur der Ausblick verpflichtend.", "is_special": True}
     farid["checkpoint_notes"] = [
-        {"date": "2025-05-14", "title": "Standortgespräch", "text": "Priorisierung bei parallelen Aufträgen besprochen; wöchentliche Planung als Massnahme vereinbart."},
-        {"date": "2025-09-18", "title": "Zwischenstand", "text": "Die neue Planungsroutine funktioniert gut. Nächster Fokus: frühzeitige Abstimmung mit Schnittstellen."},
+        {"id": "checkpoint-demo-farid-1", "date": "2025-05-14", "title": "Priorisierung", "text": "Priorisierung bei parallelen Aufträgen besprochen; wöchentliche Planung als Massnahme vereinbart.", "created_at": "2025-05-14T10:00:00+00:00"},
+        {"id": "checkpoint-demo-farid-2", "date": "2025-09-18", "title": "Zwischenstand", "text": "Die neue Planungsroutine funktioniert gut. Nächster Fokus: frühzeitige Abstimmung mit Schnittstellen.", "created_at": "2025-09-18T10:00:00+00:00"},
     ]
 
     gina = employee("700007", "Gina", "Schmid", position="Ehemalige Fachmitarbeiterin", exit_date="2025-03-31")

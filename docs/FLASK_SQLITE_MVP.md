@@ -92,11 +92,15 @@ Dokumenten bleiben sie erhalten.
   administrative Kein-MD-Bestätigungen samt Prüf- und Übergabestatus
 
 Das Fallmodell unterstützt mehrere Dialogereignisse pro Person. Reguläre Fälle
-werden beim Eröffnen eines Durchlaufs automatisch erzeugt; Probezeit, Übertritt,
-Standortgespräch und weitere unterjährige Ereignisse kann HR manuell ergänzen.
+werden beim Eröffnen eines Durchlaufs automatisch erzeugt; Probezeit, Übertritt
+und weitere formelle unterjährige Ereignisse kann HR manuell ergänzen.
 Rückblick und Ausblick werden als eigene Dokumentpflichten mit getrennten Fristen
 geführt. Für den SAP-Upload lässt sich bei mehreren relevanten Rückblicken genau
 ein führendes Ereignis bestimmen.
+
+Freiwillige Standortgesprächsnotizen werden ausschliesslich lokal in der
+Arbeitsmappe der vorgesetzten Person geführt. Sie werden weder als Dialogereignis
+in SQLite gespeichert noch im HR-Cockpit ausgewertet oder in PDFs ausgegeben.
 
 Mehrfachzeilen derselben Führungslinie werden beim Import zusammengeführt. Eine
 Person kann in einem SAP-Datenstand mehreren Führungslinien zugeordnet bleiben;

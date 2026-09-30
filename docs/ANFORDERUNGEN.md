@@ -51,7 +51,8 @@ flowchart TD
 | Bewilligung | Nebenbeschäftigung oder öffentliches Amt mit eigenen Beginn-/Ende- und Bewilligungsangaben |
 | Führungslinie | Zuordnung einer Anstellung zu einer vorgesetzten Person für einen Zeitraum |
 | Durchlauf | Regulärer MD-Zyklus mit Rückblickjahr und Ausblickjahr |
-| Dialogereignis | Konkreter Rückblick, Ausblick, Probezeitdialog, Standortgespräch oder administrativer Kein-MD-Entscheid |
+| Dialogereignis | Konkreter Rückblick, Ausblick, Probezeitdialog oder administrativer Kein-MD-Entscheid |
+| Standortgesprächsnotiz | Freiwillige, ausschliesslich lokal in der Arbeitsmappe geführte Gedächtnisstütze der vorgesetzten Person; kein HR-Dialogereignis und kein Bestandteil des Personaldossiers |
 | Arbeitsmappe | Offline-HTML-Datei einer vorgesetzten Person mit ihren Direct Reports |
 | Update-Datei | Von HR erzeugte Datei, welche eine vorhandene Arbeitsmappe mit neuen Stammdaten und Zuordnungen aktualisiert |
 | Digitales PDF | Direkt aus der Arbeitsmappe erzeugtes, maschinenlesbares PDF |
@@ -102,7 +103,7 @@ flowchart TD
 | DIA-003 | MUSS | Jedes rückblickbezogene Dialogereignis besitzt einen Beurteilungszeitraum. Standard ist 1. Januar bis 31. Dezember des Rückblickjahres, begrenzt durch Eintritt und Austritt. |
 | DIA-004 | MUSS | HR kann den vorgeschlagenen Beurteilungszeitraum pro Führungskraft-Mitarbeitenden-Konstellation anpassen. Der Zeitraum muss innerhalb der betreffenden Anstellung liegen. |
 | DIA-005 | MUSS | Bei internem Wechsel können für dieselbe Person im selben Jahr mehrere Führungslinien und mehrere Rückblicke mit getrennten Zeiträumen geführt werden. Überschneidungen werden sichtbar gemacht. |
-| DIA-006 | MUSS | Das System unterstützt mindestens regulären MD, Probezeitrückblick, Probezeitausblick, unterjährigen MD, Standortgespräch, Abschluss bei Übertritt und freiwilligen Abschluss bei Austritt/Pensionierung. |
+| DIA-006 | MUSS | Das System unterstützt mindestens regulären MD, Probezeitrückblick, Probezeitausblick, unterjährigen MD, Abschluss bei Übertritt und freiwilligen Abschluss bei Austritt/Pensionierung. |
 | DIA-007 | MUSS | HR kann pro Dialogereignis festlegen oder vorschlagen, ob Rückblick, Ausblick, beides oder kein Gespräch erforderlich ist. |
 | DIA-008 | MUSS | Vorgesetzte Personen können begründet festhalten, dass kein Gespräch durchgeführt werden kann oder muss. Grund und Bemerkung werden gespeichert. |
 | DIA-009 | MUSS | Vorgesetzte Personen können Rückblick und Ausblick zu unterschiedlichen Zeitpunkten durchführen und unabhängig voneinander abschliessen. |
@@ -117,7 +118,10 @@ flowchart TD
 | MAP-002 | MUSS | Die Arbeitsmappe zeigt pro Person verständlich, welche Gespräche und Dokumente erforderlich, optional, erledigt oder noch offen sind. |
 | MAP-003 | MUSS | Die Arbeitsmappe zeigt nur die für den aktuellen Arbeitsschritt benötigten Informationen und führt schrittweise durch Rückblick, Ausblick, Kein-MD und PDF-Ausgabe. |
 | MAP-004 | MUSS | Ziele des Vorjahres, sowohl Leistungs- als auch Entwicklungsziele, werden beim Rückblick an der passenden Stelle angezeigt. |
-| MAP-005 | MUSS | Vorhandene Notizen aus unterjährigen Standortgesprächen werden beim späteren Rückblick an der passenden Stelle angezeigt. |
+| MAP-005 | MUSS | Vorgesetzte Personen können pro Anstellung freiwillige Standortgesprächsnotizen mit Datum, optionalem Titel sowie Erkenntnissen und Vereinbarungen lokal führen. Die Notizen beeinflussen weder Pflichtfelder noch Abschlussstatus und bleiben auch nach Abschluss des MD bearbeitbar; bei archivierten Personen sind sie schreibgeschützt. |
+| MAP-005a | MUSS | Vorhandene, höchstens zwei Jahre alte Standortgesprächsnotizen werden beim späteren Rückblick als Gedächtnisstütze angezeigt. Ältere Notizen werden zur Löschung markiert. |
+| MAP-005b | MUSS | Standortgesprächsnotizen können aus einer älteren Arbeitsmappe derselben vorgesetzten Person übernommen werden. Die Zuordnung erfolgt über `Personalnummer + Ans.`; Dubletten und Notizen älter als zwei Jahre werden übersprungen. Es werden keine anderen Gesprächsinhalte übernommen. |
+| MAP-005c | MUSS | Standortgesprächsnotizen werden nicht an HR übermittelt, nicht in MD-PDFs ausgegeben und bei einem Führungswechsel nicht übertragen. |
 | MAP-006 | MUSS | Beim Rückblick werden Gesamtbeurteilung A bis E, Aktualität der Nebenbeschäftigungen/öffentlichen Ämter, Gesprächsdatum und Einigkeit erfasst. |
 | MAP-007 | MUSS | Für Kompetenzbeobachtungen werden nur tatsächlich benötigte Eingabebereiche dynamisch ergänzt. Das Kompetenzmodell steht als Formulierungshilfe zur Verfügung. |
 | MAP-008 | MUSS | Vorgesetzte Personen erhalten eine in die Arbeitsmappe integrierte, kontextbezogene Anleitung. |
@@ -225,10 +229,10 @@ feldweise Konfliktentscheidung gemäss MAP-014 bleibt ein SOLL-Ausbau.
 |---|---|---|
 | ANA-001 | MUSS | HR kann MD-Daten über mehrere Durchläufe auswerten, ohne personenbezogene Rohdaten manuell aus PDFs oder Excel-Dateien zusammenführen zu müssen. |
 | ANA-002 | MUSS | Analyse und Export berücksichtigen Berechtigungen und unterscheiden operative personenbezogene Auswertung von aggregierter/anonymisierter Berichterstattung. |
-| ANA-003 | MUSS | HR kann auswerten, wann Rückblicke, Ausblicke und Standortgespräche stattfinden. Mindestens Kalenderwoche/Monat, Gesprächsart, Durchlauf und Organisationseinheit sind filterbar; personenbezogene Detaildaten bleiben berechtigten HR-Rollen vorbehalten. |
+| ANA-003 | MUSS | HR kann auswerten, wann Rückblicke und Ausblicke stattfinden. Mindestens Kalenderwoche/Monat, Gesprächsart, Durchlauf und Organisationseinheit sind filterbar; personenbezogene Detaildaten bleiben berechtigten HR-Rollen vorbehalten. Lokale Standortgesprächsnotizen sind nicht Bestandteil der Auswertung. |
 | ANA-004 | MUSS | HR kann die Verteilung der Gesamtbeurteilungen A–E nach Durchlauf und auswählbaren Organisationseinheiten auswerten. Aggregierte Ansichten berücksichtigen eine konfigurierbare Mindestgruppengrösse. |
 | ANA-005 | MUSS | HR kann auswerten, welche Kompetenzen im Rückblick thematisiert und für welche Kompetenzen Entwicklungsziele vereinbart wurden. Freitexte werden dafür nicht automatisch semantisch interpretiert; die Arbeitsmappe erfasst die ausgewählten Kompetenzen strukturiert. |
-| ANA-006 | SOLL | HR kann Textumfang, Nutzung von Standortgesprächen sowie Gespräche mit nächsthöheren Führungskräften aggregiert auswerten. |
+| ANA-006 | SOLL | HR kann Textumfang sowie Gespräche mit nächsthöheren Führungskräften aggregiert auswerten. |
 | ANA-007 | MUSS | Die Muss-Auswertungen können mindestens als gefilterte Tabelle und als XLSX/CSV exportiert werden. Ein aufwendiges separates Analyse-Dashboard ist für den ersten produktiven Stand nicht erforderlich. |
 
 ## 15. Benutzerkonten und Sicherheit
@@ -360,8 +364,8 @@ Vorgang wird protokolliert.
 1. Muss beim D/E-/Uneinigkeitsfall neben dem Scan immer auch das unveränderte
    digitale PDF an HR gesendet werden? Dieses Dokument nimmt dies wegen der
    maschinenlesbaren Datenübernahme vorläufig an.
-2. Welche Inhalte aus Rückblick, Ausblick und Standortgesprächen müssen vollständig
-   strukturiert in SQLite gespeichert werden und welche dürfen Dokumentinhalt bleiben?
+2. Welche Inhalte aus Rückblick und Ausblick müssen vollständig strukturiert in
+   SQLite gespeichert werden und welche dürfen Dokumentinhalt bleiben?
 3. Wie werden Korrekturen nach bereits erfolgtem SAP-Upload fachlich an SAP gemeldet?
 4. Welches technische Anstellungsdatum und welche SAP-Gültigkeitsregeln sind für
    IT9075 verbindlich?

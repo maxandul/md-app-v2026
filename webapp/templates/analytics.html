@@ -13,7 +13,7 @@
     <div class="section-heading"><div><p class="kicker">Operative HR-Auswertung</p><h2 id="timing-title">Gesprächszeitpunkte</h2></div>{{ export_button('timings', 'Tabelle') }}</div>
     <p>Verteilung der erfassten Gespräche nach Monat. Die personenbezogenen Detaildaten können weiterhin als CSV exportiert werden.</p>
     {% if timing_months %}<div class="chart-list" role="img" aria-label="Gesprächszeitpunkte nach Monat">
-      {% for row in timing_months %}<div class="chart-row"><strong class="chart-label">{{ row.month }}</strong><div class="chart-series"><label>Rückblick <progress max="{{ timing_max }}" value="{{ row.review_count }}"></progress><span>{{ row.review_count }}</span></label><label>Ausblick <progress max="{{ timing_max }}" value="{{ row.outlook_count }}"></progress><span>{{ row.outlook_count }}</span></label>{% if row.location_count %}<label>Standortgespräch <progress max="{{ timing_max }}" value="{{ row.location_count }}"></progress><span>{{ row.location_count }}</span></label>{% endif %}</div></div>{% endfor %}
+      {% for row in timing_months %}<div class="chart-row"><strong class="chart-label">{{ row.month }}</strong><div class="chart-series"><label>Rückblick <progress max="{{ timing_max }}" value="{{ row.review_count }}"></progress><span>{{ row.review_count }}</span></label><label>Ausblick <progress max="{{ timing_max }}" value="{{ row.outlook_count }}"></progress><span>{{ row.outlook_count }}</span></label></div></div>{% endfor %}
     </div>{% else %}<div class="empty-state">Für die gewählten Filter sind noch keine Gesprächsdaten vorhanden.</div>{% endif %}
   </section>
 

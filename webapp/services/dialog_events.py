@@ -15,7 +15,6 @@ EVENT_TYPE_LABELS = {
     "interim": "Unterjähriger Mitarbeitenden-Dialog",
     "transfer_review": "Abschluss bei Übertritt",
     "departure_review": "Abschluss bei Austritt/Pensionierung",
-    "location_meeting": "Standortgespräch",
 }
 
 SCOPE_LABELS = {

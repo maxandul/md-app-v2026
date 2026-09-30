@@ -246,6 +246,26 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertNotIn("Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden", template)
         self.assertEqual(template.count("const sectionName ="), 1)
 
+    def test_checkpoint_notes_are_local_optional_and_importable(self) -> None:
+        template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
+        self.assertIn("Begleitung im Jahresverlauf", template)
+        self.assertIn("Freiwillige lokale Notizen", template)
+        self.assertIn('data-action="add-checkpoint"', template)
+        self.assertIn('data-action="import-checkpoints"', template)
+        self.assertIn("Personalnummer + Ans.", template)
+        self.assertIn("weder an HR übermittelt noch in PDFs", template)
+        self.assertIn("selectedStep !== 'checkpoints'", template)
+        self.assertIn("checkpointExpired", template)
+        self.assertIn("mergeCheckpointNotes(existing.checkpoint_notes, incoming.checkpoint_notes)", template)
+
+        demo_notes = [
+            note
+            for employee in build_demo()["employees"]
+            for note in employee["checkpoint_notes"]
+        ]
+        self.assertTrue(demo_notes)
+        self.assertTrue(all(note.get("id") for note in demo_notes))
+
     def test_transferred_previous_goals_are_marked_as_imported(self) -> None:
         employee = self.payload["employees"][0]
         self.assertTrue(all(goal["imported"] for goal in employee["previous_goals"]))

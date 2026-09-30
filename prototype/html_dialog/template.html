@@ -737,6 +737,8 @@
         employee.outlook.dialog_date = employee.outlook.dialog_date || employee.dialog_date || '';
         employee.review.employment_continued = employee.review.employment_continued || '';
         if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
+        employee.outlook.performance_goals = Array.isArray(employee.outlook.performance_goals) ? employee.outlook.performance_goals : [];
+        employee.outlook.development_goals = Array.isArray(employee.outlook.development_goals) ? employee.outlook.development_goals : [];
         employee.previous_goals = Array.isArray(employee.previous_goals) ? employee.previous_goals : [];
         employee.previous_development_goals = Array.isArray(employee.previous_development_goals) ? employee.previous_development_goals : [];
         employee.previous_goals.forEach(goal => { if (typeof goal.imported !== 'boolean') goal.imported = true; });
@@ -903,7 +905,6 @@
         const list = [];
         if (includeDialogDate) addRequirement(list, 'Gesprächsdatum Ausblick', employee.outlook.dialog_date);
         const goals = employee.outlook.performance_goals || [];
-        addRequirement(list, 'Mindestens ein Leistungsziel', goals.length > 0);
         goals.forEach((goal, index) => {
           addRequirement(list, `Bezeichnung für Leistungsziel ${index + 1}`, goal.title && goal.title.trim());
           addRequirement(list, `Messkriterien für Leistungsziel ${index + 1}`, goal.criteria && goal.criteria.trim());
@@ -1217,7 +1218,7 @@
           const complete = Boolean(goal.title && goal.criteria && goal.target_date);
           return `
           <details class="repeat-card" id="outlook-performance-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Leistungsziel ${index + 1}`)}</h4>${cardState(complete)}</span>${goals.length > 1 ? `<span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button></span>` : ''}</summary>
+            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Leistungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button></span></summary>
             <div class="card-body">
             <div class="form-grid">
               ${arrayField('Ziel', 'outlook.performance_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
@@ -1228,7 +1229,7 @@
             </div>
           </details>`;
         }).join('');
-        return `${cards}<button class="button small" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
+        return `${cards || '<div class="empty-state">Noch kein Leistungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
       }
 
       function renderDevelopmentGoals(employee) {
@@ -1875,7 +1876,7 @@
           </div>`).join('');
         return `
           ${printHeader(employee, 'Ausblick', outlookYear(employee), employee.outlook.dialog_date)}
-          <section class="print-section"><h2>Leistungsziele</h2>${goals}</section>
+          ${goals ? `<section class="print-section"><h2>Leistungsziele</h2>${goals}</section>` : ''}
           ${employee.outlook.open_goals_text ? `<section class="print-section"><h2>Ergänzende Zielvereinbarungen</h2>${printValue('Weitere Ziele', employee.outlook.open_goals_text)}</section>` : ''}
           ${development ? `<section class="print-section"><h2>Entwicklungsziele</h2>${development}</section>` : ''}
           <section class="print-section"><h2>Laufbahnorientierte Entwicklung</h2>
@@ -1930,6 +1931,7 @@
         printRoot.setAttribute('aria-hidden', 'true');
         document.title = previousTitle;
         renderSidebar();
+        showToast('Wenn du das PDF gespeichert hast, findest du es am im Druckdialog gewählten Speicherort (in der Regel im Download-Ordner).');
       }
 
       function filenamePart(value) {
@@ -1994,7 +1996,7 @@
         employee.meta.preparation_created_at = nowIso();
         markDirty(employee);
         renderEditor();
-        showToast('Die persönliche Vorbereitungsdatei wurde erstellt. Du kannst sie mit der Gesprächseinladung versenden.');
+        showToast('Die persönliche Vorbereitungsdatei wurde erstellt und befindet sich in der Regel im Download-Ordner. Du kannst sie mit der Gesprächseinladung versenden.');
       }
 
       function packageFilename() {
@@ -2039,7 +2041,7 @@
         window.setTimeout(() => URL.revokeObjectURL(url), 1500);
         dirty = false;
         updateSaveState();
-        showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen. Für die weitere Bearbeitung oder den Rückversand bitte diese neue Datei verwenden.');
+        showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen und befindet sich in der Regel im Download-Ordner. Für die weitere Bearbeitung bitte diese neue Datei verwenden.');
       }
 
       function mergeGoalSources(existingGoals, incomingGoals) {

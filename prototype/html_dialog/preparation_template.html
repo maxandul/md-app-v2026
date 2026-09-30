@@ -214,7 +214,12 @@
         document.title = kind === 'feedback' ? `${filenamePart(employee.last_name)}_${filenamePart(employee.first_name)}_Feedback_an_${filenamePart(state.manager.last_name)}_${filenamePart(state.manager.first_name)}_${filenamePart(state.manager.pn)}` : `Vorbereitung_MD_${state.review_year}_${filenamePart(employee.last_name)}_${filenamePart(employee.first_name)}`;
         window.setTimeout(() => window.print(),60);
       }
-      window.addEventListener('afterprint', () => { document.body.classList.remove('printing'); document.getElementById('print-root').innerHTML = ''; document.title = 'Vorbereitung Mitarbeitenden-Dialog'; });
+      window.addEventListener('afterprint', () => {
+        document.body.classList.remove('printing');
+        document.getElementById('print-root').innerHTML = '';
+        document.title = 'Vorbereitung Mitarbeitenden-Dialog';
+        window.setTimeout(() => window.alert('Wenn du das PDF gespeichert hast, findest du es am im Druckdialog gewählten Speicherort (in der Regel im Download-Ordner).'), 150);
+      });
       document.getElementById('save-html').addEventListener('click', () => {
         document.querySelectorAll('[data-field]').forEach(control => { fields[control.dataset.field] = control.value; if (control.tagName === 'TEXTAREA') control.textContent = control.value; else if (control.tagName === 'SELECT') [...control.options].forEach(option => { option.toggleAttribute('selected', option.value === control.value); }); });
         dataNode.textContent = safeJson(state);
@@ -231,7 +236,7 @@
         window.setTimeout(() => URL.revokeObjectURL(url),1500);
         dirty = false;
         updateSaveState();
-        window.setTimeout(() => window.alert('Eine neue HTML-Datei wurde heruntergeladen. Schliesse diese bisherige Datei und arbeite ab jetzt ausschliesslich in der neu heruntergeladenen Datei weiter.'), 150);
+        window.setTimeout(() => window.alert('Eine neue HTML-Datei wurde heruntergeladen und befindet sich in der Regel im Download-Ordner. Schliesse diese bisherige Datei und arbeite ab jetzt ausschliesslich in der neu heruntergeladenen Datei weiter.'), 150);
       });
       updateSaveState();
     })();

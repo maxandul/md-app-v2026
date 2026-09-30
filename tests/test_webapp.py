@@ -285,6 +285,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 employee["previous_development_goals"][0]["competency"],
                 "Entwicklungsfähigkeit",
             )
+            self.assertEqual(employee["outlook"]["performance_goals"], [])
             repeated = scan_legacy_forms(
                 connection, forms_root=forms_root, goal_year=2025
             )

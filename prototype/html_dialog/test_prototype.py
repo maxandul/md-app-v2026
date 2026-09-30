@@ -182,17 +182,31 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         employee["review"]["overall_rating"] = "B – sehr gut"
         employee["review"]["agreement"] = "Ja"
         employee["review"]["secondary_employment_current"] = "Ja"
-        goal = employee["outlook"]["performance_goals"][0]
-        goal.update(
-            {
-                "title": "Abläufe verbessern",
-                "criteria": "Zwei Verbesserungen sind umgesetzt.",
-                "target_date": "2026-12-31",
-            }
-        )
         result = validate_payload(self.payload)
         self.assertEqual(result.summary["status_counts"]["vollstaendig"], 1)
         self.assertEqual(result.summary["status_counts"]["offen"], 2)
+
+    def test_performance_goals_are_optional_until_added(self) -> None:
+        employee = self.payload["employees"][0]
+        self.assertEqual(employee["outlook"]["performance_goals"], [])
+        employee["scope"] = "outlook_only"
+        employee["suggestion"]["scope"] = "outlook_only"
+        employee["outlook"]["dialog_date"] = "2026-02-10"
+        status, missing = employee_status(employee)
+        self.assertEqual(status, "vollstaendig")
+        self.assertNotIn("Mindestens ein Leistungsziel", missing)
+
+        employee["outlook"]["performance_goals"].append(
+            {"id": "goal-test", "title": "", "criteria": "", "steps": "", "target_date": ""}
+        )
+        status, missing = employee_status(employee)
+        self.assertEqual(status, "offen")
+        self.assertIn("Bezeichnung Leistungsziel 1", missing)
+
+        template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
+        self.assertIn("Noch kein Leistungsziel erfasst.", template)
+        self.assertNotIn("Mindestens ein Leistungsziel", template)
+        self.assertIn('data-array="outlook.performance_goals"', template)
 
     def test_demo_covers_required_usability_scenarios(self) -> None:
         demo = build_demo()
@@ -214,6 +228,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertNotIn('id="employee-search"', template)
         self.assertNotIn("Interne Übertritte", template)
         self.assertIn("Wo werden deine Angaben gespeichert?", template)
+        self.assertIn("in der Regel im Download-Ordner", template)
         self.assertIn('class="suggestion storage-warning"', template)
         self.assertNotIn("Arbeitsstand sichern:", template)
         self.assertIn("Clientseitige Standalone-Webanwendung", template)

@@ -241,7 +241,7 @@ def _new_case(
         },
         "outlook": {
             "dialog_date": "",
-            "performance_goals": [_empty_goal(f"goal-{employee_number}-1")],
+            "performance_goals": [],
             "open_goals_text": "",
             "development_goals": [],
             "nep": "",

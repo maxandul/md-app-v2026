@@ -345,7 +345,7 @@ def build_payload(
                 },
                 "outlook": {
                     "dialog_date": "",
-                    "performance_goals": [_empty_goal(f"goal-{employee_no + 1}-1")],
+                    "performance_goals": [],
                     "open_goals_text": "",
                     "development_goals": [],
                     "nep": "",

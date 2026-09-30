@@ -116,8 +116,6 @@ def _section_status(
     else:
         outlook = employee.get("outlook", {})
         goals = outlook.get("performance_goals", [])
-        if not goals:
-            missing.append("Mindestens ein Leistungsziel")
         for index, goal in enumerate(goals, start=1):
             if not _filled(goal.get("title")):
                 missing.append(f"Bezeichnung Leistungsziel {index}")

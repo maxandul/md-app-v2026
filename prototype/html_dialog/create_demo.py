@@ -89,7 +89,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
         },
         "outlook": {
             "dialog_date": "",
-            "performance_goals": [{"id": f"goal-{number}-1", "title": "", "criteria": "", "steps": "", "target_date": ""}],
+            "performance_goals": [],
             "open_goals_text": "",
             "development_goals": [],
             "nep": "",
@@ -118,7 +118,8 @@ def complete_review(item: dict, *, rating: str = "B – sehr gut", agreement: st
 
 
 def complete_outlook(item: dict) -> None:
-    item["outlook"]["performance_goals"][0].update({
+    item["outlook"]["performance_goals"].append({
+        "id": f"goal-{item['employee']['pn']}-1",
         "title": "Digitale Fallbearbeitung vereinfachen",
         "criteria": "Zwei priorisierte Verbesserungen sind bis Ende Jahr umgesetzt.",
         "steps": "Ablauf aufnehmen, Varianten testen und im Team auswerten.",

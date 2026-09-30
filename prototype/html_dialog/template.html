@@ -182,6 +182,7 @@
     }
 
     .package-title { margin: 0; font-size: 18px; }
+    .package-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .package-meta { margin-top: 14px; color: #d9e9f7; font-size: 12px; }
     .package-meta summary { cursor: pointer; font-weight: 700; }
     .package-meta dl { display: grid; gap: 9px; margin: 10px 0 0; }
@@ -222,6 +223,8 @@
 
     .button.complete-action { color: #fff; border-color: var(--success); background: var(--success); }
     .button.complete-action:hover { background: #126818; }
+    .button.guidance-button { min-height: 34px; padding: 6px 10px; color: #fff; border-color: var(--success); background: var(--success); font-size: 13px; }
+    .button.guidance-button:hover { background: #126818; }
 
     .button.danger { color: var(--danger); border-color: #f1b8b2; }
     .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
@@ -356,12 +359,26 @@
     .checkpoint-note strong { display: block; margin-bottom: 3px; }
     .checkpoint-note.expired { border-left-color: var(--danger); background: var(--danger-soft); }
     .checkpoint-note-expiry { margin: 0 0 10px; color: #8a2716; font-size: 12px; font-weight: 700; }
+    .checkpoint-note.fixed { border: 1px solid #d8dee6; border-left: 4px solid #8a97a6; background: #f0f3f6; }
+    .checkpoint-note.fixed .card-body { color: #384452; white-space: pre-wrap; }
     .guidance { margin-top: 14px; padding: 14px; border: 1px solid var(--line); background: #fff; }
     .guidance summary { cursor: pointer; font-weight: 700; }
     .guidance ol { margin-bottom: 0; }
     .master-data { margin-top: 12px; padding: 0; border: 0; background: transparent; }
     .master-data summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
+
+    .guidance-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 18px 60px rgba(0,0,0,.25); }
+    .guidance-dialog::backdrop { background: rgba(0, 32, 62, .58); }
+    .guidance-dialog-head { display: flex; justify-content: space-between; gap: 20px; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+    .guidance-dialog-head h2 { margin: 0; font-size: 22px; }
+    .guidance-dialog-body { padding: 20px 24px; overflow: auto; }
+    .guidance-dialog-body > p { margin-top: 0; }
+    .guidance-step { margin-top: 10px; padding: 12px 14px; border: 1px solid #d8dee6; background: #fff; }
+    .guidance-step summary { cursor: pointer; font-weight: 700; }
+    .guidance-step p, .guidance-step ul { margin-bottom: 0; }
+    .guidance-dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--line); background: #f7f7f7; }
+    .guidance-dismiss { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 
     .suggestion {
       margin-top: 14px;
@@ -717,8 +734,9 @@
 
     <main class="main">
       <header class="topbar">
-        <div>
+        <div class="package-heading">
           <h2 id="package-title" class="package-title"></h2>
+          <button id="guidance-button" class="button guidance-button" type="button" aria-haspopup="dialog"><span aria-hidden="true">ⓘ</span> Kurzanleitung</button>
         </div>
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
@@ -738,6 +756,20 @@
 
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="guidance-dialog" class="guidance-dialog" aria-labelledby="guidance-title">
+    <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div><button class="button small" type="button" data-guidance-close aria-label="Kurzanleitung schliessen">Schliessen</button></div>
+    <div class="guidance-dialog-body">
+      <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
+      <details class="guidance-step" open><summary>1 · Umfang und Vorbereitung</summary><p>Prüfe unter «Grundlagen», welche Dialogteile erforderlich sind. Erzeuge danach unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung.</p></details>
+      <details class="guidance-step"><summary>2 · Rückblick und Ausblick bearbeiten</summary><p>Bereite deine Sicht vor, führe das Gespräch und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt. Standortgesprächsnotizen dienen dabei nur als lokale Gedächtnisstütze.</p></details>
+      <details class="guidance-step"><summary>3 · Dokumente prüfen und versenden</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
+      <details class="guidance-step"><summary>4 · Rücklauf an HR</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
+      <details class="guidance-step"><summary>5 · Speichern und Aktualisieren</summary><p>Die HTML-Arbeitsmappe bleibt bei dir und wird nicht an HR gesendet. «Arbeitsmappe speichern» lädt eine neue Datei herunter, in der Regel in den Download-Ordner. Arbeite anschliessend nur mit der neuesten Datei. Fehlen Mitarbeitende, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>; eine erhaltene Update-Datei kannst du oben einlesen.</p></details>
+      <div class="suggestion storage-warning"><strong>Wo werden deine Angaben gespeichert?</strong> Alle Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt.</div>
+    </div>
+    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button primary" type="button" data-guidance-close>Verstanden</button></div>
+  </dialog>
 
   <script id="md-data" type="application/json">__MD_PACKAGE_JSON__</script>
   <script>
@@ -768,7 +800,8 @@
           date: String(note.date || ''),
           title: String(note.title || ''),
           text: String(note.text || ''),
-          created_at: String(note.created_at || '')
+          created_at: String(note.created_at || ''),
+          locked: typeof note.locked === 'boolean' ? note.locked : true
         }));
         employee.meta = employee.meta || {};
         employee.meta.archived = Boolean(employee.meta.archived);
@@ -786,6 +819,7 @@
       let dirty = false;
       let previousTitle = document.title;
       let toastTimer = null;
+      let guidanceAutoShown = false;
       const selectedStepByCase = {};
 
       const scopeLabels = {
@@ -1230,6 +1264,12 @@
           .sort((left, right) => String(right.note.date || '').localeCompare(String(left.note.date || '')));
         const cards = notes.map(({ note, index }) => {
           const expired = checkpointExpired(note);
+          if (note.locked) {
+            return `<details class="repeat-card checkpoint-note fixed${expired ? ' expired' : ''}" open>
+              <summary class="card-head"><span class="card-head-main"><h4>${h(formatDate(note.date))}${note.title ? ` · ${h(note.title)}` : ''}</h4></span><span class="card-actions"><button class="button small" type="button" data-action="edit-checkpoint" data-index="${index}">Bearbeiten</button><button class="button danger small" type="button" data-action="remove-item" data-array="checkpoint_notes" data-index="${index}">Entfernen</button></span></summary>
+              <div class="card-body">${expired ? '<p class="checkpoint-note-expiry">Älter als zwei Jahre: Bitte prüfen und löschen, wenn die Notiz nicht mehr benötigt wird.</p>' : ''}${h(note.text || 'Keine Notiz erfasst.')}</div>
+            </details>`;
+          }
           return `<details class="repeat-card checkpoint-note${expired ? ' expired' : ''}" open>
             <summary class="card-head"><span class="card-head-main"><h4>${h(formatDate(note.date))}${note.title ? ` · ${h(note.title)}` : ''}</h4></span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="checkpoint_notes" data-index="${index}">Entfernen</button></span></summary>
             <div class="card-body">
@@ -1239,6 +1279,7 @@
                 ${arrayField('Titel (optional)', 'checkpoint_notes', index, 'title', note.title)}
                 ${arrayField('Erkenntnisse und Vereinbarungen', 'checkpoint_notes', index, 'text', note.text, { full:true, rows:5, required:true })}
               </div>
+              <div class="toolbar" style="justify-content:flex-start;margin-top:12px"><button class="button primary small" type="button" data-action="lock-checkpoint" data-index="${index}">Notiz festhalten</button></div>
             </div>
           </details>`;
         }).join('');
@@ -1345,7 +1386,7 @@
         ];
         return `
           <section class="section" id="scope-section">
-            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2></div></div>
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Lege hier fest, welche Dialoge du in diesem Durchlauf mit der oder dem Mitarbeitenden führst. Die bereits aktivierte Auswahl ist aus den Stammdaten abgeleitet, berücksichtigt aber nicht alle Eventualitäten (z. B. interne Übertritte oder Langzeitabwesenheit). Die <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen bei Spezialfällen findest du hier</a>.</p></div></div>
             <div class="scope-grid">
               ${options.map(option => `
                 <label class="scope-option">
@@ -1353,7 +1394,7 @@
                   <strong>${h(option[1])}</strong><span>${h(option[2])}</span>
                 </label>`).join('')}
             </div>
-            <div class="suggestion warning">${employee.suggestion ? `<strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))} ` : ''}Hier geht's zu den <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen bei Spezialfällen</a>.</div>
+            <div class="suggestion warning">${employee.suggestion ? `<strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))}` : ''}</div>
             ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
           </section>`;
       }
@@ -1512,18 +1553,6 @@
         </nav><nav class="companion-nav" aria-label="Begleitung im Jahresverlauf"><span>Begleitung im Jahresverlauf</span><button class="workflow-step ${selectedStep === 'checkpoints' ? 'active' : ''}" type="button" data-action="show-step" data-step="checkpoints">Standortgespräche (${employee.checkpoint_notes.length})</button></nav>`;
       }
 
-      function renderGuidance() {
-        return `<details class="guidance"><summary>Kurzanleitung anzeigen</summary><ol>
-          <li>Lege den Umfang fest und erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei. Sende sie mit der Gesprächseinladung.</li>
-          <li>Bereite Rückblick und Ausblick vor dem Gespräch auch aus deiner Sicht vor.</li>
-          <li>Führe das Gespräch, nimm die Sicht der mitarbeitenden Person auf und formuliere die Ziele gemeinsam.</li>
-          <li>Prüfe die Pflichtangaben, erzeuge die PDFs und sende sie der mitarbeitenden Person zur Unterschrift. Die «Kein MD»-PDFs benötigen keine Unterschrift.</li>
-          <li>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Die HTML-Arbeitsmappe bleibt bei dir und muss nicht zurückgesendet werden.</li>
-          <li>E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</li>
-          <li>Melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>, wenn dir Mitarbeitende fehlen. Wir senden dir eine Update-Datei zum Einlesen.</li>
-        </ol><div class="suggestion storage-warning"><strong>Wo werden deine Angaben gespeichert?</strong> Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an HR übermittelt. Mit «Arbeitsmappe speichern» wird eine neue HTML-Datei mit deinen Änderungen lokal auf deinem Gerät gespeichert (in der Regel im Download-Ordner). Arbeite danach nur mit der neuesten Datei weiter.</div></details>`;
-      }
-
       function progressDocumentLabel(employee, section) {
         if (section === 'review') return employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
         return `Ausblick ${outlookYear(employee)}`;
@@ -1620,7 +1649,7 @@
         selectedStepByCase[employee.case_id] = selectedStep;
         let stepContent = '';
         if (selectedStep === 'basics') {
-          stepContent = `${renderScope(employee)}${renderGuidance()}`;
+          stepContent = renderScope(employee);
         } else if (selectedStep === 'preparation') {
           stepContent = renderEmployeePreparation(employee);
         } else if (selectedStep === 'review') {
@@ -1665,7 +1694,7 @@
         const employee = selectedEmployee();
         if (!employee) return;
         const selectedStep = selectedStepByCase[employee.case_id] || 'basics';
-        if (selectedStep === 'preparation' || selectedStep === 'checkpoints') {
+        if (selectedStep === 'basics' || selectedStep === 'preparation' || selectedStep === 'checkpoints') {
           completionPanel.innerHTML = '';
           return;
         }
@@ -1735,7 +1764,7 @@
         } else if (action === 'add-development-goal') {
           employee.outlook.development_goals.push({ id: uid('development'), competency: '', title: '', criteria: '', steps: '', target_date: '' });
         } else if (action === 'add-checkpoint') {
-          employee.checkpoint_notes.push({ id: uid('checkpoint'), date: new Date().toISOString().slice(0, 10), title: '', text: '', created_at: nowIso() });
+          employee.checkpoint_notes.push({ id: uid('checkpoint'), date: new Date().toISOString().slice(0, 10), title: '', text: '', created_at: nowIso(), locked: false });
         }
         markDirty(employee);
         renderEditor();
@@ -1770,6 +1799,26 @@
         }
         if (action === 'import-checkpoints') {
           document.getElementById('checkpoint-import-file').click();
+          return;
+        }
+        if (action === 'lock-checkpoint') {
+          const note = employee.checkpoint_notes[Number(button.dataset.index)];
+          if (!note) return;
+          if (!note.date || !String(note.text || '').trim()) {
+            window.alert('Bitte ergänze Datum sowie Erkenntnisse und Vereinbarungen, bevor du die Notiz festhältst.');
+            return;
+          }
+          note.locked = true;
+          markDirty(employee);
+          renderEditor();
+          return;
+        }
+        if (action === 'edit-checkpoint') {
+          const note = employee.checkpoint_notes[Number(button.dataset.index)];
+          if (!note) return;
+          note.locked = false;
+          markDirty(employee);
+          renderEditor();
           return;
         }
         if (action.startsWith('add-')) {
@@ -2198,7 +2247,8 @@
               title: String(note.title || ''),
               text: String(note.text || ''),
               created_at: String(note.created_at || ''),
-              imported_at: nowIso()
+              imported_at: nowIso(),
+              locked: true
             });
             identities.add(id);
             identities.add(fingerprint);
@@ -2338,6 +2388,28 @@
         toastTimer = window.setTimeout(() => toast.classList.remove('show'), 6500);
       }
 
+      function openGuidance(automatic = false) {
+        if (automatic) {
+          if (guidanceAutoShown || state.package.guidance_auto_open_disabled) return;
+          guidanceAutoShown = true;
+        }
+        const dialog = document.getElementById('guidance-dialog');
+        document.getElementById('guidance-dismiss').checked = Boolean(state.package.guidance_auto_open_disabled);
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      }
+
+      function closeGuidance() {
+        const dialog = document.getElementById('guidance-dialog');
+        const disabled = document.getElementById('guidance-dismiss').checked;
+        if (Boolean(state.package.guidance_auto_open_disabled) !== disabled) {
+          state.package.guidance_auto_open_disabled = disabled;
+          markDirty(null);
+        }
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      }
+
       function selectPerson(event) {
         const button = event.target.closest('[data-case-id]');
         if (!button) return;
@@ -2365,6 +2437,12 @@
       document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
       document.getElementById('update-file').addEventListener('change', readUpdateFile);
       document.getElementById('checkpoint-import-file').addEventListener('change', readCheckpointImportFile);
+      document.getElementById('guidance-button').addEventListener('click', () => openGuidance(false));
+      document.querySelectorAll('[data-guidance-close]').forEach(button => button.addEventListener('click', closeGuidance));
+      document.getElementById('guidance-dialog').addEventListener('cancel', event => {
+        event.preventDefault();
+        closeGuidance();
+      });
       window.addEventListener('afterprint', cleanupPrint);
       window.addEventListener('beforeunload', event => {
         if (!dirty) return;
@@ -2376,6 +2454,7 @@
       renderSidebar();
       renderEditor();
       updateSaveState();
+      openGuidance(true);
     })();
   </script>
 </body>

@@ -245,6 +245,13 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertNotIn("Erzeuge die PDFs, sobald alle Pflichtangaben vorhanden sind", template)
         self.assertNotIn("Rückblick und Ausblick dürfen an unterschiedlichen Daten stattfinden", template)
         self.assertEqual(template.count("const sectionName ="), 1)
+        self.assertIn('id="guidance-button"', template)
+        self.assertIn('id="guidance-dialog"', template)
+        self.assertIn("Nicht mehr automatisch anzeigen", template)
+        self.assertIn("openGuidance(true)", template)
+        self.assertIn("selectedStep === 'basics' || selectedStep === 'preparation'", template)
+        self.assertIn("Lege hier fest, welche Dialoge du in diesem Durchlauf", template)
+        self.assertEqual(template.count("Bestimmungen bei Spezialfällen"), 1)
 
     def test_checkpoint_notes_are_local_optional_and_importable(self) -> None:
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
@@ -252,6 +259,9 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("Freiwillige lokale Notizen", template)
         self.assertIn('data-action="add-checkpoint"', template)
         self.assertIn('data-action="import-checkpoints"', template)
+        self.assertIn('data-action="lock-checkpoint"', template)
+        self.assertIn('data-action="edit-checkpoint"', template)
+        self.assertIn("Notiz festhalten", template)
         self.assertIn("Personalnummer + Ans.", template)
         self.assertIn("weder an HR übermittelt noch in PDFs", template)
         self.assertIn("selectedStep !== 'checkpoints'", template)

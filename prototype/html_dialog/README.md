@@ -249,11 +249,11 @@ im Namen und können zu unterschiedlichen Zeitpunkten zurückgegeben werden. Jed
 enthält nur den entsprechenden Gesprächsteil. Persönliche Reflexion, Feedback und der
 andere Gesprächsteil werden aus Daten, Formularen und Druckvorschau entfernt.
 
-«Rückblick oder Ausblick importieren» prüft die Zuordnung und zeigt eine Vorschau.
+Der Importbutton steht im jeweiligen Rückblick-/Ausblick-Tab und erscheint nur bei
+angeforderter Rückgabe. Er prüft die Zuordnung und zeigt eine Vorschau.
 Importierte Beiträge stehen als feste graue Blöcke beim jeweiligen Thema. Die eigenen
-Eingabefelder der Führungskraft bleiben unverändert. Die grauen Blöcke werden nicht
-automatisch in offizielle Gesprächs-PDFs übernommen; dort stehen die durch die Führungskraft
-festgehaltenen Beurteilungen und Vereinbarungen. Rückblick und Ausblick werden unabhängig
+Eingabefelder der Führungskraft bleiben unverändert. Die Beiträge können einzeln entfernt werden und erscheinen im jeweiligen
+Gesprächs-PDF vor den Unterschriften in einem bezeichneten Abschnitt. Rückblick und Ausblick werden unabhängig
 gespeichert. Ein erneuter Import ersetzt nur die Beiträge zum betreffenden Gesprächsteil.
 Die frühere kombinierte Rückgabedatei (Version 2) wird nicht mehr importiert; bitte aus
 einer neu erzeugten Vorbereitungsdatei getrennte Rückgaben erstellen.
@@ -272,9 +272,14 @@ node --test prototype/html_dialog/test_offline_workflow.cjs
 Optional bestimmt `MD_TEST_CHROMIUM` den Chromium-Pfad. Die Tests verwenden ausschliesslich
 synthetische Demo-Daten und prüfen unter anderem Datenschutz, getrennte Rückgaben,
 Zuordnungsfehler, unveränderte Eingabefelder, wiederholten Import, direktes Speichern,
-Download-Rückfalllösungen und das Ausblenden des Speicherhinweises.
+Download-Rückfalllösungen, das Ausblenden des Speicherhinweises, alle gültigen
+Formular-/Rückgabekombinationen und Beiträge in PDFs sowie deren Entfernung.
 
 Auf dem kantonalen Gerät weiterhin konkret prüfen: lokale HTML-Datei in Edge öffnen,
 Arbeitsordner wählen, bestehende Datei ersetzen, mehrfach speichern, neu öffnen,
 getrennte Rückgabedateien erstellen und importieren. Browserrichtlinien können direkte
 Schreibzugriffe sperren.
+
+Rückgabebuttons stehen am Ende des jeweiligen Formulars. Hinweise nennen nur
+vorhandene beziehungsweise angeforderte Inhalte. Die Speicherhilfe erklärt den
+Erstempfang per E-Mail, das Überschreiben und den Umgang mit versehentlichen Kopien.

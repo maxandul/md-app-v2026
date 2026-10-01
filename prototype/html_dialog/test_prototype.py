@@ -256,7 +256,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("Lege hier fest, welche Dialoge du in diesem Durchlauf", template)
         self.assertEqual(template.count("Bestimmungen bei Spezialfällen"), 1)
         self.assertIn("falls es sich nicht um einen der dokumentierten Spezialfälle handelt", template)
-        self.assertIn("Der Download-Ordner wird regelmässig automatisch geleert", template)
+        self.assertIn("Datei frisch per E-Mail erhalten", template)
         self.assertIn("Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.", template)
 
     def test_checkpoint_notes_are_local_optional_and_importable(self) -> None:

@@ -118,10 +118,10 @@
       <section class="intro">
         <p class="eyebrow">Persönliche Vorbereitung</p>
         <h2 id="person-title"></h2>
-        <p>Bereite deine Sicht auf den Mitarbeitenden-Dialog in den ausgewählten Bereichen vor. Rückblick und Ausblick sind Vorschläge für das Gespräch.</p>
-        <div id="privacy-note" class="privacy-note"><strong>Deine persönliche Reflexion bleibt bei dir.</strong> Verwende für angeforderte Rückgaben die getrennten Buttons für Rückblick und Ausblick. Die Rückgabedateien enthalten weder persönliche Reflexion noch Feedback. Schicke deine eigene vollständige Datei nicht zurück.</div>
-        <details class="warning-note"><summary><strong>Wo werden deine Angaben gespeichert?</strong></summary><p>Diese Datei übermittelt keine Daten automatisch. Beim ersten Speichern wählst du Speicherort und Dateinamen. Danach wird die gewählte Datei aktualisiert, solange sie geöffnet bleibt. Wenn dies nicht unterstützt wird, wird eine neue Kopie heruntergeladen. Arbeite dann mit der neuesten Datei weiter und lege sie in einem Arbeitsordner ab: Der Download-Ordner wird regelmässig automatisch geleert.</p></details>
-        <div id="requested-return-note" class="warning-note" hidden></div><div class="actions"><button id="return-review" class="button primary" type="button" hidden>Rückblick zur Rückgabe erstellen</button><button id="return-outlook" class="button primary" type="button" hidden>Ausblick zur Rückgabe erstellen</button></div>
+        <p>Bereite deine Sicht auf den Mitarbeitenden-Dialog in den ausgewählten Bereichen vor.</p>
+        <div id="privacy-note" class="privacy-note" hidden></div>
+        <details class="warning-note"><summary><strong>Wo werden deine Angaben gespeichert?</strong></summary><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Eigenen Stand speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol><p>Wenn dein Browser das Überschreiben nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann mit dieser neuen Datei weiter.</p></details>
+        <div id="requested-return-note" class="warning-note" hidden></div>
         <div class="meta"><span><strong>Vorgesetzte Person</strong><span id="manager-name"></span></span><span><strong>Gesprächsumfang</strong><span id="scope-label"></span></span><span><strong>Zeitraum</strong><span id="period-label"></span></span></div>
       </section>
 
@@ -133,7 +133,7 @@
     </main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <dialog id="return-dialog" class="guidance-dialog" aria-labelledby="return-title"><div class="guidance-dialog-head"><h2 id="return-title">Rückgabedatei erstellen</h2></div><div class="guidance-dialog-body"><p id="return-description"></p><div class="warning-note"><strong>Persönliche Reflexion und Feedback sind nicht enthalten.</strong> Deine eigene vollständige Datei bleibt erhalten. Das Feedback-PDF erstellst du nach dem Gespräch.</div></div><div class="guidance-dialog-foot"><button id="return-cancel" class="button" type="button">Abbrechen</button><button id="return-confirm" class="button primary" type="button">Rückgabedatei erstellen</button></div></dialog>
+  <dialog id="return-dialog" class="guidance-dialog" aria-labelledby="return-title"><div class="guidance-dialog-head"><h2 id="return-title">Rückgabedatei erstellen</h2></div><div class="guidance-dialog-body"><p id="return-description"></p><div id="return-privacy" class="warning-note"></div></div><div class="guidance-dialog-foot"><button id="return-cancel" class="button" type="button">Abbrechen</button><button id="return-confirm" class="button primary" type="button">Rückgabedatei erstellen</button></div></dialog>
   <div id="print-root" aria-hidden="true"></div>
   <script id="prep-data" type="application/json">__MD_PREPARATION_JSON__</script>
   <script>
@@ -246,7 +246,7 @@
 
       if (hasReview && !isReturn) {
         const rows = [1,2,3].map(index => `<div class="competency-row"><div><div class="field"><label for="feedback_competency_${index}">Kompetenz ${index}</label><select id="feedback_competency_${index}" data-field="feedback_competency_${index}">${optionList(value(`feedback_competency_${index}`))}</select></div><div id="feedback_competency_help_${index}">${competencyHelp(value(`feedback_competency_${index}`))}</div></div><div class="field"><label for="feedback_competency_text_${index}">Konkrete Beobachtung oder Rückmeldung</label><textarea id="feedback_competency_text_${index}" data-field="feedback_competency_text_${index}">${h(value(`feedback_competency_text_${index}`))}</textarea></div></div>`).join('');
-        document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><p class="section-intro">Das Feedback ist obligatorisch. Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</p></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Wähle bei Bedarf ein bis drei Kompetenzen aus und beschreibe konkrete Beobachtungen.</p>${rows}</div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge nach dem Gespräch das Feedback-PDF und sende es deiner vorgesetzten Person. Sie übermittelt die eingegangenen Feedbacks an HR. Deine persönliche Reflexion wird nicht mitgesendet.</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button></div></section>`;
+        document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><p class="section-intro">Das Feedback ist obligatorisch. Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</p></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Wähle bei Bedarf ein bis drei Kompetenzen aus und beschreibe konkrete Beobachtungen.</p>${rows}</div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge nach dem Gespräch das Feedback-PDF und sende es deiner vorgesetzten Person. Sie übermittelt die eingegangenen Feedbacks an HR. ${showReflection ? 'Deine persönliche Reflexion wird nicht mitgesendet.' : ''}</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button></div></section>`;
       }
       const preparationActions = document.createElement('section');
       preparationActions.className = 'section';
@@ -265,10 +265,16 @@
         else control = `<input type="${h(type)}" data-prepared="${h(path)}" value="${h(val)}">`;
         return `<div class="field ${type === 'textarea' ? 'full' : ''}"><label>${h(label)}${control}</label></div>`;
       };
+
+      function returnActions(section) {
+        if (isReturn || !selection['return_' + section]) return '';
+        const label = section === 'review' ? 'Rückblick' : 'Ausblick';
+        return `<div class="warning-note"><strong>Rückgabe:</strong> Erstelle die Rückgabedatei für den ${label} und sende sie deiner Führungskraft.</div><div class="actions"><button id="return-${section}" class="button primary" type="button" data-return-section="${section}">${label} zur Rückgabe erstellen</button></div>`;
+      }
       function renderPrepared() {
         let review = '';
         if (hasReview && selection.review) {
-          review = `<section class="section"><div class="section-head"><div><p class="eyebrow">Rückblick</p><h2>Deine Sicht auf Leistung und Zusammenarbeit</h2></div></div><div class="warning-note">${selection.return_review || isReturn ? 'Deine Führungskraft bittet dich, diesen Rückblick ausgefüllt zurückzugeben.' : 'Dieses Formular steht dir zur Vorbereitung zur Verfügung. Eine Rückgabe wurde nicht angefordert.'} Gesamtbewertung und Abschluss erfolgen in der Arbeitsmappe.</div>`;
+          review = `<section class="section"><div class="section-head"><div><p class="eyebrow">Rückblick</p><h2>Deine Sicht auf Leistung und Zusammenarbeit</h2></div></div><div class="warning-note">${isReturn ? 'Deine ausgefüllte Rückgabe zum Rückblick.' : selection.return_review ? 'Deine Führungskraft bittet dich, diesen Rückblick ausgefüllt zurückzugeben.' : 'Nutze dieses Formular, um deine Sicht für das Gespräch vorzubereiten.'} Gesamtbewertung und Abschluss erfolgen in der Arbeitsmappe.</div>`;
           if (state.dialog_type !== 'probation') {
             ['previous_goals','previous_development_goals'].forEach(list => {
               review += `<div class="subsection"><h3>${list === 'previous_goals' ? 'Leistungsziele aus dem Vorjahr' : 'Entwicklungsziele aus dem Vorjahr'}</h3>`;
@@ -286,18 +292,18 @@
           competencies.forEach((item,index) => { review += `<div class="goal-card"><div class="form-grid">${inputField(`review.competencies.${index}.competency`,'Kompetenz','competency')}${inputField(`review.competencies.${index}.comment`,'Konkrete Beobachtung')}</div><button class="button" data-remove="review.competencies" data-index="${index}">Entfernen</button></div>`; });
           review += '<button class="button" data-add="review.competencies">+ Kompetenz ergänzen</button></div>';
           if (state.dialog_type !== 'probation') review += `<div class="subsection"><h3>Nebenbeschäftigungen und öffentliche Ämter</h3><div class="source-panel"><strong>Aktueller SAP-Stand</strong>\n${h(state.employee.secondary_employment || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div><div class="form-grid">${inputField('review.secondary_employment_current','SAP-Stand aktuell','select',['Ja','Nein'])}${inputField('review.secondary_employment_note','Präzisierungen')}</div></div>`;
-          review += '</section>';
+          review += returnActions('review') + '</section>';
         }
         document.getElementById('review-section').innerHTML = review;
         let outlook = '';
         if (hasOutlook && selection.outlook) {
-          outlook = `<section class="section"><div class="section-head"><div><p class="eyebrow">Ausblick</p><h2>Deine Vorschläge zu Zielen und Entwicklung</h2></div></div><div class="warning-note">${selection.return_outlook || isReturn ? 'Deine Führungskraft bittet dich, diesen Ausblick ausgefüllt zurückzugeben.' : 'Dieses Formular steht dir zur Vorbereitung zur Verfügung. Eine Rückgabe wurde nicht angefordert.'} Die Ziele werden im Gespräch gemeinsam vereinbart.</div>`;
+          outlook = `<section class="section"><div class="section-head"><div><p class="eyebrow">Ausblick</p><h2>Deine Vorschläge zu Zielen und Entwicklung</h2></div></div><div class="warning-note">${isReturn ? 'Deine ausgefüllte Rückgabe zum Ausblick.' : selection.return_outlook ? 'Deine Führungskraft bittet dich, diesen Ausblick ausgefüllt zurückzugeben.' : 'Nutze dieses Formular, um deine Sicht für das Gespräch vorzubereiten.'} Die Ziele werden im Gespräch gemeinsam vereinbart.</div>`;
           ['performance_goals','development_goals'].forEach(list => {
             outlook += `<div class="subsection"><h3>${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}</h3>`;
             (prepared.outlook[list] || []).forEach((goal,index) => { outlook += `<div class="goal-card"><h3>Ziel ${index+1}</h3><div class="form-grid">${list === 'development_goals' ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div><button class="button" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div>`; });
             outlook += `<button class="button" data-add="outlook.${list}">+ Ziel ergänzen</button></div>`;
           });
-          outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div></section>`;
+          outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div>${returnActions('outlook')}</section>`;
         }
         document.getElementById('outlook-section').innerHTML = outlook;
       }
@@ -320,12 +326,21 @@
         index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length;
         if (buttons[index]) { selectTab(buttons[index].dataset.tab); buttons[index].focus(); }
       });
-      if (!tabs.length) document.getElementById('privacy-note').innerHTML = '<strong>Keine Vorbereitungsteile ausgewählt.</strong> Für diesen Gesprächsumfang ist kein Feedback vorgesehen.';
-      const requests = [];
-      if (hasReview && selection.review && selection.return_review && !isReturn) { document.getElementById('return-review').hidden = false; requests.push('Rückblick'); }
-      if (hasOutlook && selection.outlook && selection.return_outlook && !isReturn) { document.getElementById('return-outlook').hidden = false; requests.push('Ausblick'); }
-      const requestedNote = document.getElementById('requested-return-note');
-      if (requests.length) { requestedNote.hidden = false; requestedNote.innerHTML = `<strong>Deine Führungskraft bittet um Rückgabe:</strong> ${h(requests.join(' und '))}. Fülle die Formulare aus und erstelle für jeden Gesprächsteil eine separate Rückgabedatei. Du kannst sie zu unterschiedlichen Zeitpunkten zurückgeben.`; }
+
+      const privacyNote = document.getElementById('privacy-note');
+      privacyNote.hidden = true;
+      document.getElementById('requested-return-note').hidden = true;
+      const requests = ['review','outlook'].filter(section => (section === 'review' ? hasReview : hasOutlook) && selection[section] && selection['return_' + section] && !isReturn);
+      const exclusions = [showReflection ? 'deine persönliche Reflexion' : '', hasReview && !isReturn ? 'dein Feedback' : ''].filter(Boolean);
+      if (showReflection) {
+        privacyNote.hidden = false;
+        privacyNote.innerHTML = '<strong>Deine persönliche Reflexion bleibt bei dir.</strong> Du entscheidest, welche Gedanken du im Gespräch einbringst.';
+      }
+      if (requests.length) {
+        const requestedNote = document.getElementById('requested-return-note'); requestedNote.hidden = false;
+        requestedNote.innerHTML = `<strong>Deine Führungskraft bittet um Rückgabe:</strong> ${requests.map(section => section === 'review' ? 'Rückblick' : 'Ausblick').join(' und ')}. Verwende die Rückgabe-Buttons am Ende der jeweiligen Formulare und sende die erzeugten Dateien zurück.${requests.length === 2 ? ' Du kannst die beiden Gesprächsteile zu unterschiedlichen Zeitpunkten zurückgeben.' : ''}${exclusions.length ? ` Die Rückgabedateien enthalten ${h(exclusions.join(' und '))} nicht.` : ''} Schicke deine vollständige persönliche Datei nicht zurück.`;
+      }
+      if (!tabs.length) { privacyNote.hidden = false; privacyNote.innerHTML = '<strong>Keine Vorbereitungsteile ausgewählt.</strong>'; }
       function getPrepared(path) { return path.split('.').reduce((object,key) => object[key], prepared); }
       document.addEventListener('input', event => {
         const control = event.target.closest('[data-prepared]');
@@ -411,7 +426,7 @@
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#prep-data').textContent = safeJson(payload);
         // Remove all rendered controls: private values must not survive in DOM attributes or text.
-        ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
+        ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast','privacy-note','requested-return-note','return-privacy','return-description'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
         clone.querySelector('#return-dialog').removeAttribute('open');
         clone.querySelector('body').classList.remove('printing');
         return '<!DOCTYPE html>\n' + clone.outerHTML;
@@ -428,13 +443,17 @@
 
       const returnDialog = document.getElementById('return-dialog');
       let returnSection = null;
-      ['review','outlook'].forEach(section => document.getElementById('return-' + section).addEventListener('click', () => {
+      document.addEventListener('click', event => {
+        const button = event.target.closest('[data-return-section]');
+        if (!button) return;
+        const section = button.dataset.returnSection;
         returnSection = section;
         const label = section === 'review' ? 'Rückblick' : 'Ausblick';
         document.getElementById('return-title').textContent = `${label} zur Rückgabe erstellen`;
-        document.getElementById('return-description').textContent = `Die Rückgabedatei enthält ausschliesslich deine Angaben zum ${label}. Den anderen Gesprächsteil kannst du später separat zurückgeben.`;
+        document.getElementById('return-description').textContent = `Die Rückgabedatei enthält ausschliesslich deine Angaben zum ${label}.`;
+        document.getElementById('return-privacy').textContent = `Deine eigene vollständige Datei bleibt erhalten.${exclusions.length ? ' Die Rückgabedatei enthält ' + exclusions.join(' und ') + ' nicht.' : ''}`;
         returnDialog.showModal();
-      }));
+      });
       document.getElementById('return-cancel').addEventListener('click', () => { returnSection = null; returnDialog.close(); });
       returnDialog.addEventListener('cancel', () => { returnSection = null; });
       document.getElementById('return-confirm').addEventListener('click', async () => {
@@ -459,10 +478,11 @@
         const label = section === 'review' ? 'RUECKBLICK' : 'AUSBLICK';
         const filename = `Vorbereitung_MD_${section === 'review' ? state.review_year : state.outlook_year}_${filenamePart(state.employee.last_name)}_${filenamePart(state.employee.first_name)}_${filenamePart(state.employee.pn)}_${label}_RUECKGABE.html`;
         const result = await saveHtmlFile(() => documentHtml(payload), filename, true);
-        if (result) showToast(result === 'saved' ? 'Rückgabedatei ohne persönliche Reflexion und Feedback am gewählten Speicherort erstellt.' : 'Rückgabedatei ohne persönliche Reflexion und Feedback heruntergeladen. Sende diese Datei an deine Führungskraft.');
+        if (result) showToast(result === 'saved' ? 'Rückgabedatei am gewählten Speicherort erstellt.' : 'Rückgabedatei heruntergeladen. Sende diese Datei an deine Führungskraft.');
       });
       if (isReturn) {
-        document.getElementById('privacy-note').innerHTML = '<strong>Rückgabedatei für die Führungskraft.</strong> Diese Datei enthält ausschliesslich die Beiträge der mitarbeitenden Person zum betreffenden Gesprächsteil. Persönliche Reflexion und Feedback sind nicht enthalten.';
+        privacyNote.hidden = false;
+        privacyNote.innerHTML = '<strong>Rückgabedatei für die Führungskraft.</strong> Diese Datei enthält die Angaben zum betreffenden Gesprächsteil.';
         document.getElementById('save-html').textContent = 'Rückgabedatei speichern';
       }
       window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });

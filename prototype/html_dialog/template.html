@@ -694,15 +694,18 @@
       .print-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2mm 8mm; margin: 7mm 0; padding: 4mm; background: #f1f4f7; }
       .print-meta-item strong { display: block; font-size: 8.5pt; }
       .print-admin-data { flex: 1; color: #666; font-size: 5.8pt; line-height: 1.2; overflow-wrap: anywhere; }
+      .print-ma-block { break-inside: avoid; margin: 0 0 4mm; padding: 3mm; border-left: 2pt solid #8a97a6; background: #f0f3f6; }
+      .print-ma-block h3 { margin: 0 0 2mm; font-size: 10.5pt; break-after: avoid; }
       .print-section { margin-top: 7mm; orphans: 3; widows: 3; }
       .print-section h2 { margin: 0 0 3mm; padding-bottom: 1.5mm; color: #1f4e79; border-bottom: .7pt solid #9fbad2; font-size: 14pt; break-after: avoid-page; page-break-after: avoid; }
       .print-section h3 { margin: 5mm 0 2mm; font-size: 11pt; break-after: avoid-page; page-break-after: avoid; }
       .print-block { break-inside: avoid; margin: 0 0 4mm; padding: 3.5mm; border: .7pt solid #c9d1da; border-radius: 2mm; }
       .print-scope-note { margin-top: 4mm; color: #4b5563; font-size: 9pt; line-height: 1.35; }
-      .print-row { display: grid; grid-template-columns: 38mm 1fr; gap: 4mm; margin-top: 2mm; }
+      .print-row { display: grid; grid-template-columns: 48mm 1fr; gap: 4mm; margin-top: 2mm; }
       .print-row:first-child { margin-top: 0; }
-      .print-label { font-weight: 700; }
+      .print-label { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
       .print-value { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .print-section:has(+ .print-signatures) { break-inside: avoid; break-after: avoid; }
       .print-signatures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14mm; margin-top: 18mm; break-inside: avoid; }
       .signature-line { padding-top: 2mm; border-top: .8pt solid #000; }
       .print-footer { display: flex; margin-top: 12mm; padding-top: 2mm; color: #666; border-top: .5pt solid #c9d1da; break-inside: avoid; }
@@ -756,7 +759,7 @@
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><p>Beim ersten Speichern wählst du Speicherort und Dateinamen. Danach wird die gewählte Datei aktualisiert, solange sie geöffnet bleibt. Wenn der Browser dies nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann nur mit der neuesten Datei.</p></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
+  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Arbeitsmappe speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol><p>Wenn dein Browser das Überschreiben nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann mit dieser neuen Datei weiter.</p></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
   <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
     <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
     <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil.</div><div id="preparation-import-preview"></div></div>
@@ -766,9 +769,9 @@
     <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
     <div class="guidance-dialog-body">
       <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
-      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Beim ersten Speichern wählst du Speicherort und Dateinamen. Danach wird die gewählte Datei aktualisiert, solange sie geöffnet bleibt. Wenn der Browser dies nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann nur mit der neuesten Datei. Lege sie in einem Arbeitsordner ab: Der Download-Ordner wird regelmässig automatisch geleert. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
       <details class="guidance-step"><summary>2 · Umfang bestimmen</summary><p>Bestimme unter «Grundlagen», welche Dialoge erforderlich sind. Erfasse eine Begründung, falls du vom Pflichtteil abweichst. Falls gar kein MD stattfindet, kannst du direkt das PDF generieren und an HR senden. Sprich dich vorgängig mit deiner oder deinem HR-Verantwortlichen ab, falls es sich nicht um einen der dokumentierten Spezialfälle handelt.</p></details>
-      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Du wählst aus, ob die Datei eine freiwillige Reflexion sowie Rückblick und Ausblick zum Vorbereiten enthält. Bei einem Rückblick ist das Feedback an dich immer enthalten. Vorbereitete Rückblicke und Ausblicke können über eine Rückgabedatei ohne persönliche Reflexion importiert werden. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
+      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
       <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
       <details class="guidance-step"><summary>5 · PDFs erstellen und unterschreiben</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
       <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
@@ -1470,12 +1473,19 @@
           </section>`;
       }
 
+      function renderPreparationImport(employee, section) {
+        if (!preparationSelection(employee)['return_' + section]) return '';
+        const label = section === 'review' ? 'Rückblick' : 'Ausblick';
+        return `<div class="toolbar" style="justify-content:flex-start;margin-bottom:16px"><button class="button" type="button" data-action="import-preparation" data-section="${section}">${label} der mitarbeitenden Person importieren</button></div>`;
+      }
+
       function renderDialogDetails(employee, section) {
         const isReview = section === 'review';
         const label = isReview ? 'Rückblick' : 'Ausblick';
         return `
           <section class="section" id="dialog-details-${section}">
             <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2></div></div>
+            ${renderPreparationImport(employee, section)}
             <div class="form-grid three">
               ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', required:true })}
               ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', required:true })}
@@ -1570,7 +1580,7 @@
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest: eine freiwillige Reflexion anbieten, Rückblick und Ausblick zur Vorbereitung bereitstellen oder ausgefüllte Formulare zurückfordern. Die Datei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest: eine freiwillige Reflexion anbieten, Rückblick und Ausblick nur zur Vorbereitung bereitstellen oder sie ausgefüllt zurückfordern und die Antworten bei dir importieren. Die Datei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
           <label style="display:block"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Freiwillige persönliche Reflexion bereitstellen</label>
           ${[['review','Rückblick',hasReview(employee.scope)],['outlook','Ausblick',hasOutlook(employee.scope)]].map(([key,label,available]) => `<div style="margin-top:14px"><label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label} zur Vorbereitung bereitstellen${available ? '' : ' (nicht vorgesehen)'}</label><label style="display:block;margin-left:24px"><input type="checkbox" data-preparation-part="return_${key}" ${selected['return_'+key] ? 'checked' : ''} ${selected[key] ? '' : 'disabled'}> Ausgefüllten ${label} zurückfordern</label></div>`).join('')}
@@ -1578,7 +1588,7 @@
           </div></div>
           <div class="suggestion warning"><strong>Rückgabe:</strong> Rückblick und Ausblick werden bei Bedarf einzeln zurückgegeben und importiert. Persönliche Reflexion und Feedback sind in diesen Rückgabedateien nicht enthalten. Die Angaben der mitarbeitenden Person erscheinen als feste Blöcke neben deinen eigenen Eingaben.</div>
           ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
-          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button><button class="button" type="button" data-action="import-preparation">Rückblick oder Ausblick importieren</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
           ${employee.ma_preparation ? '<details style="margin-top:16px"><summary>Importierte Beiträge der mitarbeitenden Person</summary>' + ['review','outlook'].map(section => employee.ma_preparation[section] ? `<h3>${section === 'review' ? 'Rückblick' : 'Ausblick'}</h3>${preparationContributionHtml(employee.ma_preparation[section])}` : '').join('') + '</details>' : ''}
         </section>`;
       }
@@ -1929,7 +1939,19 @@
           savePackage();
           return;
         }
-        if (action === 'import-preparation') { document.getElementById('preparation-import-file').click(); return; }
+        if (action === 'remove-contribution') {
+          const section = button.dataset.section;
+          const source = employee.ma_preparation?.[section];
+          if (!source || employee.meta.closed || employee.meta.archived) return;
+          source.entries = source.entries.filter(entry => entry.path !== button.dataset.path);
+          if (!source.entries.length) delete employee.ma_preparation[section];
+          markDirty(employee); renderEditor(); return;
+        }
+        if (action === 'import-preparation') {
+          preparationImportSection = button.dataset.section;
+          if (!['review','outlook'].includes(preparationImportSection) || !preparationSelection(employee)['return_' + preparationImportSection]) return;
+          document.getElementById('preparation-import-file').click(); return;
+        }
         if (action === 'download-preparation') {
           downloadEmployeePreparation(employee);
           return;
@@ -2006,6 +2028,17 @@
         return `<div class="print-scope-note"><strong>Hinweis an HR zum Umfang:</strong> Weggelassener Pflichtteil: ${h(omittedMandatoryParts(employee).join(' und '))}. Begründung: ${h(employee.scope_reason)}</div>`;
       }
 
+
+      function employeeContributionsPrint(employee, section) {
+        const entries = employee.ma_preparation?.[section]?.entries || [];
+        if (!entries.length) return '';
+        const labels = { title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick' };
+        const blocks = entries.map(entry => Array.isArray(entry.value)
+          ? entry.value.map((item,index) => `<div class="print-ma-block"><h3>${h(entry.label)} ${index + 1}</h3>${Object.entries(item).filter(([key,value]) => key !== 'id' && value).map(([key,value]) => printValue(labels[key] || key,key === 'target_date' ? formatDate(value) : value)).join('')}</div>`).join('')
+          : `<div class="print-ma-block"><h3>${h(entry.label)}</h3><div class="print-value">${h(entry.value)}</div></div>`).join('');
+        return `<section class="print-section"><h2>Beiträge der mitarbeitenden Person aus der Vorbereitung</h2>${blocks}</section>`;
+      }
+
       function buildReviewPrint(employee) {
         if (employee.dialog_type === 'probation') return buildProbationReviewPrint(employee);
         const previous = employee.previous_goals.map((goal, index) => `
@@ -2045,6 +2078,7 @@
             ${printValue('SAP-Stand aktuell', employee.review.secondary_employment_current)}
             ${printValue('Präzisierungen', employee.review.secondary_employment_note)}
           </section>
+          ${employeeContributionsPrint(employee, 'review')}
           ${signatures('review')}`;
       }
 
@@ -2057,6 +2091,7 @@
           ${competencies ? `<section class="print-section"><h2>Kompetenzen und Zusammenarbeit</h2>${competencies}</section>` : ''}
           <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>${printValue('Vorgesetzte Person', employee.review.manager_comment)}${printValue('Mitarbeitende Person', employee.review.employee_comment)}${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}${scopeReasonForPrint(employee)}</section>
           <section class="print-section"><h2>Anstellungsentscheid</h2>${printValue('Wird das Arbeitsverhältnis weitergeführt?', employee.review.employment_continued)}${printValue('Einigkeit zum Anstellungsentscheid', employee.review.agreement)}</section>
+          ${employeeContributionsPrint(employee, 'review')}
           ${signatures('probation')}`;
       }
 
@@ -2085,6 +2120,7 @@
           </section>
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
           ${scopeReasonForPrint(employee)}
+          ${employeeContributionsPrint(employee, 'outlook')}
           ${signatures('outlook')}`;
       }
 
@@ -2253,16 +2289,17 @@
 
 
       let pendingPreparation = null;
+      let preparationImportSection = null;
 
-      function preparationContributionHtml(source) {
+      function preparationContributionHtml(source, removalSection = '') {
         const readable = value => typeof value === 'string' ? value : Array.isArray(value) ? value.map(item => Object.entries(item).filter(([key,val]) => key !== 'id' && val).map(([key,val]) => `${({title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick'})[key] || key}: ${val}`).join('\n')).join('\n\n') : '';
-        return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
+        return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}${removalSection ? `<button class="button small" style="float:right;margin-left:12px" type="button" data-action="remove-contribution" data-section="${h(removalSection)}" data-path="${h(entry.path)}">Beitrag entfernen</button>` : ''}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
       }
       function employeeContribution(employee, path, prefix = false) {
         if (!employee?.ma_preparation) return '';
         const entries = ['review','outlook'].flatMap(section => employee.ma_preparation[section]?.entries || []).filter(entry => prefix ? entry.path.startsWith(path + '.') : entry.path === path);
         if (!entries.length) return '';
-        return `<div class="ma-fixed"><strong>Sicht der mitarbeitenden Person</strong>${preparationContributionHtml({entries})}</div><div class="ma-owner-label">Deine Angaben als vorgesetzte Person</div>`;
+        return `<div class="ma-fixed"><strong>Sicht der mitarbeitenden Person</strong>${preparationContributionHtml({entries}, path.startsWith('outlook.') ? 'outlook' : 'review')}</div><div class="ma-owner-label">Deine Angaben als vorgesetzte Person</div>`;
       }
       async function readPreparationFile(event) {
         const file = event.target.files[0]; event.target.value = '';
@@ -2278,6 +2315,7 @@
           if (source.document_type !== 'MD_PREPARATION_RETURN' || source.version !== 3 || !source.selection || source.selection.reflection !== false) throw new Error('Bitte verwende die separate «Datei für die Führungskraft». Die persönliche Vorbereitungsdatei kann nicht importiert werden.');
           if (source.case_id !== employee.case_id || source.package_id !== state.package.package_id || String(source.employee?.pn) !== String(employee.employee.pn) || String(source.employee?.employment_assignment || '') !== String(employee.employee.employment_assignment || '') || String(source.manager?.pn) !== String(state.package.manager_pn) || String(source.review_year) !== String(state.package.rb_year) || String(source.outlook_year) !== String(outlookYear(employee)) || source.scope !== employee.scope || source.dialog_type !== employee.dialog_type || source.period_start !== (employee.period_start || '') || source.period_end !== (employee.period_end || '')) throw new Error('Die Rückgabedatei passt nicht zur ausgewählten Person, Anstellung oder zum aktuellen Gesprächsumfang und Zeitraum. Es wurden keine Angaben übernommen.');
           const section = source.return_section;
+          if (section !== preparationImportSection || !preparationSelection(employee)['return_' + section]) throw new Error('Bitte importiere die Rückgabe im passenden Gesprächsteil, für den eine Rückgabe angefordert wurde.');
           if (!['review','outlook'].includes(section) || !source.selection[section] || source.selection[section === 'review' ? 'outlook' : 'review']) throw new Error('Bitte wähle eine separate Rückgabe für Rückblick oder Ausblick.');
           const entries = [];
           const scalar = (section,key,label) => {

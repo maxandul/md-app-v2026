@@ -24,7 +24,8 @@
     .intro,.section { margin-bottom:18px; padding:22px; border:1px solid var(--line); border-radius:4px; background:var(--surface); }
     .intro h2,.section h2 { margin:0; font-size:22px; }
     .intro p,.section-intro { margin:6px 0 0; color:var(--muted); }
-    .privacy-note { margin-top:16px; padding:13px 15px; border-left:4px solid #eac879; background:var(--warning-soft); color:#65430b; }
+    .data-storage-note { margin-top: 16px; padding: 13px 15px; border-left: 4px solid #d93c1a; background: #fff0ec; color: #8a2511; }
+    .data-storage-note p { margin: 6px 0 0; }
     .warning-note { margin-top:16px; padding:13px 15px; border-left:4px solid #eac879; background:var(--warning-soft); color:#65430b; }
     .meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px 20px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
     .meta span { color:var(--muted); font-size:13px; }
@@ -119,8 +120,7 @@
         <p class="eyebrow">Persönliche Vorbereitung</p>
         <h2 id="person-title"></h2>
         <p>Bereite deine Sicht auf den Mitarbeitenden-Dialog in den ausgewählten Bereichen vor.</p>
-        <div id="privacy-note" class="privacy-note" hidden></div>
-        <details class="warning-note"><summary><strong>Wo werden deine Angaben gespeichert?</strong></summary><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Eigenen Stand speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol><p>Wenn dein Browser das Überschreiben nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann mit dieser neuen Datei weiter.</p></details>
+        <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deine/n Vorgesetzte/n oder an HR übermittelt.</p></div><details class="warning-note"><summary><strong>Datei speichern</strong></summary><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Eigenen Stand speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol><p>Wenn dein Browser das Überschreiben nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann mit dieser neuen Datei weiter.</p></details>
         <div id="requested-return-note" class="warning-note" hidden></div>
         <div class="meta"><span><strong>Vorgesetzte Person</strong><span id="manager-name"></span></span><span><strong>Gesprächsumfang</strong><span id="scope-label"></span></span><span><strong>Zeitraum</strong><span id="period-label"></span></span></div>
       </section>
@@ -187,6 +187,7 @@
       const selection = state.selection || { reflection: true, review: false, outlook: false };
       const isReturn = state.document_type === 'MD_PREPARATION_RETURN';
       const showReflection = selection.reflection && !isReturn;
+      const showFeedback = (hasReview || Boolean(selection.feedback)) && !isReturn;
       const prepared = state.prepared || (state.prepared = {});
       prepared.review = prepared.review || {};
       prepared.outlook = prepared.outlook || { performance_goals: [], development_goals: [] };
@@ -198,7 +199,7 @@
         document.getElementById('save-html').disabled = !dirty;
       };
       const markDirty = () => { dirty = true; updateSaveState(); };
-      const text = (key,label,questions,rows=6) => `<div class="subsection"><h3>${h(label)}</h3>${questions && questions.length ? `<ul class="questions">${questions.map(item=>`<li>${h(item)}</li>`).join('')}</ul>` : ''}<div class="field"><label for="${h(key)}">Deine Gedanken</label><textarea id="${h(key)}" data-field="${h(key)}" rows="${rows}">${h(value(key))}</textarea></div></div>`;
+      const text = (key,label,questions,rows=6) => `<div class="subsection"><h3>${h(label)}</h3>${questions && questions.length ? `<details><summary>Reflexionsfragen</summary><ul class="questions">${questions.map(item=>`<li>${h(item)}</li>`).join('')}</ul></details>` : ''}<div class="field"><label for="${h(key)}">Deine Gedanken</label><textarea id="${h(key)}" data-field="${h(key)}" rows="${rows}">${h(value(key))}</textarea></div></div>`;
       const optionList = selected => {
         let html = '<option value="">Kompetenz auswählen</option>';
         (state.competency_model || []).forEach(group => {
@@ -244,9 +245,9 @@
       }
       document.getElementById('preparation-sections').innerHTML = preparation;
 
-      if (hasReview && !isReturn) {
+      if (showFeedback) {
         const rows = [1,2,3].map(index => `<div class="competency-row"><div><div class="field"><label for="feedback_competency_${index}">Kompetenz ${index}</label><select id="feedback_competency_${index}" data-field="feedback_competency_${index}">${optionList(value(`feedback_competency_${index}`))}</select></div><div id="feedback_competency_help_${index}">${competencyHelp(value(`feedback_competency_${index}`))}</div></div><div class="field"><label for="feedback_competency_text_${index}">Konkrete Beobachtung oder Rückmeldung</label><textarea id="feedback_competency_text_${index}" data-field="feedback_competency_text_${index}">${h(value(`feedback_competency_text_${index}`))}</textarea></div></div>`).join('');
-        document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><p class="section-intro">Das Feedback ist obligatorisch. Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</p></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Wähle bei Bedarf ein bis drei Kompetenzen aus und beschreibe konkrete Beobachtungen.</p>${rows}</div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge nach dem Gespräch das Feedback-PDF und sende es deiner vorgesetzten Person. Sie übermittelt die eingegangenen Feedbacks an HR. ${showReflection ? 'Deine persönliche Reflexion wird nicht mitgesendet.' : ''}</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button></div></section>`;
+        document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><p class="section-intro">${hasReview ? 'Das Feedback ist obligatorisch. ' : ''}Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</p></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Wähle bei Bedarf ein bis drei Kompetenzen aus und beschreibe konkrete Beobachtungen.</p>${rows}</div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge nach dem Gespräch das Feedback-PDF und sende es deiner vorgesetzten Person. Sie übermittelt die eingegangenen Feedbacks an HR. ${showReflection ? 'Deine persönliche Reflexion wird nicht mitgesendet.' : ''}</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button></div></section>`;
       }
       const preparationActions = document.createElement('section');
       preparationActions.className = 'section';
@@ -308,7 +309,7 @@
         document.getElementById('outlook-section').innerHTML = outlook;
       }
       renderPrepared();
-      const tabs = [[showReflection,'preparation-sections','Reflexion'],[hasReview && selection.review,'review-section','Rückblick'],[hasOutlook && selection.outlook,'outlook-section','Ausblick'],[hasReview && !isReturn,'feedback-section','Feedback']].filter(([available]) => available);
+      const tabs = [[showReflection,'preparation-sections','Reflexion'],[hasReview && selection.review,'review-section','Rückblick'],[hasOutlook && selection.outlook,'outlook-section','Ausblick'],[showFeedback,'feedback-section','Feedback']].filter(([available]) => available);
       function selectTab(id) {
         tabs.forEach(([,panel]) => { document.getElementById(panel).hidden = panel !== id; const button = document.getElementById('tab-' + panel); button.setAttribute('aria-selected',String(panel === id)); button.tabIndex = panel === id ? 0 : -1; });
       }
@@ -327,20 +328,14 @@
         if (buttons[index]) { selectTab(buttons[index].dataset.tab); buttons[index].focus(); }
       });
 
-      const privacyNote = document.getElementById('privacy-note');
-      privacyNote.hidden = true;
       document.getElementById('requested-return-note').hidden = true;
       const requests = ['review','outlook'].filter(section => (section === 'review' ? hasReview : hasOutlook) && selection[section] && selection['return_' + section] && !isReturn);
-      const exclusions = [showReflection ? 'deine persönliche Reflexion' : '', hasReview && !isReturn ? 'dein Feedback' : ''].filter(Boolean);
-      if (showReflection) {
-        privacyNote.hidden = false;
-        privacyNote.innerHTML = '<strong>Deine persönliche Reflexion bleibt bei dir.</strong> Du entscheidest, welche Gedanken du im Gespräch einbringst.';
-      }
+      const exclusions = [showReflection ? 'deine persönliche Reflexion' : '', showFeedback ? 'dein Feedback' : ''].filter(Boolean);
       if (requests.length) {
         const requestedNote = document.getElementById('requested-return-note'); requestedNote.hidden = false;
         requestedNote.innerHTML = `<strong>Deine Führungskraft bittet um Rückgabe:</strong> ${requests.map(section => section === 'review' ? 'Rückblick' : 'Ausblick').join(' und ')}. Verwende die Rückgabe-Buttons am Ende der jeweiligen Formulare und sende die erzeugten Dateien zurück.${requests.length === 2 ? ' Du kannst die beiden Gesprächsteile zu unterschiedlichen Zeitpunkten zurückgeben.' : ''}${exclusions.length ? ` Die Rückgabedateien enthalten ${h(exclusions.join(' und '))} nicht.` : ''} Schicke deine vollständige persönliche Datei nicht zurück.`;
       }
-      if (!tabs.length) { privacyNote.hidden = false; privacyNote.innerHTML = '<strong>Keine Vorbereitungsteile ausgewählt.</strong>'; }
+      if (!tabs.length) { const panel = document.getElementById('preparation-sections'); panel.hidden = false; panel.innerHTML = '<section class="section"><strong>Keine Vorbereitungsteile ausgewählt.</strong></section>'; }
       function getPrepared(path) { return path.split('.').reduce((object,key) => object[key], prepared); }
       document.addEventListener('input', event => {
         const control = event.target.closest('[data-prepared]');
@@ -426,7 +421,7 @@
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#prep-data').textContent = safeJson(payload);
         // Remove all rendered controls: private values must not survive in DOM attributes or text.
-        ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast','privacy-note','requested-return-note','return-privacy','return-description'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
+        ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast','requested-return-note','return-privacy','return-description'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
         clone.querySelector('#return-dialog').removeAttribute('open');
         clone.querySelector('body').classList.remove('printing');
         return '<!DOCTYPE html>\n' + clone.outerHTML;
@@ -472,7 +467,7 @@
         payload.document_type = 'MD_PREPARATION_RETURN';
         payload.return_section = section;
         payload.exported_at = new Date().toISOString();
-        payload.selection = { reflection: false, review: section === 'review', outlook: section === 'outlook' };
+        payload.selection = { feedback: false, reflection: false, review: section === 'review', outlook: section === 'outlook' };
         payload.prepared = { [section]: prepared[section] };
         payload.fields = {};
         const label = section === 'review' ? 'RUECKBLICK' : 'AUSBLICK';
@@ -481,8 +476,9 @@
         if (result) showToast(result === 'saved' ? 'Rückgabedatei am gewählten Speicherort erstellt.' : 'Rückgabedatei heruntergeladen. Sende diese Datei an deine Führungskraft.');
       });
       if (isReturn) {
-        privacyNote.hidden = false;
-        privacyNote.innerHTML = '<strong>Rückgabedatei für die Führungskraft.</strong> Diese Datei enthält die Angaben zum betreffenden Gesprächsteil.';
+        const returnNote = document.getElementById('requested-return-note');
+        returnNote.hidden = false;
+        returnNote.innerHTML = '<strong>Rückgabedatei für die Führungskraft.</strong> Diese Datei enthält die Angaben zum betreffenden Gesprächsteil.';
         document.getElementById('save-html').textContent = 'Rückgabedatei speichern';
       }
       window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });

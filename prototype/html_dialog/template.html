@@ -374,6 +374,8 @@
     .guidance-dialog-head h2 { margin: 0; font-size: 22px; }
     .guidance-dialog-body { padding: 20px 24px; overflow: auto; }
     .guidance-dialog-body > p { margin-top: 0; }
+    .data-storage-note { margin-top: 16px; padding: 13px 15px; border-left: 4px solid #d93c1a; background: #fff0ec; color: #8a2511; }
+    .data-storage-note p { margin: 6px 0 0; }
     .guidance-step { margin-top: 10px; padding: 12px 14px; border: 1px solid #d8dee6; background: #fff; }
     .guidance-step summary { cursor: pointer; font-weight: 700; }
     .guidance-step p, .guidance-step ul { margin-bottom: 0; }
@@ -775,6 +777,7 @@
       <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
       <details class="guidance-step"><summary>5 · PDFs erstellen und unterschreiben</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
       <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
+      <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deinen Mitarbeitenden oder an HR übermittelt.</p></div>
     </div>
     <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button primary" type="button" data-guidance-close>Schliessen</button></div>
   </dialog>
@@ -1574,20 +1577,36 @@
 
       function preparationSelection(employee) {
         const selected = employee.meta.preparation_selection || { reflection: true, review: false, outlook: false };
-        return { reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook), return_review: hasReview(employee.scope) && Boolean(selected.review) && Boolean(selected.return_review), return_outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) && Boolean(selected.return_outlook) };
+        return { feedback: hasReview(employee.scope) || Boolean(selected.feedback), reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook), return_review: hasReview(employee.scope) && Boolean(selected.review) && Boolean(selected.return_review), return_outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) && Boolean(selected.return_outlook) };
+      }
+      function reflectionQuestions(employee) {
+        const groups = [];
+        if (hasReview(employee.scope)) {
+          groups.push(['Leistung und Zielerreichung', employee.dialog_type === 'probation'
+            ? ['Wie erlebst du deine Einarbeitung und die bisherige Leistung?', 'Welche Ziele des Einführungsprogramms hast du erreicht?', 'Wo brauchst du noch Unterstützung?']
+            : ['Inwiefern hast du die vereinbarten Ziele erreicht?', 'Was waren deine wichtigsten Erfolge?', 'Welche Herausforderungen oder Hindernisse sind aufgetreten?']]);
+          groups.push(['Kompetenzen und Zusammenarbeit', ['Mit welchen Kompetenzen konntest du besonders überzeugen?', 'Wo siehst du bei dir Entwicklungspotenzial?', 'Was hast du über dich selbst gelernt?']]);
+        }
+        if (hasOutlook(employee.scope)) {
+          groups.push(['Ziele und Aufgaben', ['Welche Ziele möchtest du erreichen?', 'Woran erkennst du, dass du sie erreicht hast?', 'Wie möchtest du vorgehen und welche Unterstützung brauchst du?']]);
+          groups.push(['Persönliche Entwicklung', ['Welche Kompetenzen möchtest du weiterentwickeln?', 'Woran wirst du Fortschritte erkennen?', 'Welche Lerngelegenheiten oder Unterstützung helfen dir dabei?']]);
+          groups.push(['Weitere berufliche Interessen', ['Gibt es Aufgaben, Verantwortungsbereiche oder andere berufliche Ziele, die dich interessieren?', 'Worauf freust du dich im kommenden Zeitraum besonders?']]);
+        }
+        return groups.map(([label, questions]) => `<h4>${h(label)}</h4><ul>${questions.map(question => `<li>${h(question)}</li>`).join('')}</ul>`).join('');
       }
       function renderEmployeePreparation(employee) {
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest: eine freiwillige Reflexion anbieten, Rückblick und Ausblick nur zur Vorbereitung bereitstellen oder sie ausgefüllt zurückfordern und die Antworten bei dir importieren. Die Datei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest:</p><ul class="section-intro"><li>freie Vorbereitung (nur Feedback an vorgesetzte Person, sofern ein Rückblick stattfindet oder von dir gewünscht)</li><li>deine Mitarbeitenden reflektieren vorab entlang ein paar Reflexionsfragen (persönliche Reflexion)</li><li>deine Mitarbeitenden reflektieren entlang des konkreten Rück- bzw. Ausblicks (Rück-/Ausblick bereitstellen)</li><li>du möchtest ihre Sicht im fertigen Dokument wörtlich abgebildet haben (Rück-/Ausblick zurückfordern)</li></ul><p class="section-intro">Die Vorbereitungsdatei enthält nur leere Vorlagen und keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
-          <label style="display:block"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Freiwillige persönliche Reflexion bereitstellen</label>
+          <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach dem Gespräch separat als PDF zurückgegeben.</label>
+          <label style="display:block;margin-top:14px"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Persönliche Reflexion bereitstellen</label>
+          <details style="margin:8px 0 0 24px"><summary>Reflexionsfragen ansehen</summary>${reflectionQuestions(employee)}</details>
           ${[['review','Rückblick',hasReview(employee.scope)],['outlook','Ausblick',hasOutlook(employee.scope)]].map(([key,label,available]) => `<div style="margin-top:14px"><label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label} zur Vorbereitung bereitstellen${available ? '' : ' (nicht vorgesehen)'}</label><label style="display:block;margin-left:24px"><input type="checkbox" data-preparation-part="return_${key}" ${selected['return_'+key] ? 'checked' : ''} ${selected[key] ? '' : 'disabled'}> Ausgefüllten ${label} zurückfordern</label></div>`).join('')}
-          ${hasReview(employee.scope) ? '<p><strong>Feedback an die vorgesetzte Person · obligatorisch</strong><br>Das Feedback wird nach dem Gespräch separat als PDF zurückgegeben.</p>' : '<p>Ohne Rückblick entfällt das Feedback.</p>'}
           </div></div>
-          <div class="suggestion warning"><strong>Rückgabe:</strong> Rückblick und Ausblick werden bei Bedarf einzeln zurückgegeben und importiert. Persönliche Reflexion und Feedback sind in diesen Rückgabedateien nicht enthalten. Die Angaben der mitarbeitenden Person erscheinen als feste Blöcke neben deinen eigenen Eingaben.</div>
-          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
+          ${selected.return_review || selected.return_outlook ? '<div class="suggestion warning"><strong>Rückgabe:</strong> Rückblick und Ausblick werden bei Bedarf einzeln zurückgegeben und von dir im Rück- oder Ausblick importiert. Die Angaben der mitarbeitenden Person erscheinen dann als feste Blöcke neben deinen eigenen Eingaben. Persönliche Reflexion und Feedback sind in diesen Rückgabedateien nicht enthalten.</div>' : ''}
+          ${selected.feedback ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
           ${employee.ma_preparation ? '<details style="margin-top:16px"><summary>Importierte Beiträge der mitarbeitenden Person</summary>' + ['review','outlook'].map(section => employee.ma_preparation[section] ? `<h3>${section === 'review' ? 'Rückblick' : 'Ausblick'}</h3>${preparationContributionHtml(employee.ma_preparation[section])}` : '').join('') + '</details>' : ''}
         </section>`;

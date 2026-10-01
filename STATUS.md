@@ -6,11 +6,12 @@
 ## Erweiterung der Offline-Vorbereitung
 
 - Wahl der Bereitstellung von Reflexion, Rückblick und Ausblick; Rückgabe je Gesprächsteil separat anforderbar. Obligatorisches Feedback wird ausschliesslich separat als PDF zurückgegeben.
+- Feedback bei Rückblick fest ausgewählt, sonst optional; rote Datenhinweise in beiden Dateien und aufklappbare Reflexionsfragen.
 - Tabs und Hinweise im Stil der Arbeitsmappe; Hinweise passend zu vorhandenen Formularen und Rückgabeanforderungen, Rückgabebuttons am Formularende.
 - Eigener Stand sowie getrennte Rückgaben von Rückblick und Ausblick ohne persönliche Reflexion und Feedback.
 - Import im jeweiligen Gesprächsteil nur bei angeforderter Rückgabe; Vorschau mit sicherer Zuordnung. Beiträge als feste graue Blöcke neben unveränderten Eingabefeldern der Führungskraft, einzeln entfernbar und im jeweiligen PDF sichtbar.
 - Ein Speicherbutton mit direktem Speichern nach Dateiauswahl und HTML-Download als Rückfalllösung; Speicherhinweis mit «Nicht mehr anzeigen».
-- Synthetische Demo aktualisiert; 77 Tests erfolgreich (20 Prototyp-, 44 Anwendungstests und 13 Browsertests). Gesprächs-PDFs visuell geprüft. Lokalen Edge-Test auf kantonalen Geräten weiterhin durchführen.
+- Synthetische Demo aktualisiert; 78 Tests erfolgreich (20 Prototyp-, 44 Anwendungstests und 14 Browsertests). Gesprächs-PDFs visuell geprüft. Lokalen Edge-Test auf kantonalen Geräten weiterhin durchführen.
 
 ## Ziel und Architektur
 

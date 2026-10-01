@@ -24,7 +24,7 @@ Vorjahresziele, Rückblick, Ausblick, Prozessausnahmen und den Bearbeitungsstand
 - freiwilliger Dokumentstand für die persönliche Arbeitsorganisation
 - Erzeugung einer eigenständigen, personalisierten Datei `Vorbereitung MA`, die
   der Gesprächseinladung beigelegt werden kann
-- fallabhängige Vorbereitung: Rückblickreflexion und Feedback nur bei Rückblick,
+- fallabhängige Vorbereitung: Rückblickreflexion bei Rückblick, Feedback dort obligatorisch und sonst optional,
   Ausblickvorbereitung nur bei Ausblick
 - getrennte PDF-Ausgaben für die private Gesprächsvorbereitung und das Feedback
   an die vorgesetzte Person
@@ -240,7 +240,7 @@ Unter «Vorbereitung MA» entscheidet die Führungskraft, ob sie eine freiwillig
 und/oder Rückblick-/Ausblickformulare bereitstellt. Für jeden Gesprächsteil kann sie
 zusätzlich eine ausgefüllte Rückgabe anfordern. Standardmässig ist nur die freiwillige
 Reflexion ausgewählt. Das Feedback ist bei Rückblick obligatorisch und wird separat als PDF
-zurückgegeben. Vorjahresziele werden ohne bisherige Beurteilungen mitgegeben.
+zurückgegeben. Ohne Rückblick kann Feedback optional ausgewählt werden. Vorjahresziele werden ohne bisherige Beurteilungen mitgegeben.
 
 Mitarbeitende speichern ihren vollständigen eigenen Stand mit «Eigenen Stand speichern».
 Bei angeforderter Rückgabe erscheinen separate Buttons für Rückblick und Ausblick.
@@ -283,3 +283,7 @@ Schreibzugriffe sperren.
 Rückgabebuttons stehen am Ende des jeweiligen Formulars. Hinweise nennen nur
 vorhandene beziehungsweise angeforderte Inhalte. Die Speicherhilfe erklärt den
 Erstempfang per E-Mail, das Überschreiben und den Umgang mit versehentlichen Kopien.
+
+Rote Datenhinweise erklären in Kurzanleitung und Vorbereitung die lokale Speicherung.
+Die persönliche Reflexion wird ohne Zusatz «freiwillig» angeboten; ihre Fragen sind
+aufklappbar. Der Rückgabehinweis erscheint nur bei angeforderter Rückgabe.

@@ -1799,7 +1799,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("Teilkompetenzen und Formulierungshilfen", preparation_template)
         self.assertIn('data-action="print-preparation">Gesprächsvorbereitung als PDF', preparation_template)
         self.assertIn("Ungespeicherte Angaben", preparation_template)
-        self.assertIn("Schliesse diese bisherige Datei", preparation_template)
+        self.assertIn("Bitte mit dieser Datei weiterarbeiten", preparation_template)
         self.assertIn("const markDirty", preparation_template)
         self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.", preparation_template)
         self.assertNotIn("gesammelt und S/MIME-verschlüsselt", preparation_template)
@@ -1812,7 +1812,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)
         self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.</div>", start_html)
         self.assertIn("if (hasReview)", preparation_template)
-        self.assertIn("if (hasOutlook)", preparation_template)
+        self.assertIn("showReflection && hasOutlook", preparation_template)
         payload["package"]["revision"] = 1
         payload["package"]["saved_at"] = "2025-09-17T12:30:00+00:00"
         returned_html = render_html(payload).encode("utf-8")

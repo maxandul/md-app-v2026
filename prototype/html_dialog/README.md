@@ -37,7 +37,7 @@ Vorjahresziele, Rückblick, Ausblick, Prozessausnahmen und den Bearbeitungsstand
 - Stammdaten bestimmen nur den Mindestumfang; zusätzliche Gesprächsteile bleiben möglich
 - übernommene Vorjahresziele werden als unveränderter Quelltext angezeigt; für
   Korrekturen werden sie entfernt und bei Bedarf neu erfasst
-- Speichern als neue, aktualisierte HTML-Datei
+- direktes Speichern in eine ausdrücklich ausgewählte Datei, «Kopie speichern unter …» und HTML-Download als Rückfalllösung
 - eindeutige Dateistände: Versanddatei mit `_START`, gespeicherte Rücksendungen
   mit `_BEARBEITET_vNN_YYYYMMDD_HHMM`
 - PDF-Namen mit dem fachlich passenden Jahr und der Personalnummer am Schluss
@@ -165,7 +165,7 @@ Für die spätere Umsetzung gelten folgende Regeln:
 6. In der Vorbereitungsdatei Gesprächsvorbereitung und – bei einem Rückblick –
    Feedback getrennt als PDF ausgeben.
 7. `Arbeitsmappe speichern` wählen.
-8. Die neu heruntergeladene HTML-Datei schliessen und erneut öffnen.
+8. Die gespeicherte Datei schliessen und erneut öffnen. Beim Download die neu heruntergeladene Datei verwenden.
 9. Prüfen, ob Eingaben und Fortschritt erhalten geblieben sind.
 10. `Rückblick als PDF` beziehungsweise `Ausblick als PDF` wählen.
 11. Im Edge-Druckdialog `Als PDF speichern` verwenden und Seitenumbrüche, lange
@@ -223,16 +223,46 @@ Die Prüfung kontrolliert unter anderem:
 ## Bewusste Grenzen des Prototyps
 
 - Outlook-Versand und S/MIME werden noch nicht automatisiert.
-- Der Browser kann die geöffnete Datei nicht zuverlässig selbst überschreiben;
-  Speichern erzeugt daher eine neue HTML-Datei.
+- Direktes Speichern benötigt die File System Access API und eine ausdrückliche Dateiauswahl. Ein Doppelklick auf die HTML-Datei gewährt noch keinen Schreibzugriff. In unterstützten Browsern wird während derselben Sitzung dieselbe gewählte Datei aktualisiert; nach erneutem Öffnen kann eine neue Auswahl nötig sein. Bei fehlender Unterstützung oder Schreibfehlern wird eine neue HTML-Datei heruntergeladen.
 - Der PDF-Export verwendet vorerst den Edge-Druckdialog.
 - Die technische Paketkennung steht am Dokumentende und wird nicht als
   wiederholte Browser-Fusszeile ausgegeben.
 - Digital oder handschriftlich unterzeichnete PDFs bleiben separate Dateien.
 - Es gibt noch keinen SQLite-Import und keine automatische Zuordnung der
   unterschriebenen PDFs.
-- Die Vorbereitungsdatei versendet keine Daten automatisch. Mitarbeitende geben
-  nur das separate Feedback-PDF an ihre vorgesetzte Person weiter; ihre private
-  Gesprächsvorbereitung verbleibt bei ihnen.
+- Die Vorbereitungsdatei versendet keine Daten automatisch. Die separate Rückgabedatei enthält ausgewählte Rückblick-/Ausblick-Vorbereitungen und Feedback, aber keine persönliche Reflexion. Das Feedback-PDF wird nach dem Gespräch separat an die Führungskraft übergeben.
 
 Diese Punkte werden erst nach dem Edge-/Outlook-/S/MIME-Test entschieden.
+
+## Vorbereitung mit Rückgabe und Import (1. Oktober 2026)
+
+Unter «Vorbereitung MA» wählt die Führungskraft Reflexion, Rückblick und Ausblick aus.
+«Alles auswählen» und «Auswahl aufheben» gelten für die optionalen Teile; das Feedback
+ist bei einem Rückblick immer enthalten. Standardmässig ist nur die freiwillige Reflexion
+ausgewählt. Vorjahresziele werden ohne bisherige Beurteilungen mitgegeben.
+
+Mitarbeitende speichern ihren eigenen vollständigen Stand mit «Eigenen Stand speichern».
+«Datei für die Führungskraft erstellen» erzeugt eine separate HTML-Datei mit `_RUECKGABE`
+im Namen. Private Reflexionen werden aus dem JSON-Datenblock, gerenderten Formularen
+und einer etwaigen Druckvorschau entfernt. Nur die Rückgabedatei ist zum Zurücksenden bestimmt.
+
+«Vorbereitung importieren» prüft die Zuordnung und zeigt eine Vorschau. Nicht leere
+vorhandene Angaben sind nie vorausgewählt. Eine Auswahl ersetzt den betreffenden Text
+oder Ziel-/Kompetenzbereich ausdrücklich. Leere Angaben löschen keine vorhandenen Inhalte.
+Die ursprünglichen Beiträge und das Feedback bleiben unter «Vorbereitung MA» erhalten.
+Gesamtbewertung, Anstellungsentscheid, Gesprächsdaten und Abschluss bleiben bei der Führungskraft.
+
+Für lokale Browsertests mit separat installiertem Playwright:
+
+```bash
+python prototype/html_dialog/create_demo.py
+node --test prototype/html_dialog/test_offline_workflow.cjs
+```
+
+Optional bestimmt `MD_TEST_CHROMIUM` den Chromium-Pfad. Die Tests verwenden ausschliesslich
+synthetische Demo-Daten und prüfen unter anderem Datenschutz, selektiven Import,
+Zuordnungsfehler, wiederholten Import, direktes Speichern und Download-Rückfalllösungen.
+
+Auf dem kantonalen Gerät weiterhin konkret prüfen: lokale HTML-Datei in Edge öffnen,
+Arbeitsordner wählen, bestehende Datei ersetzen, mehrfach speichern, neu öffnen,
+Rückgabedatei erstellen und importieren. Browserrichtlinien können direkte Schreibzugriffe sperren.

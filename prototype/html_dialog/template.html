@@ -367,6 +367,7 @@
     .archive-note { margin-top: 14px; padding: 14px 16px; color: var(--muted); background: #eeeeee; }
 
     .guidance-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 18px 60px rgba(0,0,0,.25); }
+    #preparation-import-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
     .guidance-dialog::backdrop { background: rgba(0, 32, 62, .58); }
     .guidance-dialog-head { display: flex; justify-content: space-between; gap: 20px; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
     .guidance-dialog-head h2 { margin: 0; font-size: 22px; }
@@ -733,8 +734,10 @@
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
           <input id="update-file" type="file" accept=".json,application/json" hidden>
+          <input id="preparation-import-file" type="file" accept=".html,text/html" hidden>
           <input id="checkpoint-import-file" type="file" accept=".html,text/html" hidden>
           <button id="update-button" class="button" type="button">Update einlesen</button>
+          <button id="save-copy-button" class="button" type="button">Kopie speichern unter …</button>
           <button id="save-button" class="button primary" type="button" disabled>Arbeitsmappe speichern</button>
         </div>
       </header>
@@ -749,13 +752,18 @@
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
+    <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
+    <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Wähle die Angaben aus, die du in Rückblick oder Ausblick übernehmen möchtest. Bereits ausgefüllte Bereiche sind nicht vorausgewählt. Die ursprünglichen Beiträge bleiben zusätzlich unter «Vorbereitung MA» verfügbar.</div><div id="preparation-import-preview"></div></div>
+    <div class="guidance-dialog-foot"><button class="button" type="button" id="preparation-import-cancel">Abbrechen</button><button class="button primary" type="button" id="preparation-import-confirm">Ausgewählte Angaben übernehmen</button></div>
+  </dialog>
   <dialog id="guidance-dialog" class="guidance-dialog" aria-labelledby="guidance-title">
     <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
     <div class="guidance-dialog-body">
       <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
-      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Dies lädt den aktuellen Stand als neue Datei in deinen Download-Ordner herunter. Arbeite anschliessend nur mit der neuesten Datei (Achtung: Der Download-Ordner wird regelmässig automatisch geleert). Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Beim ersten Speichern wählst du Speicherort und Dateinamen. Danach wird die gewählte Datei aktualisiert, solange sie geöffnet bleibt. Wenn der Browser dies nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann nur mit der neuesten Datei. Lege sie in einem Arbeitsordner ab: Der Download-Ordner wird regelmässig automatisch geleert. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
       <details class="guidance-step"><summary>2 · Umfang bestimmen</summary><p>Bestimme unter «Grundlagen», welche Dialoge erforderlich sind. Erfasse eine Begründung, falls du vom Pflichtteil abweichst. Falls gar kein MD stattfindet, kannst du direkt das PDF generieren und an HR senden. Sprich dich vorgängig mit deiner oder deinem HR-Verantwortlichen ab, falls es sich nicht um einen der dokumentierten Spezialfälle handelt.</p></details>
-      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Die Vorbereitungsdatei enthält eine freiwillige Reflexion sowie ein verpflichtendes Feedback an dich. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
+      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Du wählst aus, ob die Datei eine freiwillige Reflexion sowie Rückblick und Ausblick zum Vorbereiten enthält. Bei einem Rückblick ist das Feedback an dich immer enthalten. Vorbereitete Rückblicke und Ausblicke können über eine Rückgabedatei ohne persönliche Reflexion importiert werden. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
       <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
       <details class="guidance-step"><summary>5 · PDFs erstellen und unterschreiben</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
       <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
@@ -809,6 +817,43 @@
       state.employees.forEach(normalizeEmployee);
       let selectedCaseId = state.employees[0] ? state.employees[0].case_id : '';
       let dirty = false;
+
+      let saveHandle = null;
+      let savingFile = false;
+      async function saveHtmlFile(makeHtml, filename, copy = false) {
+        if (savingFile) return null;
+        savingFile = true;
+        try {
+          let handle = copy ? null : saveHandle;
+          if (!handle && typeof window.showSaveFilePicker === 'function') {
+            try {
+              handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: 'HTML-Datei', accept: { 'text/html': ['.html'] } }] });
+            } catch (error) {
+              if (error.name === 'AbortError') return null;
+              // Unavailable or blocked by browser policy: retain download fallback.
+            }
+          }
+          const html = makeHtml();
+          if (handle) {
+            try {
+              const writable = await handle.createWritable();
+              await writable.write(html);
+              await writable.close();
+              if (!copy) saveHandle = handle;
+              return 'saved';
+            } catch (error) {
+              if (!copy) saveHandle = null;
+            }
+          }
+          const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+          const link = document.createElement('a');
+          link.href = url; link.download = filename;
+          document.body.appendChild(link); link.click(); link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+          return 'downloaded';
+        } finally { savingFile = false; }
+      }
+
       let previousTitle = document.title;
       let toastTimer = null;
       let guidanceAutoShown = false;
@@ -1108,7 +1153,7 @@
         const histories = Array.isArray(pkg.previous_cycles) ? pkg.previous_cycles : [];
         cycleSelect.innerHTML = `<option value="current">Rückblick ${h(pkg.rb_year)} · Ausblick ${h(pkg.ab_year)}</option>${histories.map(cycle => `<option value="${h(cycle.file || '')}">${h(cycle.label)}</option>`).join('')}`;
         document.getElementById('package-title').textContent = pkg.manager_name;
-        const version = pkg.revision ? `v${String(pkg.revision).padStart(2, '0')}` : 'Startdatei';
+        const version = pkg.revision ? `v${String((Number.isInteger(pkg.revision) ? pkg.revision : 0) + 1).padStart(2, '0')}` : 'Startdatei';
         const fileDate = pkg.saved_at || pkg.created_at;
         const fileDateLabel = fileDate ? new Date(fileDate).toLocaleString('de-CH') : 'Nicht verfügbar';
         const technicalDetails = [
@@ -1509,22 +1554,24 @@
           </section>`;
       }
 
-      function preparationContents(employee) {
-        const parts = [];
-        if (hasReview(employee.scope)) parts.push(employee.dialog_type === 'probation' ? 'Reflexion zur Probezeit' : `Reflexion zum Rückblick ${state.package.rb_year}`);
-        if (hasOutlook(employee.scope)) parts.push(`Vorbereitung auf den Ausblick ${outlookYear(employee)}`);
-        if (hasReview(employee.scope)) parts.push('Feedback an die vorgesetzte Person');
-        return parts;
-      }
 
+      function preparationSelection(employee) {
+        const selected = employee.meta.preparation_selection || { reflection: true, review: false, outlook: false };
+        return { reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) };
+      }
       function renderEmployeePreparation(employee) {
-        const parts = preparationContents(employee);
+        const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erzeuge eine eigenständige HTML-Datei und sende sie der mitarbeitenden Person mit der Gesprächseinladung. Eingaben in dieser Datei werden nicht in deine Arbeitsmappe zurückgeschrieben.</p></div></div>
-          <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value"><ul style="margin:0;padding-left:20px">${parts.map(part => `<li>${h(part)}</li>`).join('')}</ul></div></div>
-          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : '<div class="suggestion"><strong>Nur Ausblick:</strong> Die Datei unterstützt die Vorbereitung auf Ziele und Entwicklung. Ein Feedback an die vorgesetzte Person ist nicht enthalten.</div>'}
-          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Wähle die gewünschten Teile und sende die erzeugte HTML-Datei mit der Gesprächseinladung. Die Datei enthält Vorjahresziele, aber keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
+          <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value">
+          ${[['reflection','Freiwillige persönliche Reflexion',true],['review','Rückblick vorbereiten',hasReview(employee.scope)],['outlook','Ausblick vorbereiten',hasOutlook(employee.scope)]].map(([key,label,available]) => `<label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label}${available ? '' : ' (nicht vorgesehen)'}</label>`).join('')}
+          ${hasReview(employee.scope) ? '<p><strong>Feedback an die vorgesetzte Person · obligatorisch</strong></p>' : '<p>Ohne Rückblick entfällt das Feedback.</p>'}
+          <div class="toolbar" style="justify-content:flex-start;margin-top:12px"><button class="button small" type="button" data-action="preparation-all">Alles auswählen</button><button class="button small" type="button" data-action="preparation-none">Auswahl aufheben</button></div></div></div>
+          <div class="suggestion warning"><strong>Rückgabe:</strong> Mitarbeitende erstellen eine separate Datei für dich. Die persönliche Reflexion wird daraus vollständig entfernt. Beim Import wählst du aus, welche Angaben übernommen werden. Das Feedback-PDF geht nach dem Gespräch S/MIME-verschlüsselt an HR.</div>
+          ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
+          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button><button class="button" type="button" data-action="import-preparation">Vorbereitung importieren</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+          ${employee.ma_preparation ? '<div class="suggestion">Eine Vorbereitung der mitarbeitenden Person wurde importiert. Die Beiträge bleiben hier zum Nachlesen verfügbar.</div><details><summary>Importierte Beiträge der mitarbeitenden Person</summary><div style="white-space:pre-wrap">' + preparationContributionHtml(employee.ma_preparation) + '</div></details>' : ''}
         </section>`;
       }
 
@@ -1734,6 +1781,12 @@
         if (!employee) return;
         let changed = false;
         let rerender = false;
+        if (target.dataset.preparationPart) {
+          employee.meta.preparation_selection = preparationSelection(employee);
+          employee.meta.preparation_selection[target.dataset.preparationPart] = target.checked;
+          markDirty(employee);
+          return;
+        }
         if (target.dataset.bind) {
           setPath(employee, target.dataset.bind, target.value);
           changed = true;
@@ -1866,6 +1919,12 @@
           savePackage();
           return;
         }
+        if (action === 'preparation-all' || action === 'preparation-none') {
+          const all = action === 'preparation-all';
+          employee.meta.preparation_selection = { reflection: all, review: all && hasReview(employee.scope), outlook: all && hasOutlook(employee.scope) };
+          markDirty(employee); renderEditor(); return;
+        }
+        if (action === 'import-preparation') { document.getElementById('preparation-import-file').click(); return; }
         if (action === 'download-preparation') {
           downloadEmployeePreparation(employee);
           return;
@@ -2082,7 +2141,7 @@
         return `Vorbereitung_MD_${state.package.rb_year}_${filenamePart(employee.employee.last_name)}_${filenamePart(employee.employee.first_name)}_${filenamePart(employee.employee.pn)}.html`;
       }
 
-      function downloadEmployeePreparation(employee) {
+      async function downloadEmployeePreparation(employee) {
         if (!employee.scope || employee.scope === 'none') {
           showToast('Lege zuerst einen Gesprächsumfang mit Rückblick oder Ausblick fest.');
           return;
@@ -2094,7 +2153,10 @@
           return;
         }
         const payload = {
-          version: 1,
+          version: 2,
+          selection: preparationSelection(employee),
+          previous_goals: (employee.previous_goals || []).map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})),
+          previous_development_goals: (employee.previous_development_goals || []).map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})),
           preparation_id: `PREP-${employee.case_id}`,
           package_id: state.package.package_id,
           case_id: employee.case_id,
@@ -2106,8 +2168,10 @@
           period_end: employee.period_end || '',
           employee: {
             pn: employee.employee.pn,
+            employment_assignment: employee.employee.employment_assignment || '',
             first_name: employee.employee.first_name,
             last_name: employee.employee.last_name,
+            secondary_employment: employee.employee.secondary_employment || '',
             full_name: employee.employee.full_name
           },
           manager: {
@@ -2119,20 +2183,12 @@
           competency_model: state.configuration.competency_model || [],
           fields: {}
         };
-        const html = template.replace(marker, safeJson(payload));
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = preparationFilename(employee);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        const result = await saveHtmlFile(() => template.replace(marker, safeJson(payload)), preparationFilename(employee), true);
+        if (!result) return;
         employee.meta.preparation_created_at = nowIso();
         markDirty(employee);
         renderEditor();
-        showToast('Die persönliche Vorbereitungsdatei wurde erstellt und befindet sich in der Regel im Download-Ordner. Du kannst sie mit der Gesprächseinladung versenden.');
+        showToast(result === 'saved' ? 'Die Vorbereitungsdatei wurde am gewählten Speicherort erstellt.' : 'Die Vorbereitungsdatei wurde heruntergeladen. Du kannst sie mit der Gesprächseinladung versenden.');
       }
 
       function packageFilename() {
@@ -2140,45 +2196,120 @@
         const managerLastName = filenamePart(pkg.manager_last_name || pkg.manager_name);
         const managerFirstName = filenamePart(pkg.manager_first_name || '');
         const manager = [managerLastName, managerFirstName].filter(part => part && part !== 'Unbekannt').join('_');
-        const savedAt = new Date(pkg.saved_at);
+        const savedAt = new Date();
         const stamp = [
           savedAt.getFullYear(),
           String(savedAt.getMonth() + 1).padStart(2, '0'),
           String(savedAt.getDate()).padStart(2, '0')
         ].join('') + '_' + String(savedAt.getHours()).padStart(2, '0') + String(savedAt.getMinutes()).padStart(2, '0');
-        const revision = `v${String(pkg.revision).padStart(2, '0')}`;
+        const revision = `v${String((Number.isInteger(pkg.revision) ? pkg.revision : 0) + 1).padStart(2, '0')}`;
         return `MD_Dialog_${pkg.rb_year}_${pkg.ab_year}_${manager}_${filenamePart(pkg.manager_pn)}_BEARBEITET_${revision}_${stamp}.html`;
       }
 
-      function savePackage() {
-        state.package.revision = (Number.isInteger(state.package.revision) ? state.package.revision : 0) + 1;
-        state.package.saved_at = nowIso();
-        dataNode.textContent = safeJson(state);
-        renderHeader();
 
-        const clone = document.documentElement.cloneNode(true);
-        const cloneData = clone.querySelector('#md-data');
-        cloneData.textContent = safeJson(state);
-        const clonePrint = clone.querySelector('#print-root');
-        if (clonePrint) {
-          clonePrint.innerHTML = '';
-          clonePrint.setAttribute('aria-hidden', 'true');
-        }
-        clone.querySelector('body').classList.remove('printing');
-        const html = '<!DOCTYPE html>\n' + clone.outerHTML;
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = packageFilename();
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-        dirty = false;
-        updateSaveState();
-        showToast('Der aktuelle Zwischenstand wurde als neue HTML-Datei heruntergeladen und befindet sich in der Regel im Download-Ordner. Für die weitere Bearbeitung bitte diese neue Datei verwenden.');
+      async function savePackage(copy = false) {
+        let savedSnapshot = null;
+        const revision = state.package.revision;
+        const savedAt = state.package.saved_at;
+        const result = await saveHtmlFile(() => {
+          state.package.revision = (Number.isInteger(revision) ? revision : 0) + 1;
+          state.package.saved_at = nowIso();
+          const clone = document.documentElement.cloneNode(true);
+          savedSnapshot = safeJson(state);
+          clone.querySelector('#md-data').textContent = savedSnapshot;
+          clone.querySelector('#print-root').innerHTML = '';
+          clone.querySelector('#preparation-import-dialog').removeAttribute('open');
+          clone.querySelector('#preparation-import-preview').innerHTML = '';
+          clone.querySelector('#guidance-dialog').removeAttribute('open');
+          clone.querySelector('#toast').textContent = '';
+          clone.querySelector('body').classList.remove('printing');
+          return '<!DOCTYPE html>\n' + clone.outerHTML;
+        }, packageFilename(), copy);
+        if (!result) { state.package.revision = revision; state.package.saved_at = savedAt; return; }
+        dataNode.textContent = safeJson(state);
+        dirty = safeJson(state) !== savedSnapshot; renderHeader(); updateSaveState();
+        showToast(result === 'saved' ? 'Arbeitsmappe am gewählten Speicherort gespeichert.' : 'Neue Kopie heruntergeladen. Bitte mit dieser Datei weiterarbeiten und sie in einem Arbeitsordner ablegen.');
       }
+
+
+      let pendingPreparation = null;
+      function preparationContributionHtml(source) {
+        const feedbackLabels = { feedback_keep:'Unbedingt beibehalten', feedback_wish:'Wunsch für die Zukunft', feedback_change:'Veränderungen seit dem letzten Gespräch', feedback_general:'Weitere Bemerkungen' };
+        const readable = value => typeof value === 'string' ? value : Array.isArray(value) ? value.map(item => Object.entries(item).filter(([key,val]) => key !== 'id' && val).map(([key,val]) => `${({title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick'})[key] || key}: ${val}`).join('\n')).join('\n\n') : '';
+        return (source.entries || []).map(entry => `<div class="source-panel"><div class="source-panel-label">${h(entry.label)}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('') + Object.entries(source.feedback || {}).filter(([,val]) => val).map(([key,val]) => `<div class="source-panel"><div class="source-panel-label">Feedback · ${h(feedbackLabels[key] || (/^feedback_competency_text_/.test(key) ? 'Beobachtung ' : 'Kompetenz ') + key.slice(-1))}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(val)}</div></div>`).join('');
+      }
+      async function readPreparationFile(event) {
+        const file = event.target.files[0]; event.target.value = '';
+        const employee = selectedEmployee();
+        if (!file || !employee) return;
+        try {
+          if (employee.meta.closed || employee.meta.archived) throw new Error('Öffne den Fall wieder, bevor du eine Vorbereitung importierst.');
+          if (file.size > 10 * 1024 * 1024) throw new Error('Die Datei ist zu gross. Bitte wähle eine MD-Rückgabedatei.');
+          const doc = new DOMParser().parseFromString(await file.text(), 'text/html');
+          const node = doc.getElementById('prep-data');
+          if (!node) throw new Error('Die gewählte Datei ist keine MD-Rückgabedatei.');
+          const source = JSON.parse(node.textContent);
+          if (source.document_type !== 'MD_PREPARATION_RETURN' || source.version !== 2 || !source.selection || source.selection.reflection !== false) throw new Error('Bitte verwende die separate «Datei für die Führungskraft». Die persönliche Vorbereitungsdatei kann nicht importiert werden.');
+          if (source.case_id !== employee.case_id || source.package_id !== state.package.package_id || String(source.employee?.pn) !== String(employee.employee.pn) || String(source.employee?.employment_assignment || '') !== String(employee.employee.employment_assignment || '') || String(source.manager?.pn) !== String(state.package.manager_pn) || String(source.review_year) !== String(state.package.rb_year) || String(source.outlook_year) !== String(outlookYear(employee)) || source.scope !== employee.scope || source.dialog_type !== employee.dialog_type || source.period_start !== (employee.period_start || '') || source.period_end !== (employee.period_end || '')) throw new Error('Die Rückgabedatei passt nicht zur ausgewählten Person, Anstellung oder zum aktuellen Gesprächsumfang und Zeitraum. Es wurden keine Angaben übernommen.');
+          const entries = [];
+          const scalar = (section,key,label) => {
+            const val = source.prepared?.[section]?.[key];
+            if (val == null) return;
+            if (typeof val !== 'string' || val.length > 100000) throw new Error('Die Datei enthält ungültige Angaben.');
+            if (val.trim()) entries.push({ path: `${section}.${key}`, label, value: val, current: employee[section][key] || '' });
+          };
+          const listValue = (items, keys) => {
+            if (!Array.isArray(items) || items.length > 100) throw new Error('Die Datei enthält ungültige Zielangaben.');
+            return items.map(item => Object.fromEntries(keys.map(key => {
+              const val = item[key] || '';
+              if (typeof val !== 'string' || val.length > 100000) throw new Error('Die Datei enthält ungültige Zielangaben.');
+              return [key,val];
+            }))).filter(item => Object.entries(item).some(([key,val]) => key !== 'id' && val.trim()));
+          };
+          if (hasReview(employee.scope) && source.selection.review) {
+            [['general_notes','Rückblick · Allgemeine Bemerkungen'],['performance','Rückblick · Leistung und Aufgabenerfüllung'],['employee_comment','Rückblick · Bemerkung der mitarbeitenden Person'],['secondary_employment_current','Rückblick · SAP-Stand aktuell'],['secondary_employment_note','Rückblick · Nebenbeschäftigungen und öffentliche Ämter']].forEach(([key,label]) => scalar('review',key,label));
+            const competencies = listValue(source.prepared?.review?.competencies || [], ['id','competency','comment']);
+            if (competencies.length) entries.push({path:'review.competencies',label:'Rückblick · Kompetenzbezogene Beobachtungen',value:competencies,current:employee.review.competencies});
+            ['previous_goals','previous_development_goals'].forEach(list => {
+              listValue(source.prepared?.review?.[list] || [],['id','achievement','review']).forEach(goal => {
+                const index = employee[list].findIndex(item => item.id === goal.id);
+                if (index < 0) return;
+                ['achievement','review'].forEach(key => {
+                  if (goal[key]) entries.push({path:`${list}.${index}.${key}`,label:`Vorjahresziel · ${employee[list][index].title || employee[list][index].competency} · ${key === 'achievement' ? 'Zielerreichung' : 'Rückblick'}`,value:goal[key],current:employee[list][index][key] || ''});
+                });
+              });
+            });
+          }
+          if (hasOutlook(employee.scope) && source.selection.outlook) {
+            [['open_goals_text','Ausblick · Weitere Ziele'],['nep','Ausblick · Laufbahnorientierter Entwicklungswunsch'],['nep_notes','Ausblick · Bemerkungen zur Entwicklung'],['general_notes','Ausblick · Allgemeine Bemerkungen']].forEach(([key,label]) => scalar('outlook',key,label));
+            ['performance_goals','development_goals'].forEach(list => {
+              const goals = listValue(source.prepared?.outlook?.[list] || [],['id','title','criteria','steps','target_date',...(list === 'development_goals' ? ['competency'] : [])]);
+              if (goals.length) entries.push({path:`outlook.${list}`,label:`Ausblick · ${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}`,value:goals,current:employee.outlook[list]});
+            });
+          }
+          const feedback = {};
+          if (hasReview(employee.scope)) Object.entries(source.fields || {}).forEach(([key,val]) => { if (/^feedback_(keep|wish|change|general|competency_[1-3]|competency_text_[1-3])$/.test(key) && typeof val === 'string' && val.length <= 100000) feedback[key] = val; });
+          pendingPreparation = { employee, entries, feedback, imported_at: nowIso() };
+          document.getElementById('preparation-import-person').textContent = employee.employee.full_name;
+          const preview = document.getElementById('preparation-import-preview');
+          preview.innerHTML = entries.map((entry,index) => {
+            const occupied = Array.isArray(entry.current) ? entry.current.length > 0 : Boolean(entry.current);
+            return `<div class="subsection"><label><input type="checkbox" data-import-entry="${index}" ${occupied ? '' : 'checked'}> <strong>${h(entry.label)}</strong></label>${occupied ? '<p class="section-intro">Bereits ausgefüllt. Nur bei Auswahl werden diese vorhandenen Angaben ersetzt.</p>' + preparationContributionHtml({entries:[{label:'Vorhandene Angaben',value:entry.current}]}) : ''}${preparationContributionHtml({entries:[{label:'Beitrag der mitarbeitenden Person',value:entry.value}]})}</div>`;
+          }).join('') + (entries.length ? '' : '<p>Keine neuen Rückblick- oder Ausblick-Angaben zur Übernahme. Das Feedback und die eingegangenen Beiträge bleiben unter «Vorbereitung MA» verfügbar.</p>') + preparationContributionHtml({feedback});
+          document.getElementById('preparation-import-dialog').showModal();
+        } catch (error) { pendingPreparation = null; showToast(error.message || 'Die Datei konnte nicht gelesen werden.'); }
+      }
+      document.getElementById('preparation-import-file').addEventListener('change', readPreparationFile);
+      document.getElementById('preparation-import-cancel').addEventListener('click', () => { pendingPreparation = null; document.getElementById('preparation-import-dialog').close(); });
+      document.getElementById('preparation-import-dialog').addEventListener('cancel', () => { pendingPreparation = null; });
+      document.getElementById('preparation-import-confirm').addEventListener('click', () => {
+        if (!pendingPreparation) return;
+        const {employee, entries, feedback, imported_at} = pendingPreparation;
+        document.querySelectorAll('[data-import-entry]:checked').forEach(control => { const entry = entries[Number(control.dataset.importEntry)]; setPath(employee, entry.path, entry.value); });
+        employee.ma_preparation = { entries: entries.map(({label,value}) => ({label,value})), feedback, imported_at };
+        pendingPreparation = null; document.getElementById('preparation-import-dialog').close();
+        markDirty(employee); renderEditor(); renderSidebar(); showToast('Vorbereitung importiert. Die ausgewählten Angaben wurden übernommen. Bitte die Arbeitsmappe speichern.');
+      });
 
       function mergeGoalSources(existingGoals, incomingGoals) {
         const existingById = new Map((existingGoals || []).map(goal => [String(goal.id || ''), goal]));
@@ -2434,7 +2565,8 @@
       completionPanel.addEventListener('input', handleEdit);
       completionPanel.addEventListener('change', handleEdit);
       completionPanel.addEventListener('click', handleEditorClick);
-      document.getElementById('save-button').addEventListener('click', savePackage);
+      document.getElementById('save-button').addEventListener('click', () => savePackage());
+      document.getElementById('save-copy-button').addEventListener('click', () => savePackage(true));
       document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
       document.getElementById('update-file').addEventListener('change', readUpdateFile);
       document.getElementById('checkpoint-import-file').addEventListener('change', readCheckpointImportFile);

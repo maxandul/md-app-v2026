@@ -1,7 +1,16 @@
 # Projektstand MD-App v2026
 
-**Stand:** 21. September 2026
+**Stand:** 1. Oktober 2026
 **Zweck:** Übergabe zwischen Arbeitssitzungen und Ausgangspunkt für die Weiterentwicklung des HR-Cockpits
+
+## Erweiterung der Offline-Vorbereitung
+
+- Auswahl von Reflexion, Rückblick und Ausblick; obligatorisches Feedback bei Rückblick.
+- Tabs und Hinweise im Stil der Arbeitsmappe.
+- Separater eigener Stand und Rückgabedatei ohne persönliche Reflexion.
+- Importvorschau mit sicherer Zuordnung und ausdrücklicher Auswahl bei bestehenden Angaben.
+- Direktes Speichern nach Dateiauswahl, «Kopie speichern unter …», HTML-Download als Rückfalllösung.
+- Synthetische Demo aktualisiert; automatisierte Browsertests ergänzt. Lokalen Edge-Test auf kantonalen Geräten weiterhin durchführen.
 
 ## Ziel und Architektur
 

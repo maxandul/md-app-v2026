@@ -37,7 +37,7 @@ Vorjahresziele, Rückblick, Ausblick, Prozessausnahmen und den Bearbeitungsstand
 - Stammdaten bestimmen nur den Mindestumfang; zusätzliche Gesprächsteile bleiben möglich
 - übernommene Vorjahresziele werden als unveränderter Quelltext angezeigt; für
   Korrekturen werden sie entfernt und bei Bedarf neu erfasst
-- direktes Speichern in eine ausdrücklich ausgewählte Datei, «Kopie speichern unter …» und HTML-Download als Rückfalllösung
+- direktes Speichern in eine ausdrücklich ausgewählte Datei, HTML-Download als Rückfalllösung
 - eindeutige Dateistände: Versanddatei mit `_START`, gespeicherte Rücksendungen
   mit `_BEARBEITET_vNN_YYYYMMDD_HHMM`
 - PDF-Namen mit dem fachlich passenden Jahr und der Personalnummer am Schluss
@@ -230,27 +230,37 @@ Die Prüfung kontrolliert unter anderem:
 - Digital oder handschriftlich unterzeichnete PDFs bleiben separate Dateien.
 - Es gibt noch keinen SQLite-Import und keine automatische Zuordnung der
   unterschriebenen PDFs.
-- Die Vorbereitungsdatei versendet keine Daten automatisch. Die separate Rückgabedatei enthält ausgewählte Rückblick-/Ausblick-Vorbereitungen und Feedback, aber keine persönliche Reflexion. Das Feedback-PDF wird nach dem Gespräch separat an die Führungskraft übergeben.
+- Die Vorbereitungsdatei versendet keine Daten automatisch. Die getrennten Rückgabedateien enthalten jeweils Rückblick oder Ausblick, aber weder persönliche Reflexion noch Feedback. Das Feedback-PDF wird nach dem Gespräch separat an die Führungskraft übergeben.
 
 Diese Punkte werden erst nach dem Edge-/Outlook-/S/MIME-Test entschieden.
 
-## Vorbereitung mit Rückgabe und Import (1. Oktober 2026)
+## Vorbereitung mit getrennter Rückgabe und Import (1. Oktober 2026)
 
-Unter «Vorbereitung MA» wählt die Führungskraft Reflexion, Rückblick und Ausblick aus.
-«Alles auswählen» und «Auswahl aufheben» gelten für die optionalen Teile; das Feedback
-ist bei einem Rückblick immer enthalten. Standardmässig ist nur die freiwillige Reflexion
-ausgewählt. Vorjahresziele werden ohne bisherige Beurteilungen mitgegeben.
+Unter «Vorbereitung MA» entscheidet die Führungskraft, ob sie eine freiwillige Reflexion
+und/oder Rückblick-/Ausblickformulare bereitstellt. Für jeden Gesprächsteil kann sie
+zusätzlich eine ausgefüllte Rückgabe anfordern. Standardmässig ist nur die freiwillige
+Reflexion ausgewählt. Das Feedback ist bei Rückblick obligatorisch und wird separat als PDF
+zurückgegeben. Vorjahresziele werden ohne bisherige Beurteilungen mitgegeben.
 
-Mitarbeitende speichern ihren eigenen vollständigen Stand mit «Eigenen Stand speichern».
-«Datei für die Führungskraft erstellen» erzeugt eine separate HTML-Datei mit `_RUECKGABE`
-im Namen. Private Reflexionen werden aus dem JSON-Datenblock, gerenderten Formularen
-und einer etwaigen Druckvorschau entfernt. Nur die Rückgabedatei ist zum Zurücksenden bestimmt.
+Mitarbeitende speichern ihren vollständigen eigenen Stand mit «Eigenen Stand speichern».
+Bei angeforderter Rückgabe erscheinen separate Buttons für Rückblick und Ausblick.
+Die erzeugten Dateien tragen `_RUECKBLICK_RUECKGABE` beziehungsweise `_AUSBLICK_RUECKGABE`
+im Namen und können zu unterschiedlichen Zeitpunkten zurückgegeben werden. Jede Datei
+enthält nur den entsprechenden Gesprächsteil. Persönliche Reflexion, Feedback und der
+andere Gesprächsteil werden aus Daten, Formularen und Druckvorschau entfernt.
 
-«Vorbereitung importieren» prüft die Zuordnung und zeigt eine Vorschau. Nicht leere
-vorhandene Angaben sind nie vorausgewählt. Eine Auswahl ersetzt den betreffenden Text
-oder Ziel-/Kompetenzbereich ausdrücklich. Leere Angaben löschen keine vorhandenen Inhalte.
-Die ursprünglichen Beiträge und das Feedback bleiben unter «Vorbereitung MA» erhalten.
-Gesamtbewertung, Anstellungsentscheid, Gesprächsdaten und Abschluss bleiben bei der Führungskraft.
+«Rückblick oder Ausblick importieren» prüft die Zuordnung und zeigt eine Vorschau.
+Importierte Beiträge stehen als feste graue Blöcke beim jeweiligen Thema. Die eigenen
+Eingabefelder der Führungskraft bleiben unverändert. Die grauen Blöcke werden nicht
+automatisch in offizielle Gesprächs-PDFs übernommen; dort stehen die durch die Führungskraft
+festgehaltenen Beurteilungen und Vereinbarungen. Rückblick und Ausblick werden unabhängig
+gespeichert. Ein erneuter Import ersetzt nur die Beiträge zum betreffenden Gesprächsteil.
+Die frühere kombinierte Rückgabedatei (Version 2) wird nicht mehr importiert; bitte aus
+einer neu erzeugten Vorbereitungsdatei getrennte Rückgaben erstellen.
+
+Arbeitsmappe und Vorbereitung haben jeweils einen Speicherbutton mit Download als
+Rückfalllösung. Der Speicherhinweis der Arbeitsmappe kann mit «Nicht mehr anzeigen»
+ausgeblendet werden; diese Einstellung wird in der gespeicherten Arbeitsmappe mitgeführt.
 
 Für lokale Browsertests mit separat installiertem Playwright:
 
@@ -260,9 +270,11 @@ node --test prototype/html_dialog/test_offline_workflow.cjs
 ```
 
 Optional bestimmt `MD_TEST_CHROMIUM` den Chromium-Pfad. Die Tests verwenden ausschliesslich
-synthetische Demo-Daten und prüfen unter anderem Datenschutz, selektiven Import,
-Zuordnungsfehler, wiederholten Import, direktes Speichern und Download-Rückfalllösungen.
+synthetische Demo-Daten und prüfen unter anderem Datenschutz, getrennte Rückgaben,
+Zuordnungsfehler, unveränderte Eingabefelder, wiederholten Import, direktes Speichern,
+Download-Rückfalllösungen und das Ausblenden des Speicherhinweises.
 
 Auf dem kantonalen Gerät weiterhin konkret prüfen: lokale HTML-Datei in Edge öffnen,
 Arbeitsordner wählen, bestehende Datei ersetzen, mehrfach speichern, neu öffnen,
-Rückgabedatei erstellen und importieren. Browserrichtlinien können direkte Schreibzugriffe sperren.
+getrennte Rückgabedateien erstellen und importieren. Browserrichtlinien können direkte
+Schreibzugriffe sperren.

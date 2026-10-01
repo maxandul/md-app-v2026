@@ -28,9 +28,9 @@ async function download(page, selector, name) {
   const dest = path.join(dir,name || event.suggestedFilename());
   await event.saveAs(dest); return dest;
 }
-async function preparedFixture(scope='full',selection={reflection:true,review:true,outlook:true},name='prep.html',type='annual') {
+async function preparedFixture(scope='full',selection={reflection:true,review:true,outlook:true,return_review:true,return_outlook:true},name='prep.html',type='annual') {
   const employee = base.employees[0];
-  const payload = {version:2,preparation_id:`PREP-${employee.case_id}`,package_id:base.package.package_id,case_id:employee.case_id,scope,dialog_type:type,selection,review_year:base.package.rb_year,outlook_year:base.package.ab_year,period_start:employee.period_start,period_end:employee.period_end,employee:employee.employee,manager:{pn:base.package.manager_pn,name:base.package.manager_name},competency_model:base.configuration.competency_model,previous_goals:employee.previous_goals.map(({id,title,criteria,steps,target_date})=>({id,title,criteria,steps,target_date})),previous_development_goals:[],fields:{}};
+  const payload = {version:3,preparation_id:`PREP-${employee.case_id}`,package_id:base.package.package_id,case_id:employee.case_id,scope,dialog_type:type,selection,review_year:base.package.rb_year,outlook_year:base.package.ab_year,period_start:employee.period_start,period_end:employee.period_end,employee:employee.employee,manager:{pn:base.package.manager_pn,name:base.package.manager_name},competency_model:base.configuration.competency_model,previous_goals:employee.previous_goals.map(({id,title,criteria,steps,target_date})=>({id,title,criteria,steps,target_date})),previous_development_goals:[],fields:{}};
   const file = path.join(dir,name);
   await fs.writeFile(file,base.configuration.preparation_template.replace('__MD_PREPARATION_JSON__',json(payload)));
   return file;
@@ -43,6 +43,7 @@ before(async () => {
   const demo = await fs.readFile(path.join(__dirname,'../../demo/MD_Arbeitsmappe_Demo.html'),'utf8');
   base = dataOf(demo,'md-data');
   base.package.guidance_auto_open_disabled = true;
+  base.package.save_hint_dismissed = true;
   base.employees = [base.employees[0]];
   base.employees[0].scope = 'full';
   base.employees[0].previous_goals.forEach(goal => { goal.achievement = ''; goal.review = ''; });
@@ -58,19 +59,23 @@ test('workbook selects parts, retains mandatory feedback and excludes manager en
   await page.locator('[data-step="preparation"]').click();
   assert.equal(await page.locator('[data-preparation-part="reflection"]').isChecked(),true);
   assert.equal(await page.locator('[data-preparation-part="review"]').isChecked(),false);
-  await page.locator('[data-action="preparation-all"]').click();
+  await page.locator('[data-preparation-part="review"]').check();
+  await page.locator('[data-preparation-part="outlook"]').check();
   assert.equal(await page.locator('[data-preparation-part="outlook"]').isChecked(),true);
+  await page.locator('[data-preparation-part="return_review"]').check();
   const file = await download(page,'[data-action="download-preparation"]','generated.html');
   const html = await fs.readFile(file,'utf8');
   assert.ok(!html.includes('MANAGER_PRIVATE_NOTES') && !html.includes('MANAGER_PRIVATE_COMMENT'));
   const payload = dataOf(html,'prep-data');
   assert.equal(payload.employee.employment_assignment,'1');
+  assert.equal(payload.selection.return_review,true);
+  assert.equal(payload.selection.return_outlook,false);
   assert.equal(payload.previous_goals[0].title,base.employees[0].previous_goals[0].title);
   const generated = await pageAt(file);
   assert.deepEqual(await generated.locator('[role="tab"]').allTextContents(),['Reflexion','Rückblick','Ausblick','Feedback']);
   if (process.env.MD_TEST_SCREENSHOTS) { await generated.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'preparation-reflection.png'),fullPage:true}); await generated.locator('[data-tab="review-section"]').click(); await generated.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'preparation-review.png'),fullPage:true}); }
   await generated.close();
-  await page.locator('[data-action="preparation-none"]').click();
+  for (const part of ['reflection','review','outlook']) await page.locator(`[data-preparation-part="${part}"]`).uncheck();
   const minimal = await download(page,'[data-action="download-preparation"]','minimal.html');
   const feedbackOnly = await pageAt(minimal);
   assert.deepEqual(await feedbackOnly.locator('[role="tab"]').allTextContents(),['Feedback']);
@@ -95,15 +100,23 @@ test('return file removes reflection from JSON, rendered DOM and private print c
   await page.locator('[data-prepared="outlook.development_goals.0.competency"]').selectOption({index:1});
   await page.locator('[data-prepared="outlook.development_goals.0.title"]').fill('Lernen');
   await page.locator('[data-tab="feedback-section"]').click();
-  await page.locator('[data-field="feedback_keep"]').fill('Vielen Dank');
-  await page.locator('#return-file').click();
-  const returned = await download(page,'#return-confirm','returned.html');
+  await page.locator('[data-field="feedback_keep"]').fill('FEEDBACK_PRIVATE_391');
+  await page.locator('#return-review').click();
+  const returned = await download(page,'#return-confirm','returned-review.html');
+  await page.locator('#return-outlook').click();
+  const outlookReturn = await download(page,'#return-confirm','returned-outlook.html');
   const html = await fs.readFile(returned,'utf8');
   assert.ok(!html.includes('REFLECTION_SECRET_829') && !html.includes('PRIVATE_FUTURE_721'));
   const data = dataOf(html,'prep-data');
-  assert.deepEqual(data.fields,{feedback_keep:'Vielen Dank'});
+  assert.deepEqual(data.fields,{});
+  assert.ok(!html.includes('FEEDBACK_PRIVATE_391') && !html.includes('Neues Ziel'));
+  assert.equal(data.return_section,'review');
+  assert.deepEqual(Object.keys(data.prepared),['review']);
   assert.equal(data.prepared.review.performance,'Meine Leistung');
-  assert.equal(data.prepared.outlook.performance_goals[0].title,'Neues Ziel');
+  const outlookData = dataOf(await fs.readFile(outlookReturn,'utf8'),'prep-data');
+  assert.equal(outlookData.prepared.outlook.performance_goals[0].title,'Neues Ziel');
+  assert.deepEqual(Object.keys(outlookData.prepared),['outlook']);
+  assert.ok(!(await fs.readFile(outlookReturn,'utf8')).includes('FEEDBACK_PRIVATE_391'));
   assert.equal(data.selection.reflection,false);
   assert.equal(await page.locator('#save-html').isEnabled(),true,'Return export does not falsely save own notes');
   const own = await download(page,'#save-html','own.html');
@@ -112,33 +125,44 @@ test('return file removes reflection from JSON, rendered DOM and private print c
   assert.equal(await reopened.locator('[data-field="review_performance"]').inputValue(),'REFLECTION_SECRET_829');
   await reopened.close();
   const returnPage = await pageAt(returned);
-  assert.deepEqual(await returnPage.locator('[role="tab"]').allTextContents(),['Rückblick','Ausblick','Feedback']);
+  assert.deepEqual(await returnPage.locator('[role="tab"]').allTextContents(),['Rückblick']);
   await returnPage.close(); await page.close();
 });
 
-test('import preview preserves existing text, selects empty fields and retains original contributions',async () => {
+test('separate imports keep all manager entries and display fixed employee contributions beside them',async () => {
   const page = await pageAt(fixture);
   await page.locator('[data-step="preparation"]').click();
-  await page.locator('#preparation-import-file').setInputFiles(path.join(dir,'returned.html'));
-  await page.locator('#preparation-import-dialog[open]').waitFor();
-  if (process.env.MD_TEST_SCREENSHOTS) await page.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'import-preview.png'),fullPage:true});
-  const review = page.locator('.subsection').filter({hasText:'Rückblick · Leistung und Aufgabenerfüllung'}).locator('input[type="checkbox"]');
-  assert.equal(await review.isChecked(),false);
-  await page.locator('#preparation-import-confirm').click();
+  for (const section of ['review','outlook']) {
+    await page.locator('#preparation-import-file').setInputFiles(path.join(dir,`returned-${section}.html`));
+    await page.locator('#preparation-import-dialog[open]').waitFor();
+    if (process.env.MD_TEST_SCREENSHOTS) await page.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'import-preview.png'),fullPage:true});
+    assert.equal(await page.locator('[data-import-entry]').count(),0);
+    await page.locator('#preparation-import-confirm').click();
+  }
+  await page.locator('[data-step="review"]').click();
+  assert.equal(await page.locator('[data-bind="review.performance"]').inputValue(),'MANAGER_PRIVATE_NOTES');
+  assert.ok((await page.locator('.ma-fixed').allTextContents()).some(text=>text.includes('Meine Leistung')));
+  await page.locator('[data-bind="review.performance"]').fill('Eigene vorbereitete Einschätzung');
+  if (process.env.MD_TEST_SCREENSHOTS) await page.locator('.field').filter({has:page.locator('[data-bind="review.performance"]')}).screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'manager-with-contributions.png')});
   const saved = await download(page,'#save-button','imported.html');
   const data = dataOf(await fs.readFile(saved,'utf8'),'md-data');
-  assert.equal(data.employees[0].review.performance,'MANAGER_PRIVATE_NOTES');
-  assert.equal(data.employees[0].outlook.performance_goals[0].title,'Neues Ziel');
-  assert.equal(data.employees[0].previous_goals[0].achievement,'Erreicht');
-  assert.equal(data.employees[0].ma_preparation.feedback.feedback_keep,'Vielen Dank');
-  assert.ok(data.employees[0].ma_preparation.entries.some(item=>item.value==='Meine Leistung'));
-  await page.locator('#preparation-import-file').setInputFiles(path.join(dir,'returned.html'));
+  assert.equal(data.employees[0].review.performance,'Eigene vorbereitete Einschätzung');
+  assert.equal(data.employees[0].outlook.performance_goals.length,0);
+  assert.equal(data.employees[0].previous_goals[0].achievement,'');
+  assert.ok(data.employees[0].ma_preparation.review.entries.some(item=>item.value==='Meine Leistung'));
+  assert.ok(data.employees[0].ma_preparation.outlook.entries.some(item=>item.path==='outlook.performance_goals'));
+  assert.ok(!JSON.stringify(data.employees[0].ma_preparation).includes('FEEDBACK_PRIVATE_391'));
+  await page.locator('[data-step="preparation"]').click();
+  await page.locator('#preparation-import-file').setInputFiles(path.join(dir,'returned-review.html'));
   await page.locator('#preparation-import-dialog[open]').waitFor();
-  await review.check(); await page.locator('#preparation-import-confirm').click();
-  const replaced = dataOf(await fs.readFile(await download(page,'#save-button','replaced.html'),'utf8'),'md-data');
-  assert.equal(replaced.employees[0].review.performance,'Meine Leistung');
-  assert.equal(replaced.employees[0].outlook.performance_goals.length,1,'No duplicate goals on reimport');
-  await page.close();
+  await page.locator('#preparation-import-confirm').click();
+  const repeated = dataOf(await fs.readFile(await download(page,'#save-button','repeated.html'),'utf8'),'md-data');
+  assert.equal(repeated.employees[0].review.performance,'Eigene vorbereitete Einschätzung');
+  assert.deepEqual(repeated.employees[0].ma_preparation.outlook,data.employees[0].ma_preparation.outlook);
+  const reopened = await pageAt(saved);
+  await reopened.locator('[data-step="review"]').click();
+  assert.ok((await reopened.locator('.ma-fixed').allTextContents()).some(text=>text.includes('Meine Leistung')));
+  await reopened.close(); await page.close();
 });
 
 test('personal files and mismatched employment, round, manager, scope and period are rejected',async () => {
@@ -147,7 +171,7 @@ test('personal files and mismatched employment, round, manager, scope and period
   await page.locator('#preparation-import-file').setInputFiles(path.join(dir,'own.html'));
   await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('separate'));
   assert.equal(await page.locator('#preparation-import-dialog').evaluate(el=>el.open),false);
-  const html = await fs.readFile(path.join(dir,'returned.html'),'utf8');
+  const html = await fs.readFile(path.join(dir,'returned-review.html'),'utf8');
   for(const mutate of [data=>data.employee.employment_assignment='2',data=>data.package_id='other',data=>data.manager.pn='123',data=>data.scope='review_only',data=>data.period_end='2024-12-31',data=>data.review_year='2027']) {
     const data = dataOf(html,'prep-data'); mutate(data);
     const wrong = path.join(dir,'wrong.html'); await fs.writeFile(wrong,replaceData(html,'prep-data',data));
@@ -172,7 +196,7 @@ test('scope and probation control tabs and keep feedback restricted to reviews',
   }
 });
 
-test('direct saving reuses chosen handle, copy prompts again and cancellation does not download',async () => {
+test('direct saving reuses chosen handle and cancellation does not download',async () => {
   const page = await pageAt(await preparedFixture('full',undefined,'native.html'));
   await page.evaluate(() => {
     window.savedHtml=[]; window.pickerCalls=0;
@@ -186,13 +210,15 @@ test('direct saving reuses chosen handle, copy prompts again and cancellation do
   await page.waitForFunction(()=>window.savedHtml.length===2);
   assert.equal(await page.evaluate(()=>window.pickerCalls),1);
   assert.ok((await page.evaluate(()=>window.savedHtml[1])).includes('Zweiter Stand'));
-  await page.locator('#save-copy').click();
-  await page.waitForFunction(()=>window.pickerCalls===2);
+  assert.equal(await page.locator('#save-copy').count(),0);
   let downloads=0; page.on('download',()=>downloads++);
-  await page.evaluate(()=>window.showSaveFilePicker=async()=>{throw new DOMException('Abgebrochen','AbortError')});
-  await page.locator('[data-field="review_performance"]').fill('Noch nicht gespeichert');
-  await page.locator('#save-copy').click();
-  assert.equal(await page.locator('#save-html').isEnabled(),true);
+  const fresh = await pageAt(await preparedFixture('full',undefined,'cancel.html'));
+  fresh.on('download',()=>downloads++);
+  await fresh.evaluate(()=>window.showSaveFilePicker=async()=>{throw new DOMException('Abgebrochen','AbortError')});
+  await fresh.locator('[data-field="review_performance"]').fill('Noch nicht gespeichert');
+  await fresh.locator('#save-html').click();
+  assert.equal(await fresh.locator('#save-html').isEnabled(),true);
+  await fresh.close();
   assert.equal(downloads,0);
   await page.close();
 });
@@ -213,12 +239,12 @@ test('workbook supports direct save and reopen, preserving revision and import d
   const page = await pageAt(fixture);
   await page.evaluate(()=>{window.output=[];window.calls=0;window.showSaveFilePicker=async()=>{window.calls++;return {createWritable:async()=>({write:async html=>window.output.push(html),close:async()=>{}})}};});
   await page.locator('[data-step="preparation"]').click();
-  await page.locator('[data-action="preparation-all"]').click();
+  await page.locator('[data-preparation-part="review"]').check();
   await page.locator('#save-button').click();
   await page.waitForFunction(()=>window.output.length===1);
   const first = dataOf(await page.evaluate(()=>window.output[0]),'md-data');
   assert.equal(first.package.revision,base.package.revision+1);
-  await page.locator('[data-action="preparation-none"]').click();
+  await page.locator('[data-preparation-part="reflection"]').uncheck();
   await page.locator('#save-button').click();
   await page.waitForFunction(()=>window.output.length===2);
   assert.equal(await page.evaluate(()=>window.calls),1);
@@ -227,4 +253,40 @@ test('workbook supports direct save and reopen, preserving revision and import d
   await reopened.locator('[data-step="preparation"]').click();
   assert.equal(await reopened.locator('[data-preparation-part="reflection"]').isChecked(),false);
   await reopened.close(); await page.close();
+});
+
+
+test('save explanation can be dismissed and stays dismissed in the saved workbook',async () => {
+  const content = await fs.readFile(fixture,'utf8');
+  const payload = dataOf(content,'md-data'); payload.package.save_hint_dismissed = false;
+  const file = path.join(dir,'save-explanation.html'); await fs.writeFile(file,replaceData(content,'md-data',payload));
+  const page = await pageAt(file);
+  await page.locator('[data-step="preparation"]').click();
+  await page.locator('[data-preparation-part="review"]').check();
+  await page.locator('#save-button').click();
+  await page.locator('#save-hint-dialog[open]').waitFor();
+  assert.ok((await page.locator('#save-hint-dialog').textContent()).includes('Beim ersten Speichern'));
+  await page.locator('#save-hint-cancel').click();
+  assert.equal(await page.locator('#save-button').isEnabled(),true);
+  await page.locator('#save-button').click();
+  await page.locator('#save-hint-dismiss').check();
+  const saved = await download(page,'#save-hint-confirm','save-dismissed.html');
+  assert.equal(dataOf(await fs.readFile(saved,'utf8'),'md-data').package.save_hint_dismissed,true);
+  const reopened = await pageAt(saved);
+  await reopened.locator('[data-step="preparation"]').click();
+  await reopened.locator('[data-preparation-part="outlook"]').check();
+  await download(reopened,'#save-button','save-again.html');
+  assert.equal(await reopened.locator('#save-hint-dialog').evaluate(el=>el.open),false);
+  assert.equal(await reopened.locator('#save-copy-button').count(),0);
+  await reopened.close(); await page.close();
+});
+
+test('preparation without requested returns offers forms but no return buttons',async () => {
+  const page = await pageAt(await preparedFixture('full',{reflection:true,review:true,outlook:true,return_review:false,return_outlook:false},'optional-forms.html'));
+  assert.deepEqual(await page.locator('[role="tab"]').allTextContents(),['Reflexion','Rückblick','Ausblick','Feedback']);
+  assert.equal(await page.locator('#return-review').isVisible(),false);
+  assert.equal(await page.locator('#return-outlook').isVisible(),false);
+  await page.locator('[data-tab="review-section"]').click();
+  assert.ok((await page.locator('#review-section').textContent()).includes('Eine Rückgabe wurde nicht angefordert'));
+  await page.close();
 });

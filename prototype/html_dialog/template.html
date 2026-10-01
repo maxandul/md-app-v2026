@@ -25,6 +25,7 @@
       --shadow: none;
     }
 
+    [hidden] { display: none !important; }
     * { box-sizing: border-box; }
 
     html, body { min-height: 100%; }
@@ -566,6 +567,10 @@
     .source-item strong { display: block; margin-bottom: 2px; }
     .source-item.full { grid-column: 1 / -1; }
 
+    .ma-owner-label { margin: 6px 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .ma-fixed { margin: 10px 0 14px; padding: 12px 14px; border-left: 4px solid #8a97a6; background: #f0f3f6; font-size: 13px; }
+    .ma-fixed > strong { display: block; margin-bottom: 6px; color: #536171; }
+    .ma-fixed .source-panel { margin: 6px 0; padding: 8px 0; border: 0; background: transparent; }
     .source-panel {
       padding: 12px;
       border-radius: 4px;
@@ -737,7 +742,6 @@
           <input id="preparation-import-file" type="file" accept=".html,text/html" hidden>
           <input id="checkpoint-import-file" type="file" accept=".html,text/html" hidden>
           <button id="update-button" class="button" type="button">Update einlesen</button>
-          <button id="save-copy-button" class="button" type="button">Kopie speichern unter …</button>
           <button id="save-button" class="button primary" type="button" disabled>Arbeitsmappe speichern</button>
         </div>
       </header>
@@ -752,10 +756,11 @@
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><p>Beim ersten Speichern wählst du Speicherort und Dateinamen. Danach wird die gewählte Datei aktualisiert, solange sie geöffnet bleibt. Wenn der Browser dies nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann nur mit der neuesten Datei.</p></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
   <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
     <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
-    <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Wähle die Angaben aus, die du in Rückblick oder Ausblick übernehmen möchtest. Bereits ausgefüllte Bereiche sind nicht vorausgewählt. Die ursprünglichen Beiträge bleiben zusätzlich unter «Vorbereitung MA» verfügbar.</div><div id="preparation-import-preview"></div></div>
-    <div class="guidance-dialog-foot"><button class="button" type="button" id="preparation-import-cancel">Abbrechen</button><button class="button primary" type="button" id="preparation-import-confirm">Ausgewählte Angaben übernehmen</button></div>
+    <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil.</div><div id="preparation-import-preview"></div></div>
+    <div class="guidance-dialog-foot"><button class="button" type="button" id="preparation-import-cancel">Abbrechen</button><button class="button primary" type="button" id="preparation-import-confirm">Beiträge importieren</button></div>
   </dialog>
   <dialog id="guidance-dialog" class="guidance-dialog" aria-labelledby="guidance-title">
     <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
@@ -1153,14 +1158,14 @@
         const histories = Array.isArray(pkg.previous_cycles) ? pkg.previous_cycles : [];
         cycleSelect.innerHTML = `<option value="current">Rückblick ${h(pkg.rb_year)} · Ausblick ${h(pkg.ab_year)}</option>${histories.map(cycle => `<option value="${h(cycle.file || '')}">${h(cycle.label)}</option>`).join('')}`;
         document.getElementById('package-title').textContent = pkg.manager_name;
-        const version = pkg.revision ? `v${String((Number.isInteger(pkg.revision) ? pkg.revision : 0) + 1).padStart(2, '0')}` : 'Startdatei';
+        const version = pkg.revision ? `v${String(pkg.revision).padStart(2, '0')}` : 'Startdatei';
         const fileDate = pkg.saved_at || pkg.created_at;
         const fileDateLabel = fileDate ? new Date(fileDate).toLocaleString('de-CH') : 'Nicht verfügbar';
         const technicalDetails = [
           ['Anwendungstyp', 'Clientseitige Standalone-Webanwendung'],
           ['Laufzeitumgebung', 'Lokaler Webbrowser'],
-          ['Persistenz', 'Serialisierung des aktuellen Bearbeitungsstands in eine neue HTML-Datei'],
-          ['Dateizugriff', 'Browserbasierter Download; kein direktes Überschreiben der Quelldatei'],
+          ['Persistenz', 'Speichern des aktuellen Bearbeitungsstands in eine lokale HTML-Datei'],
+          ['Dateizugriff', 'Speichern nach Dateiauswahl; HTML-Download als Rückfalllösung'],
           ['Schnittstellen', 'Kein Backend, keine API und keine zentrale Datenbank'],
           ['Dokumentenerzeugung', 'Clientseitige Generierung der PDF-Dateien'],
           ['Datenübertragung', 'Keine automatische Übertragung von Eingabe- oder Dokumentdaten'],
@@ -1219,7 +1224,7 @@
         } else {
           control = `<input type="${h(type)}" data-bind="${h(bind)}" value="${h(value)}"${readonly}${requiredAttr}>`;
         }
-        return `<div class="field ${options.full ? 'full' : ''} ${options.required ? 'required' : ''}"><label>${h(label)}${required}</label>${control}${hint}</div>`;
+        return `<div class="field ${options.full ? 'full' : ''} ${options.required ? 'required' : ''}"><label>${h(label)}${required}</label>${employeeContribution(selectedEmployee(), bind)}${control}${hint}</div>`;
       }
 
       function arrayField(label, arrayName, index, key, value, options = {}) {
@@ -1358,6 +1363,7 @@
       }
 
       function renderCompetencies(employee) {
+        const maBlock = employeeContribution(employee, 'review.competencies');
         const entries = employee.review.competencies || [];
         const previousDevelopment = employee.dialog_type === 'probation' ? '' : renderPreviousDevelopmentGoals(employee);
         const cards = entries.map((entry, index) => {
@@ -1374,7 +1380,7 @@
             </div>
           </details>`;
         }).join('');
-        return `${previousDevelopment}<h4>${previousDevelopment ? 'Weitere Kompetenzbeobachtungen' : 'Kompetenzbeobachtungen'}</h4>${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
+        return `${employeeContribution(employee, 'previous_development_goals', true)}${previousDevelopment}<h4>${previousDevelopment ? 'Weitere Kompetenzbeobachtungen' : 'Kompetenzbeobachtungen'}</h4>${maBlock}${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
       }
 
       function renderPerformanceGoals(employee) {
@@ -1394,7 +1400,7 @@
             </div>
           </details>`;
         }).join('');
-        return `${cards || '<div class="empty-state">Noch kein Leistungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
+        return `${employeeContribution(employee, 'outlook.performance_goals')}${cards || '<div class="empty-state">Noch kein Leistungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
       }
 
       function renderDevelopmentGoals(employee) {
@@ -1416,7 +1422,7 @@
             </div>
           </details>`;
         }).join('');
-        return `${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
+        return `${employeeContribution(employee, 'outlook.development_goals')}${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
       }
 
       function renderScope(employee) {
@@ -1508,10 +1514,10 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2></div>
+              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Deine Einschätzungen erfasst du in den Eingabefeldern. Importierte Beiträge der mitarbeitenden Person stehen in den grauen Blöcken.</p></div>
             </div>
             ${renderCheckpointNotes(employee)}
-            <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${renderPreviousGoals(employee)}</div>
+            <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${employeeContribution(employee, 'previous_goals', true)}${renderPreviousGoals(employee)}</div>
             <div class="subsection" id="review-performance"><h3>2. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
@@ -1541,7 +1547,7 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Zusätzliche Zielblöcke werden nur bei Bedarf angelegt und nur verwendet ausgegeben.</p></div>
+              <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Deine Vorschläge und Vereinbarungen erfasst du in den Eingabefeldern. Importierte Vorschläge der mitarbeitenden Person stehen in den grauen Blöcken.</p></div>
             </div>
             <div class="subsection" id="outlook-performance-goals"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
@@ -1555,23 +1561,25 @@
       }
 
 
+
       function preparationSelection(employee) {
         const selected = employee.meta.preparation_selection || { reflection: true, review: false, outlook: false };
-        return { reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) };
+        return { reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook), return_review: hasReview(employee.scope) && Boolean(selected.review) && Boolean(selected.return_review), return_outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) && Boolean(selected.return_outlook) };
       }
       function renderEmployeePreparation(employee) {
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Wähle die gewünschten Teile und sende die erzeugte HTML-Datei mit der Gesprächseinladung. Die Datei enthält Vorjahresziele, aber keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
-          <div class="source-panel"><div class="source-panel-label">Enthaltene Bereiche</div><div class="source-panel-value">
-          ${[['reflection','Freiwillige persönliche Reflexion',true],['review','Rückblick vorbereiten',hasReview(employee.scope)],['outlook','Ausblick vorbereiten',hasOutlook(employee.scope)]].map(([key,label,available]) => `<label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label}${available ? '' : ' (nicht vorgesehen)'}</label>`).join('')}
-          ${hasReview(employee.scope) ? '<p><strong>Feedback an die vorgesetzte Person · obligatorisch</strong></p>' : '<p>Ohne Rückblick entfällt das Feedback.</p>'}
-          <div class="toolbar" style="justify-content:flex-start;margin-top:12px"><button class="button small" type="button" data-action="preparation-all">Alles auswählen</button><button class="button small" type="button" data-action="preparation-none">Auswahl aufheben</button></div></div></div>
-          <div class="suggestion warning"><strong>Rückgabe:</strong> Mitarbeitende erstellen eine separate Datei für dich. Die persönliche Reflexion wird daraus vollständig entfernt. Beim Import wählst du aus, welche Angaben übernommen werden. Das Feedback-PDF geht nach dem Gespräch S/MIME-verschlüsselt an HR.</div>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest: eine freiwillige Reflexion anbieten, Rückblick und Ausblick zur Vorbereitung bereitstellen oder ausgefüllte Formulare zurückfordern. Die Datei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
+          <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
+          <label style="display:block"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Freiwillige persönliche Reflexion bereitstellen</label>
+          ${[['review','Rückblick',hasReview(employee.scope)],['outlook','Ausblick',hasOutlook(employee.scope)]].map(([key,label,available]) => `<div style="margin-top:14px"><label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label} zur Vorbereitung bereitstellen${available ? '' : ' (nicht vorgesehen)'}</label><label style="display:block;margin-left:24px"><input type="checkbox" data-preparation-part="return_${key}" ${selected['return_'+key] ? 'checked' : ''} ${selected[key] ? '' : 'disabled'}> Ausgefüllten ${label} zurückfordern</label></div>`).join('')}
+          ${hasReview(employee.scope) ? '<p><strong>Feedback an die vorgesetzte Person · obligatorisch</strong><br>Das Feedback wird nach dem Gespräch separat als PDF zurückgegeben.</p>' : '<p>Ohne Rückblick entfällt das Feedback.</p>'}
+          </div></div>
+          <div class="suggestion warning"><strong>Rückgabe:</strong> Rückblick und Ausblick werden bei Bedarf einzeln zurückgegeben und importiert. Persönliche Reflexion und Feedback sind in diesen Rückgabedateien nicht enthalten. Die Angaben der mitarbeitenden Person erscheinen als feste Blöcke neben deinen eigenen Eingaben.</div>
           ${hasReview(employee.scope) ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
-          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button><button class="button" type="button" data-action="import-preparation">Vorbereitung importieren</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
-          ${employee.ma_preparation ? '<div class="suggestion">Eine Vorbereitung der mitarbeitenden Person wurde importiert. Die Beiträge bleiben hier zum Nachlesen verfügbar.</div><details><summary>Importierte Beiträge der mitarbeitenden Person</summary><div style="white-space:pre-wrap">' + preparationContributionHtml(employee.ma_preparation) + '</div></details>' : ''}
+          <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button><button class="button" type="button" data-action="import-preparation">Rückblick oder Ausblick importieren</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+          ${employee.ma_preparation ? '<details style="margin-top:16px"><summary>Importierte Beiträge der mitarbeitenden Person</summary>' + ['review','outlook'].map(section => employee.ma_preparation[section] ? `<h3>${section === 'review' ? 'Rückblick' : 'Ausblick'}</h3>${preparationContributionHtml(employee.ma_preparation[section])}` : '').join('') + '</details>' : ''}
         </section>`;
       }
 
@@ -1784,7 +1792,9 @@
         if (target.dataset.preparationPart) {
           employee.meta.preparation_selection = preparationSelection(employee);
           employee.meta.preparation_selection[target.dataset.preparationPart] = target.checked;
+          if (!target.checked && ['review','outlook'].includes(target.dataset.preparationPart)) employee.meta.preparation_selection['return_'+target.dataset.preparationPart] = false;
           markDirty(employee);
+          renderEditor();
           return;
         }
         if (target.dataset.bind) {
@@ -1918,11 +1928,6 @@
         if (action === 'save-package') {
           savePackage();
           return;
-        }
-        if (action === 'preparation-all' || action === 'preparation-none') {
-          const all = action === 'preparation-all';
-          employee.meta.preparation_selection = { reflection: all, review: all && hasReview(employee.scope), outlook: all && hasOutlook(employee.scope) };
-          markDirty(employee); renderEditor(); return;
         }
         if (action === 'import-preparation') { document.getElementById('preparation-import-file').click(); return; }
         if (action === 'download-preparation') {
@@ -2153,7 +2158,7 @@
           return;
         }
         const payload = {
-          version: 2,
+          version: 3,
           selection: preparationSelection(employee),
           previous_goals: (employee.previous_goals || []).map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})),
           previous_development_goals: (employee.previous_development_goals || []).map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})),
@@ -2207,7 +2212,21 @@
       }
 
 
-      async function savePackage(copy = false) {
+      function savePackage() {
+        if (!state.package.save_hint_dismissed) {
+          document.getElementById('save-hint-dismiss').checked = false;
+          document.getElementById('save-hint-dialog').showModal();
+          return;
+        }
+        return savePackageNow();
+      }
+      document.getElementById('save-hint-cancel').addEventListener('click', () => document.getElementById('save-hint-dialog').close());
+      document.getElementById('save-hint-confirm').addEventListener('click', () => {
+        if (document.getElementById('save-hint-dismiss').checked) { state.package.save_hint_dismissed = true; markDirty(null); }
+        document.getElementById('save-hint-dialog').close();
+        savePackageNow();
+      });
+      async function savePackageNow() {
         let savedSnapshot = null;
         const revision = state.package.revision;
         const savedAt = state.package.saved_at;
@@ -2221,10 +2240,11 @@
           clone.querySelector('#preparation-import-dialog').removeAttribute('open');
           clone.querySelector('#preparation-import-preview').innerHTML = '';
           clone.querySelector('#guidance-dialog').removeAttribute('open');
+          clone.querySelector('#save-hint-dialog').removeAttribute('open');
           clone.querySelector('#toast').textContent = '';
           clone.querySelector('body').classList.remove('printing');
           return '<!DOCTYPE html>\n' + clone.outerHTML;
-        }, packageFilename(), copy);
+        }, packageFilename());
         if (!result) { state.package.revision = revision; state.package.saved_at = savedAt; return; }
         dataNode.textContent = safeJson(state);
         dirty = safeJson(state) !== savedSnapshot; renderHeader(); updateSaveState();
@@ -2233,10 +2253,16 @@
 
 
       let pendingPreparation = null;
+
       function preparationContributionHtml(source) {
-        const feedbackLabels = { feedback_keep:'Unbedingt beibehalten', feedback_wish:'Wunsch für die Zukunft', feedback_change:'Veränderungen seit dem letzten Gespräch', feedback_general:'Weitere Bemerkungen' };
         const readable = value => typeof value === 'string' ? value : Array.isArray(value) ? value.map(item => Object.entries(item).filter(([key,val]) => key !== 'id' && val).map(([key,val]) => `${({title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick'})[key] || key}: ${val}`).join('\n')).join('\n\n') : '';
-        return (source.entries || []).map(entry => `<div class="source-panel"><div class="source-panel-label">${h(entry.label)}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('') + Object.entries(source.feedback || {}).filter(([,val]) => val).map(([key,val]) => `<div class="source-panel"><div class="source-panel-label">Feedback · ${h(feedbackLabels[key] || (/^feedback_competency_text_/.test(key) ? 'Beobachtung ' : 'Kompetenz ') + key.slice(-1))}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(val)}</div></div>`).join('');
+        return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
+      }
+      function employeeContribution(employee, path, prefix = false) {
+        if (!employee?.ma_preparation) return '';
+        const entries = ['review','outlook'].flatMap(section => employee.ma_preparation[section]?.entries || []).filter(entry => prefix ? entry.path.startsWith(path + '.') : entry.path === path);
+        if (!entries.length) return '';
+        return `<div class="ma-fixed"><strong>Sicht der mitarbeitenden Person</strong>${preparationContributionHtml({entries})}</div><div class="ma-owner-label">Deine Angaben als vorgesetzte Person</div>`;
       }
       async function readPreparationFile(event) {
         const file = event.target.files[0]; event.target.value = '';
@@ -2249,14 +2275,16 @@
           const node = doc.getElementById('prep-data');
           if (!node) throw new Error('Die gewählte Datei ist keine MD-Rückgabedatei.');
           const source = JSON.parse(node.textContent);
-          if (source.document_type !== 'MD_PREPARATION_RETURN' || source.version !== 2 || !source.selection || source.selection.reflection !== false) throw new Error('Bitte verwende die separate «Datei für die Führungskraft». Die persönliche Vorbereitungsdatei kann nicht importiert werden.');
+          if (source.document_type !== 'MD_PREPARATION_RETURN' || source.version !== 3 || !source.selection || source.selection.reflection !== false) throw new Error('Bitte verwende die separate «Datei für die Führungskraft». Die persönliche Vorbereitungsdatei kann nicht importiert werden.');
           if (source.case_id !== employee.case_id || source.package_id !== state.package.package_id || String(source.employee?.pn) !== String(employee.employee.pn) || String(source.employee?.employment_assignment || '') !== String(employee.employee.employment_assignment || '') || String(source.manager?.pn) !== String(state.package.manager_pn) || String(source.review_year) !== String(state.package.rb_year) || String(source.outlook_year) !== String(outlookYear(employee)) || source.scope !== employee.scope || source.dialog_type !== employee.dialog_type || source.period_start !== (employee.period_start || '') || source.period_end !== (employee.period_end || '')) throw new Error('Die Rückgabedatei passt nicht zur ausgewählten Person, Anstellung oder zum aktuellen Gesprächsumfang und Zeitraum. Es wurden keine Angaben übernommen.');
+          const section = source.return_section;
+          if (!['review','outlook'].includes(section) || !source.selection[section] || source.selection[section === 'review' ? 'outlook' : 'review']) throw new Error('Bitte wähle eine separate Rückgabe für Rückblick oder Ausblick.');
           const entries = [];
           const scalar = (section,key,label) => {
             const val = source.prepared?.[section]?.[key];
             if (val == null) return;
             if (typeof val !== 'string' || val.length > 100000) throw new Error('Die Datei enthält ungültige Angaben.');
-            if (val.trim()) entries.push({ path: `${section}.${key}`, label, value: val, current: employee[section][key] || '' });
+            if (val.trim()) entries.push({ path: `${section}.${key}`, label, value: val });
           };
           const listValue = (items, keys) => {
             if (!Array.isArray(items) || items.length > 100) throw new Error('Die Datei enthält ungültige Zielangaben.');
@@ -2269,13 +2297,13 @@
           if (hasReview(employee.scope) && source.selection.review) {
             [['general_notes','Rückblick · Allgemeine Bemerkungen'],['performance','Rückblick · Leistung und Aufgabenerfüllung'],['employee_comment','Rückblick · Bemerkung der mitarbeitenden Person'],['secondary_employment_current','Rückblick · SAP-Stand aktuell'],['secondary_employment_note','Rückblick · Nebenbeschäftigungen und öffentliche Ämter']].forEach(([key,label]) => scalar('review',key,label));
             const competencies = listValue(source.prepared?.review?.competencies || [], ['id','competency','comment']);
-            if (competencies.length) entries.push({path:'review.competencies',label:'Rückblick · Kompetenzbezogene Beobachtungen',value:competencies,current:employee.review.competencies});
+            if (competencies.length) entries.push({path:'review.competencies',label:'Rückblick · Kompetenzbezogene Beobachtungen',value:competencies});
             ['previous_goals','previous_development_goals'].forEach(list => {
               listValue(source.prepared?.review?.[list] || [],['id','achievement','review']).forEach(goal => {
                 const index = employee[list].findIndex(item => item.id === goal.id);
                 if (index < 0) return;
                 ['achievement','review'].forEach(key => {
-                  if (goal[key]) entries.push({path:`${list}.${index}.${key}`,label:`Vorjahresziel · ${employee[list][index].title || employee[list][index].competency} · ${key === 'achievement' ? 'Zielerreichung' : 'Rückblick'}`,value:goal[key],current:employee[list][index][key] || ''});
+                  if (goal[key]) entries.push({path:`${list}.${index}.${key}`,label:`Vorjahresziel · ${employee[list][index].title || employee[list][index].competency} · ${key === 'achievement' ? 'Zielerreichung' : 'Rückblick'}`,value:goal[key]});
                 });
               });
             });
@@ -2284,18 +2312,13 @@
             [['open_goals_text','Ausblick · Weitere Ziele'],['nep','Ausblick · Laufbahnorientierter Entwicklungswunsch'],['nep_notes','Ausblick · Bemerkungen zur Entwicklung'],['general_notes','Ausblick · Allgemeine Bemerkungen']].forEach(([key,label]) => scalar('outlook',key,label));
             ['performance_goals','development_goals'].forEach(list => {
               const goals = listValue(source.prepared?.outlook?.[list] || [],['id','title','criteria','steps','target_date',...(list === 'development_goals' ? ['competency'] : [])]);
-              if (goals.length) entries.push({path:`outlook.${list}`,label:`Ausblick · ${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}`,value:goals,current:employee.outlook[list]});
+              if (goals.length) entries.push({path:`outlook.${list}`,label:`Ausblick · ${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}`,value:goals});
             });
           }
-          const feedback = {};
-          if (hasReview(employee.scope)) Object.entries(source.fields || {}).forEach(([key,val]) => { if (/^feedback_(keep|wish|change|general|competency_[1-3]|competency_text_[1-3])$/.test(key) && typeof val === 'string' && val.length <= 100000) feedback[key] = val; });
-          pendingPreparation = { employee, entries, feedback, imported_at: nowIso() };
-          document.getElementById('preparation-import-person').textContent = employee.employee.full_name;
-          const preview = document.getElementById('preparation-import-preview');
-          preview.innerHTML = entries.map((entry,index) => {
-            const occupied = Array.isArray(entry.current) ? entry.current.length > 0 : Boolean(entry.current);
-            return `<div class="subsection"><label><input type="checkbox" data-import-entry="${index}" ${occupied ? '' : 'checked'}> <strong>${h(entry.label)}</strong></label>${occupied ? '<p class="section-intro">Bereits ausgefüllt. Nur bei Auswahl werden diese vorhandenen Angaben ersetzt.</p>' + preparationContributionHtml({entries:[{label:'Vorhandene Angaben',value:entry.current}]}) : ''}${preparationContributionHtml({entries:[{label:'Beitrag der mitarbeitenden Person',value:entry.value}]})}</div>`;
-          }).join('') + (entries.length ? '' : '<p>Keine neuen Rückblick- oder Ausblick-Angaben zur Übernahme. Das Feedback und die eingegangenen Beiträge bleiben unter «Vorbereitung MA» verfügbar.</p>') + preparationContributionHtml({feedback});
+
+          pendingPreparation = { employee, section, entries, imported_at: nowIso() };
+          document.getElementById('preparation-import-person').textContent = `${employee.employee.full_name} · ${section === 'review' ? 'Rückblick' : 'Ausblick'}`;
+          document.getElementById('preparation-import-preview').innerHTML = preparationContributionHtml({entries}) || '<p>Die Rückgabe enthält keine ausgefüllten Angaben.</p>';
           document.getElementById('preparation-import-dialog').showModal();
         } catch (error) { pendingPreparation = null; showToast(error.message || 'Die Datei konnte nicht gelesen werden.'); }
       }
@@ -2304,11 +2327,15 @@
       document.getElementById('preparation-import-dialog').addEventListener('cancel', () => { pendingPreparation = null; });
       document.getElementById('preparation-import-confirm').addEventListener('click', () => {
         if (!pendingPreparation) return;
-        const {employee, entries, feedback, imported_at} = pendingPreparation;
-        document.querySelectorAll('[data-import-entry]:checked').forEach(control => { const entry = entries[Number(control.dataset.importEntry)]; setPath(employee, entry.path, entry.value); });
-        employee.ma_preparation = { entries: entries.map(({label,value}) => ({label,value})), feedback, imported_at };
+
+        const {employee, section, entries, imported_at} = pendingPreparation;
+        employee.ma_preparation = employee.ma_preparation || {};
+        employee.ma_preparation[section] = { entries, imported_at };
+        // Retire legacy mixed returns; feedback is processed exclusively via its PDF.
+        delete employee.ma_preparation.feedback;
+        delete employee.ma_preparation.entries;
         pendingPreparation = null; document.getElementById('preparation-import-dialog').close();
-        markDirty(employee); renderEditor(); renderSidebar(); showToast('Vorbereitung importiert. Die ausgewählten Angaben wurden übernommen. Bitte die Arbeitsmappe speichern.');
+        markDirty(employee); renderEditor(); renderSidebar(); showToast('Beiträge importiert. Deine eigenen Eingaben bleiben erhalten. Bitte die Arbeitsmappe speichern.');
       });
 
       function mergeGoalSources(existingGoals, incomingGoals) {
@@ -2566,7 +2593,6 @@
       completionPanel.addEventListener('change', handleEdit);
       completionPanel.addEventListener('click', handleEditorClick);
       document.getElementById('save-button').addEventListener('click', () => savePackage());
-      document.getElementById('save-copy-button').addEventListener('click', () => savePackage(true));
       document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
       document.getElementById('update-file').addEventListener('change', readUpdateFile);
       document.getElementById('checkpoint-import-file').addEventListener('change', readCheckpointImportFile);

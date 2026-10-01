@@ -1811,7 +1811,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("selectedStep === 'preparation'", start_html)
         self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)
         self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.</div>", start_html)
-        self.assertIn("if (hasReview)", preparation_template)
+        self.assertIn("if (hasReview && !isReturn)", preparation_template)
         self.assertIn("showReflection && hasOutlook", preparation_template)
         payload["package"]["revision"] = 1
         payload["package"]["saved_at"] = "2025-09-17T12:30:00+00:00"

@@ -158,7 +158,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn('data-action="close-case"', template)
         self.assertIn('Die «Kein MD»-PDFs benötigen keine Unterschrift.', template)
         self.assertIn('E-Mails mit MD-Dokumenten werden automatisch verarbeitet.', template)
-        self.assertIn('aktualisierte Stellenbeschreibungen', template)
+        self.assertIn('angepasste Stellenbeschreibungen', template)
         self.assertIn('href="mailto:hr@vd.zh.ch"', template)
         self.assertNotIn('die Feedbacks gesammelt in einer S/MIME', template)
         self.assertIn("isNoMd ? 'KEIN_MD'", template)
@@ -181,6 +181,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         employee["review"]["performance"] = "Die Leistung war sehr gut."
         employee["review"]["overall_rating"] = "B – sehr gut"
         employee["review"]["agreement"] = "Ja"
+        employee["outlook"]["agreement"] = "Ja"
         employee["review"]["secondary_employment_current"] = "Ja"
         result = validate_payload(self.payload)
         self.assertEqual(result.summary["status_counts"]["vollstaendig"], 1)
@@ -192,6 +193,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         employee["scope"] = "outlook_only"
         employee["suggestion"]["scope"] = "outlook_only"
         employee["outlook"]["dialog_date"] = "2026-02-10"
+        employee["outlook"]["agreement"] = "Ja"
         status, missing = employee_status(employee)
         self.assertEqual(status, "vollstaendig")
         self.assertNotIn("Mindestens ein Leistungsziel", missing)
@@ -253,7 +255,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn("Du musst die Feedbacks nicht zu einem PDF zusammenführen.", template)
         self.assertNotIn("openGuidance(true)", template)
         self.assertIn("selectedStep === 'basics' || selectedStep === 'preparation'", template)
-        self.assertIn("Prüfe vor der Gesprächseinladung den vorgeschlagenen Umfang", template)
+        self.assertIn("Prüfe die aktuelle Auswahl.", template)
         self.assertIn("Bestimmungen zu Spezialfällen", template)
         self.assertIn("falls es sich nicht um einen der dokumentierten Spezialfälle handelt", template)
         self.assertIn("Datei frisch per E-Mail erhalten", template)
@@ -288,6 +290,29 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         employee = self.payload["employees"][0]
         self.assertTrue(all(goal["imported"] for goal in employee["previous_goals"]))
         self.assertTrue(all(goal["imported"] for goal in employee["previous_development_goals"]))
+
+    def test_outlook_requires_its_own_agreement(self) -> None:
+        employee = self.payload["employees"][0]
+        employee["scope"] = "outlook_only"
+        employee["suggestion"]["scope"] = "outlook_only"
+        employee["outlook"]["dialog_date"] = "2026-02-10"
+        employee["review"]["agreement"] = "Ja"
+        status, missing = employee_status(employee)
+        self.assertEqual(status, "offen")
+        self.assertIn("Einigkeit über Ausblick", missing)
+        employee["outlook"]["agreement"] = "Nein"
+        self.assertEqual(employee_status(employee), ("vollstaendig", []))
+
+    def test_previous_goal_needs_title_but_not_criteria_steps_or_date(self) -> None:
+        employee = self.payload["employees"][0]
+        employee["scope"] = "review_only"
+        employee["suggestion"]["scope"] = "review_only"
+        employee["review"].update({"dialog_date":"2026-01-10", "performance":"Besprochen", "overall_rating":"B – sehr gut", "agreement":"Ja", "secondary_employment_current":"Ja"})
+        employee["previous_goals"] = [{"id":"manual", "imported":False, "title":"", "agreement_details":"Optional"}]
+        employee["previous_development_goals"] = []
+        self.assertIn("Bezeichnung Leistungsziel aus dem Vorjahr 1", employee_status(employee)[1])
+        employee["previous_goals"][0]["title"] = "Vereinbartes Ziel"
+        self.assertEqual(employee_status(employee), ("vollstaendig", []))
 
 
 if __name__ == "__main__":

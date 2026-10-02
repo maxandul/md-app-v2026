@@ -241,6 +241,7 @@ def _new_case(
         },
         "outlook": {
             "dialog_date": "",
+            "agreement": "",
             "performance_goals": [],
             "open_goals_text": "",
             "development_goals": [],

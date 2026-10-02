@@ -369,6 +369,9 @@
     .data-storage-note { margin-top: 16px; padding: 13px 15px; border-left: 4px solid #d93c1a; background: #fff0ec; color: #8a2511; }
     .data-storage-note p { margin: 6px 0 0; }
     .guidance-step { margin-top: 10px; padding: 12px 14px; border: 1px solid #d8dee6; background: #fff; }
+    .file-operation-status { position:fixed; bottom:84px; right:24px; z-index:1000; max-width:calc(100vw - 48px); padding:12px 18px; color:#fff; background:var(--blue-dark); border-radius:4px; box-shadow:0 3px 12px #0003; }
+    .file-operation-status[hidden] { display:none; }
+    details > summary { cursor: pointer; }
     .guidance-step summary { cursor: pointer; font-weight: 700; }
     .guidance-step p, .guidance-step ul { margin-bottom: 0; }
     .guidance-dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--line); background: #f7f7f7; }
@@ -531,6 +534,9 @@
     .card-head-main { display:flex; align-items:center; gap:9px; min-width:0; }
     .card-head-main::before { content:'›'; flex:0 0 auto; color:var(--blue); font-size:20px; line-height:1; transform:rotate(0); transition:transform .15s ease; }
     details[open] > .card-head .card-head-main::before { transform:rotate(90deg); }
+    div.card-head { cursor:default; }
+    .previous-agreement > summary { color:var(--blue-dark); font-weight:700; padding:10px 0; }
+    .source-value { white-space:pre-wrap; }
     .card-head h4 { margin: 0; font-size: 15px; }
     .card-body { padding: 0 0 16px 25px; }
     .card-state { flex:0 0 auto; color:var(--muted); font-size:12px; font-weight:700; }
@@ -547,15 +553,7 @@
       background: #f0f3f6;
     }
 
-    .source-grid::before {
-      content: 'Vereinbarung aus dem Vorjahr';
-      grid-column: 1 / -1;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
+
 
     .source-item { font-size: 13px; }
     .source-item strong { display: block; margin-bottom: 2px; }
@@ -765,6 +763,7 @@
     </main>
   </div>
 
+  <div id="file-operation-status" class="file-operation-status" role="status" aria-live="polite" hidden></div>
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -778,13 +777,13 @@
     <div class="guidance-dialog-head"><h2 id="guidance-title">Prozess und Hilfe</h2></div>
     <div class="guidance-dialog-body">
       <p>Die Arbeitsmappe begleitet dich von der Vorbereitung bis zum Abschluss. Die Prozessübersicht bei der ausgewählten Person zeigt die vorgesehenen Schritte und ihren Stand.</p>
-      <details class="guidance-step" open><summary>1 · Umfang prüfen und bestätigen</summary><p>Prüfe unter «Grundlagen» den aus den Stammdaten vorgeschlagenen Umfang. Berücksichtige Spezialfälle und begründe weggelassene Pflichtteile. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen, falls es sich nicht um einen der dokumentierten Spezialfälle handelt. Bestätige anschliessend deine Auswahl. Bei «Kein MD» führt dich die Arbeitsmappe direkt zur Dokumentation und zum Abschluss.</p></details>
-      <details class="guidance-step"><summary>2 · Vorbereitung erstellen und versenden</summary><p>HR empfiehlt die persönliche Reflexion als Ausgangspunkt. Wähle unter «Vorbereitung MA», welche Bereiche du zusätzlich bereitstellen und gegebenenfalls zurückfordern möchtest. Erstelle die Datei und sende sie mit der Gesprächseinladung. Angeforderte Rückgaben kannst du importieren: Übernommene Beiträge erscheinen als Sicht der mitarbeitenden Person im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt gemeinsam, was festgehalten werden soll. Importierte Beiträge kannst du über «Beitrag entfernen» wieder aus dem Gesprächsdokument entfernen.</p></details>
-      <details class="guidance-step"><summary>3 · Rückblick führen</summary><p>Lass die mitarbeitende Person ihre Sicht einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr festhaltet. Nimm auch ihr Feedback an dich auf. Das Feedback-PDF wird nach der Besprechung noch im Gespräch oder anschliessend erstellt und dir zugestellt. Sobald das Rückblick-Dokument vollständig ist, kannst du es unabhängig vom Ausblick erstellen. Dies gilt auch für den Probezeitrückblick.</p></details>
-      <details class="guidance-step"><summary>4 · Ausblick führen</summary><p>Besprecht Entwicklungsinteressen, Erwartungen und anstehende Aufgaben. Vereinbart gemeinsam Ziele, nächste Schritte und Unterstützung. HR empfiehlt zwei bis drei relevante und umsetzbare Entwicklungsziele. Klärt auch, wann ihr Fortschritte wieder besprecht.</p></details>
-      <details class="guidance-step"><summary>5 · Dokumente fertigstellen und Fall abschliessen</summary><p>Erstelle die PDFs unter «Prüfen und PDF», prüfe auch übernommene Mitarbeitendenbeiträge und hole die erforderlichen Unterschriften ein. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat. Die «Kein MD»-PDFs benötigen keine Unterschrift. Beachte gegebenenfalls den Hinweis zum zusätzlichen handschriftlichen Scan. Sende die fertigen Dokumente S/MIME-verschlüsselt an HR. Schliesse anschliessend den Fall ab und speichere deine Arbeitsmappe.</p></details>
+      <details class="guidance-step" open><summary data-help-step="basics">1 · Grundlagen</summary><p>Prüfe unter «Grundlagen» den aus den Stammdaten vorgeschlagenen Umfang. Berücksichtige Spezialfälle und begründe weggelassene Pflichtteile. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen, falls es sich nicht um einen der dokumentierten Spezialfälle handelt. Bestätige anschliessend deine Auswahl. Bei «Kein MD» führt dich die Arbeitsmappe direkt zur Dokumentation und zum Abschluss.</p></details>
+      <details class="guidance-step"><summary data-help-step="preparation">2 · Vorbereitung MA</summary><p>HR empfiehlt die persönliche Reflexion als Ausgangspunkt. Wähle unter «Vorbereitung MA», welche Bereiche du zusätzlich bereitstellen und gegebenenfalls zurückfordern möchtest. Erstelle die Datei und sende sie mit der Gesprächseinladung. Angeforderte Rückgaben kannst du importieren: Übernommene Beiträge erscheinen als Sicht der mitarbeitenden Person im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt gemeinsam, was festgehalten werden soll. Importierte Beiträge kannst du über «Beitrag entfernen» wieder aus dem Gesprächsdokument entfernen.</p></details>
+      <details class="guidance-step"><summary data-help-step="review">3 · Rückblick</summary><p>Lass die mitarbeitende Person ihre Sicht einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr festhaltet. Nimm auch ihr Feedback an dich auf. Das Feedback-PDF wird nach der Besprechung noch im Gespräch oder anschliessend erstellt und dir zugestellt. Sobald das Rückblick-Dokument vollständig ist, kannst du es unabhängig vom Ausblick erstellen. Dies gilt auch für den Probezeitrückblick.</p></details>
+      <details class="guidance-step"><summary data-help-step="outlook">4 · Ausblick</summary><p>Besprecht Entwicklungsinteressen, Erwartungen und anstehende Aufgaben. Vereinbart gemeinsam Ziele, nächste Schritte und Unterstützung. HR empfiehlt zwei bis drei relevante und umsetzbare Entwicklungsziele. Klärt auch, wann ihr Fortschritte wieder besprecht.</p></details>
+      <details class="guidance-step"><summary data-help-step="finish">5 · Prüfen und PDF</summary><p>Erstelle die PDFs unter «Prüfen und PDF», prüfe auch übernommene Mitarbeitendenbeiträge und hole die erforderlichen Unterschriften ein. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat. Die «Kein MD»-PDFs benötigen keine Unterschrift. Beachte gegebenenfalls den Hinweis zum zusätzlichen handschriftlichen Scan. Sende die fertigen Dokumente S/MIME-verschlüsselt an HR. Schliesse anschliessend den Fall ab und speichere deine Arbeitsmappe.</p></details>
       <details class="guidance-step"><summary>Datei speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Die Speicheranleitung erklärt das lokale Speichern und Überschreiben. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
-      <details class="guidance-step"><summary>Dokumente an HR senden</summary><p>Verschlüssle die E-Mail in Outlook über Optionen &gt; Verschlüsseln. Du kannst PDFs einzeln, gesammelt oder in Chargen senden. Du musst die Feedbacks nicht zu einem PDF zusammenführen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende zusätzliche Informationen oder andere Dokumente (z. B. aktualisierte Stellenbeschreibungen) deshalb in einer separaten E-Mail. Die HTML-Arbeitsmappe bleibt bei dir.</p></details>
+      <details class="guidance-step"><summary>Dokumente an HR senden</summary><p>Verschlüssle die E-Mail in Outlook über Optionen &gt; Verschlüsseln. Du kannst PDFs einzeln, gesammelt oder in Chargen senden. Du musst die Feedbacks nicht zu einem PDF zusammenführen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende zusätzliche Informationen oder andere Dokumente (z.B. angepasste Stellenbeschreibungen) in einer separaten E-Mail. Die HTML-Arbeitsmappe bleibt bei dir.</p></details>
       <details class="guidance-step"><summary>Was bedeuten Status und Prozentzahlen?</summary><p>Die Prozentzahl zeigt, ob die Pflichtangaben vorhanden sind. Sie bestätigt weder ein geführtes Gespräch noch Unterschriften oder Versand. «Datei erstellt» bestätigt die Erstellung der Vorbereitungsdatei, nicht ihren Versand. Den Dokumentstand kannst du zur eigenen Übersicht manuell pflegen.</p></details>
       <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>
     </div>
@@ -798,6 +797,10 @@
 
       const dataNode = document.getElementById('md-data');
       let state = JSON.parse(dataNode.textContent);
+      function normalizePreviousGoal(goal) {
+        if (typeof goal.imported !== 'boolean') goal.imported = true;
+        if (typeof goal.source_locked !== 'boolean') goal.source_locked = goal.imported;
+      }
       function normalizeEmployee(employee) {
         employee.review = employee.review || {};
         employee.outlook = employee.outlook || {};
@@ -806,12 +809,13 @@
         employee.outlook.dialog_date = employee.outlook.dialog_date || employee.dialog_date || '';
         employee.review.employment_continued = employee.review.employment_continued || '';
         if (typeof employee.review.agreement !== 'string') employee.review.agreement = '';
+        if (typeof employee.outlook.agreement !== 'string') employee.outlook.agreement = '';
         employee.outlook.performance_goals = Array.isArray(employee.outlook.performance_goals) ? employee.outlook.performance_goals : [];
         employee.outlook.development_goals = Array.isArray(employee.outlook.development_goals) ? employee.outlook.development_goals : [];
         employee.previous_goals = Array.isArray(employee.previous_goals) ? employee.previous_goals : [];
         employee.previous_development_goals = Array.isArray(employee.previous_development_goals) ? employee.previous_development_goals : [];
-        employee.previous_goals.forEach(goal => { if (typeof goal.imported !== 'boolean') goal.imported = true; });
-        employee.previous_development_goals.forEach(goal => { if (typeof goal.imported !== 'boolean') goal.imported = true; });
+        employee.previous_goals.forEach(normalizePreviousGoal);
+        employee.previous_development_goals.forEach(normalizePreviousGoal);
         employee.employee = employee.employee || {};
         if (typeof employee.employee.employment_assignment !== 'string') employee.employee.employment_assignment = '';
         employee.checkpoint_notes = Array.isArray(employee.checkpoint_notes) ? employee.checkpoint_notes : [];
@@ -843,6 +847,9 @@
       async function saveHtmlFile(makeHtml, filename, copy = false) {
         if (savingFile) return null;
         savingFile = true;
+        const operation = document.getElementById('file-operation-status');
+        operation.textContent = copy ? 'Datei wird erstellt …' : 'Datei wird gespeichert …';
+        operation.hidden = false;
         try {
           let handle = copy ? null : saveHandle;
           if (!handle && typeof window.showSaveFilePicker === 'function') {
@@ -853,6 +860,7 @@
               // Unavailable or blocked by browser policy: retain download fallback.
             }
           }
+          await new Promise(resolve => window.requestAnimationFrame(() => window.setTimeout(resolve,0)));
           const html = makeHtml();
           if (handle) {
             try {
@@ -871,7 +879,7 @@
           document.body.appendChild(link); link.click(); link.remove();
           window.setTimeout(() => URL.revokeObjectURL(url), 1500);
           return 'downloaded';
-        } finally { savingFile = false; }
+        } finally { savingFile = false; operation.hidden = true; operation.textContent = ''; }
       }
 
       let previousTitle = document.title;
@@ -1022,13 +1030,14 @@
         return match ? match[1] : '';
       }
 
-      function requiresHandwrittenScan(employee) {
-        if (employee.dialog_type === 'probation') {
-          return employee.review.employment_continued === 'Nein' || employee.review.agreement === 'Nein';
-        }
+      function requiresHandwrittenScan(employee, section = 'review') {
+        if (section === 'outlook') return employee.outlook.agreement === 'Nein';
+        if (employee.dialog_type === 'probation') return employee.review.employment_continued === 'Nein' || employee.review.agreement === 'Nein';
         return ['D', 'E'].includes(overallRatingCode(employee)) || employee.review.agreement === 'Nein';
       }
-
+      function scanWarning(employee, section) {
+        return requiresHandwrittenScan(employee, section) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Beide Gesprächsparteien müssen zusätzlich handschriftlich unterzeichnen und einscannen. Sende das digitale PDF und den unterschriebenen Scan an HR.</div>' : '';
+      }
       function addRequirement(list, label, complete) {
         list.push({ label, complete: Boolean(complete) });
       }
@@ -1039,14 +1048,14 @@
         if (employee.dialog_type === 'probation') {
           addRequirement(list, 'Rückblick auf Leistung und Einführungsziele', employee.review.performance && employee.review.performance.trim());
           addRequirement(list, 'Anstellungsentscheid', employee.review.employment_continued);
-          addRequirement(list, 'Einigkeit zum Anstellungsentscheid', employee.review.agreement);
+          addRequirement(list, 'Einigkeit über Rückblick', employee.review.agreement);
           return list;
         }
-        // Vorjahresziele unterstützen das Gespräch, gehören aber nicht zu den
-        // Pflichtangaben des Rückblicks.
+        // Vorjahresziele unterstützen das Gespräch; erfasste Ziele benötigen eine Bezeichnung.
+        ['previous_goals','previous_development_goals'].forEach(key => employee[key].forEach((goal,index) => addRequirement(list, `Bezeichnung für ${key === 'previous_goals' ? 'Leistungsziel' : 'Entwicklungsziel'} aus dem Vorjahr ${index + 1}`, goal.title && goal.title.trim())));
         addRequirement(list, 'Allgemeiner Leistungsrückblick', employee.review.performance && employee.review.performance.trim());
         addRequirement(list, 'Gesamteindruck', employee.review.overall_rating);
-        addRequirement(list, 'Einigkeit zur Gesamtbeurteilung', employee.review.agreement);
+        addRequirement(list, 'Einigkeit über Rückblick', employee.review.agreement);
         addRequirement(list, 'Aktualität Nebenbeschäftigungen/öffentliche Ämter', employee.review.secondary_employment_current);
         return list;
       }
@@ -1054,6 +1063,7 @@
       function outlookRequirements(employee, includeDialogDate = true) {
         const list = [];
         if (includeDialogDate) addRequirement(list, 'Gesprächsdatum Ausblick', employee.outlook.dialog_date);
+        addRequirement(list, 'Einigkeit über Ausblick', employee.outlook.agreement);
         const goals = employee.outlook.performance_goals || [];
         goals.forEach((goal, index) => {
           addRequirement(list, `Bezeichnung für Leistungsziel ${index + 1}`, goal.title && goal.title.trim());
@@ -1264,56 +1274,29 @@
         return `<span class="card-state ${complete ? 'complete' : ''}">${complete ? 'Vollständig' : 'Offen'}</span>`;
       }
 
-      function optionalCardState(complete) {
-        return `<span class="card-state ${complete ? 'complete' : ''}">${complete ? 'Bearbeitet' : 'Optional'}</span>`;
-      }
-
       function cardTitle(title, fallback) {
         return h(title && title.trim() ? title.trim() : fallback);
       }
 
-      function renderPreviousGoals(employee) {
-        const cards = employee.previous_goals.map((goal, index) => {
-          const complete = Boolean(goal.title && goal.criteria && goal.achievement && goal.review);
-          return `
-          <details class="goal-card" id="review-previous-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Vorjahresziel ${index + 1}`)}</h4>${optionalCardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_goals" data-index="${index}">Entfernen</button></span></summary>
-            <div class="card-body">
-            <div class="source-grid">
-              ${goal.imported
-                ? `${sourceValue('Ziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
-                : `${arrayField('Ziel', 'previous_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2 })}${arrayField('Messkriterien', 'previous_goals', index, 'criteria', goal.criteria)}${arrayField('Termin', 'previous_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_goals', index, 'steps', goal.steps, { full:true })}`}
-            </div>
-            <div class="form-grid">
-              ${arrayField('Zielerreichung', 'previous_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions })}
-              ${arrayField('Rückblick und Einordnung', 'previous_goals', index, 'review', goal.review, { full:true, rows:4 })}
-            </div>
-            </div>
-          </details>`;
-        }).join('');
-        return `${cards || '<div class="empty-state">Keine Leistungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-goal">+ Leistungsziel aus dem Vorjahr ergänzen</button>`;
+      function previousAgreementDetails(goal) {
+        if (typeof goal.agreement_details === 'string') return goal.agreement_details;
+        return [['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]].filter(([,value]) => value).map(([label,value]) => `${label}: ${value}`).join('\n');
       }
-
+      function renderPreviousGoalCards(employee, arrayName) {
+        const development = arrayName === 'previous_development_goals';
+        return employee[arrayName].map((goal,index) => `<div class="goal-card" id="${development ? 'review-development-goal' : 'review-previous-goal'}-${index + 1}">
+          <div class="card-head"><h4>${cardTitle(goal.title, `${development ? 'Entwicklungsziel' : 'Leistungsziel'} ${index + 1}`)}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="${arrayName}" data-index="${index}">Entfernen</button></div>
+          <div class="card-body"><details class="previous-agreement" ${goal.source_locked ? '' : 'open'}><summary>Vereinbarung aus dem Vorjahr</summary><div class="source-grid">
+            ${goal.source_locked ? `${development ? sourceValue('Kompetenz',goal.competency,true) : ''}${sourceValue('Ziel',goal.title,true)}${sourceValue('Details zur Vereinbarung',previousAgreementDetails(goal),true)}` : `${development ? arrayField('Kompetenz',arrayName,index,'competency',goal.competency,{type:'select',groupedCompetencies:true,full:true}) : ''}${arrayField('Ziel',arrayName,index,'title',goal.title,{full:true,rows:2,required:true})}${arrayField('Details zur Vereinbarung (optional)',arrayName,index,'agreement_details',previousAgreementDetails(goal),{full:true,rows:3})}`}
+          </div><button class="button small" type="button" data-action="${goal.source_locked ? 'edit-previous-agreement' : 'lock-previous-agreement'}" data-array="${arrayName}" data-index="${index}">${goal.source_locked ? 'Vereinbarung bearbeiten' : 'Vereinbarung festhalten'}</button></details>
+          <div class="form-grid" style="margin-top:16px">${arrayField('Zielerreichung',arrayName,index,'achievement',goal.achievement,{type:'select',items:achievementOptions})}${arrayField('Rückblick und Einordnung',arrayName,index,'review',goal.review,{full:true,rows:4})}</div></div>
+        </div>`).join('');
+      }
+      function renderPreviousGoals(employee) {
+        return `${renderPreviousGoalCards(employee,'previous_goals') || '<div class="empty-state">Keine Leistungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-goal">+ Leistungsziel aus dem Vorjahr ergänzen (optional)</button>`;
+      }
       function renderPreviousDevelopmentGoals(employee) {
-        const cards = employee.previous_development_goals.map((goal, index) => {
-          const complete = Boolean(goal.competency && goal.title && goal.criteria && goal.achievement && goal.review);
-          return `
-          <details class="goal-card" id="review-development-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.competency, `Entwicklungsziel ${index + 1}`)}</h4>${optionalCardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="previous_development_goals" data-index="${index}">Entfernen</button></span></summary>
-            <div class="card-body">
-            <div class="source-grid">
-              ${goal.imported
-                ? `${sourceValue('Entwicklungsziel', goal.title, true)}${sourceValue('Messkriterien', goal.criteria)}${sourceValue('Termin', formatDate(goal.target_date))}${sourceValue('Vereinbarte Schritte', goal.steps, true)}`
-                : `${arrayField('Kompetenz', 'previous_development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true })}${arrayField('Entwicklungsziel', 'previous_development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2 })}${arrayField('Messkriterien', 'previous_development_goals', index, 'criteria', goal.criteria)}${arrayField('Termin', 'previous_development_goals', index, 'target_date', goal.target_date, { type:'date' })}${arrayField('Vereinbarte Schritte', 'previous_development_goals', index, 'steps', goal.steps, { full:true })}`}
-            </div>
-            <div class="form-grid">
-              ${arrayField('Zielerreichung', 'previous_development_goals', index, 'achievement', goal.achievement, { type:'select', items: achievementOptions })}
-              ${arrayField('Rückblick und Einordnung', 'previous_development_goals', index, 'review', goal.review, { full:true, rows:4 })}
-            </div>
-            </div>
-          </details>`;
-        }).join('');
-        return `<div style="margin-bottom:18px"><h4>Entwicklungsziele aus dem Vorjahr</h4>${cards || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen</button></div>`;
+        return `<div style="margin-bottom:18px"><h4>Entwicklungsziele</h4>${renderPreviousGoalCards(employee,'previous_development_goals') || '<div class="empty-state">Keine Entwicklungsziele aus dem Vorjahr übermittelt. Sie können bei Bedarf manuell ergänzt werden.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-previous-development-goal">+ Entwicklungsziel aus dem Vorjahr ergänzen (optional)</button></div>`;
       }
 
       function renderCheckpointNotes(employee) {
@@ -1451,7 +1434,7 @@
         return employee.no_md_reason === 'Anderer Grund' && !String(employee.no_md_note || '').trim() ? ['Erläuterung zum anderen Grund'] : [];
       }
       function preparationSignature(employee) {
-        return JSON.stringify([employee.scope, employee.dialog_type, preparationSelection(employee), employee.period_start, employee.period_end, employee.employee, employee.previous_goals.map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})), employee.previous_development_goals.map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})), state.package.rb_year, outlookYear(employee)]);
+        return JSON.stringify([employee.scope, employee.dialog_type, preparationSelection(employee), employee.period_start, employee.period_end, employee.employee, employee.previous_goals.map(({id,title,criteria,steps,target_date,agreement_details}) => ({id,title,criteria,steps,target_date,agreement_details})), employee.previous_development_goals.map(({id,competency,title,criteria,steps,target_date,agreement_details}) => ({id,competency,title,criteria,steps,target_date,agreement_details})), state.package.rb_year, outlookYear(employee)]);
       }
       function preparationCurrent(employee) { return Boolean(employee.meta.preparation_created_at && employee.meta.preparation_signature === preparationSignature(employee)); }
       function hrRecommendation(text) { return `<div class="hr-recommendation"><strong>HR empfiehlt</strong><p>${text}</p></div>`; }
@@ -1472,7 +1455,7 @@
         let target = 'finish', label = 'Weiter zu Prüfen und PDF';
         if (step === 'preparation') { target = hasReview(employee.scope) ? 'review' : 'outlook'; label = target === 'review' ? (employee.dialog_type === 'probation' ? 'Weiter zum Probezeitrückblick' : 'Weiter zum Rückblick') : 'Weiter zum Ausblick'; }
         if (step === 'review' && hasOutlook(employee.scope)) { target = 'outlook'; label = 'Weiter zum Ausblick'; }
-        return `<div class="next-actions"><button class="button primary" type="button" data-action="show-step" data-step="${target}">${label}</button>${step === 'review' && getDocumentCompletion(employee, 'review').complete ? `<button class="button" type="button" data-action="print-review">${employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblick'}-PDF erstellen</button>` : ''}</div>`;
+        return `<div class="next-actions"><button class="button primary" type="button" data-action="show-step" data-step="${target}">${label}</button>${step === 'review' && getDocumentCompletion(employee, 'review').complete ? `<div>${scanWarning(employee,'review')}<button class="button" type="button" data-action="print-review">${employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblick'}-PDF erstellen</button></div>` : ''}</div>`;
       }
 
       function renderScope(employee) {
@@ -1488,7 +1471,7 @@
         ];
         return `
           <section class="section" id="scope-section">
-            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">${employee.scope ? 'Prüfe vor der Gesprächseinladung den vorgeschlagenen Umfang. Die Auswahl ist aus den Stammdaten abgeleitet und berücksichtigt nicht alle Spezialfälle. Passe sie bei Bedarf an und bestätige sie anschliessend.' : 'Lege vor der Gesprächseinladung fest, welche Gesprächsteile du mit dieser Person führst. Berücksichtige die Bestimmungen zu Spezialfällen und bestätige deine Auswahl.'} <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen zu Spezialfällen</a>.</p></div></div>
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Hier steuerst du, welche Gesprächsteile (Rückblick/Ausblick) du mit ${h(employee.employee.first_name || employee.employee.full_name)} führst. Prüfe die aktuelle Auswahl. Sie ist aus den Stammdaten abgeleitet und berücksichtigt nicht alle konkreten Umstände. Passe die Auswahl bei Bedarf an und bestätige sie anschliessend. Hier findest du <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen zu Spezialfällen</a>.</p></div></div>
             <div class="scope-grid">
               ${options.map(option => `
                 <label class="scope-option">
@@ -1566,9 +1549,8 @@
             </div></div>
             <div class="subsection" id="review-employment"><h3>4. Anstellungsentscheid</h3><p class="section-intro">Die ersten drei Monate des Arbeitsverhältnisses gelten in der Regel als Probezeit. Bei einer Verlängerung oder einem negativen Entscheid ist HR frühzeitig beizuziehen.</p><div class="form-grid">
               ${field('Wird das Arbeitsverhältnis weitergeführt?', 'review.employment_continued', employee.review.employment_continued, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
-              ${field('Einigkeit zum Anstellungsentscheid', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true })}
+              ${field('Einigkeit über Rückblick', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bezieht sich auf den gesamten Rückblick, einschliesslich Leistung, Zusammenarbeit und Anstellungsentscheid.' })}
             </div>
-            ${requiresHandwrittenScan(employee) ? '<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Bei einem negativen Anstellungsentscheid oder bei Uneinigkeit müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.</div>' : ''}
             </div>
           </section>`;
       }
@@ -1581,8 +1563,9 @@
             <div class="section-head">
               <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Bereite hier deine Notizen vor und nimm sie mit ans Gespräch. Lass die mitarbeitende Person ihre Sicht auf Leistung und Zusammenarbeit einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr im Rückblick festhaltet. Nimm auch ihr Feedback an dich auf und besprecht, was daraus für eure Zusammenarbeit folgt.</p></div>
             </div>
+            ${hrRecommendation('Ehrliches, fundiertes Feedback zeigt Wertschätzung und gehört zur Führungsarbeit. Nimm dir im Gespräch Zeit, konkrete Beobachtungen zu erläutern, zuzuhören und beide Sichtweisen zu verstehen. Gegenseitiges Verständnis setzt nicht voraus, dass ihr dieselbe Einschätzung teilt. Wenn die besprochenen Inhalte für beide nachvollziehbar sind, kannst du das Wesentliche knapp festhalten. Bei Uneinigkeit oder wenn die spätere Nachvollziehbarkeit besonders wichtig ist, dokumentiere die unterschiedlichen Sichtweisen, die konkreten Beobachtungen und die besprochenen Schlussfolgerungen ausführlicher.')}
             ${renderCheckpointNotes(employee)}
-            <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${employeeContribution(employee, 'previous_goals', true)}${renderPreviousGoals(employee)}</div>
+            <div class="subsection" id="review-performance-goals"><h3>1. Leistungsziele</h3>${employeeContribution(employee, 'previous_goals', true)}${renderPreviousGoals(employee)}</div>
             <div class="subsection" id="review-performance"><h3>2. Allgemeiner Leistungsrückblick</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
@@ -1590,13 +1573,12 @@
             <div class="subsection" id="review-competencies"><h3>3. Kompetenzbezogene Beobachtungen</h3>${competencyRecommendation(employee)}${renderCompetencies(employee)}</div>
             <div class="subsection" id="review-overall"><h3>4. Gesamteindruck und Gespräch</h3><div class="form-grid">
               ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
-              ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
+              ${field('Einigkeit über Rückblick', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bezieht sich auf den gesamten Rückblick, einschliesslich Leistung, Zusammenarbeit und Entwicklung.' })}
               ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
               ${field('Bemerkung der mitarbeitenden Person', 'review.employee_comment', employee.review.employee_comment, { type:'textarea', full:true })}
               ${field('Gespräch mit nächsthöherer Führungsperson', 'review.next_level_conversation', employee.review.next_level_conversation, { type:'select', items:['Nein','Ja'], placeholder:'Bitte auswählen' })}
               ${employee.review.next_level_conversation === 'Ja' ? field('Bemerkungen zum Gespräch mit der nächsthöheren Führungsperson', 'review.next_level_comment', employee.review.next_level_comment, { type:'textarea', full:true }) : ''}
             </div>
-              ${requiresHandwrittenScan(employee) ? `<div class="scan-warning"><strong>Zusätzliche handschriftliche Unterzeichnung erforderlich</strong>Wegen Gesamtbeurteilung «${h(employee.review.overall_rating)}» oder Uneinigkeit müssen beide Parteien das Dokument handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan; das digitale PDF muss in diesem Fall nicht zusätzlich elektronisch unterschrieben sein.</div>` : ''}
             </div>
             <div class="subsection" id="review-secondary"><h3>5. Nebenbeschäftigungen und öffentliche Ämter</h3>
               <div class="source-panel"><div class="source-panel-label">Aktueller SAP-Stand</div><div class="source-panel-value">${h(secondary || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div></div>
@@ -1618,10 +1600,10 @@
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
             <div class="subsection" id="outlook-development-goals"><h3>3. Entwicklungsziele</h3>${hrRecommendation('Vereinbart zwei bis drei Entwicklungsziele, die relevant, konkret und im Alltag umsetzbar sind. Lieber weniger Ziele mit klaren Schritten und passender Unterstützung als viele Vorhaben ohne Fokus. Haltet fest, woran ihr Fortschritte erkennt und wann ihr wieder darüber sprecht.')}<details class="competency-help"><summary>Anregungen für Entwicklungsschritte</summary><p>Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p></details>${renderDevelopmentGoals(employee)}</div>
             <div class="subsection"><h3>4. Laufbahnorientierte Entwicklung</h3><p class="section-intro">Die laufbahnorientierte Entwicklung (nächsthöhere Funktion, vertikale Laufbahn, KNF I &amp; II, Übernahme Stellvertretung usw.) findet im Rahmen der Nachfolge- und Entwicklungsplanung (NEP) statt.</p><div class="form-grid" style="margin-top:12px">
-              ${field('Laufbahnorientierter Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
+              ${field('Laufbahnorientierter Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','Führungsverantwortung','Fachführungsverantwortung','Projektverantwortung','Stellvertretung','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
               ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
             </div></div>
-            <div class="subsection"><h3>5. Allgemeine Bemerkungen</h3><div class="form-grid">${field('Bemerkungen zum Ausblick', 'outlook.general_notes', employee.outlook.general_notes, { type:'textarea', full:true })}</div></div>
+            <div class="subsection"><h3 id="outlook-agreement">5. Gespräch und allgemeine Bemerkungen</h3><div class="form-grid">${field('Einigkeit über Ausblick','outlook.agreement',employee.outlook.agreement,{type:'select',items:['Ja','Nein'],placeholder:'Bitte auswählen',required:true,hint:'Bezieht sich auf den gesamten Ausblick.'})}${field('Bemerkungen zum Ausblick', 'outlook.general_notes', employee.outlook.general_notes, { type:'textarea', full:true })}</div></div>
           </section>`;
       }
 
@@ -1637,22 +1619,22 @@
           groups.push(['Leistung und Zielerreichung', employee.dialog_type === 'probation'
             ? ['Wie erlebst du deine Einarbeitung und die bisherige Leistung?', 'Welche Ziele des Einführungsprogramms hast du erreicht?', 'Wo brauchst du noch Unterstützung?']
             : ['Inwiefern hast du die vereinbarten Ziele erreicht?', 'Was waren deine wichtigsten Erfolge?', 'Welche Herausforderungen oder Hindernisse sind aufgetreten?']]);
-          groups.push(['Kompetenzen und Zusammenarbeit', ['Mit welchen Kompetenzen konntest du besonders überzeugen?', 'Wo siehst du bei dir Entwicklungspotenzial?', 'Was hast du über dich selbst gelernt?']]);
+          groups.push(['Kompetenzen und Zusammenarbeit', ['Wie siehst du die Entwicklung deiner Kompetenzen, an denen du gearbeitet hast?', 'Mit welchen Kompetenzen konntest du besonders überzeugen?', 'Wo gelang es dir nicht, dein Potenzial auszuschöpfen?']]);
         }
         if (hasOutlook(employee.scope)) {
           groups.push(['Ziele und Aufgaben', ['Welche Ziele möchtest du erreichen?', 'Woran erkennst du, dass du sie erreicht hast?', 'Wie möchtest du vorgehen und welche Unterstützung brauchst du?']]);
           groups.push(['Persönliche Entwicklung', ['Welche Kompetenzen möchtest du weiterentwickeln?', 'Woran wirst du Fortschritte erkennen?', 'Welche Lerngelegenheiten oder Unterstützung helfen dir dabei?']]);
           groups.push(['Weitere berufliche Interessen', ['Gibt es Aufgaben, Verantwortungsbereiche oder andere berufliche Ziele, die dich interessieren?', 'Worauf freust du dich im kommenden Zeitraum besonders?']]);
         }
-        return groups.map(([label, questions]) => `<h4>${h(label)}</h4><ul>${questions.map(question => `<li>${h(question)}</li>`).join('')}</ul>`).join('');
+        return groups.map(([label, questions],index) => `${index === 0 && hasReview(employee.scope) ? '<h3>Rückblick</h3>' : ''}${label === 'Ziele und Aufgaben' ? '<h3>Ausblick</h3>' : ''}<h4>${h(label)}</h4><ul>${questions.map(question => `<li>${h(question)}</li>`).join('')}</ul>`).join('');
       }
       function renderEmployeePreparation(employee) {
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
           <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erstelle die Vorbereitungsdatei und sende sie als Anhang zu deiner Termineinladung oder in einer Begleitmail an deine mitarbeitende Person. Durch An- und Abwählen der Optionen bestimmst du, was die Vorbereitungsdatei beinhaltet. Die mitarbeitende Person kann mit der Vorbereitungsdatei ihre Gedanken festhalten und Dokumente erstellen, wie du mit deiner Arbeitsmappe. Du kannst deine Vorbereitung unabhängig davon weiterführen.</p></div></div>
-          <details class="competency-help"><summary>Was bedeuten die Optionen?</summary><ul><li>Mit der persönlichen Reflexion erhält die mitarbeitende Person die zuletzt vereinbarten Ziele<sup>1</sup> sowie einige Reflexionsfragen.</li><li>Mit Rückblick bzw. Ausblick erhält sie jeweils das komplette Formular, wie du es auch in deiner Arbeitsmappe siehst<sup>2</sup>.</li><li>Wähle «zurückfordern», wenn sie dir das ausgefüllte Formular zurücksenden soll. Die mitarbeitende Person erstellt dann eine Rückgabedatei mit ihren Beiträgen, die sie dir schickt und du damit einsehen kannst. Diese Beiträge kannst du bei Bedarf im jeweiligen Gesprächsteil importieren und anschliessend auch einzeln wieder entfernen. Importierte und nicht entfernte Beiträge erscheinen dann als ihre Sicht im finalen PDF, das im Personaldossier abgelegt wird.</li></ul><p><sup>1</sup> Ob Ziele aus dem letzten Ausblick vorhanden sind, siehst du ${hasReview(employee.scope) ? 'im Schritt ' + (workflowSteps(employee).findIndex(step => step.key === 'review') + 1) + ' Rückblick' : 'in der persönlichen Reflexion der erstellten Vorbereitungsdatei, sofern du sie bereitstellst'}. Das hängt u.a. davon ab, ob der letzte Ausblick korrekt an HR übermittelt wurde.</p><p><sup>2</sup> Falls du in deiner Vorbereitung bereits Notizen im Rückblick oder Ausblick gespeichert hast, werden diese <strong>nicht</strong> in die Vorbereitungsdatei übernommen.</p></details>
-          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Sie unterstützt Mitarbeitende dabei, eigene Erfahrungen, Anliegen und Entwicklungsideen ins Gespräch einzubringen.')}
+          <details class="competency-help"><summary>Was bedeuten die Optionen?</summary><ul><li>Mit der persönlichen Reflexion erhält die mitarbeitende Person die zuletzt vereinbarten Ziele${hasReview(employee.scope) ? '<sup>1</sup>' : ''} sowie einige Reflexionsfragen.</li><li>Mit Rückblick bzw. Ausblick erhält sie jeweils das komplette Formular, wie du es auch in deiner Arbeitsmappe siehst<sup>2</sup>.</li><li>Wähle «zurückfordern», wenn sie dir das ausgefüllte Formular zurücksenden soll. Die mitarbeitende Person erstellt dann eine Rückgabedatei mit ihren Beiträgen, die sie dir schickt und du damit einsehen kannst. Diese Beiträge kannst du bei Bedarf im jeweiligen Gesprächsteil importieren und anschliessend auch einzeln wieder entfernen. Importierte und nicht entfernte Beiträge erscheinen dann als ihre Sicht im finalen PDF, das im Personaldossier abgelegt wird.</li></ul>${hasReview(employee.scope) ? `<p><sup>1</sup> Ob Ziele aus dem letzten Ausblick vorhanden sind, siehst du im Schritt ${workflowSteps(employee).findIndex(step => step.key === 'review') + 1} Rückblick. Das hängt u.a. davon ab, ob der letzte Ausblick korrekt an HR übermittelt wurde.</p>` : ''}<p><sup>2</sup> Falls du in deiner Vorbereitung bereits Notizen im Rückblick oder Ausblick gespeichert hast, werden diese <strong>nicht</strong> in die Vorbereitungsdatei übernommen.</p></details>
+          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Die schlanke Vorbereitung gibt Mitarbeitenden Raum, eigene Schwerpunkte zu setzen und Erfahrungen, Anliegen sowie Entwicklungsideen einzubringen. So erleichtert sie den Einstieg in einen gemeinsamen Austausch. Rückblick und Ausblick eignen sich ergänzend, wenn du eine Vorbereitung entlang der einzelnen Themen möchtest.')}
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
           <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach der Besprechung im Gespräch oder anschliessend separat als PDF zurückgegeben.</label>
           <label style="display:block;margin-top:14px"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Persönliche Reflexion bereitstellen</label>
@@ -1706,7 +1688,7 @@
           <p class="section-intro">Die Arbeitsmappe begleitet dich bei der Vorbereitung, im Gespräch und beim Erstellen der Dokumente. Unterschriften und Versand erledigst du ausserhalb der Arbeitsmappe.</p>
           ${employee.scope === 'none' ? '' : '<p><strong>Gemeinsam zurückblicken und weiterentwickeln</strong><br>Der Mitarbeitenden-Dialog ist ein gemeinsamer Austausch über Leistung, Zusammenarbeit und Entwicklung. Höre die Sicht der mitarbeitenden Person, bringe deine eigene Sicht und deine Erwartungen ein und klärt gemeinsam, was ihr festhaltet und wie es weitergeht. Als Führungskraft gibst du Orientierung und verantwortest die Beurteilung. Nutzt den Dialog, um voneinander zu lernen und die Zusammenarbeit weiterzugestalten.</p>'}
           <p>Auf der linken Seite findest du deine Mitarbeitenden. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen. Für deinen Dialog mit ${h(employee.employee.first_name || employee.employee.full_name)} sind aktuell folgende Prozessschritte vorgesehen:</p>
-          <div class="process-grid">${workflowSteps(employee).map((step,index) => `<button class="process-card" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}><strong>${index + 1} · ${h(step.title)}</strong><span class="process-description">${h(step.description)}</span><span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}</div>
+          <div class="process-grid">${workflowSteps(employee).map((step,index) => `<button class="process-card" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}><strong>${index + 1} · ${h(step.name)}</strong><span class="process-description">${h(step.description)}</span><span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}</div>
           ${employee.scope !== 'none' ? '<p class="section-intro">Standortgespräche kannst du unabhängig davon unterjährig festhalten.</p>' : ''}
           <div class="data-storage-note"><strong>Deine Arbeitsmappe bleibt bei dir.</strong><p>Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Es werden keine Daten und Dokumente an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>
           ${employee.scope && !employee.meta.closed && !employee.meta.archived ? `<div class="next-actions"><button id="recommended-next" class="button" type="button" data-action="show-step" data-step="${recommendedStep(employee)}">Empfohlener nächster Schritt: ${h(workflowSteps(employee).find(step => step.key === recommendedStep(employee)).name)}</button></div>` : ''}
@@ -1739,6 +1721,9 @@
       function requirementTarget(employee, section, label) {
         const numberedItem = label.match(/(\d+)$/);
         const itemNumber = numberedItem ? numberedItem[1] : '';
+        if (label.startsWith('Bezeichnung für Leistungsziel aus dem Vorjahr')) return {step:'review',anchor:`review-previous-goal-${itemNumber}`};
+        if (label.startsWith('Bezeichnung für Entwicklungsziel aus dem Vorjahr')) return {step:'review',anchor:`review-development-goal-${itemNumber}`};
+        if (label === 'Einigkeit über Ausblick') return {step:'outlook',anchor:'outlook-agreement'};
         if (label.startsWith('Zeitraum') || label.startsWith('Gesprächsdatum')) return { step: section, anchor: `dialog-details-${section}` };
         if (label.startsWith('Begründung')) return { step: 'basics', anchor: 'scope-section' };
         if (section === 'outlook') {
@@ -1806,16 +1791,15 @@
         const imported = ['review','outlook'].some(section => employee.ma_preparation?.[section]?.entries?.length);
         return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2><p class="section-intro">Prüfe die Angaben und stelle die Dokumente fertig. Rückblick und Ausblick kannst du einzeln fertigstellen und an HR senden.</p></div></div>
           ${imported ? '<div class="hr-recommendation"><p>Prüft vor der Fertigstellung auch die übernommenen Beiträge der mitarbeitenden Person. Das finale Gesprächsdokument wird im Personaldossier abgelegt. Importierte Beiträge kannst du im jeweiligen Gesprächsteil über «Beitrag entfernen» wieder entfernen.</p></div>' : ''}
-          <ol class="finish-checklist"><li><strong>PDF erstellen und prüfen</strong><p>Erstelle das PDF für den jeweiligen Gesprächsteil und prüfe den Inhalt.</p></li><li><strong>Unterschriften einholen</strong><p>Lass das PDF von beiden Gesprächsparteien unterzeichnen. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat.</p></li><li><strong>An HR senden</strong><p>Sende die fertigen PDFs S/MIME-verschlüsselt an HR. Du kannst sie einzeln, gesammelt oder in Chargen senden.${preparationSelection(employee).feedback ? ' Leite auch erhaltene Feedback-PDFs weiter.' : ''} Sende zusätzliche Informationen oder andere Dokumente in einer separaten E-Mail.</p></li><li><strong>Fall abschliessen und Arbeitsmappe speichern</strong><p>Wenn alle vorgesehenen Dokumente fertiggestellt und an HR gesendet sind, kannst du den Fall abschliessen.</p></li></ol>
+          <ol class="finish-checklist"><li><strong>PDF erstellen und prüfen</strong><p>Erstelle das PDF für den jeweiligen Gesprächsteil und prüfe den Inhalt.</p></li><li><strong>Unterschriften einholen</strong><p>Lass das PDF von beiden Gesprächsparteien unterzeichnen. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat.</p></li><li><strong>An HR senden</strong><p>Sende die fertigen PDFs S/MIME-verschlüsselt an HR. Du kannst sie einzeln, gesammelt oder in Chargen senden.${preparationSelection(employee).feedback ? ' Leite auch erhaltene Feedback-PDFs weiter.' : ''} Sende zusätzliche Informationen oder andere Dokumente (z.B. angepasste Stellenbeschreibungen) in einer separaten E-Mail.</p></li><li><strong>Fall abschliessen und Arbeitsmappe speichern</strong><p>Wenn alle vorgesehenen PDFs fertiggestellt und an HR gesendet sind, kannst du den Fall abschliessen.</p></li></ol>
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
-            ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
-            ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
+            ${hasReview(employee.scope) ? `<div data-pdf-section="review">${scanWarning(employee,'review')}<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button></div>` : ''}
+            ${hasOutlook(employee.scope) ? `<div data-pdf-section="outlook">${scanWarning(employee,'outlook')}<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button></div>` : ''}
             ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete && scopeConfirmed(employee) ? '' : 'disabled'}>Fall abschliessen</button>`}
           </div>
           ${!employee.meta.closed ? `<div id="finish-scope-notice" ${scopeConfirmed(employee) ? 'hidden' : ''}><p>Bestätige zuerst den Umfang unter «Grundlagen».</p><button class="button" type="button" data-action="show-step" data-step="basics">Zum Umfang</button></div>` : ''}
           ${!completion.complete ? '<p class="section-intro">Ergänze die fehlenden Pflichtangaben im jeweiligen Gesprächsteil. Die PDF-Vorschau bleibt verfügbar.</p>' : ''}
           <p class="section-intro">Der Fall wird schreibgeschützt und in der Personenliste nach unten verschoben. Du kannst ihn bei Bedarf wieder öffnen.</p>
-          ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Beide Gesprächsparteien müssen zusätzlich handschriftlich unterzeichnen. Sende das maschinenlesbare digitale PDF und den unterschriebenen Scan an HR.</div>' : ''}
         </section>`;
       }
 
@@ -1953,12 +1937,13 @@
           }
           setPath(employee, target.dataset.bind, target.value);
           changed = true;
-          rerender = ['scope', 'no_md_reason', 'review.next_level_conversation'].includes(target.dataset.bind);
+          rerender = ['scope', 'no_md_reason', 'review.next_level_conversation', 'review.agreement', 'review.overall_rating', 'review.employment_continued', 'outlook.agreement'].includes(target.dataset.bind);
         } else if (target.dataset.array) {
           const array = getPath(employee, target.dataset.array);
           const item = array[Number(target.dataset.index)];
           if (item) {
             item[target.dataset.key] = target.value;
+            if (['previous_goals','previous_development_goals'].includes(target.dataset.array) && ['title','competency','agreement_details'].includes(target.dataset.key)) item.source_edited = true;
             changed = true;
             rerender = target.dataset.key === 'competency';
           }
@@ -1971,9 +1956,9 @@
 
       function addItem(employee, action) {
         if (action === 'add-previous-goal') {
-          employee.previous_goals.push({ id: uid('previous'), imported: false, title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+          employee.previous_goals.push({ id: uid('previous'), imported: false, source_locked:false, agreement_details:'', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
         } else if (action === 'add-previous-development-goal') {
-          employee.previous_development_goals.push({ id: uid('previous-development'), imported: false, competency: '', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
+          employee.previous_development_goals.push({ id: uid('previous-development'), imported: false, source_locked:false, agreement_details:'', competency: '', title: '', criteria: '', steps: '', target_date: '', achievement: '', review: '' });
         } else if (action === 'add-competency') {
           employee.review.competencies.push({ id: uid('competency'), competency: '', comment: '' });
         } else if (action === 'add-performance-goal') {
@@ -2007,6 +1992,15 @@
             target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }, 0);
           return;
+        }
+        if (action === 'edit-previous-agreement' || action === 'lock-previous-agreement') {
+          if (!['previous_goals','previous_development_goals'].includes(button.dataset.array) || employee.meta.closed || employee.meta.archived) return;
+          const goal = employee[button.dataset.array][Number(button.dataset.index)];
+          if (!goal) return;
+          if (action === 'lock-previous-agreement' && !String(goal.title || '').trim()) { showToast('Ergänze zuerst das Ziel.'); return; }
+          if (action === 'edit-previous-agreement') goal.agreement_details = previousAgreementDetails(goal);
+          goal.source_locked = action === 'lock-previous-agreement';
+          markDirty(employee); renderEditor(); return;
         }
         if (action === 'collapse-overview') {
           document.getElementById('process-overview').open = false;
@@ -2119,8 +2113,8 @@
           downloadEmployeePreparation(employee);
           return;
         }
-        if (action === 'print-review') printEmployee(employee, 'review');
-        if (action === 'print-outlook') printEmployee(employee, 'outlook');
+        if (action === 'print-review') { showToast('Rückblick-PDF wird vorbereitet …'); printEmployee(employee, 'review'); }
+        if (action === 'print-outlook') { showToast('Ausblick-PDF wird vorbereitet …'); printEmployee(employee, 'outlook'); }
         if (action === 'print-no-md') printEmployee(employee, 'no_md');
       }
 
@@ -2161,9 +2155,9 @@
           `dialog_date=${documentType.startsWith('RUECKBLICK') ? employee.review.dialog_date : documentType === 'AUSBLICK' ? employee.outlook.dialog_date : ''}`,
           `review_competencies=${documentType.startsWith('RUECKBLICK') ? [...new Set([...(employee.review.competencies || []).map(item => item.competency), ...(employee.previous_development_goals || []).map(item => item.competency)].filter(Boolean))].join('|') : ''}`,
           `development_competencies=${documentType === 'AUSBLICK' ? [...new Set((employee.outlook.development_goals || []).map(item => item.competency).filter(Boolean))].join('|') : ''}`,
-          `rating=${overallRatingCode(employee)}`,
-          `agreement=${employee.review.agreement === 'Ja' ? 'JA' : employee.review.agreement === 'Nein' ? 'NEIN' : ''}`,
-          `handwritten_scan_required=${requiresHandwrittenScan(employee) ? 'JA' : 'NEIN'}`,
+          `rating=${documentType.startsWith('RUECKBLICK') ? overallRatingCode(employee) : ''}`,
+          `agreement=${(documentType === 'AUSBLICK' ? employee.outlook.agreement : employee.review.agreement) === 'Ja' ? 'JA' : (documentType === 'AUSBLICK' ? employee.outlook.agreement : employee.review.agreement) === 'Nein' ? 'NEIN' : ''}`,
+          `handwritten_scan_required=${documentType !== 'KEIN_MD' && requiresHandwrittenScan(employee,documentType === 'AUSBLICK' ? 'outlook' : 'review') ? 'JA' : 'NEIN'}`,
           `no_md_reason=${documentType === 'KEIN_MD' ? employee.no_md_reason : ''}`
         ];
         return `<div class="print-admin-data">${h(values.join(' ; '))}</div>`;
@@ -2177,6 +2171,7 @@
           : 'Mit ihrer Unterschrift bestätigen beide Parteien, dass das Gespräch stattgefunden hat und dabei die Zielvereinbarungen sowie die persönliche Entwicklung besprochen wurden.';
         const condition = kind === 'probation'
           ? 'Bei einem negativen Anstellungsentscheid oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.'
+          : kind === 'outlook' ? 'Bei Uneinigkeit müssen beide Gesprächsparteien zusätzlich handschriftlich unterzeichnen und einscannen. Sende das digitale PDF und den unterschriebenen Scan an HR.'
           : 'Bei einer Gesamtbewertung genügend oder ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien das Formular handschriftlich unterzeichnen und als Scan beilegen.';
         return `
           <section class="print-section"><h2>Bestätigung und Unterschriften</h2><p>${h(confirmation)}</p><p>Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. ${h(condition)}</p></section>
@@ -2207,9 +2202,6 @@
         const previous = employee.previous_goals.map((goal, index) => `
           <div class="print-block">
             <h3>Ziel ${index + 1}: ${h(goal.title)}</h3>
-            ${printValue('Messkriterien', goal.criteria)}
-            ${printValue('Vereinbarte Schritte', goal.steps)}
-            ${printValue('Termin', formatDate(goal.target_date))}
             ${printValue('Zielerreichung', goal.achievement)}
             ${printValue('Rückblick', goal.review)}
           </div>`).join('');
@@ -2217,16 +2209,16 @@
           <div class="print-block"><h3>${h(item.competency || 'Kompetenz')}</h3><div class="print-value">${item.comment ? h(item.comment) : '<span class="print-empty">Keine Bemerkung</span>'}</div></div>`).join('');
         const previousDevelopment = employee.previous_development_goals.map((goal, index) => `
           <div class="print-block"><h3>Entwicklungsziel ${index + 1}: ${h(goal.title)}</h3>
-            ${printValue('Kompetenz', goal.competency)}${printValue('Messkriterien', goal.criteria)}${printValue('Vereinbarte Schritte', goal.steps)}${printValue('Termin', formatDate(goal.target_date))}${printValue('Zielerreichung', goal.achievement)}${printValue('Rückblick', goal.review)}
+            ${printValue('Kompetenz', goal.competency)}${printValue('Zielerreichung', goal.achievement)}${printValue('Rückblick', goal.review)}
           </div>`).join('');
         return `
           ${printHeader(employee, 'Rückblick', state.package.rb_year, employee.review.dialog_date)}
-          <section class="print-section"><h2>Vereinbarte Ziele</h2>${previous || '<p class="print-empty">Keine Vorjahresziele hinterlegt.</p>'}</section>
+          <section class="print-section"><h2>Leistungsziele</h2>${previous || '<p class="print-empty">Keine Vorjahresziele hinterlegt.</p>'}</section>
           <section class="print-section"><h2>Leistung und Aufgabenerfüllung</h2>
             ${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}
             ${printValue('Leistungsrückblick', employee.review.performance)}
             ${printValue('Gesamteindruck', employee.review.overall_rating)}
-            ${printValue('Einigkeit zur Gesamtbeurteilung', employee.review.agreement)}
+            ${printValue('Einigkeit über Rückblick', employee.review.agreement)}
             ${printValue('Zusätzlicher handschriftlicher Scan erforderlich', requiresHandwrittenScan(employee) ? 'Ja' : 'Nein')}
           </section>
           ${previousDevelopment || competencies ? `<section class="print-section"><h2>Kompetenzbezogene Beobachtungen</h2>${previousDevelopment}${competencies}</section>` : ''}
@@ -2253,7 +2245,7 @@
           <section class="print-section"><h2>Leistung</h2>${printValue('Allgemeine Bemerkungen', employee.review.general_notes)}${printValue('Bisherige Leistung und Ziele des Einführungsprogramms', employee.review.performance)}</section>
           ${competencies ? `<section class="print-section"><h2>Kompetenzen und Zusammenarbeit</h2>${competencies}</section>` : ''}
           <section class="print-section"><h2>Bemerkungen zum Gespräch</h2>${printValue('Vorgesetzte Person', employee.review.manager_comment)}${printValue('Mitarbeitende Person', employee.review.employee_comment)}${employee.review.next_level_conversation === 'Ja' ? printValue('Nächsthöhere Führungsperson', employee.review.next_level_comment) : ''}${scopeReasonForPrint(employee)}</section>
-          <section class="print-section"><h2>Anstellungsentscheid</h2>${printValue('Wird das Arbeitsverhältnis weitergeführt?', employee.review.employment_continued)}${printValue('Einigkeit zum Anstellungsentscheid', employee.review.agreement)}</section>
+          <section class="print-section"><h2>Anstellungsentscheid</h2>${printValue('Wird das Arbeitsverhältnis weitergeführt?', employee.review.employment_continued)}${printValue('Einigkeit über Rückblick', employee.review.agreement)}</section>
           ${employeeContributionsPrint(employee, 'review')}
           ${signatures('probation')}`;
       }
@@ -2284,6 +2276,7 @@
           ${employee.outlook.general_notes ? `<section class="print-section"><h2>Allgemeine Bemerkungen</h2>${printValue('Bemerkungen', employee.outlook.general_notes)}</section>` : ''}
           ${scopeReasonForPrint(employee)}
           ${employeeContributionsPrint(employee, 'outlook')}
+          <section class="print-section"><h2>Gespräch</h2>${printValue('Einigkeit über Ausblick',employee.outlook.agreement)}</section>
           ${signatures('outlook')}`;
       }
 
@@ -2361,8 +2354,8 @@
           version: 3,
           selection: preparationSelection(employee),
           rating_options: ratingOptions,
-          previous_goals: (employee.previous_goals || []).map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})),
-          previous_development_goals: (employee.previous_development_goals || []).map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})),
+          previous_goals: (employee.previous_goals || []).map(({id,title,criteria,steps,target_date,agreement_details}) => ({id,title,criteria,steps,target_date,agreement_details})),
+          previous_development_goals: (employee.previous_development_goals || []).map(({id,competency,title,criteria,steps,target_date,agreement_details}) => ({id,competency,title,criteria,steps,target_date,agreement_details})),
           preparation_id: `PREP-${employee.case_id}`,
           package_id: state.package.package_id,
           case_id: employee.case_id,
@@ -2443,6 +2436,8 @@
           clone.querySelector('#preparation-import-preview').innerHTML = '';
           clone.querySelector('#guidance-dialog').removeAttribute('open');
           clone.querySelector('#save-hint-dialog').removeAttribute('open');
+          clone.querySelector('#file-operation-status').hidden = true;
+          clone.querySelector('#file-operation-status').textContent = '';
           clone.querySelector('#toast').textContent = '';
           clone.querySelector('body').classList.remove('printing');
           return '<!DOCTYPE html>\n' + clone.outerHTML;
@@ -2544,11 +2539,13 @@
 
       function mergeGoalSources(existingGoals, incomingGoals) {
         const existingById = new Map((existingGoals || []).map(goal => [String(goal.id || ''), goal]));
-        return (incomingGoals || []).map(goal => {
+        const merged = (incomingGoals || []).map(goal => {
           const existing = existingById.get(String(goal.id || ''));
           if (!existing) return goal;
-          return { ...goal, achievement: existing.achievement || '', review: existing.review || '' };
+          return existing.source_edited ? { ...existing } : { ...goal, source_locked:existing.source_locked, achievement:existing.achievement || '', review:existing.review || '' };
         });
+        const incomingIds = new Set(merged.map(goal => String(goal.id || '')));
+        return merged.concat((existingGoals || []).filter(goal => !goal.imported && !incomingIds.has(String(goal.id || ''))));
       }
 
       function mergeCheckpointNotes(existingNotes, incomingNotes) {
@@ -2753,6 +2750,9 @@
 
       function openGuidance() {
         const dialog = document.getElementById('guidance-dialog');
+        const employee = selectedEmployee();
+        const steps = employee ? workflowSteps(employee) : [];
+        dialog.querySelectorAll('[data-help-step]').forEach(summary => { const step = steps.find(item => item.key === summary.dataset.helpStep); summary.parentElement.hidden = !step; if (step) summary.textContent = step.label; });
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
       }

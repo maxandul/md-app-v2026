@@ -394,7 +394,7 @@ test('red data notices, optional feedback and conditional return guidance surviv
   const notice = page.locator('#guidance-dialog .data-storage-note');
   assert.ok((await notice.textContent()).includes('automatisch an deine Mitarbeitenden oder an HR'));
   assert.equal(await notice.evaluate(el => getComputedStyle(el).borderLeftColor),'rgb(217, 60, 26)');
-  assert.ok((await page.locator('#guidance-dialog').textContent()).includes('5 · Dokumente fertigstellen'));
+  assert.ok((await page.locator('#guidance-dialog').textContent()).includes('5 · Prüfen und PDF'));
   await page.locator('[data-guidance-close]').click();
   await page.locator('.workflow-nav [data-step="preparation"]').click();
   const feedback = page.locator('[data-preparation-part="feedback"]');
@@ -608,4 +608,108 @@ test('tab navigation scrolls past the overview and overview collapses from its b
   const saved = await download(page,'#save-button','collapsed-overview.html');
   assert.equal(dataOf(await fs.readFile(saved,'utf8'),'md-data').package.process_overview_collapsed,true);
   await page.close();
+});
+
+test('process overview, help and tabs use the same names for each scope',async () => {
+  for (const scope of ['full','outlook_only','none']) {
+    const content = await fs.readFile(fixture,'utf8'); const payload = dataOf(content,'md-data'); payload.employees[0].scope = scope;
+    const file = path.join(dir,`names-${scope}.html`); await fs.writeFile(file,replaceData(content,'md-data',payload));
+    const page = await pageAt(file);
+    const cards = await page.locator('.process-card strong').allTextContents();
+    const tabs = await page.locator('.workflow-nav button').evaluateAll(items=>items.map(item=>item.childNodes[0].textContent));
+    await page.locator('#guidance-button').click();
+    const help = await page.locator('[data-help-step]').evaluateAll(items=>items.filter(item=>!item.parentElement.hidden).map(item=>item.textContent));
+    assert.deepEqual(cards,tabs); assert.deepEqual(help,tabs);
+    if (scope==='outlook_only') {
+      await page.locator('[data-guidance-close]').click();
+      await page.locator('.workflow-nav [data-step="preparation"]').click();
+      assert.ok(!(await page.locator('.competency-help sup').allTextContents()).includes('1'));
+      const questions = page.locator('summary').filter({hasText:'Reflexionsfragen ansehen'});
+      assert.equal(await questions.evaluate(el=>getComputedStyle(el).cursor),'pointer');
+    }
+    await page.close();
+  }
+});
+
+test('previous agreements require a title, can be locked and reopened, and retain edits after saving',async () => {
+  const page = await pageAt(fixture);
+  await page.locator('.workflow-nav [data-step="review"]').click();
+  await page.locator('[data-action="add-previous-goal"]').click();
+  const index = base.employees[0].previous_goals.length; const card = page.locator(`#review-previous-goal-${index+1}`);
+  assert.equal(await card.evaluate(el=>el.tagName),'DIV');
+  assert.equal(await card.locator('[data-key="criteria"], [data-key="steps"], [data-key="target_date"]').count(),0);
+  await card.locator('[data-action="lock-previous-agreement"]').click();
+  assert.ok((await page.locator('#toast').textContent()).includes('Ergänze zuerst das Ziel'));
+  await card.locator('[data-key="title"]').fill('Ergänztes Vorjahresziel');
+  await card.locator('[data-key="agreement_details"]').fill('Vereinbart im Standortgespräch');
+  await card.locator('[data-action="lock-previous-agreement"]').click();
+  assert.equal(await card.locator('[data-key="title"]').count(),0);
+  await card.locator('summary').click();
+  await card.locator('[data-action="edit-previous-agreement"]').click();
+  assert.equal(await card.locator('[data-key="agreement_details"]').inputValue(),'Vereinbart im Standortgespräch');
+  await card.locator('[data-action="lock-previous-agreement"]').click();
+  const imported = page.locator('#review-previous-goal-1'); await imported.locator('summary').click();
+  await imported.locator('[data-action="edit-previous-agreement"]').click();
+  await imported.locator('[data-key="title"]').fill('Korrigiertes übernommenes Ziel');
+  await imported.locator('[data-action="lock-previous-agreement"]').click();
+  const updated = structuredClone(base.employees[0]); updated.previous_goals[0].title = 'Neue HR-Quelle';
+  const updateFile = path.join(dir,'goal-source-update.json');
+  await fs.writeFile(updateFile,JSON.stringify({schema_version:'1.0-update',update:{update_id:'GOAL-UPDATE',manager_pn:base.package.manager_pn,rb_year:base.package.rb_year,ab_year:base.package.ab_year},employees:[updated]}));
+  await page.evaluate(()=>{window.confirm=()=>true;});
+  await page.locator('#update-file').setInputFiles(updateFile);
+  await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('Update übernommen'));
+  const saved = await download(page,'#save-button','edited-agreements.html'); const data = dataOf(await fs.readFile(saved,'utf8'),'md-data');
+  assert.equal(data.employees[0].previous_goals[index].source_locked,true);
+  assert.equal(data.employees[0].previous_goals[0].title,'Korrigiertes übernommenes Ziel');
+  assert.equal(data.employees[0].previous_goals[0].source_edited,true);
+  const reopened = await pageAt(saved); await reopened.locator('.workflow-nav [data-step="review"]').click();
+  assert.ok((await reopened.locator(`#review-previous-goal-${index+1}`).textContent()).includes('Ergänztes Vorjahresziel'));
+  for(const p of [page,reopened]) await p.close();
+});
+
+test('outlook agreement is required and controls its own scan warning and PDF metadata',async () => {
+  const page = await pageAt(fixture); await page.evaluate(()=>{window.confirm=()=>true;window.print=()=>{};});
+  await page.locator('.workflow-nav [data-step="review"]').click();
+  await page.locator('[data-bind="review.overall_rating"]').selectOption('D – genügend');
+  await page.locator('[data-bind="review.agreement"]').selectOption('Nein');
+  await page.locator('.workflow-nav [data-step="outlook"]').click();
+  assert.ok((await page.locator('#editor').textContent()).includes('Einigkeit über Ausblick'));
+  await page.locator('[data-bind="outlook.agreement"]').selectOption('Ja');
+  await page.locator('.workflow-nav [data-step="finish"]').click();
+  assert.equal(await page.locator('[data-pdf-section="outlook"] .scan-warning').count(),0);
+  assert.equal(await page.locator('[data-pdf-section="review"] .scan-warning').count(),1);
+  await page.locator('[data-action="print-outlook"]').click();
+  assert.ok((await page.locator('#print-root').textContent()).includes('rating= ; agreement=JA ; handwritten_scan_required=NEIN'));
+  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  await page.locator('.workflow-nav [data-step="outlook"]').click();
+  await page.locator('[data-bind="outlook.agreement"]').selectOption('Nein');
+  await page.locator('.workflow-nav [data-step="finish"]').click();
+  const scan = page.locator('[data-pdf-section="outlook"] .scan-warning');
+  assert.ok((await scan.textContent()).includes('unterzeichnen und einscannen'));
+  assert.equal(await scan.evaluate(el=>el.nextElementSibling.dataset.action),'print-outlook');
+  await page.locator('[data-action="print-outlook"]').click();
+  assert.ok((await page.locator('#print-root').textContent()).includes('rating= ; agreement=NEIN ; handwritten_scan_required=JA'));
+  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  await page.locator('[data-action="print-review"]').click();
+  const review = await page.locator('#print-root').textContent();
+  assert.ok(review.includes('Leistungsziele') && review.includes('Einigkeit über Rückblick'));
+  assert.ok(!review.includes(base.employees[0].previous_goals[0].criteria));
+  assert.ok(!review.includes(base.employees[0].previous_goals[0].steps));
+  await page.close();
+});
+
+test('saving shows immediate progress and clears it in saved files and after completion',{timeout:15000},async () => {
+  for (const file of [fixture,await preparedFixture('full',{reflection:true},'busy-preparation.html')]) {
+    const page = await pageAt(file);
+    if (file===fixture) await page.locator('[data-action="confirm-scope"]').click();
+    else await page.locator('[data-field="review_performance"]').fill('Vorbereitet');
+    await page.evaluate(()=>{window.output='';window.showSaveFilePicker=()=>new Promise(resolve=>{window.releaseSave=()=>resolve({createWritable:async()=>({write:async html=>{window.output=html;},close:async()=>{}})});});});
+    await page.locator(file===fixture ? '#save-button' : '#save-html').click();
+    assert.equal(await page.locator('#file-operation-status').isVisible(),true);
+    assert.ok((await page.locator('#file-operation-status').textContent()).includes('gespeichert'));
+    await page.evaluate(()=>window.releaseSave());
+    await page.waitForFunction(()=>window.output && document.querySelector('#file-operation-status').hidden);
+    assert.ok(!await page.evaluate(()=>window.output.includes('Datei wird gespeichert …</div>')));
+    await page.close();
+  }
 });

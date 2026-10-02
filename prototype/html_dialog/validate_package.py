@@ -101,8 +101,12 @@ def _section_status(
             if not _filled(review.get("employment_continued")):
                 missing.append("Anstellungsentscheid")
             if not _filled(review.get("agreement")):
-                missing.append("Einigkeit zum Anstellungsentscheid")
+                missing.append("Einigkeit über Rückblick")
             return not missing, missing
+        for key, label in (("previous_goals", "Leistungsziel"), ("previous_development_goals", "Entwicklungsziel")):
+            for index, goal in enumerate(employee.get(key, []), start=1):
+                if not _filled(goal.get("title")):
+                    missing.append(f"Bezeichnung {label} aus dem Vorjahr {index}")
         # Vorjahresziele sind eine optionale Gesprächsgrundlage. Fehlende
         # Beurteilungen dürfen den Rückblick nicht als unvollständig markieren.
         if not _filled(review.get("performance")):
@@ -110,11 +114,13 @@ def _section_status(
         if not _filled(review.get("overall_rating")):
             missing.append("Gesamteindruck")
         if not _filled(review.get("agreement")):
-            missing.append("Einigkeit zur Gesamtbeurteilung")
+            missing.append("Einigkeit über Rückblick")
         if not _filled(review.get("secondary_employment_current")):
             missing.append("Aktualität Nebenbeschäftigungen/öffentliche Ämter")
     else:
         outlook = employee.get("outlook", {})
+        if not _filled(outlook.get("agreement")):
+            missing.append("Einigkeit über Ausblick")
         goals = outlook.get("performance_goals", [])
         for index, goal in enumerate(goals, start=1):
             if not _filled(goal.get("title")):

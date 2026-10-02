@@ -89,6 +89,7 @@ def employee(number: str, first: str, last: str, *, position: str, entry: str = 
         },
         "outlook": {
             "dialog_date": "",
+            "agreement": "",
             "performance_goals": [],
             "open_goals_text": "",
             "development_goals": [],
@@ -118,6 +119,7 @@ def complete_review(item: dict, *, rating: str = "B – sehr gut", agreement: st
 
 
 def complete_outlook(item: dict) -> None:
+    item["outlook"]["agreement"] = "Ja"
     item["outlook"]["performance_goals"].append({
         "id": f"goal-{item['employee']['pn']}-1",
         "title": "Digitale Fallbearbeitung vereinfachen",

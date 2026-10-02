@@ -13,6 +13,9 @@
     button,input,select,textarea { font:inherit; }
     button { cursor:pointer; }
     button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid #0070b4; outline-offset:2px; }
+    .file-operation-status { position:fixed; bottom:84px; right:24px; z-index:1000; max-width:calc(100vw - 48px); padding:12px 18px; color:#fff; background:var(--blue-dark); border-radius:4px; box-shadow:0 3px 12px #0003; }
+    .file-operation-status[hidden] { display:none; }
+    details > summary { cursor:pointer; }
     .topbar { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 24px; color:#fff; background:var(--blue-dark); }
     .topbar h1 { margin:0; font-size:20px; }
     .topbar p { margin:2px 0 0; color:#d9e9f7; font-size:13px; }
@@ -156,6 +159,7 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="return-dialog" class="guidance-dialog" aria-labelledby="return-title"><div class="guidance-dialog-head"><h2 id="return-title">Rückgabedatei erstellen</h2></div><div class="guidance-dialog-body"><p id="return-description"></p><div id="return-privacy" class="warning-note"></div></div><div class="guidance-dialog-foot"><button id="return-cancel" class="button" type="button">Abbrechen</button><button id="return-confirm" class="button primary" type="button">Rückgabedatei erstellen</button></div></dialog>
+  <div id="file-operation-status" class="file-operation-status" role="status" aria-live="polite" hidden></div>
   <div id="print-root" aria-hidden="true"></div>
   <script id="prep-data" type="application/json">__MD_PREPARATION_JSON__</script>
   <script>
@@ -171,6 +175,9 @@
       async function saveHtmlFile(makeHtml, filename, copy = false) {
         if (savingFile) return null;
         savingFile = true;
+        const operation = document.getElementById('file-operation-status');
+        operation.textContent = copy ? 'Datei wird erstellt …' : 'Datei wird gespeichert …';
+        operation.hidden = false;
         try {
           let handle = copy ? null : saveHandle;
           if (!handle && typeof window.showSaveFilePicker === 'function') {
@@ -181,6 +188,7 @@
               // Unavailable or blocked by browser policy: retain download fallback.
             }
           }
+          await new Promise(resolve => window.requestAnimationFrame(() => window.setTimeout(resolve,0)));
           const html = makeHtml();
           if (handle) {
             try {
@@ -199,7 +207,7 @@
           document.body.appendChild(link); link.click(); link.remove();
           window.setTimeout(() => URL.revokeObjectURL(url), 1500);
           return 'downloaded';
-        } finally { savingFile = false; }
+        } finally { savingFile = false; operation.hidden = true; operation.textContent = ''; }
       }
 
       const h = value => String(value == null ? '' : value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -271,7 +279,7 @@
         const content = groups.map(([key,label]) => {
           const goals = (state[key] || []).filter(goal => goal.title || goal.competency || goal.criteria || goal.steps || goal.target_date);
           if (!goals.length) return '';
-          return `<h3>${label}</h3>${goals.map(goal => `<div class="goal-card"><h4>${h(goal.title || goal.competency || 'Vereinbartes Ziel')}</h4>${goal.competency && goal.title ? `<p><strong>Kompetenz:</strong> ${h(goal.competency)}</p>` : ''}${[['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]].filter(([,value]) => value).map(([label,value]) => `<p><strong>${label}:</strong> ${h(value)}</p>`).join('')}</div>`).join('')}`;
+          return `<h3>${label}</h3>${goals.map(goal => `<div class="goal-card"><h4>${h(goal.title || goal.competency || 'Vereinbartes Ziel')}</h4>${goal.competency && goal.title ? `<p><strong>Kompetenz:</strong> ${h(goal.competency)}</p>` : ''}${(typeof goal.agreement_details === 'string' ? [['Details zur Vereinbarung',goal.agreement_details]] : [['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]]).filter(([,value]) => value).map(([label,value]) => `<p><strong>${label}:</strong> ${h(value)}</p>`).join('')}</div>`).join('')}`;
         }).join('');
         return `<div class="reflection-goals"><h2>Zuletzt vereinbarte Ziele</h2>${content || '<p class="section-intro">In dieser Datei sind keine zuletzt vereinbarten Ziele hinterlegt. Falls du Ziele vereinbart hast, ziehe deine bisherigen Unterlagen für die Reflexion bei.</p>'}</div>`;
       }
@@ -280,7 +288,7 @@
         const reviewTitle = state.dialog_type === 'probation' ? 'Rückblick auf die Probezeit' : `Rückblick ${state.review_year}`;
         preparation += `<section class="section"><div class="section-head"><div><p class="eyebrow">${h(reviewTitle)}</p><h2>Auf den Rückblick vorbereiten</h2></div></div>`;
         preparation += text('review_performance','Leistung und Zielerreichung', state.dialog_type === 'probation' ? ['Wie erlebst du deine Einarbeitung und die bisherige Leistung?','Welche Ziele des Einführungsprogramms hast du erreicht?','Wo brauchst du noch Unterstützung?'] : ['Inwiefern hast du die vereinbarten Ziele erreicht?','Was waren deine wichtigsten Erfolge?','Welche Herausforderungen oder Hindernisse sind aufgetreten?']);
-        preparation += text('review_competencies','Kompetenzen und Zusammenarbeit',['Mit welchen Kompetenzen konntest du besonders überzeugen?','Wo siehst du bei dir Entwicklungspotenzial?','Was hast du über dich selbst gelernt?']);
+        preparation += text('review_competencies','Kompetenzen und Zusammenarbeit',['Wie siehst du die Entwicklung deiner Kompetenzen, an denen du gearbeitet hast?','Mit welchen Kompetenzen konntest du besonders überzeugen?','Wo gelang es dir nicht, dein Potenzial auszuschöpfen?']);
         preparation += '</section>';
       }
       if (showReflection && hasOutlook) {
@@ -332,7 +340,7 @@
               const goals = state[list] || [];
               prepared.review[list] = prepared.review[list] || goals.map(goal => ({ id: goal.id, achievement: '', review: '' }));
               goals.forEach((goal, index) => {
-                review += `<div class="goal-card"><h3>${h(goal.title || goal.competency || 'Vorjahresziel')}</h3><div class="source-panel">${h([goal.criteria, goal.steps, formatDate(goal.target_date)].filter(Boolean).join('\n'))}</div><div class="form-grid">${inputField(`review.${list}.${index}.achievement`, 'Zielerreichung', 'select', ['Erreicht','Teilweise erreicht','Nicht erreicht','Entfallen','Noch offen'])}${inputField(`review.${list}.${index}.review`, 'Rückblick und Einordnung')}</div></div>`;
+                review += `<div class="goal-card"><h3>${h(goal.title || goal.competency || 'Vorjahresziel')}</h3><div class="source-panel">${h((typeof goal.agreement_details === 'string' ? [goal.agreement_details] : [goal.criteria, goal.steps, formatDate(goal.target_date)]).filter(Boolean).join('\n'))}</div><div class="form-grid">${inputField(`review.${list}.${index}.achievement`, 'Zielerreichung', 'select', ['Erreicht','Teilweise erreicht','Nicht erreicht','Entfallen','Noch offen'])}${inputField(`review.${list}.${index}.review`, 'Rückblick und Einordnung')}</div></div>`;
               });
               review += (goals.length ? '' : '<p class="section-intro">Keine Vorjahresziele übermittelt. Beschreibe deine Zielerreichung im allgemeinen Leistungsrückblick.</p>') + '</div>';
             });
@@ -354,7 +362,7 @@
             (prepared.outlook[list] || []).forEach((goal,index) => { outlook += `<div class="goal-card"><h3>Ziel ${index+1}</h3><div class="form-grid">${list === 'development_goals' ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div><button class="button danger" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div>`; });
             outlook += `<button class="button" data-add="outlook.${list}">+ Ziel ergänzen</button></div>`;
           });
-          outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div>${returnActions('outlook')}</section>`;
+          outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','Führungsverantwortung','Fachführungsverantwortung','Projektverantwortung','Stellvertretung','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div>${returnActions('outlook')}</section>`;
         }
         document.getElementById('outlook-section').innerHTML = outlook;
       }
@@ -494,6 +502,8 @@
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#prep-data').textContent = safeJson(payload);
         // Remove all rendered controls: private values must not survive in DOM attributes or text.
+        clone.querySelector('#file-operation-status').hidden = true;
+        clone.querySelector('#file-operation-status').textContent = '';
         ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast','requested-return-note','return-privacy','return-description','preparation-overview'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
         clone.querySelector('#return-dialog').removeAttribute('open');
         clone.querySelector('body').classList.remove('printing');

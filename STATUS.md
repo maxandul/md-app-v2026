@@ -8,6 +8,7 @@
 - Wahl der Bereitstellung von Reflexion, Rückblick und Ausblick; Rückgabe je Gesprächsteil separat anforderbar. Obligatorisches Feedback wird ausschliesslich separat als PDF zurückgegeben.
 - Persönliche Gesamtbewertung im Rückblick mit Import und finaler PDF-Ausgabe; kompetenzorientiertes Feedback dynamisch ergänzbar und entfernbar.
 - Feedback bei Rückblick fest ausgewählt, sonst optional; rote Datenhinweise in beiden Dateien und aufklappbare Reflexionsfragen.
+- Einheitliche Buttons in beiden Dateien: Hauptaktionen blau, weitere Aktionen hellblau, Abschluss grün, Entfernen dezent rot und deaktivierte Aktionen grau.
 - Tabs und Hinweise im Stil der Arbeitsmappe; Hinweise passend zu vorhandenen Formularen und Rückgabeanforderungen, Rückgabebuttons am Formularende.
 - Eigener Stand sowie getrennte Rückgaben von Rückblick und Ausblick ohne persönliche Reflexion und Feedback.
 - Import im jeweiligen Gesprächsteil nur bei angeforderter Rückgabe; Vorschau mit sicherer Zuordnung. Beiträge als feste graue Blöcke neben unveränderten Eingabefeldern der Führungskraft, einzeln entfernbar und im jeweiligen PDF sichtbar.

@@ -12,14 +12,32 @@
     body { margin:0; color:var(--ink); background:var(--canvas); font:16px/1.55 "Inter","Helvetica Now Text","Helvetica Neue",Arial,sans-serif; }
     button,input,select,textarea { font:inherit; }
     button { cursor:pointer; }
-    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid #009ee0; outline-offset:2px; }
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid #0070b4; outline-offset:2px; }
     .topbar { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 24px; color:#fff; background:var(--blue-dark); }
     .topbar h1 { margin:0; font-size:20px; }
     .topbar p { margin:2px 0 0; color:#d9e9f7; font-size:13px; }
     .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-    .button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:9px 14px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--ink); font-weight:700; }
-    .button.primary { color:#fff; border-color:var(--blue); background:var(--blue); }
-    .button:disabled { cursor:not-allowed; opacity:.45; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 14px;
+      color: #00407c;
+      border: 1px solid #648eb0;
+      border-radius: 4px;
+      background: #e5f1fa;
+      font-weight: 700;
+    }
+    .button:hover:not(:disabled) { background: #cfe5f5; border-color: #0070b4; }
+    .button.primary { color: #fff; border-color: var(--blue); background: var(--blue); }
+    .button.primary:hover:not(:disabled) { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .button.complete-action { color: #fff; border-color: #1a7f1f; background: #1a7f1f; }
+    .button.complete-action:hover:not(:disabled) { background: #126818; border-color: #126818; }
+    .button.danger { color: #9a2e18; border-color: #c67460; background: #fff0ec; }
+    .button.danger:hover:not(:disabled) { background: #fbd8cf; border-color: #9a2e18; }
+    .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
+    .button:disabled { color: #666; border-color: #c5c5c5; background: #eee; cursor: not-allowed; opacity: 1; }
     .content { max-width:1040px; margin:0 auto; padding:24px 24px 80px; }
     .intro,.section { margin-bottom:18px; padding:22px; border:1px solid var(--line); border-radius:4px; background:var(--surface); }
     .intro h2,.section h2 { margin:0; font-size:22px; }
@@ -69,7 +87,7 @@
 
     .tabs { position:sticky; top:var(--header-height,92px); z-index:5; display:flex; flex-wrap:wrap; gap:6px; padding:12px 0; background:var(--canvas); }
     .tabs .button { flex:1 1 160px; min-height:46px; }
-    .tabs .button[aria-selected="true"] { color:#fff; border-color:var(--blue); background:var(--blue-dark); }
+    .tabs .button[aria-selected="true"] { color:#fff; border-color:var(--blue-dark); background:var(--blue-dark); }
     .tab-panel[hidden] { display:none; }
     .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px; }
     .field.full { grid-column:1/-1; }
@@ -83,7 +101,6 @@
     .topbar p,.save-state { color:var(--muted); }
     .save-state.dirty { color:#a8322d; background:transparent; }
     .save-state.dirty .save-dot { background:#d93c1a; }
-    .button.primary:hover { background:var(--blue-dark); }
     @media (max-width:760px) { .tabs { top:0; } .form-grid { grid-template-columns:1fr; } }
     #print-root { display:none; }
 
@@ -113,7 +130,7 @@
   <div id="app">
     <header class="topbar">
       <div><h1>Vorbereitung Mitarbeitenden-Dialog</h1><p id="topbar-meta"></p></div>
-      <div class="toolbar"><span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span><button id="save-html" class="button" type="button" disabled>Eigenen Stand speichern</button></div>
+      <div class="toolbar"><span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span><button id="save-html" class="button primary" type="button" disabled>Eigenen Stand speichern</button></div>
     </header>
     <main class="content">
       <section class="intro">
@@ -248,7 +265,7 @@
       const feedbackIndices = state.feedback_competency_indices || (state.feedback_competency_indices = [...new Set(Object.keys(fields).filter(key => /^feedback_competency_(?:text_)?\d+$/.test(key)).map(key => Number(key.split('_').at(-1))))].filter(index => value(`feedback_competency_${index}`) || value(`feedback_competency_text_${index}`)).sort((a,b) => a-b));
       function renderFeedback() {
         if (!showFeedback) return;
-        const rows = feedbackIndices.map((index, position) => `<div class="competency-row"><div><div class="field"><label for="feedback_competency_${index}">Kompetenz ${position + 1}</label><select id="feedback_competency_${index}" data-field="feedback_competency_${index}">${optionList(value(`feedback_competency_${index}`))}</select></div><div id="feedback_competency_help_${index}">${competencyHelp(value(`feedback_competency_${index}`))}</div></div><div class="field"><label for="feedback_competency_text_${index}">Konkrete Beobachtung oder Rückmeldung</label><textarea id="feedback_competency_text_${index}" data-field="feedback_competency_text_${index}">${h(value(`feedback_competency_text_${index}`))}</textarea></div><button class="button" type="button" style="grid-column:1 / -1;justify-self:start" data-action="remove-feedback-competency" data-feedback-index="${index}">Entfernen</button></div>`).join('');
+        const rows = feedbackIndices.map((index, position) => `<div class="competency-row"><div><div class="field"><label for="feedback_competency_${index}">Kompetenz ${position + 1}</label><select id="feedback_competency_${index}" data-field="feedback_competency_${index}">${optionList(value(`feedback_competency_${index}`))}</select></div><div id="feedback_competency_help_${index}">${competencyHelp(value(`feedback_competency_${index}`))}</div></div><div class="field"><label for="feedback_competency_text_${index}">Konkrete Beobachtung oder Rückmeldung</label><textarea id="feedback_competency_text_${index}" data-field="feedback_competency_text_${index}">${h(value(`feedback_competency_text_${index}`))}</textarea></div><button class="button danger" type="button" style="grid-column:1 / -1;justify-self:start" data-action="remove-feedback-competency" data-feedback-index="${index}">Entfernen</button></div>`).join('');
         document.getElementById('feedback-section').innerHTML = `<section class="section"><div class="section-head"><div><p class="eyebrow">Feedback an die vorgesetzte Person</p><h2>Dein Feedback vorbereiten</h2><div class="warning-note">${hasReview ? 'Das Feedback ist obligatorisch. ' : ''}Du kannst offen, kompetenzorientiert oder auf beiden Wegen Feedback geben. Besprich das Feedback im Mitarbeitenden-Dialog und übergib das PDF danach deiner vorgesetzten Person.</div></div></div>${text('feedback_keep','Was soll meine vorgesetzte Person unbedingt beibehalten?',[],4)}${text('feedback_wish','Was wünsche ich mir künftig von meiner vorgesetzten Person?',[],4)}${text('feedback_change','Welche Veränderungen habe ich seit dem letzten Gespräch festgestellt?',[],4)}<div class="subsection"><h3>Kompetenzorientiertes Feedback</h3><p class="section-intro">Ergänze bei Bedarf Kompetenzen und beschreibe konkrete Beobachtungen.</p>${rows}<button class="button" type="button" data-action="add-feedback-competency">+ Kompetenz ergänzen</button></div>${text('feedback_general','Weitere Bemerkungen',[],3)}<div class="warning-note"><strong>Rückgabe:</strong> Erzeuge das Feedback-PDF nachdem du es mit deiner vorgesetzten Person besprochen hast und sende es ihr. Sie übermittelt die eingegangenen Feedbacks an HR. ${showReflection ? 'Deine persönliche Reflexion wird nicht mitgesendet.' : ''}</div><div class="actions"><button class="button primary" type="button" data-action="print-feedback">Feedback als PDF</button></div></section>`;
       }
       renderFeedback();
@@ -293,7 +310,7 @@
           review += `<div class="form-grid">${inputField('review.general_notes','Allgemeine Bemerkungen')}${inputField('review.performance',state.dialog_type === 'probation' ? 'Leistung und Einarbeitung in der Probezeit' : 'Rückblick auf Leistung und Aufgabenerfüllung')}${inputField('review.overall_rating','Gesamtbewertung aus deiner Sicht','select',state.rating_options || ['A – vorzüglich','B – sehr gut','C – gut','D – genügend','E – ungenügend'])}${inputField('review.employee_comment','Bemerkung der mitarbeitenden Person')}</div>`;
           const competencies = prepared.review.competencies || (prepared.review.competencies = []);
           review += '<div class="subsection"><h3>Kompetenzbezogene Beobachtungen</h3>';
-          competencies.forEach((item,index) => { review += `<div class="goal-card"><div class="form-grid">${inputField(`review.competencies.${index}.competency`,'Kompetenz','competency')}${inputField(`review.competencies.${index}.comment`,'Konkrete Beobachtung')}</div><button class="button" data-remove="review.competencies" data-index="${index}">Entfernen</button></div>`; });
+          competencies.forEach((item,index) => { review += `<div class="goal-card"><div class="form-grid">${inputField(`review.competencies.${index}.competency`,'Kompetenz','competency')}${inputField(`review.competencies.${index}.comment`,'Konkrete Beobachtung')}</div><button class="button danger" data-remove="review.competencies" data-index="${index}">Entfernen</button></div>`; });
           review += '<button class="button" data-add="review.competencies">+ Kompetenz ergänzen</button></div>';
           if (state.dialog_type !== 'probation') review += `<div class="subsection"><h3>Nebenbeschäftigungen und öffentliche Ämter</h3><div class="source-panel"><strong>Aktueller SAP-Stand</strong>\n${h(state.employee.secondary_employment || 'Keine Nebenbeschäftigungen oder öffentlichen Ämter gemeldet')}</div><div class="form-grid">${inputField('review.secondary_employment_current','SAP-Stand aktuell','select',['Ja','Nein'])}${inputField('review.secondary_employment_note','Präzisierungen')}</div></div>`;
           review += returnActions('review') + '</section>';
@@ -304,7 +321,7 @@
           outlook = `<section class="section"><div class="section-head"><div><p class="eyebrow">Ausblick</p><h2>Deine Vorschläge zu Zielen und Entwicklung</h2></div></div><div class="warning-note">${isReturn ? 'Deine ausgefüllte Rückgabe zum Ausblick.' : 'Nutze dieses Formular, um deine Sicht für das Gespräch vorzubereiten. Dein/e Vorgesetzte/r erstellt im Dialog mit dir das finale Dokument in seiner eigenen Datei.'}${!isReturn && selection.return_outlook ? ' Deine Führungskraft bittet dich, diesen Ausblick ausgefüllt zurückzugeben.' : ''}</div>`;
           ['performance_goals','development_goals'].forEach(list => {
             outlook += `<div class="subsection"><h3>${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}</h3>`;
-            (prepared.outlook[list] || []).forEach((goal,index) => { outlook += `<div class="goal-card"><h3>Ziel ${index+1}</h3><div class="form-grid">${list === 'development_goals' ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div><button class="button" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div>`; });
+            (prepared.outlook[list] || []).forEach((goal,index) => { outlook += `<div class="goal-card"><h3>Ziel ${index+1}</h3><div class="form-grid">${list === 'development_goals' ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div><button class="button danger" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div>`; });
             outlook += `<button class="button" data-add="outlook.${list}">+ Ziel ergänzen</button></div>`;
           });
           outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div>${returnActions('outlook')}</section>`;

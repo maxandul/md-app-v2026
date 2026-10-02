@@ -46,7 +46,7 @@
     input:focus-visible,
     select:focus-visible,
     textarea:focus-visible {
-      outline: 3px solid #009ee0;
+      outline: 3px solid #0070b4;
       outline-offset: 2px;
     }
 
@@ -205,32 +205,23 @@
       justify-content: center;
       min-height: 40px;
       padding: 9px 14px;
-      color: var(--ink);
-      border: 1px solid var(--line);
+      color: #00407c;
+      border: 1px solid #648eb0;
       border-radius: 4px;
-      background: #fff;
+      background: #e5f1fa;
       font-weight: 700;
     }
-
-    .button:hover { background: #f8fafc; }
-
-    .button.primary {
-      color: #fff;
-      border-color: var(--blue);
-      background: var(--blue);
-    }
-
-    .button.primary:hover { background: var(--blue-dark); }
-
-    .button.complete-action { color: #fff; border-color: var(--success); background: var(--success); }
-    .button.complete-action:hover { background: #126818; }
-    .button.guidance-button { gap: 8px; min-height: 34px; padding: 6px 11px; color: #fff; border-color: var(--success); background: var(--success); font-size: 13px; }
-    .button.guidance-button:hover { background: #126818; }
-    .info-icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 50%; font: 700 12px/1 Georgia, serif; }
-
-    .button.danger { color: var(--danger); border-color: #f1b8b2; }
+    .button:hover:not(:disabled) { background: #cfe5f5; border-color: #0070b4; }
+    .button.primary { color: #fff; border-color: var(--blue); background: var(--blue); }
+    .button.primary:hover:not(:disabled) { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .button.complete-action { color: #fff; border-color: #1a7f1f; background: #1a7f1f; }
+    .button.complete-action:hover:not(:disabled) { background: #126818; border-color: #126818; }
+    .button.danger { color: #9a2e18; border-color: #c67460; background: #fff0ec; }
+    .button.danger:hover:not(:disabled) { background: #fbd8cf; border-color: #9a2e18; }
     .button.small { min-height: 34px; padding: 6px 10px; font-size: 13px; }
-    .button:disabled { cursor: not-allowed; opacity: .45; }
+    .button:disabled { color: #666; border-color: #c5c5c5; background: #eee; cursor: not-allowed; opacity: 1; }
+    .button.guidance-button { gap: 8px; min-height: 34px; padding: 6px 11px; font-size: 13px; }
+    .info-icon { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 50%; font: 700 12px/1 Georgia, serif; }
 
     .save-state {
       display: inline-flex;
@@ -313,15 +304,16 @@
       flex: 1;
       min-height: 42px;
       padding: 8px 10px;
-      color: var(--muted);
-      border: 0;
-      border-radius: 3px;
-      background: transparent;
+      color: #00407c;
+      border: 1px solid #648eb0;
+      border-radius: 4px;
+      background: #e5f1fa;
       font-weight: 700;
     }
 
-    .workflow-step.active { color: #fff; background: var(--blue-dark); }
-    .workflow-step:disabled { cursor: not-allowed; opacity: .42; }
+    .workflow-step:hover:not(:disabled):not(.active) { background: #cfe5f5; border-color: var(--blue); }
+    .workflow-step.active { color: #fff; background: var(--blue-dark); border-color: var(--blue-dark); }
+    .workflow-step:disabled { color: #666; background: #eee; border-color: #c5c5c5; cursor: not-allowed; opacity: 1; }
 
     .companion-nav {
       display: flex;
@@ -779,7 +771,7 @@
       <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
       <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deinen Mitarbeitenden oder an HR übermittelt.</p></div>
     </div>
-    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button primary" type="button" data-guidance-close>Schliessen</button></div>
+    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button" type="button" data-guidance-close>Schliessen</button></div>
   </dialog>
 
   <script id="md-data" type="application/json">__MD_PACKAGE_JSON__</script>
@@ -1343,7 +1335,7 @@
         }).join('');
         return `<section class="section"><div class="section-head"><div><p class="eyebrow">Freiwillige lokale Notizen</p><h2 class="section-title">Standortgespräche</h2><p class="section-intro">Diese Notizen sind eine persönliche Gedächtnisstütze der Führungskraft. Sie werden weder an HR übermittelt noch in PDFs oder den Abschlussstatus des Mitarbeitenden-Dialogs übernommen.</p></div></div>
           <div class="toolbar" style="justify-content:flex-start;margin-bottom:16px">
-            <button class="button primary" type="button" data-action="add-checkpoint">+ Notiz hinzufügen</button>
+            <button class="button" type="button" data-action="add-checkpoint">+ Notiz hinzufügen</button>
             <button class="button" type="button" data-action="import-checkpoints">Notizen aus älterer Arbeitsmappe übernehmen</button>
           </div>
           ${cards || '<div class="empty-state">Noch keine Standortgesprächsnotiz erfasst. Füge bei Bedarf eine Notiz hinzu.</div>'}
@@ -2314,7 +2306,7 @@
 
       function preparationContributionHtml(source, removalSection = '') {
         const readable = value => typeof value === 'string' ? value : Array.isArray(value) ? value.map(item => Object.entries(item).filter(([key,val]) => key !== 'id' && val).map(([key,val]) => `${({title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick'})[key] || key}: ${val}`).join('\n')).join('\n\n') : '';
-        return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}${removalSection ? `<button class="button small" style="float:right;margin-left:12px" type="button" data-action="remove-contribution" data-section="${h(removalSection)}" data-path="${h(entry.path)}">Beitrag entfernen</button>` : ''}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
+        return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}${removalSection ? `<button class="button danger small" style="float:right;margin-left:12px" type="button" data-action="remove-contribution" data-section="${h(removalSection)}" data-path="${h(entry.path)}">Beitrag entfernen</button>` : ''}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
       }
       function employeeContribution(employee, path, prefix = false, showOwner = true) {
         if (!employee?.ma_preparation) return '';

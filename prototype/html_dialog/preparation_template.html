@@ -265,6 +265,16 @@
       } else {
         overview.innerHTML = `<h3>So nutzt du deine Vorbereitung</h3><p>Diese Datei unterstützt dich bei der Vorbereitung auf den Mitarbeitenden-Dialog. Deine Führungskraft erstellt die finalen Gesprächsdokumente im Dialog mit dir in ihrer eigenen Arbeitsmappe.</p><ol><li><strong>Vorbereiten</strong><br>Bereite deine Sicht in den bereitgestellten Bereichen vor und speichere deinen Stand.</li><li><strong>Besprechen</strong><br>Bringe deine Einschätzungen, Fragen und Vorschläge ins Gespräch ein.</li>${requestedSections.length ? `<li><strong>Angeforderte Beiträge zurückgeben</strong><br>Erstelle für ${requestedSections.map(section => section === 'review' ? 'Rückblick' : 'Ausblick').join(' und ')} ${requestedSections.length === 2 ? 'jeweils ' : ''}eine separate Rückgabedatei und sende sie an deine Führungskraft. Den Zeitpunkt vereinbarst du mit ihr. Übernommene Beiträge erscheinen als deine Sicht im finalen Gesprächsdokument, das im Personaldossier abgelegt wird.</li>` : ''}${showFeedback ? '<li><strong>Feedback nach der Besprechung senden</strong><br>Besprich dein Feedback im ' + (hasReview ? (state.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblickgespräch') : 'Gespräch') + '. Erstelle danach das Feedback-PDF – noch im Gespräch oder anschliessend – und sende es an deine Führungskraft. Sie leitet es an HR weiter.</li>' : ''}</ol>${!requestedSections.length && !showFeedback ? '<p>Deine Datei dient deiner eigenen Vorbereitung. Eine Rückgabe ist nicht angefordert.</p>' : ''}<p>Deine vollständige persönliche Datei bleibt bei dir.</p>`;
       }
+      function reflectionGoals() {
+        if (!showReflection) return '';
+        const groups = [['previous_goals','Leistungsziele'],['previous_development_goals','Entwicklungsziele']];
+        const content = groups.map(([key,label]) => {
+          const goals = (state[key] || []).filter(goal => goal.title || goal.competency || goal.criteria || goal.steps || goal.target_date);
+          if (!goals.length) return '';
+          return `<h3>${label}</h3>${goals.map(goal => `<div class="goal-card"><h4>${h(goal.title || goal.competency || 'Vereinbartes Ziel')}</h4>${goal.competency && goal.title ? `<p><strong>Kompetenz:</strong> ${h(goal.competency)}</p>` : ''}${[['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]].filter(([,value]) => value).map(([label,value]) => `<p><strong>${label}:</strong> ${h(value)}</p>`).join('')}</div>`).join('')}`;
+        }).join('');
+        return `<div class="reflection-goals"><h2>Zuletzt vereinbarte Ziele</h2>${content || '<p class="section-intro">In dieser Datei sind keine zuletzt vereinbarten Ziele hinterlegt. Falls du Ziele vereinbart hast, ziehe deine bisherigen Unterlagen für die Reflexion bei.</p>'}</div>`;
+      }
       let preparation = '';
       if (showReflection && hasReview) {
         const reviewTitle = state.dialog_type === 'probation' ? 'Rückblick auf die Probezeit' : `Rückblick ${state.review_year}`;
@@ -280,7 +290,7 @@
         preparation += text('outlook_interests','Weitere berufliche Interessen',['Gibt es Aufgaben, Verantwortungsbereiche oder andere berufliche Ziele, die dich interessieren?','Worauf freust du dich im kommenden Zeitraum besonders?'],4);
         preparation += '</section>';
       }
-      document.getElementById('preparation-sections').innerHTML = showReflection ? '<section class="section"><h2>Deine persönliche Reflexion</h2><p class="section-intro">Notiere vor dem Gespräch, was du ansprechen möchtest. Die Reflexionsfragen helfen dir dabei; du musst nicht jede Frage beantworten. Deine persönliche Reflexion bleibt bei dir und ist in keiner Rückgabedatei enthalten.</p></section>' + preparation : preparation;
+      document.getElementById('preparation-sections').innerHTML = showReflection ? '<section class="section"><h2>Deine persönliche Reflexion</h2><p class="section-intro">Notiere vor dem Gespräch, was du ansprechen möchtest. Die Reflexionsfragen helfen dir dabei; du musst nicht jede Frage beantworten. Deine persönliche Reflexion bleibt bei dir und ist in keiner Rückgabedatei enthalten.</p>' + reflectionGoals() + '</section>' + preparation : preparation;
 
       const feedbackIndices = state.feedback_competency_indices || (state.feedback_competency_indices = [...new Set(Object.keys(fields).filter(key => /^feedback_competency_(?:text_)?\d+$/.test(key)).map(key => Number(key.split('_').at(-1))))].filter(index => value(`feedback_competency_${index}`) || value(`feedback_competency_text_${index}`)).sort((a,b) => a-b));
       function renderFeedback() {
@@ -450,6 +460,7 @@
       const printHeader = (title,subtitle) => `<header class="print-header"><div class="print-kicker">Volkswirtschaftsdirektion · Mitarbeitenden-Dialog</div><h1 class="print-title">${h(title)}</h1><p class="print-subtitle">${h(subtitle)}</p></header><div class="print-meta"><div><strong>Mitarbeitende Person</strong>${h(state.employee.full_name)}</div><div><strong>Vorgesetzte Person</strong>${h(state.manager.name)}</div></div>`;
       function preparationPrint() {
         let html = printHeader('Persönliche Reflexion', `${state.review_year}/${state.outlook_year}`);
+        if (showReflection) html += `<section class="print-section">${reflectionGoals()}</section>`;
         if (showReflection && hasReview) html += `<section class="print-section"><h2>Rückblick</h2><div class="print-block">${printValue('Leistung und Zielerreichung','review_performance')}${printValue('Kompetenzen und Zusammenarbeit','review_competencies')}</div></section>`;
         if (showReflection && hasOutlook) html += `<section class="print-section"><h2>Ausblick</h2><div class="print-block">${printValue('Ziele und Aufgaben','outlook_goals')}${printValue('Persönliche Entwicklung','outlook_development')}${printValue('Weitere berufliche Interessen','outlook_interests')}</div></section>`;
         return html;

@@ -1579,7 +1579,7 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Lass die mitarbeitende Person ihre Sicht auf Leistung und Zusammenarbeit einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr im Rückblick festhaltet. Nimm auch ihr Feedback an dich auf und besprecht, was daraus für eure Zusammenarbeit folgt.</p></div>
+              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Bereite hier deine Notizen vor und nimm sie mit ans Gespräch. Lass die mitarbeitende Person ihre Sicht auf Leistung und Zusammenarbeit einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr im Rückblick festhaltet. Nimm auch ihr Feedback an dich auf und besprecht, was daraus für eure Zusammenarbeit folgt.</p></div>
             </div>
             ${renderCheckpointNotes(employee)}
             <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${employeeContribution(employee, 'previous_goals', true)}${renderPreviousGoals(employee)}</div>
@@ -1627,10 +1627,6 @@
 
 
 
-      function preparationExclusions(selected) {
-        const parts = [selected.reflection ? 'Die persönliche Reflexion' : '', selected.feedback ? (selected.reflection ? 'das Feedback' : 'Das Feedback') : ''].filter(Boolean);
-        return parts.length ? parts.join(' und ') + (parts.length === 1 ? ' ist' : ' sind') + ' nicht Bestandteil der Rückgabedatei.' : '';
-      }
       function preparationSelection(employee) {
         const selected = employee.meta.preparation_selection || { reflection: true, review: false, outlook: false };
         return { feedback: hasReview(employee.scope) || Boolean(selected.feedback), reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook), return_review: hasReview(employee.scope) && Boolean(selected.review) && Boolean(selected.return_review), return_outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) && Boolean(selected.return_outlook) };
@@ -1654,21 +1650,19 @@
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Wähle vor der Gesprächseinladung aus, wie sich die mitarbeitende Person vorbereiten soll. Erstelle anschliessend die Vorbereitungsdatei und sende sie mit der Einladung.</p></div></div>
-          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Sie unterstützt Mitarbeitende dabei, eigene Erfahrungen, Anliegen und Entwicklungsideen ins Gespräch einzubringen. Rückblick und Ausblick kannst du zusätzlich als konkrete Formulare bereitstellen.')}
-          <details class="competency-help"><summary>Welche Vorbereitung passt?</summary><p>Persönliche Reflexion dient der eigenen Vorbereitung. Mit Rückblick und Ausblick können Mitarbeitende ihre Sicht entlang der konkreten Formulare vorbereiten. Wähle «zurückfordern», wenn ihre Angaben im fertigen Dokument als eigener Beitrag erscheinen sollen.</p></details>
-          <p class="section-intro">Die Vorbereitungsdatei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erstelle die Vorbereitungsdatei und sende sie als Anhang zu deiner Termineinladung oder in einer Begleitmail an deine mitarbeitende Person. Durch An- und Abwählen der Optionen bestimmst du, was die Vorbereitungsdatei beinhaltet. Die mitarbeitende Person kann mit der Vorbereitungsdatei ihre Gedanken festhalten und Dokumente erstellen, wie du mit deiner Arbeitsmappe. Du kannst deine Vorbereitung unabhängig davon weiterführen.</p></div></div>
+          <details class="competency-help"><summary>Was bedeuten die Optionen?</summary><ul><li>Mit der persönlichen Reflexion erhält die mitarbeitende Person die zuletzt vereinbarten Ziele<sup>1</sup> sowie einige Reflexionsfragen.</li><li>Mit Rückblick bzw. Ausblick erhält sie jeweils das komplette Formular, wie du es auch in deiner Arbeitsmappe siehst<sup>2</sup>.</li><li>Wähle «zurückfordern», wenn sie dir das ausgefüllte Formular zurücksenden soll. Die mitarbeitende Person erstellt dann eine Rückgabedatei mit ihren Beiträgen, die sie dir schickt und du damit einsehen kannst. Diese Beiträge kannst du bei Bedarf im jeweiligen Gesprächsteil importieren und anschliessend auch einzeln wieder entfernen. Importierte und nicht entfernte Beiträge erscheinen dann als ihre Sicht im finalen PDF, das im Personaldossier abgelegt wird.</li></ul><p><sup>1</sup> Ob Ziele aus dem letzten Ausblick vorhanden sind, siehst du ${hasReview(employee.scope) ? 'im Schritt ' + (workflowSteps(employee).findIndex(step => step.key === 'review') + 1) + ' Rückblick' : 'in der persönlichen Reflexion der erstellten Vorbereitungsdatei, sofern du sie bereitstellst'}. Das hängt u.a. davon ab, ob der letzte Ausblick korrekt an HR übermittelt wurde.</p><p><sup>2</sup> Falls du in deiner Vorbereitung bereits Notizen im Rückblick oder Ausblick gespeichert hast, werden diese <strong>nicht</strong> in die Vorbereitungsdatei übernommen.</p></details>
+          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Sie unterstützt Mitarbeitende dabei, eigene Erfahrungen, Anliegen und Entwicklungsideen ins Gespräch einzubringen.')}
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
           <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach der Besprechung im Gespräch oder anschliessend separat als PDF zurückgegeben.</label>
           <label style="display:block;margin-top:14px"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Persönliche Reflexion bereitstellen</label>
           <details style="margin:8px 0 0 24px"><summary>Reflexionsfragen ansehen</summary>${reflectionQuestions(employee)}</details>
           ${[['review','Rückblick',hasReview(employee.scope)],['outlook','Ausblick',hasOutlook(employee.scope)]].map(([key,label,available]) => `<div style="margin-top:14px"><label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label} zur Vorbereitung bereitstellen${available ? '' : ' (nicht vorgesehen)'}</label><label style="display:block;margin-left:24px"><input type="checkbox" data-preparation-part="return_${key}" ${selected['return_'+key] ? 'checked' : ''} ${selected[key] ? '' : 'disabled'}> Ausgefüllten ${label} zurückfordern</label></div>`).join('')}
           </div></div>
-          ${selected.review || selected.outlook ? `<div class="hr-recommendation"><strong>Was bedeutet «zurückfordern»?</strong><p>Wenn du «Ausgefüllten Rückblick zurückfordern» oder «Ausgefüllten Ausblick zurückfordern» wählst, kann die mitarbeitende Person ihre Angaben als separate Rückgabedatei übermitteln. Du kannst sie im jeweiligen Gesprächsteil importieren. Die übernommenen Beiträge erscheinen als ihre Sicht im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt im Gespräch gemeinsam, welche Beiträge darin festgehalten werden sollen. Über «Beitrag entfernen» kannst du importierte Beiträge wieder aus deiner Arbeitsmappe und künftigen PDFs entfernen. ${preparationExclusions(selected)}</p></div>` : ''}
-          ${selected.return_review || selected.return_outlook ? '<p class="section-intro"><strong>Rückgabe:</strong> Für jeden angeforderten Gesprächsteil wird eine separate Rückgabedatei erstellt und im betreffenden Rückblick oder Ausblick importiert.</p>' : ''}
           ${selected.feedback ? `<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> ${hasReview(employee.scope) ? 'Besprich das Feedback der mitarbeitenden Person im ' + (employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblickgespräch') + '.' : 'Besprich das Feedback im Gespräch.'} Höre ihre Sicht an, frage nach konkreten Beispielen und besprecht, was du beibehalten oder verändern möchtest. Die mitarbeitende Person erstellt das Feedback-PDF im Gespräch oder anschliessend, nachdem ihr es besprochen habt, und stellt es dir zu. Leite die erhaltenen PDFs S/MIME-verschlüsselt an HR weiter.</div>` : ''}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
-          ${employee.meta.preparation_created_at ? `<div class="hr-recommendation"><strong>${preparationCurrent(employee) ? 'Vorbereitungsdatei erstellt.' : 'Vorbereitungsdatei erneut erstellen.'}</strong><p>${preparationCurrent(employee) ? 'Sende die Datei mit der Gesprächseinladung an die mitarbeitende Person. Speichere anschliessend deine Arbeitsmappe.' : 'Umfang, Auswahl oder bereitgestellte Angaben wurden seit der letzten Erstellung geändert. Erstelle eine neue Datei und sende die aktualisierte Vorbereitung, falls du die frühere Version bereits versendet hast.'}</p></div>` : ''}
+          ${employee.meta.preparation_created_at ? `<div class="hr-recommendation"><strong>${preparationCurrent(employee) ? 'Vorbereitungsdatei erstellt.' : 'Vorbereitungsdatei erneut erstellen.'}</strong><p>${preparationCurrent(employee) ? 'Sende die Datei als Anhang zur Gesprächseinladung oder in einer Begleitmail an die mitarbeitende Person.' : 'Umfang, Auswahl oder bereitgestellte Angaben wurden seit der letzten Erstellung geändert. Erstelle eine neue Datei und sende die aktualisierte Vorbereitung, falls du die frühere Version bereits versendet hast.'}</p></div>` : ''}
+          ${employee.meta.preparation_created_at && (selected.return_review || selected.return_outlook) ? `<div class="next-actions"><p>Du hast Rückblick oder Ausblick zurückgefordert. Rückgabedateien kannst du direkt im jeweiligen Gesprächsteil importieren. Du musst deine Arbeitsmappe dafür nicht erneut öffnen.</p>${['review','outlook'].filter(section => selected['return_' + section]).map(section => `<button class="button" type="button" data-action="go-import-preparation" data-section="${section}">${section === 'review' ? 'Rückblick' : 'Ausblick'} der mitarbeitenden Person importieren</button>`).join('')}</div>` : ''}
           ${employee.ma_preparation ? '<details style="margin-top:16px"><summary>Importierte Beiträge der mitarbeitenden Person</summary>' + ['review','outlook'].map(section => employee.ma_preparation[section] ? `<h3>${section === 'review' ? 'Rückblick' : 'Ausblick'}</h3>${preparationContributionHtml(employee.ma_preparation[section])}` : '').join('') + '</details>' : ''}
         </section>`;
       }
@@ -1711,11 +1705,24 @@
         return `<details id="process-overview" class="process-overview" ${open ? 'open' : ''}><summary>Dein Weg durch den Mitarbeitenden-Dialog · <span id="overview-toggle-label">${open ? 'Prozessübersicht einklappen' : 'Prozessübersicht anzeigen'}</span></summary>
           <p class="section-intro">Die Arbeitsmappe begleitet dich bei der Vorbereitung, im Gespräch und beim Erstellen der Dokumente. Unterschriften und Versand erledigst du ausserhalb der Arbeitsmappe.</p>
           ${employee.scope === 'none' ? '' : '<p><strong>Gemeinsam zurückblicken und weiterentwickeln</strong><br>Der Mitarbeitenden-Dialog ist ein gemeinsamer Austausch über Leistung, Zusammenarbeit und Entwicklung. Höre die Sicht der mitarbeitenden Person, bringe deine eigene Sicht und deine Erwartungen ein und klärt gemeinsam, was ihr festhaltet und wie es weitergeht. Als Führungskraft gibst du Orientierung und verantwortest die Beurteilung. Nutzt den Dialog, um voneinander zu lernen und die Zusammenarbeit weiterzugestalten.</p>'}
+          <p>Auf der linken Seite findest du deine Mitarbeitenden. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen. Für deinen Dialog mit ${h(employee.employee.first_name || employee.employee.full_name)} sind aktuell folgende Prozessschritte vorgesehen:</p>
           <div class="process-grid">${workflowSteps(employee).map((step,index) => `<button class="process-card" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}><strong>${index + 1} · ${h(step.title)}</strong><span class="process-description">${h(step.description)}</span><span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}</div>
           ${employee.scope !== 'none' ? '<p class="section-intro">Standortgespräche kannst du unabhängig davon unterjährig festhalten.</p>' : ''}
-          <div class="data-storage-note"><strong>Deine Arbeitsmappe bleibt bei dir.</strong><p>Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Eingaben und Dokumente werden nicht automatisch versendet.</p></div>
+          <div class="data-storage-note"><strong>Deine Arbeitsmappe bleibt bei dir.</strong><p>Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Es werden keine Daten und Dokumente an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>
           ${employee.scope && !employee.meta.closed && !employee.meta.archived ? `<div class="next-actions"><button id="recommended-next" class="button" type="button" data-action="show-step" data-step="${recommendedStep(employee)}">Empfohlener nächster Schritt: ${h(workflowSteps(employee).find(step => step.key === recommendedStep(employee)).name)}</button></div>` : ''}
+          <button class="button small" type="button" data-action="collapse-overview">Prozessübersicht einklappen</button>
         </details>`;
+      }
+
+      function scrollToWorkflowTab(step) {
+        window.requestAnimationFrame(() => {
+          const tab = document.querySelector(`.workflow-step[data-step="${step}"]`);
+          if (!tab) return;
+          const header = document.querySelector('.topbar');
+          const offset = header && ['sticky','fixed'].includes(getComputedStyle(header).position) ? header.getBoundingClientRect().height : 0;
+          tab.focus({ preventScroll: true });
+          window.scrollTo({ top: tab.closest('nav').getBoundingClientRect().top + window.scrollY - offset - 12, behavior: 'smooth' });
+        });
       }
 
       function renderWorkflowNav(employee, selectedStep) {
@@ -1864,7 +1871,7 @@
           ${stepContent}
           ${['preparation','review','outlook'].includes(selectedStep) ? '<div id="step-next-actions">' + nextActions(employee, selectedStep) + '</div>' : ''}`;
         if (employee.meta.archived || (employee.meta.closed && selectedStep !== 'checkpoints')) {
-          editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
+          editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action="collapse-overview"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
         }
         const overview = document.getElementById('process-overview');
         overview.addEventListener('toggle', () => {
@@ -2001,10 +2008,15 @@
           }, 0);
           return;
         }
+        if (action === 'collapse-overview') {
+          document.getElementById('process-overview').open = false;
+          scrollToWorkflowTab(selectedStepByCase[employee.case_id] || 'basics');
+          return;
+        }
         if (action === 'show-step') {
           selectedStepByCase[employee.case_id] = button.dataset.step;
           renderEditor();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          scrollToWorkflowTab(button.dataset.step);
           return;
         }
         if (action === 'confirm-scope') {
@@ -2014,7 +2026,7 @@
           employee.meta.scope_confirmed_at = nowIso();
           markDirty(employee);
           selectedStepByCase[employee.case_id] = employee.scope === 'none' ? 'finish' : 'preparation';
-          renderEditor(); renderSidebar(); window.scrollTo({top:0,behavior:'smooth'}); return;
+          renderEditor(); renderSidebar(); scrollToWorkflowTab(selectedStepByCase[employee.case_id]); return;
         }
         if (action === 'import-checkpoints') {
           document.getElementById('checkpoint-import-file').click();
@@ -2094,9 +2106,13 @@
           if (!source.entries.length) delete employee.ma_preparation[section];
           markDirty(employee); renderEditor(); return;
         }
-        if (action === 'import-preparation') {
+        if (action === 'import-preparation' || action === 'go-import-preparation') {
           preparationImportSection = button.dataset.section;
           if (!['review','outlook'].includes(preparationImportSection) || !preparationSelection(employee)['return_' + preparationImportSection]) return;
+          if (action === 'go-import-preparation') {
+            selectedStepByCase[employee.case_id] = preparationImportSection;
+            renderEditor(); scrollToWorkflowTab(preparationImportSection);
+          }
           document.getElementById('preparation-import-file').click(); return;
         }
         if (action === 'download-preparation') {

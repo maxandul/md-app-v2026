@@ -414,7 +414,9 @@ test('red data notices, optional feedback and conditional return guidance surviv
   await page.locator('[data-preparation-part="reflection"]').uncheck();
   await page.locator('[data-preparation-part="outlook"]').check();
   await page.locator('[data-preparation-part="return_outlook"]').check();
-  assert.ok((await page.locator('#editor').innerText()).includes('im betreffenden Rückblick oder Ausblick importiert'));
+  await page.locator('.competency-help').filter({hasText:'Was bedeuten die Optionen?'}).locator('summary').click();
+  assert.ok((await page.locator('#editor').innerText()).includes('im jeweiligen Gesprächsteil importieren'));
+  assert.ok(!(await page.locator('#editor').innerText()).includes('Rückgabe:'));
   const file = await download(page,'[data-action="download-preparation"]','optional-feedback.html');
   const prepared = await pageAt(file);
   assert.deepEqual(await prepared.locator('[role="tab"]').allTextContents(),['Ausblick','Feedback']);
@@ -555,12 +557,55 @@ test('preparation creation status survives reopen and changes to regenerate afte
   assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Neu erstellen'));
   await reopened.locator('[data-preparation-part="review"]').check();
   await reopened.locator('[data-preparation-part="return_review"]').check();
-  const explanation = await reopened.locator('.hr-recommendation').filter({hasText:'Was bedeutet'}).innerText();
+  await reopened.locator('.competency-help').filter({hasText:'Was bedeuten die Optionen?'}).locator('summary').click();
+  const explanation = await reopened.locator('.competency-help').filter({hasText:'Was bedeuten die Optionen?'}).innerText();
   assert.ok(explanation.includes('Personaldossier'));
-  assert.ok(explanation.includes('Beitrag entfernen'));
+  assert.ok(explanation.includes('einzeln wieder entfernen'));
   assert.ok(!explanation.includes('Die persönliche Reflexion'));
-  assert.ok(explanation.includes('Das Feedback ist nicht Bestandteil'));
+  assert.ok(explanation.includes('nicht in die Vorbereitungsdatei übernommen'));
   await download(reopened,'[data-action="download-preparation"]','status-regenerated.html');
   assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Datei erstellt'));
   for (const p of [page,reopened]) await p.close();
+});
+
+
+test('newly created preparation offers immediate import without reopening the workbook', async () => {
+  const page = await pageAt(fixture);
+  await page.locator('.workflow-nav [data-step="preparation"]').click();
+  await page.locator('[data-preparation-part="review"]').check();
+  await page.locator('[data-preparation-part="return_review"]').check();
+  await download(page,'[data-action="download-preparation"]','immediate-preparation.html');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('[data-action="go-import-preparation"][data-section="review"]').click();
+  await chooser;
+  assert.equal(await page.locator('.workflow-nav [data-step="review"]').getAttribute('class'),'workflow-step active');
+  assert.equal(await page.locator('[data-action="import-preparation"][data-section="review"]').count(),1);
+  await page.close();
+});
+
+test('personal reflection includes source goals on screen and in its PDF, without manager notes', async () => {
+  const page = await pageAt(fixture);
+  await page.locator('.workflow-nav [data-step="preparation"]').click();
+  const file = await download(page,'[data-action="download-preparation"]','reflection-goals.html');
+  const preparation = await pageAt(file);
+  const goal = base.employees[0].previous_goals[0];
+  assert.ok((await preparation.locator('.reflection-goals').innerText()).includes(goal.title));
+  assert.ok(!(await preparation.locator('#preparation-sections').innerText()).includes('MANAGER_PRIVATE'));
+  await preparation.evaluate(() => { window.print = () => {}; });
+  await preparation.locator('[data-action="print-preparation"]').click();
+  assert.ok((await preparation.locator('#print-root').innerText()).includes(goal.title));
+  for (const p of [page,preparation]) await p.close();
+});
+
+test('tab navigation scrolls past the overview and overview collapses from its bottom', async () => {
+  const page = await pageAt(fixture);
+  await page.locator('.process-card[data-step="preparation"]').click();
+  await page.waitForTimeout(700);
+  const position = await page.evaluate(() => ({nav:document.querySelector('.workflow-nav').getBoundingClientRect().top, header:document.querySelector('.topbar').getBoundingClientRect().bottom}));
+  assert.ok(Math.abs(position.nav - position.header - 12) < 3, JSON.stringify(position));
+  await page.locator('[data-action="collapse-overview"]').click();
+  assert.equal(await page.locator('#process-overview').getAttribute('open'),null);
+  const saved = await download(page,'#save-button','collapsed-overview.html');
+  assert.equal(dataOf(await fs.readFile(saved,'utf8'),'md-data').package.process_overview_collapsed,true);
+  await page.close();
 });

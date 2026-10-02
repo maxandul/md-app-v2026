@@ -392,9 +392,9 @@ test('red data notices, optional feedback and conditional return guidance surviv
   const page = await pageAt(fixture);
   await page.locator('#guidance-button').click();
   const notice = page.locator('#guidance-dialog .data-storage-note');
-  assert.ok((await notice.textContent()).includes('automatisch an deinen Mitarbeitenden oder an HR'));
+  assert.ok((await notice.textContent()).includes('automatisch an deine Mitarbeitenden oder an HR'));
   assert.equal(await notice.evaluate(el => getComputedStyle(el).borderLeftColor),'rgb(217, 60, 26)');
-  assert.equal(await notice.evaluate(el => el.previousElementSibling.textContent.startsWith('6 ·')),true);
+  assert.ok((await page.locator('#guidance-dialog').textContent()).includes('5 · Dokumente fertigstellen'));
   await page.locator('[data-guidance-close]').click();
   await page.locator('.workflow-nav [data-step="preparation"]').click();
   const feedback = page.locator('[data-preparation-part="feedback"]');
@@ -410,11 +410,11 @@ test('red data notices, optional feedback and conditional return guidance surviv
   assert.equal(await feedback.isChecked(),false);
   assert.equal(await feedback.isDisabled(),false);
   await feedback.check();
-  assert.equal(await page.locator('label').filter({hasText:'Das Feedback wird nach dem Gespräch separat'}).locator('input').isChecked(),true);
+  assert.equal(await page.locator('label').filter({hasText:'Das Feedback wird nach der Besprechung im Gespräch oder anschliessend separat'}).locator('input').isChecked(),true);
   await page.locator('[data-preparation-part="reflection"]').uncheck();
   await page.locator('[data-preparation-part="outlook"]').check();
   await page.locator('[data-preparation-part="return_outlook"]').check();
-  assert.ok((await page.locator('#editor').innerText()).includes('von dir im Rück- oder Ausblick importiert'));
+  assert.ok((await page.locator('#editor').innerText()).includes('im betreffenden Rückblick oder Ausblick importiert'));
   const file = await download(page,'[data-action="download-preparation"]','optional-feedback.html');
   const prepared = await pageAt(file);
   assert.deepEqual(await prepared.locator('[role="tab"]').allTextContents(),['Ausblick','Feedback']);
@@ -450,11 +450,11 @@ test('feedback competencies start empty, grow dynamically and survive removal an
   assert.ok(saving.includes('beim nächsten Speichern automatisch überschrieben'));
   assert.ok(!saving.includes('Wenn dein Browser'));
   await page.locator('[data-tab="review-section"]').click();
-  assert.ok((await page.locator('#review-section').innerText()).includes('Dein/e Vorgesetzte/r erstellt im Dialog mit dir das finale Dokument in seiner eigenen Datei.'));
+  assert.ok((await page.locator('#review-section').innerText()).includes('das finale Rückblick-Dokument erstellt deine Führungskraft im Gespräch mit dir.'));
   await page.locator('[data-tab="feedback-section"]').click();
   assert.equal(await page.locator('#feedback-section .competency-row').count(),0);
   assert.ok((await page.locator('#feedback-section .warning-note').first().innerText()).startsWith('Das Feedback ist obligatorisch.'));
-  assert.ok((await page.locator('#feedback-section .warning-note').last().innerText()).includes('nachdem du es mit deiner vorgesetzten Person besprochen hast'));
+  assert.ok((await page.locator('#feedback-section .warning-note').last().innerText()).includes('sobald ihr dein Feedback besprochen habt'));
   const competency = base.configuration.competency_model[0].competencies[0].name;
   for(let index=1;index<=4;index++) {
     await page.locator('[data-action="add-feedback-competency"]').click();
@@ -492,4 +492,75 @@ test('feedback competencies start empty, grow dynamically and survive removal an
   assert.equal(await migrated.locator('#feedback-section .competency-row').count(),2);
   assert.equal(await migrated.locator('[data-field="feedback_competency_text_3"]').inputValue(),'Nur Beobachtung');
   for(const p of [page,reopened,migrated]) await p.close();
+});
+
+test('scope confirmation survives saving and is invalidated by local and SAP scope changes', async () => {
+  const page = await pageAt(fixture);
+  assert.equal(await page.locator('#guidance-dialog').evaluate(el=>el.open),false);
+  assert.equal(await page.locator('#process-overview').evaluate(el=>el.open),true);
+  assert.ok((await page.locator('.workflow-nav').innerText()).includes('Noch prüfen'));
+  await page.locator('[data-action="confirm-scope"]').click();
+  assert.ok((await page.locator('.workflow-nav').innerText()).includes('Umfang bestätigt'));
+  await page.locator('#process-overview > summary').click();
+  assert.equal(await page.locator('#process-overview').evaluate(el=>el.open),false);
+  const saved = await download(page,'#save-button','confirmed.html');
+  const data = dataOf(await fs.readFile(saved,'utf8'),'md-data');
+  assert.ok(data.employees[0].meta.scope_confirmation);
+  const reopened = await pageAt(saved);
+  assert.equal(await reopened.locator('#process-overview').evaluate(el=>el.open),false);
+  assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Umfang bestätigt'));
+  await reopened.locator('.workflow-nav [data-step="basics"]').click();
+  await reopened.locator('label').filter({has:reopened.locator('[data-bind="scope"][value="review_only"]')}).click();
+  assert.equal(await reopened.locator('[data-action="confirm-scope"]').isDisabled(),true);
+  await reopened.locator('[data-bind="scope_reason"]').fill('Dokumentierter Spezialfall');
+  assert.equal(await reopened.locator('[data-action="confirm-scope"]').isDisabled(),false);
+  await reopened.locator('[data-action="confirm-scope"]').click();
+  assert.deepEqual(await reopened.locator('.workflow-nav button').allTextContents().then(items=>items.map(t=>t.split(' · ')[0])),['1','2','3','4']);
+  assert.equal(await reopened.locator('.workflow-nav [data-step="outlook"]').count(),0);
+  data.employees[0].suggestion.scope = 'review_only';
+  const updated = path.join(dir,'sap-scope-change.html');
+  await fs.writeFile(updated,replaceData(await fs.readFile(saved,'utf8'),'md-data',data));
+  const changed = await pageAt(updated);
+  assert.ok((await changed.locator('.workflow-nav').innerText()).includes('Noch prüfen'));
+  for (const p of [page,reopened,changed]) await p.close();
+});
+
+test('no-MD scope collects its reason before confirmation and closes only after confirmation', async () => {
+  const page = await pageAt(fixture);
+  await page.locator('label').filter({has:page.locator('[data-bind="scope"][value="none"]')}).click();
+  assert.equal(await page.locator('[data-action="confirm-scope"]').isDisabled(),true);
+  const reason = await page.locator('[data-bind="no_md_reason"] option').evaluateAll(items=>items.find(item=>item.value && item.value !== 'Anderer Grund').value);
+  await page.locator('[data-bind="no_md_reason"]').selectOption(reason);
+  await page.locator('[data-action="confirm-scope"]').click();
+  assert.equal(await page.locator('.workflow-nav button').count(),2);
+  assert.equal(await page.locator('[data-action="close-case"]').isDisabled(),false);
+  page.removeAllListeners('dialog'); page.on('dialog',dialog=>dialog.accept());
+  await page.locator('[data-action="close-case"]').click();
+  assert.equal(await page.locator('[data-action="reopen-case"]').count(),1);
+  const saved = await download(page,'#save-button','closed-none.html');
+  assert.equal(dataOf(await fs.readFile(saved,'utf8'),'md-data').employees[0].meta.closed,true);
+  await page.close();
+});
+
+test('preparation creation status survives reopen and changes to regenerate after selection edits', async () => {
+  const page = await pageAt(fixture);
+  await page.locator('[data-action="confirm-scope"]').click();
+  await download(page,'[data-action="download-preparation"]','status-preparation.html');
+  assert.ok((await page.locator('.workflow-nav').innerText()).includes('Datei erstellt'));
+  const saved = await download(page,'#save-button','preparation-status.html');
+  const reopened = await pageAt(saved);
+  assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Datei erstellt'));
+  await reopened.locator('.workflow-nav [data-step="preparation"]').click();
+  await reopened.locator('[data-preparation-part="reflection"]').uncheck();
+  assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Neu erstellen'));
+  await reopened.locator('[data-preparation-part="review"]').check();
+  await reopened.locator('[data-preparation-part="return_review"]').check();
+  const explanation = await reopened.locator('.hr-recommendation').filter({hasText:'Was bedeutet'}).innerText();
+  assert.ok(explanation.includes('Personaldossier'));
+  assert.ok(explanation.includes('Beitrag entfernen'));
+  assert.ok(!explanation.includes('Die persönliche Reflexion'));
+  assert.ok(explanation.includes('Das Feedback ist nicht Bestandteil'));
+  await download(reopened,'[data-action="download-preparation"]','status-regenerated.html');
+  assert.ok((await reopened.locator('.workflow-nav').innerText()).includes('Datei erstellt'));
+  for (const p of [page,reopened]) await p.close();
 });

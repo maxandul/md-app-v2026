@@ -1,7 +1,18 @@
 # Projektstand MD-App v2026
 
-**Stand:** 1. Oktober 2026
+**Stand:** 2. Oktober 2026
 **Zweck:** Übergabe zwischen Arbeitssitzungen und Ausgangspunkt für die Weiterentwicklung des HR-Cockpits
+
+## Nutzerführung und Dialogorientierung
+
+- Einklappbare Prozessübersicht pro Person und passende Schrittnummerierung; bisherige automatische Kurzanleitung durch manuell aufrufbare Prozesshilfe ersetzt.
+- Umfangsbestätigung mit Speicherung und erneuter Prüfung nach relevanten lokalen Änderungen oder verändertem SAP-Mindestumfang.
+- Vorbereitungsdatei: Erstellungsstatus mit Vergleich der bereitgestellten Auswahl und Inhalte; Änderungen machen Neuerstellung sichtbar. Weiterbuttons in beiden Dateien.
+- HR-Empfehlungen und Leads fördern den Austausch beider Sichtweisen: persönliche Reflexion, drei bis fünf fundierte Kompetenzbeobachtungen und zwei bis drei sinnvolle Entwicklungsziele; keine neue Mindestanzahlprüfung.
+- Frühzeitige Hinweise zu importierten Beiträgen im finalen Dokument und Personaldossier sowie zum erneuten Entfernen. Ausschlusshinweis zur persönlichen Reflexion nur, wenn sie bereitgestellt wurde.
+- Feedback-PDF erst nach der Besprechung, noch im Gespräch oder anschliessend zustellen.
+- Abschlussweg für PDFs, Unterschriften, Versand und lokale Speicherung; bestehender Speicherhinweis unverändert.
+- Demo und Anforderungen aktualisiert. 82 Tests erfolgreich (20 Prototyp-, 44 Anwendungstests und 18 Browsertests); Desktop und schmale Bildschirmansicht geprüft.
 
 ## Erweiterung der Offline-Vorbereitung
 

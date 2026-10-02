@@ -284,7 +284,7 @@ Rückgabebuttons stehen am Ende des jeweiligen Formulars. Hinweise nennen nur
 vorhandene beziehungsweise angeforderte Inhalte. Die Speicherhilfe erklärt den
 Erstempfang per E-Mail, das Überschreiben und den Umgang mit versehentlichen Kopien.
 
-Rote Datenhinweise erklären in Kurzanleitung und Vorbereitung die lokale Speicherung.
+Rote Datenhinweise erklären in Prozesshilfe und Vorbereitung die lokale Speicherung.
 Die persönliche Reflexion wird ohne Zusatz «freiwillig» angeboten; ihre Fragen sind
 aufklappbar. Der Rückgabehinweis erscheint nur bei angeforderter Rückgabe.
 
@@ -293,3 +293,16 @@ Bei angeforderter Rückgabe wird diese als eigener Mitarbeitendenbeitrag importi
 und im finalen PDF ausgegeben; die Bewertung der Führungskraft bleibt erhalten.
 Kompetenzorientiertes Feedback startet ohne Einträge und lässt sich dynamisch
 ergänzen und entfernen. Bereits erfasste Beiträge aus früheren Dateien bleiben erhalten.
+
+
+## Nutzerführung und Dialogorientierung (2. Oktober 2026)
+
+- Einklappbare Prozessübersicht pro Person, mit passendem Fallumfang und gemeinsam genutzten Schrittstatus; Hilfe nur auf Anfrage.
+- Umfang bewusst bestätigen, nach relevanten Änderungen erneut prüfen. Bestätigung und eingeklappte Übersicht bleiben in der gespeicherten Datei erhalten.
+- Status der Vorbereitungsdatei basiert auf der zuletzt erzeugten Auswahl und den bereitgestellten Angaben; geänderte Inhalte erfordern eine Neuerstellung. Dateierstellung bestätigt keinen Versand.
+- Prozentzahlen zeigen Pflichtangaben; Unterschriften und Versand werden nur über den optionalen manuellen Dokumentstand verfolgt.
+- Empfehlungen: persönliche Reflexion als Ausgangspunkt, drei bis fünf fundierte Kompetenzbeobachtungen, zwei bis drei relevante Entwicklungsziele. Die Empfehlungen erzeugen keine neue Mindestanzahl.
+- Rückgaben: Hinweise zur Übernahme ins finale Gesprächsdokument und Personaldossier sowie zum Entfernen importierter Beiträge. Ausschlusshinweise nennen Reflexion und Feedback nur, wenn bereitgestellt.
+- Feedback zuerst im Rückblick besprechen, danach im Gespräch oder anschliessend als PDF zustellen.
+- Abschlusscheckliste für PDFs, Unterschriften, verschlüsselten Versand und Speichern; «Kein MD» ohne Unterschrift und weiterhin als administrative Bestätigung ausserhalb des Personaldossiers.
+- Bestehende Speicheranleitung unverändert; neue Vorlagen werden mit neu erzeugten Arbeitsmappen ausgeliefert.

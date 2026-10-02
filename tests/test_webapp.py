@@ -1794,10 +1794,10 @@ class WebAppIntegrationTest(unittest.TestCase):
             start_html = start_path.read_text(encoding="utf-8")
         response.close()
         preparation_template = payload["configuration"]["preparation_template"]
-        self.assertIn("Gesprächsvorbereitung als PDF", preparation_template)
+        self.assertIn("Persönliche Reflexion als PDF", preparation_template)
         self.assertIn("Feedback als PDF", preparation_template)
         self.assertIn("Teilkompetenzen und Formulierungshilfen", preparation_template)
-        self.assertIn('data-action="print-preparation">Gesprächsvorbereitung als PDF', preparation_template)
+        self.assertIn('data-action="print-preparation">Persönliche Reflexion als PDF', preparation_template)
         self.assertIn("Ungespeicherte Angaben", preparation_template)
         self.assertIn("Bitte mit dieser Datei weiterarbeiten", preparation_template)
         self.assertIn("const markDirty", preparation_template)
@@ -1806,7 +1806,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("Die Führungskräfte sammeln", self.client.get(
             f"/ruecklaeufe?cycle_id={cycle_id}"
         ).get_data(as_text=True))
-        self.assertIn("2 · Vorbereitung MA", start_html)
+        self.assertIn("name:'Vorbereitung MA'", start_html)
         self.assertIn("selectedStepByCase[employee.case_id] || 'basics'", start_html)
         self.assertIn("selectedStep === 'preparation'", start_html)
         self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)

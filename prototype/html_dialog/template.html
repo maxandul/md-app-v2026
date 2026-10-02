@@ -676,6 +676,21 @@
       .completion-score { text-align:left; }
     }
 
+    .process-overview { margin: 0 0 18px; padding: 18px; border: 1px solid var(--line); background: #fff; border-radius: 4px; }
+    .process-overview > summary { cursor: pointer; font-weight: 700; color: var(--blue-dark); }
+    .process-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 16px 0; }
+    .process-card { text-align: left; padding: 14px; border: 1px solid #648eb0; border-radius: 4px; color: var(--blue-dark); background: #edf5fa; font: inherit; cursor: pointer; }
+    .process-card:disabled { color: #666; background: #eee; cursor: not-allowed; }
+    .process-card strong, .process-card span { display: block; }
+    .process-card .process-description { font-size: 13px; margin-top: 6px; color: #333; }
+    .step-status { display: block; font-size: 12px; font-weight: 400; margin-top: 5px; }
+    .hr-recommendation { margin: 12px 0; padding: 12px 14px; border-left: 4px solid var(--blue); background: #edf5fa; color: #222; font-size: 13px; }
+    .hr-recommendation p { margin: 5px 0 0; }
+    .next-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
+    .scope-status { font-size: 13px; }
+    .finish-checklist { padding-left: 24px; }
+    .finish-checklist li { margin: 12px 0; }
+    .finish-checklist p { margin: 4px 0 0; }
     @media print {
       @page { size: A4; margin: 16mm 15mm 18mm; }
       body { color: #000; background: #fff; font: 10.5pt/1.42 Arial, Helvetica, sans-serif; }
@@ -731,7 +746,7 @@
       <header class="topbar">
         <div class="package-heading">
           <h2 id="package-title" class="package-title"></h2>
-          <button id="guidance-button" class="button guidance-button" type="button" aria-haspopup="dialog"><span class="info-icon" aria-hidden="true">i</span><span>Kurzanleitung</span></button>
+          <button id="guidance-button" class="button guidance-button" type="button" aria-haspopup="dialog"><span class="info-icon" aria-hidden="true">i</span><span>Prozess und Hilfe</span></button>
         </div>
         <div class="toolbar">
           <span id="save-state" class="save-state"><span class="save-dot"></span><span id="save-state-text">Keine ungespeicherten Angaben</span></span>
@@ -756,22 +771,24 @@
   <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Arbeitsmappe speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei beim nächsten Speichern automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
   <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
     <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
-    <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil.</div><div id="preparation-import-preview"></div></div>
+    <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil. Übernommene Beiträge erscheinen im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt im Gespräch, was festgehalten werden soll. Über «Beitrag entfernen» kannst du importierte Beiträge wieder aus deiner Arbeitsmappe und künftigen PDFs entfernen; die persönliche Datei der mitarbeitenden Person bleibt erhalten.</div><div id="preparation-import-preview"></div></div>
     <div class="guidance-dialog-foot"><button class="button" type="button" id="preparation-import-cancel">Abbrechen</button><button class="button primary" type="button" id="preparation-import-confirm">Beiträge importieren</button></div>
   </dialog>
   <dialog id="guidance-dialog" class="guidance-dialog" aria-labelledby="guidance-title">
-    <div class="guidance-dialog-head"><div><p class="eyebrow">Mitarbeitenden-Dialog</p><h2 id="guidance-title">So funktioniert der Durchlauf</h2></div></div>
+    <div class="guidance-dialog-head"><h2 id="guidance-title">Prozess und Hilfe</h2></div>
     <div class="guidance-dialog-body">
-      <p>Die Arbeitsmappe führt dich pro Person von der Festlegung des Umfangs bis zu den fertigen Dokumenten. Öffne die Schritte für zusätzliche Hinweise.</p>
-      <details class="guidance-step" open><summary>1 · Arbeitsmappe speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Wenn du für den Moment mit der Bearbeitung fertig bist, musst du die «Arbeitsmappe speichern». Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
-      <details class="guidance-step"><summary>2 · Umfang bestimmen</summary><p>Bestimme unter «Grundlagen», welche Dialoge erforderlich sind. Erfasse eine Begründung, falls du vom Pflichtteil abweichst. Falls gar kein MD stattfindet, kannst du direkt das PDF generieren und an HR senden. Sprich dich vorgängig mit deiner oder deinem HR-Verantwortlichen ab, falls es sich nicht um einen der dokumentierten Spezialfälle handelt.</p></details>
-      <details class="guidance-step"><summary>3 · Mitarbeitende vorbereiten</summary><p>Erzeuge unter «Vorbereitung MA» die persönliche Vorbereitungsdatei und sende sie mit der Gesprächseinladung. Nach dem Dialog schicken dir deine Mitarbeitenden ihre Feedbacks als PDF. Schicke uns die PDFs so weiter, wie es für dich passt – einzeln, gesammelt oder in Chargen. Du musst die Feedbacks nicht zu einem PDF zusammenführen.</p></details>
-      <details class="guidance-step"><summary>4 · Dialoge führen</summary><p>Bereite deine Sicht vor, führe die Dialoge und ergänze die gemeinsam besprochenen Inhalte. Pflichtangaben werden in den jeweiligen Schritten angezeigt.</p></details>
-      <details class="guidance-step"><summary>5 · PDFs erstellen und unterschreiben</summary><p>Erzeuge die PDFs unter «Prüfen und PDF» und sende sie der mitarbeitenden Person zur Unterschrift. Standardmässig reicht die einfache elektronische Unterschrift, die Adobe Acrobat bietet. Die «Kein MD»-PDFs benötigen keine Unterschrift.</p></details>
-      <details class="guidance-step"><summary>6 · Dokumente an HR senden</summary><p>Sende alle fertigen PDFs in S/MIME-verschlüsselten E-Mails an HR (Outlook &gt; Optionen &gt; Verschlüsseln). Schicke uns die PDFs so, wie es für dich passt – einzeln, gesammelt oder in Chargen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende deshalb zusätzliche Informationen oder Dokumente (z. B. aktualisierte Stellenbeschreibungen) in einer separaten E-Mail.</p></details>
-      <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deinen Mitarbeitenden oder an HR übermittelt.</p></div>
+      <p>Die Arbeitsmappe begleitet dich von der Vorbereitung bis zum Abschluss. Die Prozessübersicht bei der ausgewählten Person zeigt die vorgesehenen Schritte und ihren Stand.</p>
+      <details class="guidance-step" open><summary>1 · Umfang prüfen und bestätigen</summary><p>Prüfe unter «Grundlagen» den aus den Stammdaten vorgeschlagenen Umfang. Berücksichtige Spezialfälle und begründe weggelassene Pflichtteile. Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen, falls es sich nicht um einen der dokumentierten Spezialfälle handelt. Bestätige anschliessend deine Auswahl. Bei «Kein MD» führt dich die Arbeitsmappe direkt zur Dokumentation und zum Abschluss.</p></details>
+      <details class="guidance-step"><summary>2 · Vorbereitung erstellen und versenden</summary><p>HR empfiehlt die persönliche Reflexion als Ausgangspunkt. Wähle unter «Vorbereitung MA», welche Bereiche du zusätzlich bereitstellen und gegebenenfalls zurückfordern möchtest. Erstelle die Datei und sende sie mit der Gesprächseinladung. Angeforderte Rückgaben kannst du importieren: Übernommene Beiträge erscheinen als Sicht der mitarbeitenden Person im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt gemeinsam, was festgehalten werden soll. Importierte Beiträge kannst du über «Beitrag entfernen» wieder aus dem Gesprächsdokument entfernen.</p></details>
+      <details class="guidance-step"><summary>3 · Rückblick führen</summary><p>Lass die mitarbeitende Person ihre Sicht einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr festhaltet. Nimm auch ihr Feedback an dich auf. Das Feedback-PDF wird nach der Besprechung noch im Gespräch oder anschliessend erstellt und dir zugestellt. Sobald das Rückblick-Dokument vollständig ist, kannst du es unabhängig vom Ausblick erstellen. Dies gilt auch für den Probezeitrückblick.</p></details>
+      <details class="guidance-step"><summary>4 · Ausblick führen</summary><p>Besprecht Entwicklungsinteressen, Erwartungen und anstehende Aufgaben. Vereinbart gemeinsam Ziele, nächste Schritte und Unterstützung. HR empfiehlt zwei bis drei relevante und umsetzbare Entwicklungsziele. Klärt auch, wann ihr Fortschritte wieder besprecht.</p></details>
+      <details class="guidance-step"><summary>5 · Dokumente fertigstellen und Fall abschliessen</summary><p>Erstelle die PDFs unter «Prüfen und PDF», prüfe auch übernommene Mitarbeitendenbeiträge und hole die erforderlichen Unterschriften ein. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat. Die «Kein MD»-PDFs benötigen keine Unterschrift. Beachte gegebenenfalls den Hinweis zum zusätzlichen handschriftlichen Scan. Sende die fertigen Dokumente S/MIME-verschlüsselt an HR. Schliesse anschliessend den Fall ab und speichere deine Arbeitsmappe.</p></details>
+      <details class="guidance-step"><summary>Datei speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Die Speicheranleitung erklärt das lokale Speichern und Überschreiben. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step"><summary>Dokumente an HR senden</summary><p>Verschlüssle die E-Mail in Outlook über Optionen &gt; Verschlüsseln. Du kannst PDFs einzeln, gesammelt oder in Chargen senden. Du musst die Feedbacks nicht zu einem PDF zusammenführen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende zusätzliche Informationen oder andere Dokumente (z. B. aktualisierte Stellenbeschreibungen) deshalb in einer separaten E-Mail. Die HTML-Arbeitsmappe bleibt bei dir.</p></details>
+      <details class="guidance-step"><summary>Was bedeuten Status und Prozentzahlen?</summary><p>Die Prozentzahl zeigt, ob die Pflichtangaben vorhanden sind. Sie bestätigt weder ein geführtes Gespräch noch Unterschriften oder Versand. «Datei erstellt» bestätigt die Erstellung der Vorbereitungsdatei, nicht ihren Versand. Den Dokumentstand kannst du zur eigenen Übersicht manuell pflegen.</p></details>
+      <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>
     </div>
-    <div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="guidance-dismiss" type="checkbox"> Nicht mehr automatisch anzeigen</label><button class="button" type="button" data-guidance-close>Schliessen</button></div>
+    <div class="guidance-dialog-foot"><button class="button" type="button" data-guidance-close>Schliessen</button></div>
   </dialog>
 
   <script id="md-data" type="application/json">__MD_PACKAGE_JSON__</script>
@@ -859,7 +876,6 @@
 
       let previousTitle = document.title;
       let toastTimer = null;
-      let guidanceAutoShown = false;
       const selectedStepByCase = {};
 
       const scopeLabels = {
@@ -1114,7 +1130,7 @@
         const completion = getCompletion(employee);
         if (!employee.scope) return { key: 'open', label: 'Nicht begonnen', className: '' };
         if (employee.scope === 'none' && completion.complete) return { key: 'none', label: 'Kein MD', className: 'none' };
-        if (completion.complete) return { key: 'complete', label: 'Vollständig', className: 'complete' };
+        if (completion.complete) return { key: 'complete', label: 'Pflichtangaben vollständig', className: 'complete' };
         return { key: 'open', label: 'In Bearbeitung', className: 'progress' };
       }
 
@@ -1423,6 +1439,42 @@
         return `${employeeContribution(employee, 'outlook.development_goals')}${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
       }
 
+      function scopeSignature(employee) {
+        return JSON.stringify([employee.scope || '', mandatoryScope(employee), needsScopeReason(employee) ? (employee.scope === 'none' ? [employee.no_md_reason || '', employee.no_md_reason === 'Anderer Grund' ? employee.no_md_note || '' : ''] : employee.scope_reason || '') : '']);
+      }
+      function scopeConfirmed(employee) { return Boolean(employee.meta.scope_confirmation && employee.meta.scope_confirmation === scopeSignature(employee)); }
+      function scopeMissing(employee) {
+        if (!employee.scope) return ['Umfang des MD'];
+        if (!needsScopeReason(employee)) return [];
+        if (employee.scope !== 'none') return String(employee.scope_reason || '').trim() ? [] : ['Begründung für den weggelassenen Pflichtteil'];
+        if (!employee.no_md_reason) return ['Grund für «Kein MD»'];
+        return employee.no_md_reason === 'Anderer Grund' && !String(employee.no_md_note || '').trim() ? ['Erläuterung zum anderen Grund'] : [];
+      }
+      function preparationSignature(employee) {
+        return JSON.stringify([employee.scope, employee.dialog_type, preparationSelection(employee), employee.period_start, employee.period_end, employee.employee, employee.previous_goals.map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})), employee.previous_development_goals.map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})), state.package.rb_year, outlookYear(employee)]);
+      }
+      function preparationCurrent(employee) { return Boolean(employee.meta.preparation_created_at && employee.meta.preparation_signature === preparationSignature(employee)); }
+      function hrRecommendation(text) { return `<div class="hr-recommendation"><strong>HR empfiehlt</strong><p>${text}</p></div>`; }
+      function competencyRecommendation(employee) {
+        return hrRecommendation(employee.dialog_type === 'probation'
+          ? 'Konzentriert euch auf drei bis fünf aussagekräftige Kompetenzbeobachtungen aus der Einarbeitung. Greift vereinbarte Entwicklungsfelder auf, soweit solche bestehen, und ergänzt weitere konkrete Beobachtungen. Ihr müsst nicht alle Kompetenzen durchgehen. Weniger, dafür fundierte Rückmeldungen sind hilfreicher als eine vollständige Liste.'
+          : 'Konzentriert euch auf drei bis fünf aussagekräftige Kompetenzbeobachtungen. Greift insbesondere Kompetenzen auf, zu denen ihr vorgängig ein Entwicklungsziel vereinbart habt, und ergänzt weitere, zu denen konkrete Beobachtungen vorliegen. Ihr müsst nicht alle Kompetenzen durchgehen. Weniger, dafür fundierte Rückmeldungen sind hilfreicher als eine vollständige Liste.');
+      }
+      function scopeControls(employee) {
+        const missing = scopeMissing(employee);
+        const confirmed = scopeConfirmed(employee);
+        const target = employee.scope === 'none' ? 'finish' : 'preparation';
+        const label = confirmed ? (employee.scope === 'none' ? 'Weiter zu «Kein MD»' : 'Weiter zur Vorbereitung MA') : (employee.scope === 'none' ? 'Umfang bestätigen und zu «Kein MD»' : 'Umfang bestätigen und weiter');
+        return `<div class="next-actions"><button class="button primary" type="button" data-action="${confirmed ? 'show-step' : 'confirm-scope'}" data-step="${target}" ${missing.length ? 'disabled' : ''}>${label}</button><span class="scope-status">${missing.length ? 'Ergänze zuerst: ' + h(missing.join(', ')) + '.' : confirmed ? 'Umfang geprüft und bestätigt. Du kannst die Auswahl bei Bedarf ändern.' : employee.meta.scope_confirmation_changed ? 'Der Umfang wurde geändert. Prüfe und bestätige die neue Auswahl.' : 'Prüfe und bestätige die aktuelle Auswahl.'}</span></div>`;
+      }
+      function nextActions(employee, step) {
+        if (employee.meta.closed || employee.meta.archived) return '';
+        let target = 'finish', label = 'Weiter zu Prüfen und PDF';
+        if (step === 'preparation') { target = hasReview(employee.scope) ? 'review' : 'outlook'; label = target === 'review' ? (employee.dialog_type === 'probation' ? 'Weiter zum Probezeitrückblick' : 'Weiter zum Rückblick') : 'Weiter zum Ausblick'; }
+        if (step === 'review' && hasOutlook(employee.scope)) { target = 'outlook'; label = 'Weiter zum Ausblick'; }
+        return `<div class="next-actions"><button class="button primary" type="button" data-action="show-step" data-step="${target}">${label}</button>${step === 'review' && getDocumentCompletion(employee, 'review').complete ? `<button class="button" type="button" data-action="print-review">${employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblick'}-PDF erstellen</button>` : ''}</div>`;
+      }
+
       function renderScope(employee) {
         const options = employee.dialog_type === 'probation' ? [
           ['full', 'Probezeitrückblick und Ausblick', 'Ausblick auf das restliche Jahr'],
@@ -1436,7 +1488,7 @@
         ];
         return `
           <section class="section" id="scope-section">
-            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Lege hier fest, welche Dialoge du in diesem Durchlauf mit der oder dem Mitarbeitenden führst. Die bereits aktivierte Auswahl ist aus den Stammdaten abgeleitet, berücksichtigt aber nicht alle Eventualitäten (z. B. interne Übertritte oder Langzeitabwesenheit). Die <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen bei Spezialfällen findest du hier</a>.</p></div></div>
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">${employee.scope ? 'Prüfe vor der Gesprächseinladung den vorgeschlagenen Umfang. Die Auswahl ist aus den Stammdaten abgeleitet und berücksichtigt nicht alle Spezialfälle. Passe sie bei Bedarf an und bestätige sie anschliessend.' : 'Lege vor der Gesprächseinladung fest, welche Gesprächsteile du mit dieser Person führst. Berücksichtige die Bestimmungen zu Spezialfällen und bestätige deine Auswahl.'} <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen zu Spezialfällen</a>.</p></div></div>
             <div class="scope-grid">
               ${options.map(option => `
                 <label class="scope-option">
@@ -1446,6 +1498,8 @@
             </div>
             <div class="suggestion warning">${employee.suggestion ? `<strong>Verpflichtender Mindestumfang gemäss Stammdaten:</strong> ${h(scopeLabel(employee, mandatoryScope(employee)))}. ${h(sentence(employee.suggestion.reason))}` : ''}</div>
             ${employee.scope !== 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Begründung für den weggelassenen Pflichtteil', 'scope_reason', employee.scope_reason, { full:true, required:true, hint:`Bitte vorgängig mit deiner oder deinem HR-Verantwortlichen absprechen, falls es sich nicht um einen der dokumentierten Spezialfälle handelt. Die Begründung wird im verbleibenden PDF aufgeführt. Weggelassen: ${omittedMandatoryParts(employee).join(' und ')}.` })}</div>` : ''}
+            ${employee.scope === 'none' && needsScopeReason(employee) ? `<div class="form-grid" style="margin-top:14px">${field('Grund', 'no_md_reason', employee.no_md_reason, { type:'select', items:state.configuration.no_md_reasons, required:true })}${field('Ergänzende Bemerkung', 'no_md_note', employee.no_md_note, { type:'textarea', full:true, required:employee.no_md_reason === 'Anderer Grund' })}</div>` : ''}
+            <div id="scope-controls">${scopeControls(employee)}</div>
           </section>`;
       }
 
@@ -1461,9 +1515,13 @@
               ${field('Grund', 'no_md_reason', employee.no_md_reason, { type:'select', items:state.configuration.no_md_reasons, required:true })}
               ${field('Ergänzende Bemerkung', 'no_md_note', employee.no_md_note, { type:'textarea', full:true, required:employee.no_md_reason === 'Anderer Grund' })}
             </div>` : ''}
+            <p>Erstelle das «Kein MD»-PDF und sende es S/MIME-verschlüsselt an HR. Eine Unterschrift ist nicht erforderlich.</p>
+            <ol class="finish-checklist"><li>Angaben prüfen.</li><li>«Kein MD»-PDF erstellen und an HR senden.</li><li>Fall abschliessen und Arbeitsmappe speichern.</li></ol>
+            ${!employee.meta.closed ? `<div id="finish-scope-notice" ${scopeConfirmed(employee) ? 'hidden' : ''}><p>Bestätige zuerst den Umfang unter «Grundlagen».</p><button class="button" type="button" data-action="show-step" data-step="basics">Zum Umfang</button></div>` : ''}
+            <p class="section-intro">Der Fall wird schreibgeschützt und in der Personenliste nach unten verschoben. Du kannst ihn bei Bedarf wieder öffnen.</p>
             <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
-              ${reasonRequired ? '<button class="button primary" type="button" data-action="print-no-md">Bestätigung als PDF</button>' : ''}
-              ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete ? '' : 'disabled title="Zuerst alle Pflichtangaben ergänzen"'}>Abschliessen</button>`}
+              <button class="button primary" type="button" data-action="print-no-md">«Kein MD»-PDF erstellen</button>
+              ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete && scopeConfirmed(employee) ? '' : 'disabled title="Zuerst den Umfang bestätigen und alle Pflichtangaben ergänzen"'}>Fall abschliessen</button>`}
             </div>
           </section>`;
       }
@@ -1481,6 +1539,7 @@
           <section class="section" id="dialog-details-${section}">
             <div class="section-head"><div><h2 class="section-title">Gesprächsdaten ${label}</h2></div></div>
             ${renderPreparationImport(employee, section)}
+            ${employee.ma_preparation?.[section]?.entries?.length ? '<div class="hr-recommendation"><strong>Sicht der mitarbeitenden Person</strong><p>Die Beiträge stehen in den grauen Blöcken und erscheinen als eigene Sicht im finalen Gesprächsdokument. Deine Eingaben und die Gesprächsergebnisse erfasst du in den Eingabefeldern. Über «Beitrag entfernen» kannst du importierte Beiträge wieder aus deiner Arbeitsmappe und künftigen PDFs entfernen. Die persönliche Datei der mitarbeitenden Person bleibt erhalten.</p></div>' : ''}
             <div class="form-grid three">
               ${field('Zeitraum von', 'period_start', employee.period_start, { type:'date', required:true })}
               ${field('Zeitraum bis', 'period_end', employee.period_end, { type:'date', required:true })}
@@ -1492,13 +1551,13 @@
       function renderProbationReview(employee) {
         return `
           <section class="section">
-            <div class="section-head"><div><p class="eyebrow">Rückblick auf die Probezeit</p><h2 class="section-title">Leistung, Kompetenzen und Anstellungsentscheid</h2></div></div>
+            <div class="section-head"><div><p class="eyebrow">Rückblick auf die Probezeit</p><h2 class="section-title">Leistung, Kompetenzen und Anstellungsentscheid</h2><p class="section-intro">Besprecht, wie die mitarbeitende Person ihre Einarbeitung erlebt und wie du Leistung und Zusammenarbeit einschätzt. Klärt, was gelungen ist, wo Unterstützung nötig ist und was ihr festhaltet. Nimm auch ihr Feedback an dich auf und erläutere den Anstellungsentscheid.</p></div></div>
             <div class="subsection" id="review-performance"><h3>1. Leistung</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Wie wird die bisherige Leistung eingeschätzt? Konnten die wesentlichen Ziele des Einführungsprogramms erreicht werden?', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
               ${employee.ma_preparation?.review?.entries?.some(entry => entry.path === 'review.overall_rating') ? `<div class="field full">${employeeContribution(employee, 'review.overall_rating', false, false)}</div>` : ''}
             </div></div>
-            <div class="subsection" id="review-competencies"><h3>2. Kompetenzen und Zusammenarbeit</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection" id="review-competencies"><h3>2. Kompetenzen und Zusammenarbeit</h3>${competencyRecommendation(employee)}${renderCompetencies(employee)}</div>
             <div class="subsection"><h3>3. Bemerkungen zum Gespräch</h3><div class="form-grid">
               ${field('Bemerkung der vorgesetzten Person', 'review.manager_comment', employee.review.manager_comment, { type:'textarea', full:true })}
               ${field('Bemerkung der mitarbeitenden Person', 'review.employee_comment', employee.review.employee_comment, { type:'textarea', full:true })}
@@ -1520,7 +1579,7 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Deine Einschätzungen erfasst du in den Eingabefeldern. Importierte Beiträge der mitarbeitenden Person stehen in den grauen Blöcken.</p></div>
+              <div><p class="eyebrow">Rückblick ${state.package.rb_year}</p><h2 class="section-title">Leistung und Zusammenarbeit reflektieren</h2><p class="section-intro">Lass die mitarbeitende Person ihre Sicht auf Leistung und Zusammenarbeit einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr im Rückblick festhaltet. Nimm auch ihr Feedback an dich auf und besprecht, was daraus für eure Zusammenarbeit folgt.</p></div>
             </div>
             ${renderCheckpointNotes(employee)}
             <div class="subsection" id="review-performance-goals"><h3>1. Vereinbarte Ziele aus dem Vorjahr</h3>${employeeContribution(employee, 'previous_goals', true)}${renderPreviousGoals(employee)}</div>
@@ -1528,7 +1587,7 @@
               ${field('Allgemeine Bemerkungen zum Berichtsjahr', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Rückblick auf Leistung und Aufgabenerfüllung', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
             </div></div>
-            <div class="subsection" id="review-competencies"><h3>3. Kompetenzbezogene Beobachtungen</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
+            <div class="subsection" id="review-competencies"><h3>3. Kompetenzbezogene Beobachtungen</h3>${competencyRecommendation(employee)}${renderCompetencies(employee)}</div>
             <div class="subsection" id="review-overall"><h3>4. Gesamteindruck und Gespräch</h3><div class="form-grid">
               ${field('Gesamteindruck', 'review.overall_rating', employee.review.overall_rating, { type:'select', items:ratingOptions, required:true })}
               ${field('Einigkeit zur Gesamtbeurteilung', 'review.agreement', employee.review.agreement, { type:'select', items:['Ja','Nein'], placeholder:'Bitte auswählen', required:true, hint:'Bei Nein liegt Uneinigkeit vor.' })}
@@ -1553,11 +1612,11 @@
         return `
           <section class="section">
             <div class="section-head">
-              <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Deine Vorschläge und Vereinbarungen erfasst du in den Eingabefeldern. Importierte Vorschläge der mitarbeitenden Person stehen in den grauen Blöcken.</p></div>
+              <div><p class="eyebrow">Ausblick ${outlookYear(employee)}</p><h2 class="section-title">Ziele und Entwicklung vereinbaren</h2><p class="section-intro">Besprecht die Vorschläge und Entwicklungsinteressen der mitarbeitenden Person sowie deine Erwartungen und die anstehenden Aufgaben. Vereinbart gemeinsam die Ziele, die nächsten Schritte und die nötige Unterstützung. Klärt auch, wann ihr Fortschritte und Erfahrungen wieder besprecht.</p></div>
             </div>
             <div class="subsection" id="outlook-performance-goals"><h3>1. Leistungsziele</h3>${renderPerformanceGoals(employee)}</div>
             <div class="subsection"><h3>2. Ergänzende Zielvereinbarungen</h3><div class="form-grid">${field('Weitere oder übergreifende Ziele', 'outlook.open_goals_text', employee.outlook.open_goals_text, { type:'textarea', full:true })}</div></div>
-            <div class="subsection" id="outlook-development-goals"><h3>3. Entwicklungsziele</h3><p class="section-intro">Es können ein oder mehrere Entwicklungsziele formuliert werden; Human Resources &amp; Entwicklung empfiehlt ein bis zwei. Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p>${renderDevelopmentGoals(employee)}</div>
+            <div class="subsection" id="outlook-development-goals"><h3>3. Entwicklungsziele</h3>${hrRecommendation('Vereinbart zwei bis drei Entwicklungsziele, die relevant, konkret und im Alltag umsetzbar sind. Lieber weniger Ziele mit klaren Schritten und passender Unterstützung als viele Vorhaben ohne Fokus. Haltet fest, woran ihr Fortschritte erkennt und wann ihr wieder darüber sprecht.')}<details class="competency-help"><summary>Anregungen für Entwicklungsschritte</summary><p>Zielschritte können Lernformen gemäss dem 70-20-10-Modell umfassen: Lernen am Arbeitsplatz, durch Kolleginnen und Kollegen sowie durch formelle Weiterbildung.</p></details>${renderDevelopmentGoals(employee)}</div>
             <div class="subsection"><h3>4. Laufbahnorientierte Entwicklung</h3><p class="section-intro">Die laufbahnorientierte Entwicklung (nächsthöhere Funktion, vertikale Laufbahn, KNF I &amp; II, Übernahme Stellvertretung usw.) findet im Rahmen der Nachfolge- und Entwicklungsplanung (NEP) statt.</p><div class="form-grid" style="margin-top:12px">
               ${field('Laufbahnorientierter Entwicklungswunsch', 'outlook.nep', employee.outlook.nep, { type:'select', items:['Kein Entwicklungswunsch','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'], placeholder:'Bitte auswählen' })}
               ${field('Bemerkungen', 'outlook.nep_notes', employee.outlook.nep_notes, { type:'textarea', full:true })}
@@ -1568,6 +1627,10 @@
 
 
 
+      function preparationExclusions(selected) {
+        const parts = [selected.reflection ? 'Die persönliche Reflexion' : '', selected.feedback ? (selected.reflection ? 'das Feedback' : 'Das Feedback') : ''].filter(Boolean);
+        return parts.length ? parts.join(' und ') + (parts.length === 1 ? ' ist' : ' sind') + ' nicht Bestandteil der Rückgabedatei.' : '';
+      }
       function preparationSelection(employee) {
         const selected = employee.meta.preparation_selection || { reflection: true, review: false, outlook: false };
         return { feedback: hasReview(employee.scope) || Boolean(selected.feedback), reflection: Boolean(selected.reflection), review: hasReview(employee.scope) && Boolean(selected.review), outlook: hasOutlook(employee.scope) && Boolean(selected.outlook), return_review: hasReview(employee.scope) && Boolean(selected.review) && Boolean(selected.return_review), return_outlook: hasOutlook(employee.scope) && Boolean(selected.outlook) && Boolean(selected.return_outlook) };
@@ -1591,43 +1654,73 @@
         const selected = preparationSelection(employee);
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
-          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Du entscheidest, wie du den Dialog gestalten möchtest:</p><ul class="section-intro"><li>freie Vorbereitung (nur Feedback an vorgesetzte Person, sofern ein Rückblick stattfindet oder von dir gewünscht)</li><li>deine Mitarbeitenden reflektieren vorab entlang ein paar Reflexionsfragen (persönliche Reflexion)</li><li>deine Mitarbeitenden reflektieren entlang des konkreten Rück- bzw. Ausblicks (Rück-/Ausblick bereitstellen)</li><li>du möchtest ihre Sicht im fertigen Dokument wörtlich abgebildet haben (Rück-/Ausblick zurückfordern)</li></ul><p class="section-intro">Die Vorbereitungsdatei enthält nur leere Vorlagen und keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p></div></div>
+          <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Wähle vor der Gesprächseinladung aus, wie sich die mitarbeitende Person vorbereiten soll. Erstelle anschliessend die Vorbereitungsdatei und sende sie mit der Einladung.</p></div></div>
+          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Sie unterstützt Mitarbeitende dabei, eigene Erfahrungen, Anliegen und Entwicklungsideen ins Gespräch einzubringen. Rückblick und Ausblick kannst du zusätzlich als konkrete Formulare bereitstellen.')}
+          <details class="competency-help"><summary>Welche Vorbereitung passt?</summary><p>Persönliche Reflexion dient der eigenen Vorbereitung. Mit Rückblick und Ausblick können Mitarbeitende ihre Sicht entlang der konkreten Formulare vorbereiten. Wähle «zurückfordern», wenn ihre Angaben im fertigen Dokument als eigener Beitrag erscheinen sollen.</p></details>
+          <p class="section-intro">Die Vorbereitungsdatei enthält keine Beurteilungen oder Gesprächsnotizen aus deiner Arbeitsmappe.</p>
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
-          <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach dem Gespräch separat als PDF zurückgegeben.</label>
+          <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach der Besprechung im Gespräch oder anschliessend separat als PDF zurückgegeben.</label>
           <label style="display:block;margin-top:14px"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Persönliche Reflexion bereitstellen</label>
           <details style="margin:8px 0 0 24px"><summary>Reflexionsfragen ansehen</summary>${reflectionQuestions(employee)}</details>
           ${[['review','Rückblick',hasReview(employee.scope)],['outlook','Ausblick',hasOutlook(employee.scope)]].map(([key,label,available]) => `<div style="margin-top:14px"><label style="display:block"><input type="checkbox" data-preparation-part="${key}" ${selected[key] ? 'checked' : ''} ${available ? '' : 'disabled'}> ${label} zur Vorbereitung bereitstellen${available ? '' : ' (nicht vorgesehen)'}</label><label style="display:block;margin-left:24px"><input type="checkbox" data-preparation-part="return_${key}" ${selected['return_'+key] ? 'checked' : ''} ${selected[key] ? '' : 'disabled'}> Ausgefüllten ${label} zurückfordern</label></div>`).join('')}
           </div></div>
-          ${selected.return_review || selected.return_outlook ? '<div class="suggestion warning"><strong>Rückgabe:</strong> Rückblick und Ausblick werden bei Bedarf einzeln zurückgegeben und von dir im Rück- oder Ausblick importiert. Die Angaben der mitarbeitenden Person erscheinen dann als feste Blöcke neben deinen eigenen Eingaben. Persönliche Reflexion und Feedback sind in diesen Rückgabedateien nicht enthalten.</div>' : ''}
-          ${selected.feedback ? '<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> Die mitarbeitende Person bespricht das Feedback im Gespräch und sendet das erzeugte Feedback-PDF danach an dich. Du übermittelst die erhaltenen Feedbacks S/MIME-verschlüsselt an HR.</div>' : ''}
+          ${selected.review || selected.outlook ? `<div class="hr-recommendation"><strong>Was bedeutet «zurückfordern»?</strong><p>Wenn du «Ausgefüllten Rückblick zurückfordern» oder «Ausgefüllten Ausblick zurückfordern» wählst, kann die mitarbeitende Person ihre Angaben als separate Rückgabedatei übermitteln. Du kannst sie im jeweiligen Gesprächsteil importieren. Die übernommenen Beiträge erscheinen als ihre Sicht im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt im Gespräch gemeinsam, welche Beiträge darin festgehalten werden sollen. Über «Beitrag entfernen» kannst du importierte Beiträge wieder aus deiner Arbeitsmappe und künftigen PDFs entfernen. ${preparationExclusions(selected)}</p></div>` : ''}
+          ${selected.return_review || selected.return_outlook ? '<p class="section-intro"><strong>Rückgabe:</strong> Für jeden angeforderten Gesprächsteil wird eine separate Rückgabedatei erstellt und im betreffenden Rückblick oder Ausblick importiert.</p>' : ''}
+          ${selected.feedback ? `<div class="suggestion warning"><strong>Feedback-Rücklauf:</strong> ${hasReview(employee.scope) ? 'Besprich das Feedback der mitarbeitenden Person im ' + (employee.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblickgespräch') + '.' : 'Besprich das Feedback im Gespräch.'} Höre ihre Sicht an, frage nach konkreten Beispielen und besprecht, was du beibehalten oder verändern möchtest. Die mitarbeitende Person erstellt das Feedback-PDF im Gespräch oder anschliessend, nachdem ihr es besprochen habt, und stellt es dir zu. Leite die erhaltenen PDFs S/MIME-verschlüsselt an HR weiter.</div>` : ''}
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px"><button class="button primary" type="button" data-action="download-preparation" ${templateAvailable ? '' : 'disabled'}>Vorbereitungsdatei erstellen</button>${employee.meta.preparation_created_at ? `<span class="save-state">Zuletzt erstellt: ${h(new Date(employee.meta.preparation_created_at).toLocaleString('de-CH'))}</span>` : ''}</div>
+          ${employee.meta.preparation_created_at ? `<div class="hr-recommendation"><strong>${preparationCurrent(employee) ? 'Vorbereitungsdatei erstellt.' : 'Vorbereitungsdatei erneut erstellen.'}</strong><p>${preparationCurrent(employee) ? 'Sende die Datei mit der Gesprächseinladung an die mitarbeitende Person. Speichere anschliessend deine Arbeitsmappe.' : 'Umfang, Auswahl oder bereitgestellte Angaben wurden seit der letzten Erstellung geändert. Erstelle eine neue Datei und sende die aktualisierte Vorbereitung, falls du die frühere Version bereits versendet hast.'}</p></div>` : ''}
           ${employee.ma_preparation ? '<details style="margin-top:16px"><summary>Importierte Beiträge der mitarbeitenden Person</summary>' + ['review','outlook'].map(section => employee.ma_preparation[section] ? `<h3>${section === 'review' ? 'Rückblick' : 'Ausblick'}</h3>${preparationContributionHtml(employee.ma_preparation[section])}` : '').join('') + '</details>' : ''}
         </section>`;
       }
 
       function recommendedStep(employee) {
-        if (!employee.scope) return 'basics';
+        if (!scopeConfirmed(employee)) return 'basics';
         if (employee.scope === 'none') return 'finish';
-        if (!employee.meta.preparation_created_at) return 'preparation';
-        if (hasReview(employee.scope) && !getSectionCompletion(employee, 'review').complete) return 'review';
-        if (hasOutlook(employee.scope) && !getSectionCompletion(employee, 'outlook').complete) return 'outlook';
+        if (!preparationCurrent(employee)) return 'preparation';
+        if (hasReview(employee.scope) && !getDocumentCompletion(employee, 'review').complete) return 'review';
+        if (hasOutlook(employee.scope) && !getDocumentCompletion(employee, 'outlook').complete) return 'outlook';
         return 'finish';
       }
 
       function workflowSteps(employee) {
-        const reviewLabel = employee.dialog_type === 'probation' ? '3 · Rückblick Probezeit' : `3 · Rückblick ${state.package.rb_year}`;
-        return [
-          { key: 'basics', label: '1 · Grundlagen', available: true },
-          { key: 'preparation', label: '2 · Vorbereitung MA', available: Boolean(employee.scope && employee.scope !== 'none') },
-          { key: 'review', label: reviewLabel, available: hasReview(employee.scope) },
-          { key: 'outlook', label: `4 · Ausblick ${outlookYear(employee)}`, available: hasOutlook(employee.scope) },
-          { key: 'finish', label: employee.scope === 'none' ? '2 · Kein MD abschliessen' : '5 · Prüfen und PDF', available: Boolean(employee.scope) }
+        const reviewLabel = employee.dialog_type === 'probation' ? 'Rückblick Probezeit' : `Rückblick ${state.package.rb_year}`;
+        const all = [
+          { key:'basics', name:'Grundlagen', title:'Umfang prüfen', description:'Prüfe, welche Gesprächsteile für diese Person vorgesehen sind, und bestätige deine Auswahl.', available:true },
+          { key:'preparation', name:'Vorbereitung MA', title:'Vorbereitung versenden', description:'Wähle die Vorbereitung aus, erstelle die Datei und sende sie mit der Gesprächseinladung.', available:Boolean(employee.scope && employee.scope !== 'none') },
+          { key:'review', name:reviewLabel, title:employee.dialog_type === 'probation' ? 'Probezeitrückblick führen' : 'Rückblick führen', description:employee.dialog_type === 'probation' ? 'Bereite deine Einschätzung zur Einarbeitung vor und halte das Gespräch und den Anstellungsentscheid fest.' : 'Bereite deine Einschätzung vor und halte die besprochenen Inhalte fest.', available:hasReview(employee.scope) },
+          { key:'outlook', name:`Ausblick ${outlookYear(employee)}`, title:'Ausblick führen', description:'Bereite Vorschläge vor und vereinbare Ziele und Entwicklungsschritte.', available:hasOutlook(employee.scope) },
+          { key:'finish', name:employee.scope === 'none' ? 'Kein MD abschliessen' : 'Prüfen und PDF', title:employee.scope === 'none' ? 'Kein MD dokumentieren' : 'Dokumente fertigstellen', description:employee.scope === 'none' ? 'Erstelle das «Kein MD»-PDF und sende es an HR. Eine Unterschrift ist nicht erforderlich.' : 'Erstelle die PDFs, hole die erforderlichen Unterschriften ein und sende die fertigen Dokumente an HR.', available:Boolean(employee.scope) }
         ];
+        // Before selection, show the full path for orientation; unavailable steps stay disabled.
+        return all.filter(step => !employee.scope || step.available).map((step,index) => ({...step,label:`${index + 1} · ${step.name}`}));
+      }
+      function stepStatus(employee, step) {
+        if (employee.meta.archived) return 'Archiviert';
+        if (employee.meta.closed) return 'Abgeschlossen ✓';
+        if (step === 'basics') return scopeConfirmed(employee) ? 'Umfang bestätigt ✓' : 'Noch prüfen';
+        if (step === 'preparation') return preparationCurrent(employee) ? 'Datei erstellt ✓' : employee.meta.preparation_created_at ? 'Neu erstellen' : 'Noch erstellen';
+        if (step === 'finish') return getCompletion(employee).complete ? employee.scope === 'none' ? 'PDF kann erstellt werden' : 'PDFs können erstellt werden' : 'Angaben offen';
+        const complete = getDocumentCompletion(employee, step).complete;
+        const status = employee.document_tracking[step].status;
+        if (status === 'In Korrektur') return status;
+        if (!complete) return ['Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt'].includes(status) ? 'Angaben offen · Stand prüfen' : 'Angaben offen';
+        return ['Zur Unterschrift gesendet','Unterzeichnet','An HR zugestellt'].includes(status) ? status : 'Pflichtangaben vollständig ✓';
+      }
+      function renderProcessOverview(employee) {
+        const open = !state.package.process_overview_collapsed;
+        return `<details id="process-overview" class="process-overview" ${open ? 'open' : ''}><summary>Dein Weg durch den Mitarbeitenden-Dialog · <span id="overview-toggle-label">${open ? 'Prozessübersicht einklappen' : 'Prozessübersicht anzeigen'}</span></summary>
+          <p class="section-intro">Die Arbeitsmappe begleitet dich bei der Vorbereitung, im Gespräch und beim Erstellen der Dokumente. Unterschriften und Versand erledigst du ausserhalb der Arbeitsmappe.</p>
+          ${employee.scope === 'none' ? '' : '<p><strong>Gemeinsam zurückblicken und weiterentwickeln</strong><br>Der Mitarbeitenden-Dialog ist ein gemeinsamer Austausch über Leistung, Zusammenarbeit und Entwicklung. Höre die Sicht der mitarbeitenden Person, bringe deine eigene Sicht und deine Erwartungen ein und klärt gemeinsam, was ihr festhaltet und wie es weitergeht. Als Führungskraft gibst du Orientierung und verantwortest die Beurteilung. Nutzt den Dialog, um voneinander zu lernen und die Zusammenarbeit weiterzugestalten.</p>'}
+          <div class="process-grid">${workflowSteps(employee).map((step,index) => `<button class="process-card" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}><strong>${index + 1} · ${h(step.title)}</strong><span class="process-description">${h(step.description)}</span><span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}</div>
+          ${employee.scope !== 'none' ? '<p class="section-intro">Standortgespräche kannst du unabhängig davon unterjährig festhalten.</p>' : ''}
+          <div class="data-storage-note"><strong>Deine Arbeitsmappe bleibt bei dir.</strong><p>Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Eingaben und Dokumente werden nicht automatisch versendet.</p></div>
+          ${employee.scope && !employee.meta.closed && !employee.meta.archived ? `<div class="next-actions"><button id="recommended-next" class="button" type="button" data-action="show-step" data-step="${recommendedStep(employee)}">Empfohlener nächster Schritt: ${h(workflowSteps(employee).find(step => step.key === recommendedStep(employee)).name)}</button></div>` : ''}
+        </details>`;
       }
 
       function renderWorkflowNav(employee, selectedStep) {
         return `<nav class="workflow-nav" aria-label="Arbeitsschritte">
-          ${workflowSteps(employee).map(step => `<button class="workflow-step ${step.key === selectedStep ? 'active' : ''}" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}>${h(step.label)}</button>`).join('')}
+          ${workflowSteps(employee).map(step => `<button class="workflow-step ${step.key === selectedStep ? 'active' : ''}" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}>${h(step.label)}<span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}
         </nav><nav class="companion-nav" aria-label="Begleitung im Jahresverlauf"><span>Begleitung im Jahresverlauf</span><button class="workflow-step ${selectedStep === 'checkpoints' ? 'active' : ''}" type="button" data-action="show-step" data-step="checkpoints">Standortgespräche (${employee.checkpoint_notes.length})</button></nav>`;
       }
 
@@ -1671,16 +1764,16 @@
         if (detailed) {
           return `<div class="document-progress">
             <div class="document-progress-head detailed">
-              <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div>
+              <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Pflichtangaben</div></div>
               ${completion.complete ? '<div class="complete-message">Alle Pflichtangaben vorhanden.</div>' : `<details><summary><strong>Noch zu ergänzen (${completion.missing.length})</strong></summary><ul class="missing-list">${missing}</ul></details>`}
-              <div class="field"><label>Stand (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
+              <div class="field"><label>Dokumentstand – von dir gepflegt (optional)</label><select data-bind="document_tracking.${section}.status">${optionList(options, status, 'Stand wählen')}</select></div>
             </div>
           </div>`;
         }
         return `<div class="document-progress">
           <div class="document-progress-head summary-only">
             <div class="document-progress-title">${h(progressDocumentLabel(employee, section))}</div>
-            <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div>
+            <div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Pflichtangaben</div></div>
           </div>
         </div>`;
       }
@@ -1696,20 +1789,26 @@
         }
         if (!sections.length) {
           const completion = getCompletion(employee);
-          return `<section class="completion-panel single"><div class="document-progress"><div class="document-progress-head summary-only"><div class="document-progress-title">Fall</div><div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Vollständigkeit</div></div></div></div></section>`;
+          return `<section class="completion-panel single"><div class="document-progress"><div class="document-progress-head summary-only"><div class="document-progress-title">Fall</div><div class="completion-score"><div class="completion-number">${completion.percent}%</div><div class="completion-label">Pflichtangaben</div></div></div></div></section>`;
         }
         return `<section class="completion-panel ${sections.length === 1 ? 'single' : ''}">${sections.map(section => renderDocumentProgress(employee, section, detailed)).join('')}</section>`;
       }
 
       function renderFinish(employee) {
         const completion = getCompletion(employee);
-        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2></div></div>
+        const imported = ['review','outlook'].some(section => employee.ma_preparation?.[section]?.entries?.length);
+        return `<section class="section"><div class="section-head"><div><h2 class="section-title">Prüfen und Dokumente erzeugen</h2><p class="section-intro">Prüfe die Angaben und stelle die Dokumente fertig. Rückblick und Ausblick kannst du einzeln fertigstellen und an HR senden.</p></div></div>
+          ${imported ? '<div class="hr-recommendation"><p>Prüft vor der Fertigstellung auch die übernommenen Beiträge der mitarbeitenden Person. Das finale Gesprächsdokument wird im Personaldossier abgelegt. Importierte Beiträge kannst du im jeweiligen Gesprächsteil über «Beitrag entfernen» wieder entfernen.</p></div>' : ''}
+          <ol class="finish-checklist"><li><strong>PDF erstellen und prüfen</strong><p>Erstelle das PDF für den jeweiligen Gesprächsteil und prüfe den Inhalt.</p></li><li><strong>Unterschriften einholen</strong><p>Lass das PDF von beiden Gesprächsparteien unterzeichnen. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat.</p></li><li><strong>An HR senden</strong><p>Sende die fertigen PDFs S/MIME-verschlüsselt an HR. Du kannst sie einzeln, gesammelt oder in Chargen senden.${preparationSelection(employee).feedback ? ' Leite auch erhaltene Feedback-PDFs weiter.' : ''} Sende zusätzliche Informationen oder andere Dokumente in einer separaten E-Mail.</p></li><li><strong>Fall abschliessen und Arbeitsmappe speichern</strong><p>Wenn alle vorgesehenen Dokumente fertiggestellt und an HR gesendet sind, kannst du den Fall abschliessen.</p></li></ol>
           <div class="toolbar" style="justify-content:flex-start;margin-top:16px">
             ${hasReview(employee.scope) ? '<button class="button primary" type="button" data-action="print-review">Rückblick als PDF</button>' : ''}
             ${hasOutlook(employee.scope) ? '<button class="button primary" type="button" data-action="print-outlook">Ausblick als PDF</button>' : ''}
-            ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete ? '' : 'disabled title="Zuerst alle Pflichtangaben ergänzen"'}>Abschliessen</button>`}
+            ${employee.meta.closed ? '' : `<button class="button complete-action" type="button" data-action="close-case" ${completion.complete && scopeConfirmed(employee) ? '' : 'disabled'}>Fall abschliessen</button>`}
           </div>
-          ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Bei D/E oder Uneinigkeit müssen beide Parteien zusätzlich handschriftlich unterzeichnen. An HR gehen das maschinenlesbare digitale PDF und der unterschriebene Scan.</div>' : ''}
+          ${!employee.meta.closed ? `<div id="finish-scope-notice" ${scopeConfirmed(employee) ? 'hidden' : ''}><p>Bestätige zuerst den Umfang unter «Grundlagen».</p><button class="button" type="button" data-action="show-step" data-step="basics">Zum Umfang</button></div>` : ''}
+          ${!completion.complete ? '<p class="section-intro">Ergänze die fehlenden Pflichtangaben im jeweiligen Gesprächsteil. Die PDF-Vorschau bleibt verfügbar.</p>' : ''}
+          <p class="section-intro">Der Fall wird schreibgeschützt und in der Personenliste nach unten verschoben. Du kannst ihn bei Bedarf wieder öffnen.</p>
+          ${requiresHandwrittenScan(employee) && hasReview(employee.scope) ? '<div class="scan-warning"><strong>Zusätzlicher Scan erforderlich</strong>Beide Gesprächsparteien müssen zusätzlich handschriftlich unterzeichnen. Sende das maschinenlesbare digitale PDF und den unterschriebenen Scan an HR.</div>' : ''}
         </section>`;
       }
 
@@ -1759,12 +1858,20 @@
           </section>
           ${employee.meta.archived ? '<div class="archive-note"><strong>Archivierte Person:</strong> Die vorhandenen Angaben bleiben einsehbar, können aber nicht mehr bearbeitet werden.</div>' : ''}
           ${employee.meta.closed && !employee.meta.archived ? '<div class="archive-note closed-note"><span><strong>Fall abgeschlossen:</strong> Der Mitarbeitenden-Dialog ist schreibgeschützt. Standortgesprächsnotizen können weiterhin bearbeitet werden.</span><button class="button small" type="button" data-action="reopen-case">Wieder öffnen</button></div>' : ''}
+          ${renderProcessOverview(employee)}
           ${renderWorkflowNav(employee, selectedStep)}
           ${selectedStep === 'basics' || selectedStep === 'preparation' || selectedStep === 'checkpoints' ? '' : '<div id="inline-completion-panel"></div>'}
-          ${stepContent}`;
+          ${stepContent}
+          ${['preparation','review','outlook'].includes(selectedStep) ? '<div id="step-next-actions">' + nextActions(employee, selectedStep) + '</div>' : ''}`;
         if (employee.meta.archived || (employee.meta.closed && selectedStep !== 'checkpoints')) {
           editor.querySelectorAll('input, select, textarea, button[data-action]:not([data-action="show-step"]):not([data-action^="print-"]):not([data-action="reopen-case"])').forEach(control => { control.disabled = true; });
         }
+        const overview = document.getElementById('process-overview');
+        overview.addEventListener('toggle', () => {
+          const collapsed = !overview.open;
+          document.getElementById('overview-toggle-label').textContent = collapsed ? 'Prozessübersicht anzeigen' : 'Prozessübersicht einklappen';
+          if (Boolean(state.package.process_overview_collapsed) !== collapsed) { state.package.process_overview_collapsed = collapsed; markDirty(null); }
+        });
         renderCompletionPanel();
       }
 
@@ -1803,6 +1910,19 @@
       function refreshProgressOnly() {
         renderSidebar();
         renderCompletionPanel();
+        const employee = selectedEmployee();
+        if (employee) {
+          editor.querySelectorAll('[data-status-step]').forEach(node => { node.textContent = stepStatus(employee, node.dataset.statusStep); });
+          const controls = document.getElementById('scope-controls');
+          if (controls) controls.innerHTML = scopeControls(employee);
+          editor.querySelectorAll('[data-action="close-case"]').forEach(button => { button.disabled = !getCompletion(employee).complete || !scopeConfirmed(employee) || employee.meta.closed || employee.meta.archived; });
+          const finishNotice = document.getElementById('finish-scope-notice');
+          if (finishNotice) finishNotice.hidden = scopeConfirmed(employee);
+          const next = document.getElementById('step-next-actions');
+          if (next) next.innerHTML = nextActions(employee, selectedStepByCase[employee.case_id]);
+          const recommended = document.getElementById('recommended-next');
+          if (recommended) { const step = recommendedStep(employee); recommended.dataset.step = step; recommended.textContent = 'Empfohlener nächster Schritt: ' + workflowSteps(employee).find(item => item.key === step).name; }
+        }
       }
 
       function handleEdit(event) {
@@ -1820,6 +1940,10 @@
           return;
         }
         if (target.dataset.bind) {
+          if (['scope','scope_reason','no_md_reason','no_md_note'].includes(target.dataset.bind) && getPath(employee, target.dataset.bind) !== target.value) {
+            if (employee.meta.scope_confirmation) employee.meta.scope_confirmation_changed = true;
+            employee.meta.scope_confirmation = '';
+          }
           setPath(employee, target.dataset.bind, target.value);
           changed = true;
           rerender = ['scope', 'no_md_reason', 'review.next_level_conversation'].includes(target.dataset.bind);
@@ -1883,6 +2007,15 @@
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         }
+        if (action === 'confirm-scope') {
+          if (scopeMissing(employee).length || employee.meta.closed || employee.meta.archived) return;
+          employee.meta.scope_confirmation = scopeSignature(employee);
+          employee.meta.scope_confirmation_changed = false;
+          employee.meta.scope_confirmed_at = nowIso();
+          markDirty(employee);
+          selectedStepByCase[employee.case_id] = employee.scope === 'none' ? 'finish' : 'preparation';
+          renderEditor(); renderSidebar(); window.scrollTo({top:0,behavior:'smooth'}); return;
+        }
         if (action === 'import-checkpoints') {
           document.getElementById('checkpoint-import-file').click();
           return;
@@ -1922,6 +2055,7 @@
           return;
         }
         if (action === 'apply-suggestion') {
+          employee.meta.scope_confirmation = '';
           employee.scope = employee.suggestion.scope;
           employee.scope_reason = '';
           markDirty(employee);
@@ -1930,10 +2064,11 @@
           return;
         }
         if (action === 'close-case') {
-          if (!getCompletion(employee).complete) return;
-          if (!window.confirm('Fall abschliessen und gegen weitere Bearbeitung sperren?')) return;
+          if (!getCompletion(employee).complete || !scopeConfirmed(employee)) return;
+          if (!window.confirm('Fall abschliessen?\n\nSind alle vorgesehenen Dokumente fertiggestellt und an HR gesendet? Mit «Fall abschliessen» markierst du den Vorgang in deiner Arbeitsmappe als erledigt. Es werden keine Dateien versendet.')) return;
           employee.meta.closed = true;
           employee.meta.closed_at = nowIso();
+          showToast('Fall abgeschlossen. Speichere jetzt deine Arbeitsmappe, damit der Abschluss erhalten bleibt.');
           markDirty(employee);
           renderEditor();
           renderSidebar();
@@ -2205,6 +2340,7 @@
           showToast('Die Vorlage für die Mitarbeitendenvorbereitung fehlt. Bitte verwende eine neu erzeugte Arbeitsmappe.');
           return;
         }
+        const signature = preparationSignature(employee);
         const payload = {
           version: 3,
           selection: preparationSelection(employee),
@@ -2240,6 +2376,7 @@
         const result = await saveHtmlFile(() => template.replace(marker, safeJson(payload)), preparationFilename(employee), true);
         if (!result) return;
         employee.meta.preparation_created_at = nowIso();
+        employee.meta.preparation_signature = signature;
         markDirty(employee);
         renderEditor();
         showToast(result === 'saved' ? 'Die Vorbereitungsdatei wurde am gewählten Speicherort erstellt.' : 'Die Vorbereitungsdatei wurde heruntergeladen. Du kannst sie mit der Gesprächseinladung versenden.');
@@ -2598,24 +2735,14 @@
         toastTimer = window.setTimeout(() => toast.classList.remove('show'), 6500);
       }
 
-      function openGuidance(automatic = false) {
-        if (automatic) {
-          if (guidanceAutoShown || state.package.guidance_auto_open_disabled) return;
-          guidanceAutoShown = true;
-        }
+      function openGuidance() {
         const dialog = document.getElementById('guidance-dialog');
-        document.getElementById('guidance-dismiss').checked = Boolean(state.package.guidance_auto_open_disabled);
         if (typeof dialog.showModal === 'function') dialog.showModal();
         else dialog.setAttribute('open', '');
       }
 
       function closeGuidance() {
         const dialog = document.getElementById('guidance-dialog');
-        const disabled = document.getElementById('guidance-dismiss').checked;
-        if (Boolean(state.package.guidance_auto_open_disabled) !== disabled) {
-          state.package.guidance_auto_open_disabled = disabled;
-          markDirty(null);
-        }
         if (typeof dialog.close === 'function') dialog.close();
         else dialog.removeAttribute('open');
       }
@@ -2664,7 +2791,7 @@
       renderSidebar();
       renderEditor();
       updateSaveState();
-      openGuidance(true);
+
     })();
   </script>
 </body>

@@ -1812,7 +1812,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)
         self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.</div>", start_html)
         self.assertIn("const showFeedback = (hasReview || Boolean(selection.feedback)) && !isReturn", preparation_template)
-        self.assertIn("if (showFeedback)", preparation_template)
+        self.assertIn("if (!showFeedback) return", preparation_template)
         self.assertIn("showReflection && hasOutlook", preparation_template)
         payload["package"]["revision"] = 1
         payload["package"]["saved_at"] = "2025-09-17T12:30:00+00:00"

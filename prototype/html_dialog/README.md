@@ -287,3 +287,9 @@ Erstempfang per E-Mail, das Überschreiben und den Umgang mit versehentlichen Ko
 Rote Datenhinweise erklären in Kurzanleitung und Vorbereitung die lokale Speicherung.
 Die persönliche Reflexion wird ohne Zusatz «freiwillig» angeboten; ihre Fragen sind
 aufklappbar. Der Rückgabehinweis erscheint nur bei angeforderter Rückgabe.
+
+Die Vorbereitung enthält eine persönliche Gesamtbewertung (A–E) im Rückblick.
+Bei angeforderter Rückgabe wird diese als eigener Mitarbeitendenbeitrag importiert
+und im finalen PDF ausgegeben; die Bewertung der Führungskraft bleibt erhalten.
+Kompetenzorientiertes Feedback startet ohne Einträge und lässt sich dynamisch
+ergänzen und entfernen. Bereits erfasste Beiträge aus früheren Dateien bleiben erhalten.

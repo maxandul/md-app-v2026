@@ -761,7 +761,7 @@
   <div id="print-root" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Arbeitsmappe speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol><p>Wenn dein Browser das Überschreiben nicht unterstützt, wird eine neue Datei heruntergeladen. Arbeite dann mit dieser neuen Datei weiter.</p></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
+  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Arbeitsmappe speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei beim nächsten Speichern automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
   <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
     <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
     <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil.</div><div id="preparation-import-preview"></div></div>
@@ -1504,6 +1504,7 @@
             <div class="subsection" id="review-performance"><h3>1. Leistung</h3><div class="form-grid">
               ${field('Allgemeine Bemerkungen', 'review.general_notes', employee.review.general_notes, { type:'textarea', full:true })}
               ${field('Wie wird die bisherige Leistung eingeschätzt? Konnten die wesentlichen Ziele des Einführungsprogramms erreicht werden?', 'review.performance', employee.review.performance, { type:'textarea', tall:true, full:true, required:true })}
+              ${employee.ma_preparation?.review?.entries?.some(entry => entry.path === 'review.overall_rating') ? `<div class="field full">${employeeContribution(employee, 'review.overall_rating', false, false)}</div>` : ''}
             </div></div>
             <div class="subsection" id="review-competencies"><h3>2. Kompetenzen und Zusammenarbeit</h3><p class="section-intro">Nur Kompetenzen ergänzen, zu denen eine konkrete Rückmeldung festgehalten werden soll. Human Resources &amp; Entwicklung empfiehlt drei bis fünf Kompetenzen.</p>${renderCompetencies(employee)}</div>
             <div class="subsection"><h3>3. Bemerkungen zum Gespräch</h3><div class="form-grid">
@@ -2215,6 +2216,7 @@
         const payload = {
           version: 3,
           selection: preparationSelection(employee),
+          rating_options: ratingOptions,
           previous_goals: (employee.previous_goals || []).map(({id,title,criteria,steps,target_date}) => ({id,title,criteria,steps,target_date})),
           previous_development_goals: (employee.previous_development_goals || []).map(({id,competency,title,criteria,steps,target_date}) => ({id,competency,title,criteria,steps,target_date})),
           preparation_id: `PREP-${employee.case_id}`,
@@ -2314,11 +2316,11 @@
         const readable = value => typeof value === 'string' ? value : Array.isArray(value) ? value.map(item => Object.entries(item).filter(([key,val]) => key !== 'id' && val).map(([key,val]) => `${({title:'Ziel', criteria:'Messkriterien', steps:'Schritte', target_date:'Termin', competency:'Kompetenz', comment:'Beobachtung', achievement:'Zielerreichung', review:'Rückblick'})[key] || key}: ${val}`).join('\n')).join('\n\n') : '';
         return (source.entries || []).map(entry => `<div class="source-panel ma-contribution"><div class="source-panel-label">${h(entry.label)}${removalSection ? `<button class="button small" style="float:right;margin-left:12px" type="button" data-action="remove-contribution" data-section="${h(removalSection)}" data-path="${h(entry.path)}">Beitrag entfernen</button>` : ''}</div><div class="source-panel-value" style="white-space:pre-wrap">${h(readable(entry.value))}</div></div>`).join('');
       }
-      function employeeContribution(employee, path, prefix = false) {
+      function employeeContribution(employee, path, prefix = false, showOwner = true) {
         if (!employee?.ma_preparation) return '';
         const entries = ['review','outlook'].flatMap(section => employee.ma_preparation[section]?.entries || []).filter(entry => prefix ? entry.path.startsWith(path + '.') : entry.path === path);
         if (!entries.length) return '';
-        return `<div class="ma-fixed"><strong>Sicht der mitarbeitenden Person</strong>${preparationContributionHtml({entries}, path.startsWith('outlook.') ? 'outlook' : 'review')}</div><div class="ma-owner-label">Deine Angaben als vorgesetzte Person</div>`;
+        return `<div class="ma-fixed"><strong>Sicht der mitarbeitenden Person</strong>${preparationContributionHtml({entries}, path.startsWith('outlook.') ? 'outlook' : 'review')}</div>${showOwner ? '<div class="ma-owner-label">Deine Angaben als vorgesetzte Person</div>' : ''}`;
       }
       async function readPreparationFile(event) {
         const file = event.target.files[0]; event.target.value = '';
@@ -2352,7 +2354,7 @@
             }))).filter(item => Object.entries(item).some(([key,val]) => key !== 'id' && val.trim()));
           };
           if (hasReview(employee.scope) && source.selection.review) {
-            [['general_notes','Rückblick · Allgemeine Bemerkungen'],['performance','Rückblick · Leistung und Aufgabenerfüllung'],['employee_comment','Rückblick · Bemerkung der mitarbeitenden Person'],['secondary_employment_current','Rückblick · SAP-Stand aktuell'],['secondary_employment_note','Rückblick · Nebenbeschäftigungen und öffentliche Ämter']].forEach(([key,label]) => scalar('review',key,label));
+            [['overall_rating','Rückblick · Gesamtbewertung aus Mitarbeitendensicht'],['general_notes','Rückblick · Allgemeine Bemerkungen'],['performance','Rückblick · Leistung und Aufgabenerfüllung'],['employee_comment','Rückblick · Bemerkung der mitarbeitenden Person'],['secondary_employment_current','Rückblick · SAP-Stand aktuell'],['secondary_employment_note','Rückblick · Nebenbeschäftigungen und öffentliche Ämter']].forEach(([key,label]) => scalar('review',key,label));
             const competencies = listValue(source.prepared?.review?.competencies || [], ['id','competency','comment']);
             if (competencies.length) entries.push({path:'review.competencies',label:'Rückblick · Kompetenzbezogene Beobachtungen',value:competencies});
             ['previous_goals','previous_development_goals'].forEach(list => {

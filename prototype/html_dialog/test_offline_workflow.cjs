@@ -99,6 +99,7 @@ test('return file removes reflection from JSON, rendered DOM and private print c
   await page.evaluate(() => { document.getElementById('print-root').textContent = 'REFLECTION_SECRET_829'; });
   await page.locator('[data-tab="review-section"]').click();
   await page.locator('[data-prepared="review.performance"]').fill('Meine Leistung');
+  await page.locator('[data-prepared="review.overall_rating"]').selectOption('B – sehr gut');
   await page.locator('[data-prepared="review.previous_goals.0.achievement"]').selectOption('Erreicht');
   await page.locator('[data-tab="outlook-section"]').click();
   await page.locator('[data-add="outlook.performance_goals"]').click();
@@ -124,6 +125,7 @@ test('return file removes reflection from JSON, rendered DOM and private print c
   assert.equal(data.return_section,'review');
   assert.deepEqual(Object.keys(data.prepared),['review']);
   assert.equal(data.prepared.review.performance,'Meine Leistung');
+  assert.equal(data.prepared.review.overall_rating,'B – sehr gut');
   const outlookData = dataOf(await fs.readFile(outlookReturn,'utf8'),'prep-data');
   assert.equal(outlookData.prepared.outlook.performance_goals[0].title,'Neues Ziel');
   assert.deepEqual(Object.keys(outlookData.prepared),['outlook']);
@@ -365,6 +367,7 @@ test('employee contributions are included in PDFs and can be removed without cha
     const text = await page.locator('#print-root').textContent();
     assert.ok(text.includes('Beiträge der mitarbeitenden Person aus der Vorbereitung'));
     assert.ok(text.includes(section==='review' ? 'Meine Leistung' : 'Neues Ziel'));
+    if (section==='review') { assert.ok(text.includes('Gesamtbewertung aus Mitarbeitendensicht')); assert.ok(text.includes('B – sehr gut')); }
     assert.ok(!text.includes(section==='review' ? 'Neues Ziel' : 'Meine Leistung'));
     assert.ok(!text.includes('FEEDBACK_PRIVATE_391') && !text.includes('REFLECTION_SECRET_829'));
     if (process.env.MD_TEST_PDF_DIR) await page.pdf({path:path.join(process.env.MD_TEST_PDF_DIR,section+'.pdf'),format:'A4',printBackground:true,preferCSSPageSize:true});
@@ -439,4 +442,54 @@ test('red data notices, optional feedback and conditional return guidance surviv
     await prepared.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'preparation-v5.png'),fullPage:true});
   }
   for(const p of [page,prepared,reopened,returnPage,noFeedback]) await p.close();
+});
+
+test('feedback competencies start empty, grow dynamically and survive removal and reopening',async () => {
+  const page = await pageAt(await preparedFixture());
+  const saving = await page.locator('.intro').textContent();
+  assert.ok(saving.includes('beim nächsten Speichern automatisch überschrieben'));
+  assert.ok(!saving.includes('Wenn dein Browser'));
+  await page.locator('[data-tab="review-section"]').click();
+  assert.ok((await page.locator('#review-section').innerText()).includes('Dein/e Vorgesetzte/r erstellt im Dialog mit dir das finale Dokument in seiner eigenen Datei.'));
+  await page.locator('[data-tab="feedback-section"]').click();
+  assert.equal(await page.locator('#feedback-section .competency-row').count(),0);
+  assert.ok((await page.locator('#feedback-section .warning-note').first().innerText()).startsWith('Das Feedback ist obligatorisch.'));
+  assert.ok((await page.locator('#feedback-section .warning-note').last().innerText()).includes('nachdem du es mit deiner vorgesetzten Person besprochen hast'));
+  const competency = base.configuration.competency_model[0].competencies[0].name;
+  for(let index=1;index<=4;index++) {
+    await page.locator('[data-action="add-feedback-competency"]').click();
+    await page.locator(`[data-field="feedback_competency_${index}"]`).selectOption(competency);
+    await page.locator(`[data-field="feedback_competency_text_${index}"]`).fill('Beobachtung '+index);
+  }
+  assert.equal(await page.locator('#feedback-section .competency-row').count(),4);
+  await page.locator('[data-action="remove-feedback-competency"][data-feedback-index="2"]').click();
+  assert.equal(await page.locator('#feedback-section .competency-row').count(),3);
+  assert.equal(await page.locator('[data-field="feedback_competency_text_4"]').inputValue(),'Beobachtung 4');
+  const saved = await download(page,'#save-html','dynamic-feedback.html');
+  const reopened = await pageAt(saved);
+  await reopened.locator('[data-tab="feedback-section"]').click();
+  assert.equal(await reopened.locator('#feedback-section .competency-row').count(),3);
+  assert.equal(await reopened.locator('[data-field="feedback_competency_text_4"]').inputValue(),'Beobachtung 4');
+  await reopened.evaluate(()=>{window.print=()=>{};});
+  await reopened.locator('[data-action="print-feedback"]').click();
+  const text = await reopened.locator('#print-root').innerText();
+  for(const index of [1,3,4]) assert.ok(text.includes('Beobachtung '+index));
+  assert.ok(!text.includes('Beobachtung 2'));
+  if(process.env.MD_TEST_PDF_DIR) await reopened.pdf({path:path.join(process.env.MD_TEST_PDF_DIR,'feedback.pdf'),format:'A4',printBackground:true,preferCSSPageSize:true});
+  await reopened.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  if(process.env.MD_TEST_SCREENSHOTS) {
+    await reopened.evaluate(()=>window.scrollTo(0,0));
+    await reopened.screenshot({path:path.join(process.env.MD_TEST_SCREENSHOTS,'feedback-v6.png'),fullPage:true});
+  }
+  // Earlier files stored up to three flat field pairs, including comment-only entries.
+  const legacy = dataOf(await fs.readFile(saved,'utf8'),'prep-data');
+  delete legacy.feedback_competency_indices;
+  legacy.fields = {feedback_competency_1:competency,feedback_competency_text_1:'Bisheriger Beitrag',feedback_competency_text_3:'Nur Beobachtung'};
+  const legacyFile = path.join(dir,'legacy-feedback.html');
+  await fs.writeFile(legacyFile,replaceData(await fs.readFile(saved,'utf8'),'prep-data',legacy));
+  const migrated = await pageAt(legacyFile);
+  await migrated.locator('[data-tab="feedback-section"]').click();
+  assert.equal(await migrated.locator('#feedback-section .competency-row').count(),2);
+  assert.equal(await migrated.locator('[data-field="feedback_competency_text_3"]').inputValue(),'Nur Beobachtung');
+  for(const p of [page,reopened,migrated]) await p.close();
 });

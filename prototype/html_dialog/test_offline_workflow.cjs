@@ -24,6 +24,7 @@ async function pageAt(file) {
 async function download(page, selector, name) {
   const pending = page.waitForEvent('download');
   await page.locator(selector).click();
+  if (selector === '#save-html' && await page.locator('#save-hint-dialog').isVisible()) await page.locator('#save-hint-confirm').click();
   const event = await pending;
   const dest = path.join(dir,name || event.suggestedFilename());
   await event.saveAs(dest); return dest;
@@ -35,7 +36,7 @@ async function importReturn(page,section,file) {
 }
 async function preparedFixture(scope='full',selection={reflection:true,review:true,outlook:true,return_review:true,return_outlook:true},name='prep.html',type='annual') {
   const employee = base.employees[0];
-  const payload = {version:3,preparation_id:`PREP-${employee.case_id}`,package_id:base.package.package_id,case_id:employee.case_id,scope,dialog_type:type,selection,review_year:base.package.rb_year,outlook_year:base.package.ab_year,period_start:employee.period_start,period_end:employee.period_end,employee:employee.employee,manager:{pn:base.package.manager_pn,name:base.package.manager_name},competency_model:base.configuration.competency_model,previous_goals:employee.previous_goals.map(({id,title,criteria,steps,target_date})=>({id,title,criteria,steps,target_date})),previous_development_goals:[],fields:{}};
+  const payload = {version:3,save_hint_dismissed:true,preparation_id:`PREP-${employee.case_id}`,package_id:base.package.package_id,case_id:employee.case_id,scope,dialog_type:type,selection,review_year:base.package.rb_year,outlook_year:base.package.ab_year,period_start:employee.period_start,period_end:employee.period_end,employee:employee.employee,manager:{pn:base.package.manager_pn,name:base.package.manager_name},competency_model:base.configuration.competency_model,previous_goals:employee.previous_goals.map(({id,title,criteria,steps,target_date})=>({id,title,criteria,steps,target_date})),previous_development_goals:[],fields:{}};
   const file = path.join(dir,name);
   await fs.writeFile(file,base.configuration.preparation_template.replace('__MD_PREPARATION_JSON__',json(payload)));
   return file;
@@ -448,7 +449,7 @@ test('red data notices, optional feedback and conditional return guidance surviv
 
 test('feedback competencies start empty, grow dynamically and survive removal and reopening',async () => {
   const page = await pageAt(await preparedFixture());
-  const saving = await page.locator('.intro').textContent();
+  const saving = await page.locator('#save-hint-dialog').textContent();
   assert.ok(saving.includes('beim nächsten Speichern automatisch überschrieben'));
   assert.ok(!saving.includes('Wenn dein Browser'));
   await page.locator('[data-tab="review-section"]').click();
@@ -712,4 +713,68 @@ test('saving shows immediate progress and clears it in saved files and after com
     assert.ok(!await page.evaluate(()=>window.output.includes('Datei wird gespeichert …</div>')));
     await page.close();
   }
+});
+
+test('outlook goal cards support fixing and editing agreements in workbook and preparation',async () => {
+  const prep = await preparedFixture('full',{reflection:true,review:true,outlook:true},'goal-cards.html');
+  for (const file of [fixture,prep]) {
+    const page = await pageAt(file); const workbook = file===fixture;
+    await page.locator(workbook ? '.workflow-nav [data-step="outlook"]' : '[data-tab="outlook-section"]').click();
+    for (const list of ['performance_goals','development_goals']) {
+      const development = list==='development_goals';
+      await page.locator(workbook ? `[data-action="add-${development ? 'development' : 'performance'}-goal"]` : `[data-add="outlook.${list}"]`).click();
+      const card = workbook ? page.locator(`#outlook-${development ? 'development' : 'performance'}-goal-1`) : page.locator('.dialog-goal-card').filter({has:page.locator(`[data-goal-lock="outlook.${list}"]`)});
+      const field = key => card.locator(workbook ? `[data-key="${key}"]` : `[data-prepared="outlook.${list}.0.${key}"]`);
+      const lock = () => card.locator(workbook ? '[data-action="lock-outlook-agreement"]' : '[data-goal-lock]');
+      await lock().click(); assert.ok((await page.locator('#toast').textContent()).includes('Ergänze zuerst'));
+      if (development) await field('competency').selectOption({index:1});
+      await field('title').fill('Ein gemeinsames Ziel'); await field('criteria').fill('Konkretes Ergebnis'); await field('target_date').fill('2026-12-31');
+      await lock().click();
+      assert.equal(await field('title').count(),0);
+      assert.ok((await card.locator('.goal-heading').textContent()).includes('Ein gemeinsames Ziel'));
+      if (development) assert.ok((await card.locator('.goal-heading h4').textContent()).includes(' - '));
+      assert.equal(await card.locator('.card-state').count(),0);
+      await card.locator('summary').click();
+      await card.locator(workbook ? '[data-action="edit-outlook-agreement"]' : '[data-goal-lock]').click();
+      assert.equal(await field('criteria').inputValue(),'Konkretes Ergebnis');
+      await lock().click();
+    }
+    const saved = await download(page,workbook ? '#save-button' : '#save-html',workbook ? 'locked-workbook.html' : 'locked-preparation.html');
+    const data = dataOf(await fs.readFile(saved,'utf8'),workbook ? 'md-data' : 'prep-data');
+    const outlook = workbook ? data.employees[0].outlook : data.prepared.outlook;
+    assert.equal(outlook.development_goals[0].agreement_locked,true);
+    assert.equal(outlook.performance_goals[0].agreement_locked,true);
+    await page.close();
+  }
+});
+
+test('preparation save popup replaces inline hint and dismissal survives reopening',async () => {
+  const file = await preparedFixture('full',{reflection:true},'save-popup.html');
+  const content = await fs.readFile(file,'utf8'); const data = dataOf(content,'prep-data'); data.save_hint_dismissed=false; await fs.writeFile(file,replaceData(content,'prep-data',data));
+  const page = await pageAt(file); await page.locator('[data-field="review_performance"]').fill('Meine Vorbereitung');
+  assert.equal(await page.locator('details.warning-note').filter({hasText:'Datei speichern'}).count(),0);
+  await page.locator('#save-html').click(); await page.locator('#save-hint-dialog[open]').waitFor();
+  assert.ok((await page.locator('#save-hint-dialog').textContent()).includes('Datei frisch per E-Mail erhalten'));
+  await page.locator('#save-hint-cancel').click(); assert.equal(await page.locator('#save-html').isEnabled(),true);
+  await page.locator('#save-html').click(); await page.locator('#save-hint-dismiss').check();
+  const saved = await download(page,'#save-hint-confirm','dismissed-preparation.html');
+  assert.equal(dataOf(await fs.readFile(saved,'utf8'),'prep-data').save_hint_dismissed,true);
+  const reopened=await pageAt(saved); await reopened.locator('[data-field="review_performance"]').fill('Ergänzt');
+  await download(reopened,'#save-html','dismissed-preparation-second.html');
+  assert.equal(await reopened.locator('#save-hint-dialog').evaluate(el=>el.open),false);
+  for(const p of [page,reopened]) await p.close();
+});
+
+test('update hint offers cancel and file selection, and dismissal persists',async () => {
+  const page=await pageAt(fixture); await page.locator('#update-button').click();
+  await page.locator('#update-hint-dialog[open]').waitFor();
+  assert.ok((await page.locator('#update-hint-dialog').textContent()).includes('Deine Gesprächsinhalte und lokalen Eingaben bleiben erhalten'));
+  await page.locator('#update-hint-cancel').click(); assert.equal(await page.locator('#update-hint-dialog').evaluate(el=>el.open),false);
+  await page.locator('#update-button').click(); await page.locator('#update-hint-dismiss').check();
+  const chooser=page.waitForEvent('filechooser'); await page.locator('#update-hint-confirm').click(); await chooser;
+  const saved=await download(page,'#save-button','update-hint-dismissed.html');
+  assert.equal(dataOf(await fs.readFile(saved,'utf8'),'md-data').package.update_hint_dismissed,true);
+  const reopened=await pageAt(saved); const nextChooser=reopened.waitForEvent('filechooser'); await reopened.locator('#update-button').click(); await nextChooser;
+  assert.equal(await reopened.locator('#update-hint-dialog').evaluate(el=>el.open),false);
+  for(const p of [page,reopened]) await p.close();
 });

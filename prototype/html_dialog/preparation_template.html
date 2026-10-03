@@ -102,6 +102,17 @@
     .field input { width:100%; padding:10px 11px; border:1px solid #b9c2cf; border-radius:4px; background:#fff; }
     .goal-card { margin:14px 0; padding:16px; border:1px solid var(--line); border-radius:4px; }
     .goal-card h3 { margin:0 0 8px; font-size:17px; }
+    .dialog-goal-card { padding:0; border:1px solid #ccdbe7; overflow:hidden; }
+    .dialog-goal-card > .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:14px 16px; background:var(--blue-soft); }
+    .dialog-goal-card > .card-body { padding:4px 16px 16px; }
+    .goal-heading { min-width:0; }
+    .goal-kind { display:block; margin-bottom:5px; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--blue-dark); }
+    .goal-heading h4 { margin:0; font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
+    .previous-agreement > summary { padding:10px 0; color:var(--blue-dark); font-weight:700; }
+    .agreement-values { padding:12px; margin:10px 0; background:#f0f3f6; }
+    .agreement-values strong { font-size:12px; color:var(--muted); }
+    .agreement-values p { margin:3px 0 10px; white-space:pre-wrap; }
+
     .source-panel { margin:12px 0; padding:14px; background:#f0f3f6; white-space:pre-wrap; }
     .toast { position:fixed; right:24px; bottom:24px; z-index:100; max-width:520px; padding:14px 18px; color:#fff; background:var(--blue-dark); border-radius:4px; box-shadow:0 4px 18px #0003; display:none; }
     .toast.visible { display:block; }
@@ -114,6 +125,8 @@
 
     @media (max-width:760px) { .topbar { position:static; align-items:flex-start; flex-direction:column; } .content { padding:16px; } .meta,.competency-row { grid-template-columns:1fr; } }
     @media print {
+      .reflection-goals h3 { break-after:avoid; }
+      .dialog-goal-card { break-inside:avoid; }
       @page { size:A4; margin:16mm 15mm 18mm; }
       body { background:#fff; font:10.5pt/1.42 Arial,Helvetica,sans-serif; }
       body.printing #app { display:none !important; }
@@ -145,7 +158,7 @@
         <p class="eyebrow">Persönliche Vorbereitung</p>
         <h2 id="person-title"></h2>
         <p id="preparation-intro">Bereite deine Sicht vor und bringe sie ins Gespräch ein. Deine Führungskraft ergänzt ihre Einschätzungen und Erwartungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt gemeinsam, was festgehalten wird und welche nächsten Schritte sinnvoll sind.</p><div id="preparation-overview" class="process-overview"></div>
-        <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Datei. Es werden keine Daten an einen Server oder automatisch an deine/n Vorgesetzte/n oder an HR übermittelt.</p></div><details class="warning-note"><summary><strong>Datei speichern</strong></summary><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Eigenen Stand speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei beim nächsten Speichern automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol></details>
+        <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Datei. Es werden keine Daten an einen Server oder automatisch an deine/n Vorgesetzte/n oder an HR übermittelt.</p></div>
         <div id="requested-return-note" class="warning-note" hidden></div>
         <div class="meta"><span><strong>Vorgesetzte Person</strong><span id="manager-name"></span></span><span><strong>Gesprächsumfang</strong><span id="scope-label"></span></span><span><strong>Zeitraum</strong><span id="period-label"></span></span></div>
       </section>
@@ -158,6 +171,7 @@
     </main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Eigenen Stand speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Eigenen Stand speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei beim nächsten Speichern automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="actions"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
   <dialog id="return-dialog" class="guidance-dialog" aria-labelledby="return-title"><div class="guidance-dialog-head"><h2 id="return-title">Rückgabedatei erstellen</h2></div><div class="guidance-dialog-body"><p id="return-description"></p><div id="return-privacy" class="warning-note"></div></div><div class="guidance-dialog-foot"><button id="return-cancel" class="button" type="button">Abbrechen</button><button id="return-confirm" class="button primary" type="button">Rückgabedatei erstellen</button></div></dialog>
   <div id="file-operation-status" class="file-operation-status" role="status" aria-live="polite" hidden></div>
   <div id="print-root" aria-hidden="true"></div>
@@ -273,13 +287,20 @@
       } else {
         overview.innerHTML = `<h3>So nutzt du deine Vorbereitung</h3><p>Diese Datei unterstützt dich bei der Vorbereitung auf den Mitarbeitenden-Dialog. Deine Führungskraft erstellt die finalen Gesprächsdokumente im Dialog mit dir in ihrer eigenen Arbeitsmappe.</p><ol><li><strong>Vorbereiten</strong><br>Bereite deine Sicht in den bereitgestellten Bereichen vor und speichere deinen Stand.</li><li><strong>Besprechen</strong><br>Bringe deine Einschätzungen, Fragen und Vorschläge ins Gespräch ein.</li>${requestedSections.length ? `<li><strong>Angeforderte Beiträge zurückgeben</strong><br>Erstelle für ${requestedSections.map(section => section === 'review' ? 'Rückblick' : 'Ausblick').join(' und ')} ${requestedSections.length === 2 ? 'jeweils ' : ''}eine separate Rückgabedatei und sende sie an deine Führungskraft. Den Zeitpunkt vereinbarst du mit ihr. Übernommene Beiträge erscheinen als deine Sicht im finalen Gesprächsdokument, das im Personaldossier abgelegt wird.</li>` : ''}${showFeedback ? '<li><strong>Feedback nach der Besprechung senden</strong><br>Besprich dein Feedback im ' + (hasReview ? (state.dialog_type === 'probation' ? 'Probezeitrückblick' : 'Rückblickgespräch') : 'Gespräch') + '. Erstelle danach das Feedback-PDF – noch im Gespräch oder anschliessend – und sende es an deine Führungskraft. Sie leitet es an HR weiter.</li>' : ''}</ol>${!requestedSections.length && !showFeedback ? '<p>Deine Datei dient deiner eigenen Vorbereitung. Eine Rückgabe ist nicht angefordert.</p>' : ''}<p>Deine vollständige persönliche Datei bleibt bei dir.</p>`;
       }
+      function goalHeading(goal,development,index) {
+        return `<div class="goal-heading"><span class="goal-kind">${development ? 'Entwicklungsziel' : 'Leistungsziel'} ${index + 1}</span><h4>${h(development && goal.competency && goal.title ? `${goal.competency} - ${goal.title}` : goal.title || 'Ziel erfassen')}</h4></div>`;
+      }
+      function goalAgreement(goal) {
+        const values = typeof goal.agreement_details === 'string' ? [['Details zur Vereinbarung',goal.agreement_details]] : [['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]];
+        return `<div class="agreement-values">${values.filter(([,value]) => value).map(([label,value]) => `<div><strong>${label}</strong><p>${h(value)}</p></div>`).join('') || '<p>Keine weiteren Details hinterlegt.</p>'}</div>`;
+      }
       function reflectionGoals() {
-        if (!showReflection) return '';
+        if (!showReflection || !hasReview) return '';
         const groups = [['previous_goals','Leistungsziele'],['previous_development_goals','Entwicklungsziele']];
         const content = groups.map(([key,label]) => {
           const goals = (state[key] || []).filter(goal => goal.title || goal.competency || goal.criteria || goal.steps || goal.target_date);
           if (!goals.length) return '';
-          return `<h3>${label}</h3>${goals.map(goal => `<div class="goal-card"><h4>${h(goal.title || goal.competency || 'Vereinbartes Ziel')}</h4>${goal.competency && goal.title ? `<p><strong>Kompetenz:</strong> ${h(goal.competency)}</p>` : ''}${(typeof goal.agreement_details === 'string' ? [['Details zur Vereinbarung',goal.agreement_details]] : [['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]]).filter(([,value]) => value).map(([label,value]) => `<p><strong>${label}:</strong> ${h(value)}</p>`).join('')}</div>`).join('')}`;
+          return `<h3>${label}</h3>${goals.map((goal,index) => `<div class="goal-card dialog-goal-card"><div class="card-head">${goalHeading(goal,key === 'previous_development_goals',index)}</div><div class="card-body">${goalAgreement(goal)}</div></div>`).join('')}`;
         }).join('');
         return `<div class="reflection-goals"><h2>Zuletzt vereinbarte Ziele</h2>${content || '<p class="section-intro">In dieser Datei sind keine zuletzt vereinbarten Ziele hinterlegt. Falls du Ziele vereinbart hast, ziehe deine bisherigen Unterlagen für die Reflexion bei.</p>'}</div>`;
       }
@@ -336,11 +357,11 @@
           review = `<section class="section"><div class="section-head"><div><p class="eyebrow">Rückblick</p><h2>Deine Sicht auf Leistung und Zusammenarbeit</h2></div></div><div class="warning-note">${isReturn ? 'Deine ausgefüllte Rückgabe zum Rückblick.' : state.dialog_type === 'probation' ? 'Bereite vor dem Gespräch deine Sicht auf Leistung und Einarbeitung in der Probezeit vor. Deine Angaben sind dein Beitrag zum Dialog; das finale Probezeitrückblick-Dokument erstellt deine Führungskraft im Gespräch mit dir.' : 'Bereite vor dem Gespräch deine Sicht auf Leistung und Zusammenarbeit vor. Deine Angaben sind dein Beitrag zum Dialog; das finale Rückblick-Dokument erstellt deine Führungskraft im Gespräch mit dir.'}${!isReturn ? selection.return_review ? ' Deine Führungskraft bittet dich, diesen Rückblick ausgefüllt zurückzugeben.' : ' Dieser Bereich dient deiner Vorbereitung. Eine Rückgabe ist nicht angefordert.' : ''}</div>`;
           if (state.dialog_type !== 'probation') {
             ['previous_goals','previous_development_goals'].forEach(list => {
-              review += `<div class="subsection"><h3>${list === 'previous_goals' ? 'Leistungsziele aus dem Vorjahr' : 'Entwicklungsziele aus dem Vorjahr'}</h3>`;
+              review += `<div class="subsection"><h3>${list === 'previous_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}</h3>`;
               const goals = state[list] || [];
               prepared.review[list] = prepared.review[list] || goals.map(goal => ({ id: goal.id, achievement: '', review: '' }));
               goals.forEach((goal, index) => {
-                review += `<div class="goal-card"><h3>${h(goal.title || goal.competency || 'Vorjahresziel')}</h3><div class="source-panel">${h((typeof goal.agreement_details === 'string' ? [goal.agreement_details] : [goal.criteria, goal.steps, formatDate(goal.target_date)]).filter(Boolean).join('\n'))}</div><div class="form-grid">${inputField(`review.${list}.${index}.achievement`, 'Zielerreichung', 'select', ['Erreicht','Teilweise erreicht','Nicht erreicht','Entfallen','Noch offen'])}${inputField(`review.${list}.${index}.review`, 'Rückblick und Einordnung')}</div></div>`;
+                review += `<div class="goal-card dialog-goal-card"><div class="card-head">${goalHeading(goal,list === 'previous_development_goals',index)}</div><div class="card-body"><details class="previous-agreement"><summary>Vereinbarung aus dem Vorjahr</summary>${goalAgreement(goal)}</details><div class="form-grid" style="margin-top:16px">${inputField(`review.${list}.${index}.achievement`, 'Zielerreichung', 'select', ['Erreicht','Teilweise erreicht','Nicht erreicht','Entfallen','Noch offen'])}${inputField(`review.${list}.${index}.review`, 'Rückblick und Einordnung')}</div></div></div>`;
               });
               review += (goals.length ? '' : '<p class="section-intro">Keine Vorjahresziele übermittelt. Beschreibe deine Zielerreichung im allgemeinen Leistungsrückblick.</p>') + '</div>';
             });
@@ -359,7 +380,10 @@
           outlook = `<section class="section"><div class="section-head"><div><p class="eyebrow">Ausblick</p><h2>Deine Vorschläge zu Zielen und Entwicklung</h2></div></div><div class="warning-note">${isReturn ? 'Deine ausgefüllte Rückgabe zum Ausblick.' : 'Bereite vor dem Gespräch Vorschläge zu Zielen und Entwicklung vor. Die gemeinsamen Vereinbarungen hält deine Führungskraft im finalen Ausblick-Dokument fest.'}${!isReturn ? selection.return_outlook ? ' Deine Führungskraft bittet dich, diesen Ausblick ausgefüllt zurückzugeben.' : ' Dieser Bereich dient deiner Vorbereitung. Eine Rückgabe ist nicht angefordert.' : ''}</div>`;
           ['performance_goals','development_goals'].forEach(list => {
             outlook += `<div class="subsection"><h3>${list === 'performance_goals' ? 'Leistungsziele' : 'Entwicklungsziele'}</h3>${list === 'development_goals' && !isReturn ? hrRecommendation('Überlege dir zwei bis drei Entwicklungsziele, die für deine Arbeit und deine Entwicklung besonders sinnvoll sind. Beschreibe mögliche Schritte und die Unterstützung, die dir helfen würde. Du musst noch keine fertigen Ziele formulieren; die Vereinbarung entsteht im Gespräch. Lieber weniger, dafür relevante und umsetzbare Ziele.') : ''}`;
-            (prepared.outlook[list] || []).forEach((goal,index) => { outlook += `<div class="goal-card"><h3>Ziel ${index+1}</h3><div class="form-grid">${list === 'development_goals' ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div><button class="button danger" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div>`; });
+            (prepared.outlook[list] || []).forEach((goal,index) => {
+              const development = list === 'development_goals';
+              outlook += `<div class="goal-card dialog-goal-card"><div class="card-head">${goalHeading(goal,development,index)}<button class="button danger small" data-remove="outlook.${list}" data-index="${index}">Entfernen</button></div><div class="card-body"><details class="previous-agreement" ${goal.agreement_locked ? '' : 'open'}><summary>Vereinbarung im Ausblick</summary>${goal.agreement_locked ? goalAgreement(goal) : `<div class="form-grid">${development ? inputField(`outlook.${list}.${index}.competency`,'Kompetenz','competency') : ''}${inputField(`outlook.${list}.${index}.title`,'Ziel')}${inputField(`outlook.${list}.${index}.criteria`,'Messkriterien')}${inputField(`outlook.${list}.${index}.target_date`,'Termin','date')}${inputField(`outlook.${list}.${index}.steps`,'Vereinbarte Schritte')}</div>`}<button class="button small" data-goal-lock="outlook.${list}" data-index="${index}">${goal.agreement_locked ? 'Vereinbarung bearbeiten' : 'Vereinbarung festhalten'}</button></details></div></div>`;
+            });
             outlook += `<button class="button" data-add="outlook.${list}">+ Ziel ergänzen</button></div>`;
           });
           outlook += `<div class="subsection"><div class="form-grid">${inputField('outlook.open_goals_text','Weitere oder übergreifende Ziele')}${inputField('outlook.nep','Laufbahnorientierter Entwicklungswunsch','select',['Kein Entwicklungswunsch','Führungsverantwortung','Fachführungsverantwortung','Projektverantwortung','Stellvertretung','KNF I','KNF II','Anderer Entwicklungswunsch','Noch zu klären'])}${inputField('outlook.nep_notes','Bemerkungen zur laufbahnorientierten Entwicklung')}${inputField('outlook.general_notes','Bemerkungen zum Ausblick')}</div></div>${returnActions('outlook')}</section>`;
@@ -429,6 +453,13 @@
           const id = window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `ma-${Date.now()}-${Math.random()}`;
           list.push(path === 'review.competencies' ? { id, competency:'', comment:'' } : { id, title:'', criteria:'', steps:'', target_date:'', ...(path.endsWith('development_goals') ? {competency:''} : {}) });
           markDirty(); renderPrepared(); renderNextActions();
+        }
+        if (button.dataset.goalLock) {
+          const goal = getPrepared(button.dataset.goalLock)[Number(button.dataset.index)];
+          const development = button.dataset.goalLock.endsWith('development_goals');
+          if (!goal) return;
+          if (!goal.agreement_locked && (!String(goal.title || '').trim() || !String(goal.criteria || '').trim() || !goal.target_date || (development && !goal.competency))) { showToast('Ergänze zuerst Ziel, Messkriterien und Termin' + (development ? ' sowie die Kompetenz.' : '.')); return; }
+          goal.agreement_locked = !goal.agreement_locked; markDirty(); renderPrepared(); renderNextActions();
         }
         if (button.dataset.remove) { getPrepared(button.dataset.remove).splice(Number(button.dataset.index),1); markDirty(); renderPrepared(); renderNextActions(); }
       });
@@ -506,6 +537,7 @@
         clone.querySelector('#file-operation-status').textContent = '';
         ['preparation-sections','review-section','outlook-section','feedback-section','preparation-tabs','print-root','toast','requested-return-note','return-privacy','return-description','preparation-overview'].forEach(id => { clone.querySelector('#' + id).innerHTML = ''; });
         clone.querySelector('#return-dialog').removeAttribute('open');
+        clone.querySelector('#save-hint-dialog').removeAttribute('open');
         clone.querySelector('body').classList.remove('printing');
         return '<!DOCTYPE html>\n' + clone.outerHTML;
       }
@@ -517,7 +549,15 @@
         dirty = safeJson(state) !== savedSnapshot; updateSaveState();
         showToast(result === 'saved' ? 'Datei am gewählten Speicherort gespeichert.' : 'Neue Kopie heruntergeladen. Bitte mit dieser Datei weiterarbeiten und sie in einem Arbeitsordner ablegen.');
       }
-      document.getElementById('save-html').addEventListener('click', () => saveOwn());
+      document.getElementById('save-html').addEventListener('click', () => {
+        if (state.save_hint_dismissed) return saveOwn();
+        document.getElementById('save-hint-dismiss').checked = false; document.getElementById('save-hint-dialog').showModal();
+      });
+      document.getElementById('save-hint-cancel').addEventListener('click', () => document.getElementById('save-hint-dialog').close());
+      document.getElementById('save-hint-confirm').addEventListener('click', () => {
+        if (document.getElementById('save-hint-dismiss').checked) { state.save_hint_dismissed = true; markDirty(); }
+        document.getElementById('save-hint-dialog').close(); saveOwn();
+      });
 
       const returnDialog = document.getElementById('return-dialog');
       let returnSection = null;

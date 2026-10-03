@@ -519,6 +519,13 @@
       scroll-margin-top: 150px;
     }
 
+    .dialog-goal-card { border:1px solid #ccdbe7; border-radius:5px; background:#fff; overflow:hidden; margin:16px 0; }
+    .dialog-goal-card > .card-head { padding:14px 16px; background:var(--blue-soft); align-items:flex-start; }
+    .dialog-goal-card > .card-body { padding:4px 16px 16px; }
+    .goal-heading { min-width:0; }
+    .goal-kind { display:block; margin-bottom:5px; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--blue-dark); }
+    .dialog-goal-card .goal-heading h4 { font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
+
     .card-head {
       display: flex;
       align-items: center;
@@ -768,6 +775,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <dialog id="save-hint-dialog" class="guidance-dialog" aria-labelledby="save-hint-title"><div class="guidance-dialog-head"><h2 id="save-hint-title">Arbeitsmappe speichern</h2></div><div class="guidance-dialog-body"><ol><li><strong>Datei frisch per E-Mail erhalten:</strong> Speichere die Datei lokal auf deinem Gerät (z. B. unter «Dokumente»).</li><li><strong>Bereits gespeicherte Datei bearbeitet:</strong> Überschreibe beim ersten Speichern deine bestehende Datei (Arbeitsmappe speichern &gt; bestehende Datei auswählen &gt; Speichern &gt; «Möchten Sie sie ersetzen?» &gt; Ja). Anschliessend wird die Datei beim nächsten Speichern automatisch überschrieben, solange sie geöffnet ist.</li><li><strong>Versehentlich neue Version gespeichert:</strong> Arbeite mit der neuen Version weiter oder überschreibe damit nochmals die ursprüngliche Datei.</li></ol></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="save-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="save-hint-cancel" class="button" type="button">Abbrechen</button><button id="save-hint-confirm" class="button primary" type="button">Speichern</button></div></div></dialog>
+  <dialog id="update-hint-dialog" class="guidance-dialog" aria-labelledby="update-hint-title"><div class="guidance-dialog-head"><h2 id="update-hint-title">Update einlesen</h2></div><div class="guidance-dialog-body"><p>HR stellt dir bei Änderungen eine Update-Datei zur Verfügung, zum Beispiel wenn Mitarbeitende fehlen oder Stammdaten angepasst wurden.</p><ol><li>Speichere deinen aktuellen Arbeitsstand vor dem Einlesen.</li><li>Wähle die von HR erhaltene Update-Datei aus. Die Arbeitsmappe zeigt dir vor der Übernahme, was aktualisiert wird. Deine Gesprächsinhalte und lokalen Eingaben bleiben erhalten.</li><li>Prüfe die aktualisierten Angaben und speichere anschliessend deine Arbeitsmappe.</li></ol></div><div class="guidance-dialog-foot"><label class="guidance-dismiss"><input id="update-hint-dismiss" type="checkbox"> Nicht mehr anzeigen</label><div class="toolbar"><button id="update-hint-cancel" class="button" type="button">Abbrechen</button><button id="update-hint-confirm" class="button primary" type="button">Update-Datei auswählen</button></div></div></dialog>
   <dialog id="preparation-import-dialog" class="guidance-dialog" aria-labelledby="preparation-import-title">
     <div class="guidance-dialog-head"><h2 id="preparation-import-title">Vorbereitung importieren</h2></div>
     <div class="guidance-dialog-body"><p id="preparation-import-person"></p><div class="suggestion warning"><strong>Beiträge der mitarbeitenden Person:</strong> Die Angaben werden als feste graue Blöcke beim jeweiligen Thema angezeigt. Deine eigenen Eingaben bleiben erhalten. Eine erneute Rückgabe aktualisiert nur die Beiträge der mitarbeitenden Person im betreffenden Gesprächsteil. Übernommene Beiträge erscheinen im finalen Gesprächsdokument, das im Personaldossier abgelegt wird. Klärt im Gespräch, was festgehalten werden soll. Über «Beitrag entfernen» kannst du importierte Beiträge wieder aus deiner Arbeitsmappe und künftigen PDFs entfernen; die persönliche Datei der mitarbeitenden Person bleibt erhalten.</div><div id="preparation-import-preview"></div></div>
@@ -1282,10 +1290,15 @@
         if (typeof goal.agreement_details === 'string') return goal.agreement_details;
         return [['Messkriterien',goal.criteria],['Vereinbarte Schritte',goal.steps],['Termin',formatDate(goal.target_date)]].filter(([,value]) => value).map(([label,value]) => `${label}: ${value}`).join('\n');
       }
+      function goalHeading(goal, development, index) {
+        const label = development ? 'Entwicklungsziel' : 'Leistungsziel';
+        const title = goal.title && goal.title.trim();
+        return `<div class="goal-heading"><span class="goal-kind">${label} ${index + 1}</span><h4>${h(development && goal.competency && title ? `${goal.competency} - ${title}` : title || 'Ziel erfassen')}</h4></div>`;
+      }
       function renderPreviousGoalCards(employee, arrayName) {
         const development = arrayName === 'previous_development_goals';
-        return employee[arrayName].map((goal,index) => `<div class="goal-card" id="${development ? 'review-development-goal' : 'review-previous-goal'}-${index + 1}">
-          <div class="card-head"><h4>${cardTitle(goal.title, `${development ? 'Entwicklungsziel' : 'Leistungsziel'} ${index + 1}`)}</h4><button class="button danger small" type="button" data-action="remove-item" data-array="${arrayName}" data-index="${index}">Entfernen</button></div>
+        return employee[arrayName].map((goal,index) => `<div class="goal-card dialog-goal-card" id="${development ? 'review-development-goal' : 'review-previous-goal'}-${index + 1}">
+          <div class="card-head">${goalHeading(goal,development,index)}<button class="button danger small" type="button" data-action="remove-item" data-array="${arrayName}" data-index="${index}">Entfernen</button></div>
           <div class="card-body"><details class="previous-agreement" ${goal.source_locked ? '' : 'open'}><summary>Vereinbarung aus dem Vorjahr</summary><div class="source-grid">
             ${goal.source_locked ? `${development ? sourceValue('Kompetenz',goal.competency,true) : ''}${sourceValue('Ziel',goal.title,true)}${sourceValue('Details zur Vereinbarung',previousAgreementDetails(goal),true)}` : `${development ? arrayField('Kompetenz',arrayName,index,'competency',goal.competency,{type:'select',groupedCompetencies:true,full:true}) : ''}${arrayField('Ziel',arrayName,index,'title',goal.title,{full:true,rows:2,required:true})}${arrayField('Details zur Vereinbarung (optional)',arrayName,index,'agreement_details',previousAgreementDetails(goal),{full:true,rows:3})}`}
           </div><button class="button small" type="button" data-action="${goal.source_locked ? 'edit-previous-agreement' : 'lock-previous-agreement'}" data-array="${arrayName}" data-index="${index}">${goal.source_locked ? 'Vereinbarung bearbeiten' : 'Vereinbarung festhalten'}</button></details>
@@ -1380,46 +1393,20 @@
         return `${employeeContribution(employee, 'previous_development_goals', true)}${previousDevelopment}<h4>${previousDevelopment ? 'Weitere Kompetenzbeobachtungen' : 'Kompetenzbeobachtungen'}</h4>${maBlock}${cards}<button class="button small" type="button" data-action="add-competency">+ Kompetenzbeobachtung ergänzen</button>`;
       }
 
-      function renderPerformanceGoals(employee) {
-        const goals = employee.outlook.performance_goals || [];
-        const cards = goals.map((goal, index) => {
-          const complete = Boolean(goal.title && goal.criteria && goal.target_date);
-          return `
-          <details class="repeat-card" id="outlook-performance-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Leistungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.performance_goals" data-index="${index}">Entfernen</button></span></summary>
-            <div class="card-body">
-            <div class="form-grid">
-              ${arrayField('Ziel', 'outlook.performance_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
-              ${arrayField('Messkriterien', 'outlook.performance_goals', index, 'criteria', goal.criteria, { required:true })}
-              ${arrayField('Schritte zum Ziel', 'outlook.performance_goals', index, 'steps', goal.steps)}
-              ${arrayField('Termin', 'outlook.performance_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
-            </div>
-            </div>
-          </details>`;
-        }).join('');
-        return `${employeeContribution(employee, 'outlook.performance_goals')}${cards || '<div class="empty-state">Noch kein Leistungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
+      function renderOutlookGoalCards(employee,arrayName) {
+        const development = arrayName === 'outlook.development_goals';
+        const goals = development ? employee.outlook.development_goals : employee.outlook.performance_goals;
+        return goals.map((goal,index) => `<div class="goal-card dialog-goal-card" id="outlook-${development ? 'development' : 'performance'}-goal-${index + 1}">
+          <div class="card-head">${goalHeading(goal,development,index)}<button class="button danger small" type="button" data-action="remove-item" data-array="${arrayName}" data-index="${index}">Entfernen</button></div>
+          <div class="card-body"><details class="previous-agreement" ${goal.agreement_locked ? '' : 'open'}><summary>Vereinbarung im Ausblick</summary>
+          ${goal.agreement_locked ? `<div class="source-grid">${development ? sourceValue('Kompetenz',goal.competency,true) : ''}${sourceValue('Ziel',goal.title,true)}${sourceValue('Messkriterien',goal.criteria,true)}${sourceValue('Schritte zum Ziel',goal.steps,true)}${sourceValue('Termin',formatDate(goal.target_date))}</div>` : `<div class="form-grid">${development ? arrayField('Kompetenz',arrayName,index,'competency',goal.competency,{type:'select',groupedCompetencies:true,required:true,full:true}) + `<div class="full">${renderCompetencyHelp(goal.competency)}</div>` : ''}${arrayField('Ziel',arrayName,index,'title',goal.title,{full:true,rows:2,required:true})}${arrayField('Messkriterien',arrayName,index,'criteria',goal.criteria,{required:true,full:true})}${arrayField('Schritte zum Ziel',arrayName,index,'steps',goal.steps,{full:true})}${arrayField('Termin',arrayName,index,'target_date',goal.target_date,{type:'date',required:true})}</div>`}
+          <button class="button small" type="button" data-action="${goal.agreement_locked ? 'edit-outlook-agreement' : 'lock-outlook-agreement'}" data-array="${arrayName}" data-index="${index}">${goal.agreement_locked ? 'Vereinbarung bearbeiten' : 'Vereinbarung festhalten'}</button></details></div></div>`).join('');
       }
-
+      function renderPerformanceGoals(employee) {
+        return `${employeeContribution(employee,'outlook.performance_goals')}${renderOutlookGoalCards(employee,'outlook.performance_goals') || '<div class="empty-state">Noch kein Leistungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-performance-goal">+ Leistungsziel ergänzen</button>`;
+      }
       function renderDevelopmentGoals(employee) {
-        const goals = employee.outlook.development_goals || [];
-        const cards = goals.map((goal, index) => {
-          const complete = Boolean(goal.competency && goal.title && goal.criteria && goal.target_date);
-          return `
-          <details class="repeat-card" id="outlook-development-goal-${index + 1}" ${complete ? '' : 'open'}>
-            <summary class="card-head"><span class="card-head-main"><h4>${cardTitle(goal.title, `Entwicklungsziel ${index + 1}`)}</h4>${cardState(complete)}</span><span class="card-actions"><button class="button danger small" type="button" data-action="remove-item" data-array="outlook.development_goals" data-index="${index}">Entfernen</button></span></summary>
-            <div class="card-body">
-            ${arrayField('Kompetenz', 'outlook.development_goals', index, 'competency', goal.competency, { type:'select', groupedCompetencies:true, required:true })}
-            ${renderCompetencyHelp(goal.competency)}
-            <div class="form-grid" style="margin-top:12px">
-              ${arrayField('Entwicklungsziel', 'outlook.development_goals', index, 'title', goal.title, { type:'textarea', full:true, rows:2, required:true })}
-              ${arrayField('Messkriterien', 'outlook.development_goals', index, 'criteria', goal.criteria, { required:true })}
-              ${arrayField('Schritte zum Ziel', 'outlook.development_goals', index, 'steps', goal.steps)}
-              ${arrayField('Termin', 'outlook.development_goals', index, 'target_date', goal.target_date, { type:'date', required:true })}
-            </div>
-            </div>
-          </details>`;
-        }).join('');
-        return `${employeeContribution(employee, 'outlook.development_goals')}${cards || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
+        return `${employeeContribution(employee,'outlook.development_goals')}${renderOutlookGoalCards(employee,'outlook.development_goals') || '<div class="empty-state">Noch kein Entwicklungsziel erfasst.</div>'}<button class="button small" style="margin-top:10px" type="button" data-action="add-development-goal">+ Entwicklungsziel ergänzen</button>`;
       }
 
       function scopeSignature(employee) {
@@ -1633,8 +1620,8 @@
         const templateAvailable = Boolean(state.configuration.preparation_template);
         return `<section class="section">
           <div class="section-head"><div><p class="eyebrow">Unterlage für die Gesprächseinladung</p><h2 class="section-title">Vorbereitung für die mitarbeitende Person</h2><p class="section-intro">Erstelle die Vorbereitungsdatei und sende sie als Anhang zu deiner Termineinladung oder in einer Begleitmail an deine mitarbeitende Person. Durch An- und Abwählen der Optionen bestimmst du, was die Vorbereitungsdatei beinhaltet. Die mitarbeitende Person kann mit der Vorbereitungsdatei ihre Gedanken festhalten und Dokumente erstellen, wie du mit deiner Arbeitsmappe. Du kannst deine Vorbereitung unabhängig davon weiterführen.</p></div></div>
-          <details class="competency-help"><summary>Was bedeuten die Optionen?</summary><ul><li>Mit der persönlichen Reflexion erhält die mitarbeitende Person die zuletzt vereinbarten Ziele${hasReview(employee.scope) ? '<sup>1</sup>' : ''} sowie einige Reflexionsfragen.</li><li>Mit Rückblick bzw. Ausblick erhält sie jeweils das komplette Formular, wie du es auch in deiner Arbeitsmappe siehst<sup>2</sup>.</li><li>Wähle «zurückfordern», wenn sie dir das ausgefüllte Formular zurücksenden soll. Die mitarbeitende Person erstellt dann eine Rückgabedatei mit ihren Beiträgen, die sie dir schickt und du damit einsehen kannst. Diese Beiträge kannst du bei Bedarf im jeweiligen Gesprächsteil importieren und anschliessend auch einzeln wieder entfernen. Importierte und nicht entfernte Beiträge erscheinen dann als ihre Sicht im finalen PDF, das im Personaldossier abgelegt wird.</li></ul>${hasReview(employee.scope) ? `<p><sup>1</sup> Ob Ziele aus dem letzten Ausblick vorhanden sind, siehst du im Schritt ${workflowSteps(employee).findIndex(step => step.key === 'review') + 1} Rückblick. Das hängt u.a. davon ab, ob der letzte Ausblick korrekt an HR übermittelt wurde.</p>` : ''}<p><sup>2</sup> Falls du in deiner Vorbereitung bereits Notizen im Rückblick oder Ausblick gespeichert hast, werden diese <strong>nicht</strong> in die Vorbereitungsdatei übernommen.</p></details>
-          ${hrRecommendation('Nutze die persönliche Reflexion als Ausgangspunkt für die Vorbereitung. Die schlanke Vorbereitung gibt Mitarbeitenden Raum, eigene Schwerpunkte zu setzen und Erfahrungen, Anliegen sowie Entwicklungsideen einzubringen. So erleichtert sie den Einstieg in einen gemeinsamen Austausch. Rückblick und Ausblick eignen sich ergänzend, wenn du eine Vorbereitung entlang der einzelnen Themen möchtest.')}
+          <details class="competency-help"><summary>Was bedeuten die Optionen?</summary><ul><li>Mit der persönlichen Reflexion erhält die mitarbeitende Person ${hasReview(employee.scope) ? 'die zuletzt vereinbarten Ziele<sup>1</sup> sowie einige Reflexionsfragen.' : 'einige Reflexionsfragen.'}</li><li>Mit Rückblick bzw. Ausblick erhält sie jeweils das komplette Formular, wie du es auch in deiner Arbeitsmappe siehst<sup>2</sup>.</li><li>Wähle «zurückfordern», wenn sie dir das ausgefüllte Formular zurücksenden soll. Die mitarbeitende Person erstellt dann eine Rückgabedatei mit ihren Beiträgen, die sie dir schickt und du damit einsehen kannst. Diese Beiträge kannst du bei Bedarf im jeweiligen Gesprächsteil importieren und anschliessend auch einzeln wieder entfernen. Importierte und nicht entfernte Beiträge erscheinen dann als ihre Sicht im finalen PDF, das im Personaldossier abgelegt wird.</li></ul>${hasReview(employee.scope) ? `<p><sup>1</sup> Ob Ziele aus dem letzten Ausblick vorhanden sind, siehst du im Schritt ${workflowSteps(employee).findIndex(step => step.key === 'review') + 1} Rückblick. Das hängt u.a. davon ab, ob der letzte Ausblick korrekt an HR übermittelt wurde.</p>` : ''}<p><sup>2</sup> Falls du in deiner Vorbereitung bereits Notizen im Rückblick oder Ausblick gespeichert hast, werden diese <strong>nicht</strong> in die Vorbereitungsdatei übernommen.</p></details>
+          ${hrRecommendation('Nutze die persönliche Reflexion für die Vorbereitung. Die schlanke Vorbereitung gibt den Mitarbeitenden Raum, eigene Schwerpunkte zu setzen, Erfahrungen, Anliegen sowie Entwicklungsideen einzubringen und legt den Fokus stärker auf den gemeinsamen Austausch, statt auf den formellen Prozess.')}
           <div class="source-panel"><div class="source-panel-label">Gewünschte Vorbereitung</div><div class="source-panel-value">
           <label style="display:block"><input type="checkbox" data-preparation-part="feedback" ${selected.feedback ? 'checked' : ''} ${hasReview(employee.scope) ? 'disabled' : ''}> Feedback an die vorgesetzte Person${hasReview(employee.scope) ? ' (obligatorisch)' : ''}</label><label style="display:block;margin-left:24px"><input type="checkbox" ${selected.feedback ? 'checked' : ''} disabled> Das Feedback wird nach der Besprechung im Gespräch oder anschliessend separat als PDF zurückgegeben.</label>
           <label style="display:block;margin-top:14px"><input type="checkbox" data-preparation-part="reflection" ${selected.reflection ? 'checked' : ''}> Persönliche Reflexion bereitstellen</label>
@@ -1992,6 +1979,15 @@
             target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }, 0);
           return;
+        }
+        if (action === 'edit-outlook-agreement' || action === 'lock-outlook-agreement') {
+          if (!['outlook.performance_goals','outlook.development_goals'].includes(button.dataset.array) || employee.meta.closed || employee.meta.archived) return;
+          const goal = getPath(employee,button.dataset.array)[Number(button.dataset.index)];
+          if (!goal) return;
+          const development = button.dataset.array.endsWith('development_goals');
+          if (action === 'lock-outlook-agreement' && (!String(goal.title || '').trim() || !String(goal.criteria || '').trim() || !goal.target_date || (development && !goal.competency))) { showToast('Ergänze zuerst Ziel, Messkriterien und Termin' + (development ? ' sowie die Kompetenz.' : '.')); return; }
+          goal.agreement_locked = action === 'lock-outlook-agreement';
+          markDirty(employee); renderEditor(); return;
         }
         if (action === 'edit-previous-agreement' || action === 'lock-previous-agreement') {
           if (!['previous_goals','previous_development_goals'].includes(button.dataset.array) || employee.meta.closed || employee.meta.archived) return;
@@ -2436,6 +2432,7 @@
           clone.querySelector('#preparation-import-preview').innerHTML = '';
           clone.querySelector('#guidance-dialog').removeAttribute('open');
           clone.querySelector('#save-hint-dialog').removeAttribute('open');
+          clone.querySelector('#update-hint-dialog').removeAttribute('open');
           clone.querySelector('#file-operation-status').hidden = true;
           clone.querySelector('#file-operation-status').textContent = '';
           clone.querySelector('#toast').textContent = '';
@@ -2787,7 +2784,15 @@
       completionPanel.addEventListener('change', handleEdit);
       completionPanel.addEventListener('click', handleEditorClick);
       document.getElementById('save-button').addEventListener('click', () => savePackage());
-      document.getElementById('update-button').addEventListener('click', () => document.getElementById('update-file').click());
+      document.getElementById('update-button').addEventListener('click', () => {
+        if (state.package.update_hint_dismissed) document.getElementById('update-file').click();
+        else { document.getElementById('update-hint-dismiss').checked = false; document.getElementById('update-hint-dialog').showModal(); }
+      });
+      document.getElementById('update-hint-cancel').addEventListener('click', () => document.getElementById('update-hint-dialog').close());
+      document.getElementById('update-hint-confirm').addEventListener('click', () => {
+        if (document.getElementById('update-hint-dismiss').checked) { state.package.update_hint_dismissed = true; markDirty(null); }
+        document.getElementById('update-hint-dialog').close(); document.getElementById('update-file').click();
+      });
       document.getElementById('update-file').addEventListener('change', readUpdateFile);
       document.getElementById('checkpoint-import-file').addEventListener('change', readCheckpointImportFile);
       document.getElementById('guidance-button').addEventListener('click', () => openGuidance(false));

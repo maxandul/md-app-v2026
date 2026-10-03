@@ -208,7 +208,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
         self.assertIn("Noch kein Leistungsziel erfasst.", template)
         self.assertNotIn("Mindestens ein Leistungsziel", template)
-        self.assertIn('data-array="outlook.performance_goals"', template)
+        self.assertIn("renderOutlookGoalCards(employee,'outlook.performance_goals')", template)
 
     def test_demo_covers_required_usability_scenarios(self) -> None:
         demo = build_demo()

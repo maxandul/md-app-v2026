@@ -14,7 +14,7 @@
     <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
     {% if word_templates.missing %}<p class="issue-text">Noch nicht eingerichtet: {{ word_templates.missing|join(', ') }}. Die Vorlagen werden in der lokalen Word-Konfiguration hinterlegt.</p>{% endif %}
     <form action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Word-Vorlagen für Führungslinie erzeugen</button></form>
-    <p>Die Word-Erzeugung und die PDF-Vorprüfung sind bereits verfügbar. Der vollständige Word-PDF-Import und der Word-Mailversand sind noch in Arbeit.</p>
+    <p>Nach der Erzeugung wird eine ZIP-Datei heruntergeladen. Unter «Versand» kannst du das Paket der Führungslinie für Outlook verwenden. PDF-Rückläufe prüfst du unter «Rückläufe».</p>
     <details class="legacy-box"><summary>Alternative: HTML-Arbeitsmappe</summary>
     {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
     {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>

@@ -59,6 +59,8 @@ from .services.documents import (
 )
 from .services.sap_import import import_sap_workbook
 from .services.word_pdf import inspect_word_pdf
+from .services.word_pdf_imports import stage_pdf, matching_cases, confirm_import
+from .services.legacy_forms import COMPETENCY_TAGS
 from .services.word_packages import create_word_package, word_template_status
 from .services.sap_export import (
     create_sap_upload_batch,
@@ -421,6 +423,7 @@ def returns_overview():
     selected_cycle = cockpit.get("selected_cycle")
     return render_template(
         "returns.html",
+        word_pdf_queue=connection.execute("SELECT id,original_filename,created_at,status FROM word_pdf_imports ORDER BY (status='pending') DESC,id DESC LIMIT 100").fetchall(),
         active_nav="returns",
         **cockpit,
         feedback_bundles=feedback_overview(
@@ -1290,3 +1293,79 @@ def upload_scan(case_id: str, document_kind: str):
 def file_too_large(_error):
     flash("Die Datei ist grösser als 25 MB.", "error")
     return redirect(url_for("main.dashboard"))
+
+
+@bp.post("/word-pdf-imports")
+def upload_word_pdfs():
+    uploads = [item for item in request.files.getlist('word_pdf_files') if item and item.filename]
+    if not uploads:
+        flash('Bitte mindestens ein PDF auswählen.', 'error')
+    ids = []
+    for upload in uploads:
+        temporary = _storage_dir('word_pdf_preview') / _stored_name(upload.filename)
+        try:
+            if not upload.filename.lower().endswith('.pdf'):
+                raise ValueError('Bitte eine PDF-Datei auswählen.')
+            upload.save(temporary)
+            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'))
+            ids.append(item_id)
+            if duplicate:
+                flash(f'{upload.filename}: bereits vorhanden; vorhandene Prüfung geöffnet.', 'info')
+        except ValueError as exc:
+            flash(f'{upload.filename}: {exc}', 'error')
+        finally:
+            temporary.unlink(missing_ok=True)
+    return redirect(url_for('main.word_pdf_review', import_id=ids[0]) if len(ids)==1 else url_for('main.returns_overview'))
+
+
+def _reviewed_word_form(form):
+    data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues')}
+    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes'}
+    for group in ('performance','development'):
+        keys=('title','criteria','steps','target_date') + (('competency',) if group=='development' else ())
+        columns={key:form.getlist(group+'_'+key) for key in keys}
+        rows=[]
+        for i in range(len(columns['title'])):
+            row={key:(values[i].strip() if i<len(values) else '') for key,values in columns.items()}
+            if any(row[key] for key in ('title','criteria','steps','target_date')):
+                rows.append(row)
+        result[group+'_goals']=rows
+    for tag,name in COMPETENCY_TAGS.items():
+        text=form.get('assessment_'+tag,'').strip()
+        if text:
+            result['assessments'][name]=text
+    return result
+
+
+@bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
+def word_pdf_review(import_id):
+    connection=get_db()
+    item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+    if not item:
+        abort(404)
+    parsed=json.loads(item['parsed_json'])
+    reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
+    if request.method=='POST':
+        reviewed=_reviewed_word_form(request.form)
+    if request.method=='POST' and request.form.get('refresh')!='yes':
+        try:
+            if request.form.get('checked')!='yes':
+                raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
+            confirm_import(connection,import_id,reviewed=reviewed,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            audit('word_pdf_imported','word_pdf_import',str(import_id))
+            flash('PDF-Prüfung abgeschlossen. Neue Angaben sind übernommen; inhaltliche Dubletten sind gekennzeichnet. Die Ablagefreigabe erfolgt beim Fall.', 'success')
+            return redirect(url_for('main.word_pdf_review',import_id=import_id))
+        except (ValueError,LookupError) as exc:
+            flash(str(exc),'error')
+    candidates=matching_cases(connection,reviewed.get('data',{}))
+    assignments=connection.execute('SELECT assignment_number FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS)
+
+
+@bp.get('/word-pdf-imports/<int:import_id>/original')
+def word_pdf_original(import_id):
+    item=get_db().execute('''SELECT w.original_filename,COALESCE(d.stored_path,w.stored_path) AS stored_path
+        FROM word_pdf_imports w LEFT JOIN official_documents d ON d.id=w.official_document_id WHERE w.id=?''',(import_id,)).fetchone()
+    if not item or not Path(item['stored_path']).is_file():
+        abort(404)
+    return send_file(item['stored_path'],download_name=item['original_filename'],mimetype='application/pdf')

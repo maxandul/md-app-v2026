@@ -63,7 +63,19 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int):
         except (ValueError, TypeError, AttributeError) as exc:
             raise ValueError(f"Vorjahresdaten für PN {employee_pn} sind nicht lesbar.") from exc
         if performance or development:
-            sources.append((performance, development, {"case_id": row["case_id"]}))
+            source = {"case_id": row["case_id"]}
+            if outlook.get('word_pdf_import_id'):
+                source['word_pdf_import_id'] = outlook['word_pdf_import_id']
+            sources.append((performance, development, source))
+    pdf_versions = connection.execute(
+        """SELECT * FROM word_pdf_goal_versions WHERE employee_pn=? AND assignment_number=?
+           AND goal_year=? AND is_current=1""", (employee_pn, assignment, year)
+    ).fetchall()
+    for version in pdf_versions:
+        if version['case_id'] and any(source[2].get('case_id') == version['case_id'] for source in sources):
+            continue
+        goals = json.loads(version['goals_json'])
+        sources.append((goals['performance_goals'], goals['development_goals'], {'word_pdf_import_id': version['import_id']}))
     historical = connection.execute(
         """SELECT * FROM historical_goals WHERE employee_pn = ? AND goal_year = ?
            AND (assignment_number = ? OR assignment_number = '')

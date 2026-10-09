@@ -7,8 +7,10 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 Die Umstellung auf Word-Vorlagen mit PDF-Rücklauf ist begonnen. In der
 **Führungslinie → Word-Vorlagen** lassen sich personalisierte Formulare einzeln
 oder für die Führungslinie als ZIP erzeugen. Unter **Rückläufe → Word-PDFs
-vorprüfen** lässt sich die Lesbarkeit der Grundangaben prüfen, ohne Fachdaten zu
-importieren. Der bisherige Arbeitsmappen-Ablauf bleibt erhalten.
+einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
+Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
+nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
+landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt erhalten.
 Einrichtung, Umsetzungsstand und nächste Schritte:
 [`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
 

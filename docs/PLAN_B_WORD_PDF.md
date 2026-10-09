@@ -15,9 +15,8 @@ Spezialfall-/Umfangsregeln wurden in diesem Schritt nicht geändert.
 Stammdaten, Zeitraum und vorhandene Nebenbeschäftigungen werden frisch aus der
 Datenbank gelesen. Der Rückblick erhält die Ziele des zugehörigen Zieljahres und
 der Anstellung. Bei mehreren konkurrierenden Quellen oder unbekannter Kompetenz
-wird die Erzeugung angehalten, statt Ziele zu vermischen oder wegzulassen. Noch
-nicht importierte PDFs liefern derzeit keine Ziele; ihre Übernahme folgt mit
-dem vollständigen PDF-Import.
+wird die Erzeugung angehalten, statt Ziele zu vermischen oder wegzulassen.
+Bestätigte PDF-Ausblicke liefern versionierte Zielquellen; reine Uploads noch nicht.
 
 Zusätzliche Zielzeilen werden dynamisch erzeugt. Leere Entwicklungszielzeilen
 bleiben bei jeder Kompetenz bestehen. Zieltexte werden einheitlich in 9 pt mit
@@ -34,20 +33,55 @@ importierte Ziele. Bereits ausgegebene oder lokal bearbeitete Word-Dateien
 werden dadurch nicht verändert. Bei einem Fehler wird keine Teilausgabe
 behalten.
 
-Unter Rückläufe gibt es eine separate Vorprüfung für Word-PDFs. Sie liest
-Dokumenttyp, Personalnummern, Zeitraum, Gesprächsdatum und die explizite Angabe
-zur Durchführung aus. Fehlende, widersprüchliche oder ungültige Angaben bleiben
-Prüffälle. Die Vorschau ist lesend: keine Fallzuordnung, keine Datenübernahme,
-keine Dossierbereitstellung. Temporäre Uploads werden auch bei Fehlern entfernt.
-Arbeitsmappen-PDFs behalten ihren bestehenden Importweg.
+Unter **Rückläufe → Word-PDFs einlesen** werden PDFs dauerhaft in einer
+Prüfwarteschlange gespeichert. Die Erkennung liest Grundangaben und rekonstruiert
+gefärbte Tabellenzellen aus den PDF-Zeichenoperationen. Beide Microsoft-Wege
+(Rechtecke beim Speichern, Pfade beim Drucken) werden unterstützt. Texte werden
+normalisiert; sichtbare Aufzählungen und nummerierte Schritte bleiben erhalten.
+Schriftarten, Fettdruck und ursprüngliche Absatzabstände werden nicht zugesichert.
+Silbentrennung am Zeilenende wird heuristisch bereinigt und muss mitgeprüft werden.
+Original-PDF, Rohtext und erkannte Zellinhalte bleiben als Nachweis erhalten.
 
-Zwei Exportwege des synthetischen Beispielrückblicks wurden geprüft:
-Word «Speichern als PDF» und Microsoft «Print to PDF». Beide liefern sechs
-Seiten mit lesbarem Text, aber keine AcroForm-Felder. Alle vier Textbestandteile
-der sechs Leistungs- und vier Entwicklungsziele sind nach Berücksichtigung der
-Silbentrennung im extrahierten Text enthalten. Dies ist noch kein Nachweis für
-eine korrekte strukturierte Tabellenextraktion oder unterschriebene Rückläufe.
-Die Dateien bleiben ausserhalb des öffentlichen Repositorys.
+HR prüft und korrigiert Person, Anstellung, Zeitraum, Ziele und aktuelle
+Kompetenz-Einschätzungen am Original. Die Gesamtbeurteilung und bei Probezeit der
+Anstellungsentscheid werden ausdrücklich geprüft. Nur aktuelle, gefüllte
+Einschätzungen gehen in die Kompetenzauswertung ein; Vorjahresziele nicht.
+Einigkeit wird weder abgefragt noch abgeleitet. Ein zusätzlich benötigter
+handschriftlicher Scan kann unabhängig davon angegeben werden.
+
+Fallvorschläge verwenden PN und Dokumentzeitraum, nicht das Gesprächsjahr.
+Anstellung und konkreter Fall müssen bestätigt werden. Abweichende Führungskraft,
+Zeitraum oder unlesbare Grundangaben erfordern eine Prüfnotiz. Erst danach werden
+Fachdaten übernommen. Die vorhandene Unterschriften-/Ablageprüfung bleibt ein
+separater Schritt; Bewertungen D/E und negative Probezeitentscheide verlangen
+einen Scan. Nicht durchgeführte Rückblicke bleiben vorerst in der Prüfung und
+werden über die bestehende Kein-MD-Fallklärung erledigt.
+
+Ausblicke lassen sich auch ohne damaligen Cockpit-Fall als nachgereichte Zielquelle
+übernehmen. Sie gelten für PN, Anstellung und Zieljahr und werden bei der nächsten
+Word-Erzeugung berücksichtigt. Frühere Zielversionen bleiben gespeichert;
+Ersetzungen benötigen einen Grund. Konkurrierende Quellen aus alten DOCX-Importen
+oder Arbeitsmappen werden weiterhin nicht automatisch zusammengeführt.
+Doppelte Dateien werden anhand ihrer Prüfsumme erkannt; identische bestätigte
+Fachinhalte werden auch bei unterschiedlichen PDF-Dateien als Dublette abgeschlossen, ohne erneut Fachdaten zu importieren.
+Bereits zur Ablage bereitgestellte Fall-Dokumente können nicht ersetzt werden.
+
+Postfacheingänge mit erkennbarer Word-MD-Überschrift oder MD-Dateinamen werden in
+dieselbe Warteschlange geleitet. Solange die PDF-Prüfung offen ist, kann die
+Mailprüfung nicht als erledigt markiert werden. Es erfolgt keine automatische
+Ablagefreigabe für ungeprüfte Word-PDFs. Arbeitsmappen-PDFs behalten ihren Importweg.
+
+**Verifikation:** Die beiden bereitgestellten Microsoft-PDFs ergeben dieselben
+sechs Leistungsziele und vier Entwicklungsziele mit korrekten Kompetenzen.
+Die aktuellen Einschätzungen sind in beiden Beispielen leer und zählen als null.
+Automatisierte Tests prüfen Geometrie beider Zeichenwege, Listen, Fall-/Jahrprüfung,
+Nachreichungen, Versionierung, inhaltliche Dubletten, Ablage und Postfachwarteschlange.
+
+**Grenze bei Altvorlagen:** Unbekannte Layouts und Scans bleiben manuell prüfbar.
+Ziele und Einschätzungen können in der Prüfmaske ergänzt werden. Es gibt keine
+OCR und keine Freigabe einer automatischen Extraktion für beliebige Altvorlagen.
+Ein synthetisch abweichendes Formular wurde für den manuellen Weg getestet;
+echte historische Rücklauf-PDFs stehen für einen Layouttest noch aus.
 
 ## Lokale Word-Vorlagen einrichten
 
@@ -67,34 +101,15 @@ Die neuen Module benötigen nur die Python-Standardbibliothek und vorhandene
 Projektabhängigkeiten. Word/LibreOffice ist zur Erzeugung auf dem HR-Gerät
 nicht erforderlich; die Führungskraft öffnet und bearbeitet die DOCX in Word.
 
-## Festgelegte Anforderungen für die nächsten Schritte
+## Nächste Schritte
 
-1. Word-Versand: Erzeugung ist umgesetzt; Sammelauswahl über mehrere
-   Führungslinien und Anbindung an Outlook/Versandstatus folgen.
-2. PDF-Extraktion: Tabellen anhand ihrer Struktur rekonstruieren, getrennte
-   Zellen und Seitenfortsetzungen berücksichtigen. Ziel, Messkriterien, Weg zum
-   Ziel und Termin separat speichern. Absätze und erkennbare Listen erhalten;
-   keine Zusage originalgetreuer Rich-Text-Formatierung. Silbentrennungen nicht
-   pauschal mit echten Bindestrichen gleichsetzen.
-3. Rücklauf: neue und alte Vorlagen unterscheiden, Unsicherheit sichtbar
-   machen. Nur ausgefüllte aktuelle Einschätzungen zählen als besprochene
-   Kompetenzen. Vorjahresziele zählen dafür nicht. Einigkeit wird in den neuen
-   Formularen weder verlangt noch aus fehlenden Angaben abgeleitet.
-4. Zuordnung und Versionen: Personalnummer, Anstellung und Zielzeitraum
-   verwenden; das Gesprächsdatum kann im Folgejahr liegen. Mehrdeutige Fälle
-   manuell klären. Spät eingereichte Vorjahresausblicke separat verarbeiten;
-   bereits bearbeitete Rückblicke niemals still überschreiben. Inhaltliche
-   Dubletten auch bei verschiedenen PDF-Exportwegen berücksichtigen.
-5. Cockpit und Versand: Word-Pakete statt Arbeitsmappen als Standard anbieten;
-   bestehende HTML-Erzeugung als alternative Option behalten. PDF-Import,
-   Prüfabschluss, Dossierbereitstellung und SAP-Export gemeinsam testen.
-6. Konfiguration: interne Links und organisationsspezifische Pfade aus dem
-   veröffentlichten Code in lokale Konfiguration verschieben. Lokale Vorlagen,
-   PDFs und Konfigurationen nicht ins öffentliche Repository aufnehmen.
-
-## Noch nicht umgestellt
-
-Der reguläre PDF-Import und die Postfachverarbeitung verlangen weiterhin den
-Arbeitsmappen-Datenblock. Die neue Vorprüfung ersetzt diese Wege noch nicht.
-Zieltabellenextraktion, Altvorlagenunterstützung, Word-Mailversand und die
-vollständige Fall-/Versionszuordnung im PDF-Rücklauf sind folgende Arbeitspakete.
+1. Word-Versand: Sammelauswahl über mehrere Führungslinien, Outlook-Anbindung
+   und Versandstatus. Die reine Word-Erzeugung ist bereits umgesetzt.
+2. Echte alte PDF-Vorlagen sowie ausgefüllte Ausblick- und Probezeit-PDFs beider
+   Microsoft-Exportwege für die Layoutfreigabe prüfen. Bis dahin bleibt die
+   Kontrolle am Original verpflichtend. Unbekannte Vorlagen werden manuell ergänzt.
+3. Den Nichtdurchführungs-/Kein-MD-Weg direkt in die neue PDF-Prüfung integrieren.
+4. Organisationsspezifische Links und Pfade aus bestehendem Code in lokale
+   Konfiguration verschieben. Lokale Vorlagen, PDFs und Konfigurationen bleiben
+   vom öffentlichen Repository ausgeschlossen.
+5. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.

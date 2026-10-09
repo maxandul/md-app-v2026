@@ -7,14 +7,18 @@
   </section>
 
   <section class="content-card">
-    <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs vorprüfen</h2>
-    <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Die Vorschau zeigt die erkannten Grundangaben. Sie importiert noch keine Fachdaten und stellt keine Dokumente für die Ablage bereit.</p>
-    <form action="{{ url_for('main.preview_word_pdfs') }}" method="post" enctype="multipart/form-data">
+    <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs einlesen</h2>
+    <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Ziele und Grundangaben werden zur Prüfung vorgelegt. Erst nach der Bestätigung werden sie dem Fall oder einer nachgereichten Zielquelle zugeordnet.</p>
+    <form action="{{ url_for('main.upload_word_pdfs') }}" method="post" enctype="multipart/form-data">
       <label for="word_pdf_files">PDF-Dateien aus Word</label><input id="word_pdf_files" name="word_pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
-      <button class="button button--primary" type="submit">Auslesbarkeit prüfen</button>
+      <button class="button button--primary" type="submit">Einlesen und prüfen</button>
     </form>
   </section>
 
+
+  <section class="content-card"><h2>Word-PDF-Prüfungen</h2>
+  {% if word_pdf_queue %}<ul>{% for item in word_pdf_queue %}<li><a href="{{ url_for('main.word_pdf_review', import_id=item.id) }}">{{ item.original_filename }}</a> · {{ {'pending':'Prüfung offen','imported':'Dem Fall zugeordnet','historical':'Nachgereichte Zielquelle','duplicate':'Inhaltliche Dublette'}.get(item.status) }}</li>{% endfor %}</ul>{% else %}<p>Noch keine Word-PDFs eingelesen.</p>{% endif %}
+  </section>
   <section class="split-layout">
     <div class="content-card">
       <p class="kicker">Arbeitsmappen</p><h2>PDF-Rückläufe mit Datenblock einlesen</h2>
@@ -58,7 +62,7 @@
           <td>
             {% if message.attachments %}
               {% for attachment in message.attachments %}
-                <div class="mail-attachment"><strong>{{ attachment.original_filename }}</strong><br><span class="muted">{{ attachment.file_kind }} · {{ attachment.status }}</span>{% if attachment.status == 'imported' %}<br><span class="status status--staged">MD-Dokument bereits verarbeitet</span>{% endif %}{% if attachment.error_message %}<br><span class="issue-text{% if attachment.stored_path %} issue-text--blocking{% endif %}">{{ attachment.error_message }}</span>{% endif %}</div>
+                <div class="mail-attachment"><strong>{{ attachment.original_filename }}</strong><br><span class="muted">{{ attachment.file_kind }} · {{ attachment.status }}</span>{% if attachment.status == 'imported' %}<br><span class="status status--staged">MD-Dokument bereits verarbeitet</span>{% endif %}{% if attachment.word_pdf_import_id %}<br><a href="{{ url_for('main.word_pdf_review', import_id=attachment.word_pdf_import_id) }}">Word-PDF-Prüfung öffnen</a>{% endif %}{% if attachment.error_message %}<br><span class="issue-text{% if attachment.stored_path %} issue-text--blocking{% endif %}">{{ attachment.error_message }}</span>{% endif %}</div>
               {% endfor %}
             {% else %}<span class="muted">Keine Anhänge</span>{% endif %}
           </td>

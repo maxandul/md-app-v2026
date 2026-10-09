@@ -14,6 +14,8 @@ from werkzeug.utils import secure_filename
 
 from webapp.adapters.outlook import InboundMessage, OutlookInboxAdapter
 from webapp.services.documents import import_official_pdf, inspect_pdf
+from webapp.services.word_pdf_imports import stage_pdf
+from webapp.services.word_pdf import parse_word_pdf_text
 from webapp.services.feedback import (
     create_feedback_bundles_for_message,
     import_feedback_pdf,
@@ -195,6 +197,9 @@ def process_inbound_messages(
                 contains_probation = contains_probation or probation
                 existing_path = _existing_attachment_path(connection, digest)
                 if existing_path:
+                    pending_word = connection.execute("SELECT id FROM word_pdf_imports WHERE sha256=? AND status='pending'", (digest,)).fetchone()
+                    if pending_word:
+                        needs_review = True
                     _insert_attachment(
                         connection,
                         message_id=message_id,
@@ -217,6 +222,18 @@ def process_inbound_messages(
                     try:
                         inspection = inspect_pdf(temporary_path)
                         is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
+                        if not inspection.data and (hint or parse_word_pdf_text(inspection.text)['data'].get('document_kind')):
+                            word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports')
+                            queued = connection.execute('SELECT * FROM word_pdf_imports WHERE id=?', (word_id,)).fetchone()
+                            pending = queued['status'] == 'pending'
+                            _insert_attachment(connection, message_id=message_id, index=attachment.index,
+                                filename=filename, stored_path=queued['stored_path'], digest=digest,
+                                file_kind=file_kind, status='review_required' if pending else 'duplicate',
+                                created_at=created_at, error_message='Word-PDF in der Prüfwarteschlange.' if pending else 'Word-PDF bereits verarbeitet.')
+                            md_relevant = True
+                            needs_review = needs_review or pending
+                            result['stored'] += 1
+                            continue
                         if is_feedback:
                             imported = import_feedback_pdf(
                                 connection,
@@ -458,6 +475,11 @@ def resolve_inbound_message(
     if not message:
         raise LookupError("Die Outlook-Nachricht wurde nicht gefunden.")
     if message["status"] == "review_required":
+        pending_word = connection.execute("""SELECT w.id FROM word_pdf_imports w
+            JOIN inbound_mail_attachments a ON a.sha256=w.sha256
+            WHERE a.mail_message_id=? AND w.status='pending' LIMIT 1""", (message_id,)).fetchone()
+        if pending_word:
+            raise ValueError('Bitte zuerst die offene Word-PDF-Prüfung abschliessen.')
         if message["review_completed_at"]:
             raise ValueError("Diese Outlook-Nachricht ist bereits erledigt.")
         timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -544,8 +566,9 @@ def mail_inbox_overview(
             dict(attachment)
             for attachment in connection.execute(
                 """
-                SELECT * FROM inbound_mail_attachments
-                WHERE mail_message_id = ? ORDER BY attachment_index
+                SELECT a.*, w.id AS word_pdf_import_id FROM inbound_mail_attachments a
+                LEFT JOIN word_pdf_imports w ON w.sha256=a.sha256
+                WHERE a.mail_message_id = ? ORDER BY a.attachment_index
                 """,
                 (item["id"],),
             ).fetchall()

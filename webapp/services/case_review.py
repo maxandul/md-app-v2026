@@ -26,7 +26,7 @@ CORRECTABLE_FIELDS = {
 
 HANDOFF_LABELS = {
     "not_applicable": "Nicht bereitgestellt",
-    "needs_signature_check": "Vor Umstellung noch nicht bereitgestellt",
+    "needs_signature_check": "Unterschriften- und Ablageprüfung offen",
     "waiting_scan": "Handschriftlicher Scan ausstehend",
     "staged": "Für Personaldossier-Ablage bereitgestellt",
 }

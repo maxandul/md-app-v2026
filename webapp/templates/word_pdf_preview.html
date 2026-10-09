@@ -14,7 +14,7 @@
   {% endfor %}
   </tbody></table></div>
   {% if result.issues %}<ul>{% for issue in result.issues %}<li>{{ issue }}</li>{% endfor %}</ul>{% else %}<p>Die Grundangaben sind eindeutig lesbar.</p>{% endif %}
-  <p>Zieltabellen, aktuelle Einschätzungen, Gesamtbeurteilung und weitere Angaben werden in diesem ersten Prüfschritt noch nicht strukturiert ausgewertet. Eine Fallzuordnung oder Unterschriftenprüfung ist damit noch nicht erfolgt.</p>
+  <p>Erkannt: {{ result.performance_goals|length }} Leistungsziele, {{ result.development_goals|length }} Entwicklungsziele und {{ result.assessments|length }} aktuelle Kompetenz-Einschätzungen. Für die Übernahme bitte den Word-PDF-Import unter Rückläufe verwenden. Eine Fallzuordnung oder Unterschriftenprüfung ist hier noch nicht erfolgt.</p>
   <details><summary>Ausgelesenen Text anzeigen</summary><pre class="pdf-extracted-text">{{ result.text }}</pre></details>
   {% endif %}
 </section>

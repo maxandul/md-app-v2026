@@ -58,6 +58,7 @@ from .services.documents import (
     inspect_pdf,
 )
 from .services.sap_import import import_sap_workbook
+from .services.word_pdf import inspect_word_pdf
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -1072,6 +1073,30 @@ def upload_return():
         "success",
     )
     return redirect(url_for("main.cycle_detail", cycle_id=result["cycle_id"]))
+
+
+@bp.post("/word-pdf-preview")
+def preview_word_pdfs():
+    uploads = [item for item in request.files.getlist("word_pdf_files") if item and item.filename]
+    if not uploads:
+        flash("Bitte wähle mindestens ein Word-PDF aus.", "error")
+        return redirect(url_for("main.returns_overview"))
+    results = []
+    for upload in uploads:
+        result = {"filename": upload.filename}
+        if not upload.filename.lower().endswith(".pdf"):
+            result["error"] = "Bitte eine PDF-Datei auswählen."
+        else:
+            temporary = _storage_dir("word_pdf_preview") / _stored_name(upload.filename)
+            try:
+                upload.save(temporary)
+                result.update(inspect_word_pdf(temporary))
+            except ValueError as exc:
+                result["error"] = str(exc)
+            finally:
+                temporary.unlink(missing_ok=True)
+        results.append(result)
+    return render_template("word_pdf_preview.html", active_nav="returns", results=results)
 
 
 @bp.post("/pdf-returns")

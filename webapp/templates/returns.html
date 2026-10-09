@@ -6,9 +6,18 @@
     {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
   </section>
 
+  <section class="content-card">
+    <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs vorprüfen</h2>
+    <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Die Vorschau zeigt die erkannten Grundangaben. Sie importiert noch keine Fachdaten und stellt keine Dokumente für die Ablage bereit.</p>
+    <form action="{{ url_for('main.preview_word_pdfs') }}" method="post" enctype="multipart/form-data">
+      <label for="word_pdf_files">PDF-Dateien aus Word</label><input id="word_pdf_files" name="word_pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
+      <button class="button button--primary" type="submit">Auslesbarkeit prüfen</button>
+    </form>
+  </section>
+
   <section class="split-layout">
     <div class="content-card">
-      <p class="kicker">Manueller Eingang</p><h2>PDF-Rückläufe einlesen</h2>
+      <p class="kicker">Arbeitsmappen</p><h2>PDF-Rückläufe mit Datenblock einlesen</h2>
       <p>Elektronische Rückblick-, Ausblick- und Kein-MD-PDFs werden über den MD-Datenblock zugeordnet.</p>
       <form action="{{ url_for('main.upload_pdf_returns') }}" method="post" enctype="multipart/form-data">
         <label for="pdf_files">PDF-Dateien</label><input id="pdf_files" name="pdf_files" type="file" accept=".pdf,application/pdf" multiple required>

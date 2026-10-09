@@ -262,3 +262,9 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
   .app-shell { width: auto; }
   .panel, .table-wrap, .security-note { break-inside: avoid; }
 }
+.pdf-extracted-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 32rem;
+  overflow-y: auto;
+}

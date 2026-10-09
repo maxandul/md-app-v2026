@@ -4,6 +4,12 @@ Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
 Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für
 gemeinsame Tests und die schrittweise Weiterentwicklung.
 
+Die Umstellung auf Word-Vorlagen mit PDF-Rücklauf ist begonnen. Unter
+**Rückläufe → Word-PDFs vorprüfen** lässt sich die Lesbarkeit der Grundangaben
+prüfen, ohne Fachdaten zu importieren. Der bisherige Arbeitsmappen-Ablauf bleibt
+erhalten. Umsetzungsstand und nächste Schritte:
+[`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
+
 ## Was bereits funktioniert
 
 - SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern

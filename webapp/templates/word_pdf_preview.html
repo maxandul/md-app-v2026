@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Word-PDF-Prüfung · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="kicker">Word-Vorlagen</p><h1>Ergebnis der PDF-Vorprüfung</h1><p class="lead">Die erkannten Grundangaben sind eine Vorschau. Es wurden keine Fachdaten importiert oder Dokumente zur Ablage weitergegeben.</p></div></section>
+{% for result in results %}
+<section class="content-card">
+  <h2>{{ result.filename }}</h2>
+  {% if result.error %}<p class="issue-text">{{ result.error }}</p>
+  {% else %}
+  <p>{{ result.page_count }} Seiten · {{ result.text_length }} Zeichen lesbarer Text</p>
+  <div class="table-wrap"><table><thead><tr><th>Angabe</th><th>Erkannt</th></tr></thead><tbody>
+  {% for key, label in [('document_kind', 'Dokumenttyp'), ('pn', 'Personalnummer'), ('manager_pn', 'Personalnummer VG'), ('period_start', 'Zeitraum von'), ('period_end', 'Zeitraum bis'), ('dialog_date', 'Gesprächsdatum'), ('conducted', 'Rückblick durchgeführt')] %}
+  <tr><th>{{ label }}</th><td>{% if key == 'document_kind' %}{{ {'review': 'Rückblick', 'outlook': 'Ausblick'}.get(result.data.get(key), 'Nicht erkannt') }}{% else %}{{ result.data.get(key) or 'Nicht erfasst / nicht erkannt' }}{% endif %}</td></tr>
+  {% endfor %}
+  </tbody></table></div>
+  {% if result.issues %}<ul>{% for issue in result.issues %}<li>{{ issue }}</li>{% endfor %}</ul>{% else %}<p>Die Grundangaben sind eindeutig lesbar.</p>{% endif %}
+  <p>Zieltabellen, aktuelle Einschätzungen, Gesamtbeurteilung und weitere Angaben werden in diesem ersten Prüfschritt noch nicht strukturiert ausgewertet. Eine Fallzuordnung oder Unterschriftenprüfung ist damit noch nicht erfolgt.</p>
+  <details><summary>Ausgelesenen Text anzeigen</summary><pre class="pdf-extracted-text">{{ result.text }}</pre></details>
+  {% endif %}
+</section>
+{% endfor %}
+<a class="button" href="{{ url_for('main.returns_overview') }}">Zurück zu den Rückläufen</a>
+{% endblock %}

@@ -9,11 +9,18 @@
   <section class="page-head page-head--compact">
     <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
     <h1>{{ manager.manager_name }}</h1>
-    <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Vorschläge aus den SAP-Daten bleiben Hinweise und werden in der HTML-Datei bestätigt.</p>
+    <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Der vorgeschlagene Umfang ergibt sich aus den SAP-Daten; bestätigte Abweichungen werden berücksichtigt.</p>
+    <h2>Word-Vorlagen</h2>
+    <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
+    {% if word_templates.missing %}<p class="issue-text">Noch nicht eingerichtet: {{ word_templates.missing|join(', ') }}. Die Vorlagen werden in der lokalen Word-Konfiguration hinterlegt.</p>{% endif %}
+    <form action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Word-Vorlagen für Führungslinie erzeugen</button></form>
+    <p>Die Word-Erzeugung und die PDF-Vorprüfung sind bereits verfügbar. Der vollständige Word-PDF-Import und der Word-Mailversand sind noch in Arbeit.</p>
+    <details class="legacy-box"><summary>Alternative: HTML-Arbeitsmappe</summary>
     {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
     {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
     {% elif package_state.state == 'update_required' %}<div class="form-actions"><form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Update-Datei erzeugen</button></form><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button" type="submit" data-confirm-recreate>START neu erzeugen</button></form></div>
     {% else %}<div class="form-actions"><span class="status status--staged">Arbeitsmappe aktuell</span><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button" type="submit" data-confirm-recreate>START neu erzeugen</button></form></div>{% endif %}
+    </details>
   </section>
 
   <section class="content-section" aria-labelledby="manager-deadline-title">
@@ -41,6 +48,7 @@
             <td>{{ case.position or '–' }}<br><span class="muted">{{ case.org_unit or '–' }}</span></td>
             <td><strong>{{ case.scope_label }}</strong><br><span class="muted">Vorschlag: {{ case.suggested_scope }} · {{ case.suggestion_reason }}</span></td>
             <td>
+              <form class="inline-action" action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><input type="hidden" name="case_id" value="{{ case.case_id }}"><button class="button button--small" type="submit">Word-Vorlagen erzeugen</button></form>
               {% if case.document_states %}
                 {% for document in case.document_states %}
                   <div class="document-state">
@@ -73,7 +81,7 @@
   </section>
 
   <section class="content-section" aria-labelledby="history-title">
-    <div class="section-heading"><div><p class="kicker">Nachvollziehbarkeit</p><h2 id="history-title">Paketverlauf</h2></div></div>
+    <div class="section-heading"><div><p class="kicker">Nachvollziehbarkeit</p><h2 id="history-title">Verlauf der HTML-Arbeitsmappen</h2></div></div>
     {% if events %}
       <div class="table-wrap">
         <table>
@@ -86,7 +94,7 @@
         </table>
       </div>
     {% else %}
-      <div class="empty-state">Noch kein Paket erzeugt.</div>
+      <div class="empty-state">Noch keine HTML-Arbeitsmappe erzeugt. Word-Ausgaben werden separat im Administrationsprotokoll erfasst.</div>
     {% endif %}
   </section>
 {% endblock %}

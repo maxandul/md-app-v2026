@@ -1,0 +1,7 @@
+{
+  "templates": {
+    "review": "templates/MD_Rueckblick.docx",
+    "outlook": "templates/MD_Ausblick.docx",
+    "probation": "templates/MD_Rueckblick_Probezeit.docx"
+  }
+}

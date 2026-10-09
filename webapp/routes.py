@@ -59,6 +59,7 @@ from .services.documents import (
 )
 from .services.sap_import import import_sap_workbook
 from .services.word_pdf import inspect_word_pdf
+from .services.word_packages import create_word_package, word_template_status
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -754,6 +755,7 @@ def manager_detail(cycle_id: int, manager_pn: str):
         package_state=manager_package_state(
             get_db(), cycle_id=cycle_id, manager_pn=manager_pn
         ),
+        word_templates=word_template_status(current_app.config["WORD_TEMPLATE_PATHS"]),
         active_nav="dialogs",
     )
 
@@ -881,6 +883,27 @@ def download_existing_sap_export(batch_id: int):
         download_name=batch["filename"],
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/word-package")
+def download_word_package(cycle_id: int, manager_pn: str):
+    try:
+        path, manifest = create_word_package(
+            get_db(), cycle_id=cycle_id, manager_pn=manager_pn,
+            template_paths=current_app.config["WORD_TEMPLATE_PATHS"],
+            output_dir=_storage_dir("word_packages"),
+            case_id=request.form.get("case_id", "").strip(),
+        )
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.manager_detail", cycle_id=cycle_id, manager_pn=manager_pn))
+    audit("word_package_created", "word_package", manifest["export_id"],
+          cycle_id=cycle_id, manager_pn=manager_pn,
+          document_count=len(manifest["documents"]), sha256=manifest["sha256"])
+    flash(f"{len(manifest['documents'])} Word-Vorlage(n) erzeugt. Bestehende Ausgaben bleiben erhalten. Ein Versand wurde nicht ausgelöst.", "success")
+    if manifest["skipped_cases"]:
+        flash(f"{len(manifest['skipped_cases'])} Fall/Fälle ohne Rückblick-/Ausblickpflicht übersprungen.", "info")
+    return send_file(path, as_attachment=True, download_name=path.name, mimetype="application/zip")
 
 
 @bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/package")

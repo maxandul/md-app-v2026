@@ -56,6 +56,11 @@ def create_app(test_config: dict | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
+    if "WORD_TEMPLATE_PATHS" not in app.config:
+        from .services.word_packages import load_word_config
+        config_path = Path(os.environ.get("MD_WORD_CONFIG", str(Path(app.instance_path) / "word_config.json")))
+        app.config["WORD_TEMPLATE_PATHS"] = load_word_config(config_path)
+
     if "DOSSIER_HANDOFF_ROOT" not in (test_config or {}):
         windows_robot_input = r"K:\VD-GS-PUO-Personal\100 Roboter\Input"
         default_handoff = (

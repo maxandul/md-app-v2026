@@ -1,0 +1,9 @@
+{% if not word_templates.ready %}
+<details class="info-box" open><summary>Word-Vorlagen einrichten</summary>
+<p>Es fehlen: {{ word_templates.missing|join(', ') }}.</p>
+<ol><li>Kopiere <code>config/word.example.json</code> nach <code>instance/word_config.json</code>.</li>
+<li>Hinterlege dort die Dateipfade für <code>review</code> (Rückblick), <code>outlook</code> (Ausblick) und <code>probation</code> (Probezeit).</li>
+<li>Relative Pfade beginnen beim Ordner der Konfigurationsdatei. Liegen die Vorlagen im Projektordner unter <code>templates</code>, verwende <code>../templates/Dateiname.docx</code>.</li>
+<li>Speichere die Konfiguration und starte das Cockpit neu. Eine <code>word.json</code> im Projektordner wird standardmässig nicht geladen.</li></ol>
+<p>Bei einer abweichenden Einrichtung über <code>MD_WORD_CONFIG</code> gilt die dort gewählte Datei.</p></details>
+{% endif %}

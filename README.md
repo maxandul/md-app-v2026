@@ -91,10 +91,13 @@ genehmigtes, verschlüsseltes und getrenntes Medium übertragen werden.
 ## Erster Testlauf
 
 1. Die App starten.
-2. Den SAP-Export über die Startseite hochladen.
+2. Den SAP-Export unter «Stammdaten» hochladen.
 3. Für diesen Import einen Jahresprozess eröffnen.
 4. In der Prozessübersicht eine vorgesetzte Person auswählen.
-5. Deren `_START.html` erzeugen und lokal im Browser testen.
+5. Die lokalen Word-Vorlagen gemäss `docs/PLAN_B_WORD_PDF.md` einrichten und ein Word-Paket erzeugen.
+6. Unter «Versand» den Paketstatus prüfen. Testformulare in Word ausfüllen und als PDF zurückgeben.
+7. Unter «Rückläufe» einlesen, am Original prüfen und übernehmen. Danach beim Fall die Unterschriften- und Ablageprüfung abschliessen.
+8. Den SAP-Export erzeugen. Outlook, Dossier-RPA und SAP-Import werden auf dem Windows-Testgerät geprüft.
 
 Das Repository enthält bewusst keine SAP-Exporte, Personendaten, ausgefüllten
 Dialoge, PDFs oder lokale Datenbank. Solche Dateien bleiben auf dem geschützten

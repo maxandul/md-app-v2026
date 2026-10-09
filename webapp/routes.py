@@ -764,6 +764,7 @@ def manager_detail(cycle_id: int, manager_pn: str):
             get_db(), cycle_id=cycle_id, manager_pn=manager_pn
         ),
         word_templates=word_template_status(current_app.config["WORD_TEMPLATE_PATHS"]),
+        word_packages=get_db().execute("SELECT id,created_at FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? ORDER BY id DESC LIMIT 5", (cycle_id,manager_pn)).fetchall(),
         active_nav="dialogs",
     )
 
@@ -1364,7 +1365,16 @@ def word_pdf_review(import_id):
                 raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
             confirm_import(connection,import_id,reviewed=reviewed,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
             audit('word_pdf_imported','word_pdf_import',str(import_id))
-            flash('PDF-Prüfung abgeschlossen. Neue Angaben sind übernommen; inhaltliche Dubletten sind gekennzeichnet. Die Ablagefreigabe erfolgt beim Fall.', 'success')
+            status = connection.execute('SELECT status FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()['status']
+            if status == 'historical':
+                message = 'Nachgereichte Zielquelle übernommen. Neue Word-Ausgaben berücksichtigen diese Ziele; bestehende Ausgaben bleiben unverändert.'
+            elif status == 'duplicate':
+                message = 'Inhaltliche Dublette erkannt. Es wurden keine zusätzlichen Fachdaten übernommen.'
+            elif reviewed['data'].get('conducted') == 'nein':
+                message = 'Nichtdurchführung übernommen. Der Nachweis bleibt gespeichert; eine Unterschriften- oder Ablagefreigabe ist dafür nicht vorgesehen.'
+            else:
+                message = 'PDF-Prüfung abgeschlossen. Nächster Schritt: Fallprüfung öffnen und dort Unterschriften sowie Ablage prüfen.'
+            flash(message, 'success')
             return redirect(url_for('main.word_pdf_review',import_id=import_id))
         except (ValueError,LookupError) as exc:
             flash(str(exc),'error')

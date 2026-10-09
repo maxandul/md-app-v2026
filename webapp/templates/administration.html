@@ -4,7 +4,7 @@
   <section class="page-head page-head--compact"><p class="kicker">Systemadministration</p><h1>Betrieb und Audit</h1><p class="lead">Benutzerkonten, revisionsfähige Aktionen sowie geprüfte Datensicherungen verwalten.</p><a class="button" href="{{ url_for('auth.users') }}">Benutzerkonten verwalten</a></section>
 
   <section class="split-layout">
-    <div class="content-card"><p class="kicker">Datensicherung</p><h2>Vollständiges Backup</h2><p>Erstellt eine konsistente Datenbankkopie zusammen mit Prozessdateien und Dossier-Übergabe. Das ZIP enthält ein SHA-256-Manifest und ist gleichwertig wie die Originaldaten zu schützen.</p><form action="{{ url_for('main.create_backup') }}" method="post"><button class="button button--primary" type="submit">Backup erstellen und herunterladen</button></form></div>
+    <div class="content-card"><p class="kicker">Datensicherung</p><h2>Prozessdaten sichern</h2><p>Erstellt eine konsistente Datenbankkopie zusammen mit Prozessdateien und Dossier-Übergabe. Word-Vorlagen und lokale Konfigurationsdateien sind nicht enthalten und müssen zusätzlich gesichert werden. Das ZIP enthält ein SHA-256-Manifest und ist gleichwertig wie die Originaldaten zu schützen.</p><form action="{{ url_for('main.create_backup') }}" method="post"><button class="button button--primary" type="submit">Backup erstellen und herunterladen</button></form></div>
     <aside class="info-box"><h2>Restore-Schutz</h2><p>Vor jeder Wiederherstellung entsteht automatisch ein Sicherheitsbackup des aktuellen Zustands. Danach werden Archivpfade, Prüfsummen und Datenbankintegrität geprüft.</p></aside>
   </section>
 

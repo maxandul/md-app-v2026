@@ -746,7 +746,7 @@ def _document_state(digital: sqlite3.Row | None, scan: sqlite3.Row | None) -> di
     if not digital:
         return {"key": "missing", "label": "Elektronisches PDF fehlt", "digital": None, "scan": scan}
     if not digital["signature_checked"]:
-        return {"key": "legacy", "label": "Vor Umstellung eingegangen", "digital": digital, "scan": scan}
+        return {"key": "legacy", "label": "Unterschriften- und Ablageprüfung offen", "digital": digital, "scan": scan}
     if digital["scan_required"] and not scan:
         return {"key": "scan", "label": "Handschriftlicher Scan ausstehend", "digital": digital, "scan": None}
     if digital["scan_required"]:

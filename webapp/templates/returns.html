@@ -16,7 +16,7 @@
   </section>
 
 
-  <section class="content-card"><h2>Word-PDF-Prüfungen</h2>
+  <section class="content-card"><h2>Word-PDF-Prüfungen</h2><p>Diese Warteschlange zeigt die letzten 100 Einträge über alle Durchläufe, offene Prüfungen zuerst. Noch nicht zugeordnete PDFs haben keinen Durchlauf.</p>
   {% if word_pdf_queue %}<ul>{% for item in word_pdf_queue %}<li><a href="{{ url_for('main.word_pdf_review', import_id=item.id) }}">{{ item.original_filename }}</a> · {{ {'pending':'Prüfung offen','imported':'Dem Fall zugeordnet','historical':'Nachgereichte Zielquelle','duplicate':'Inhaltliche Dublette'}.get(item.status) }}</li>{% endfor %}</ul>{% else %}<p>Noch keine Word-PDFs eingelesen.</p>{% endif %}
   </section>
   <section class="split-layout">
@@ -30,7 +30,7 @@
     </div>
     <aside class="info-box">
       <h2>Postfachbearbeitung</h2>
-      <p>Mails ohne MD-Bezug werden ignoriert. Gültige MD-PDFs werden verarbeitet; reine MD-Mails werden anschliessend nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails bleiben nur die Fremdanlagen als Prüfaufgabe offen.</p>
+      <p>Mails ohne MD-Bezug werden ignoriert. Word-PDFs landen zuerst in der Prüfwarteschlange; ihre Fallzuordnung und Ablage werden hier manuell bestätigt. Reine, erfolgreich verarbeitete MD-Mails werden in den konfigurierten Outlook-Zielordner verschoben. Gemischte Mails bleiben zur Prüfung sichtbar.</p>
       <form action="{{ url_for('main.scan_mail_inbox') }}" method="post"><button class="button" type="submit">Outlook-Postfach jetzt prüfen</button></form>
     </aside>
   </section>
@@ -87,7 +87,7 @@
       <div class="task-list">
         {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('main.case_detail', cycle_id=task.cycle_id, case_id=task.case_id) }}">Person öffnen</a><br><a class="compact-action" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Führungslinie</a></div></article>{% endfor %}
       </div>
-    {% else %}<div class="empty-state empty-state--success">Keine eingegangenen Dokumente benötigen aktuell eine manuelle Prüfung.</div>{% endif %}
+    {% else %}<div class="empty-state empty-state--success">Keine weiteren Fallaufgaben vorhanden. Offene Word-PDF-Prüfungen stehen in der Warteschlange oben.</div>{% endif %}
   </section>
 
   <details class="legacy-box"><summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary><form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data"><label for="return_file">Bearbeitete HTML-Datei</label><input id="return_file" name="return_file" type="file" accept=".html,.htm" required><button class="button" type="submit">HTML-Rücklauf importieren</button></form></details>

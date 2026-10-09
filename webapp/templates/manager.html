@@ -12,9 +12,11 @@
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Der vorgeschlagene Umfang ergibt sich aus den SAP-Daten; bestätigte Abweichungen werden berücksichtigt.</p>
     <h2>Word-Vorlagen</h2>
     <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
-    {% if word_templates.missing %}<p class="issue-text">Noch nicht eingerichtet: {{ word_templates.missing|join(', ') }}. Die Vorlagen werden in der lokalen Word-Konfiguration hinterlegt.</p>{% endif %}
+    {% include '_word_setup.html' %}
     <form action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Word-Vorlagen für Führungslinie erzeugen</button></form>
     <p>Nach der Erzeugung wird eine ZIP-Datei heruntergeladen. Unter «Versand» kannst du das Paket der Führungslinie für Outlook verwenden. PDF-Rückläufe prüfst du unter «Rückläufe».</p>
+    <p><a class="button" href="{{ url_for('main.dispatch', cycle_id=cycle.id) }}">Weiter zum Word-Versand</a> <a class="button" href="{{ url_for('main.returns_overview', cycle_id=cycle.id) }}">PDF-Rückläufe prüfen</a></p>
+    {% if word_packages %}<details open><summary>Letzte Word-Pakete dieser Führungslinie</summary><ul>{% for package in word_packages %}<li>{{ package.created_at }} · <a href="{{ url_for('main.download_prepared_word_package', package_id=package.id) }}">{{ 'Aktuelle Ausgabe' if loop.first else 'Frühere Ausgabe' }} erneut herunterladen</a></li>{% endfor %}</ul><p>Einzelne Personenausgaben sind keine Versandpakete. Den Outlook-Status siehst du unter «Word-Versand».</p></details>{% endif %}
     <details class="legacy-box"><summary>Alternative: HTML-Arbeitsmappe</summary>
     {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
     {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
@@ -55,9 +57,9 @@
                     <strong>{{ document.name }}</strong>
                     <span class="status status--{{ document.key }}">{{ document.label }}</span>
                     {% if document.digital and document.key == 'legacy' %}
-                      <div class="muted">Dieses Dokument ging vor der automatischen Roboter-Bereitstellung ein.</div>
+                      <div class="muted">Prüfe die Unterschriften am Original-PDF und gib das Dokument anschliessend für die Ablage frei.</div>
                       <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
-                        <button class="button button--small" type="submit">Nachträglich bereitstellen</button>
+                        <button class="button button--small" type="submit">Unterschriften bestätigen und Ablage prüfen</button>
                       </form>
                     {% elif document.key == 'scan' %}
                       <form class="scan-form" action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.kind) }}" method="post" enctype="multipart/form-data">

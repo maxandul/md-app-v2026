@@ -4,7 +4,7 @@
 <section class="page-head"><div><p class="kicker">Versand</p><h1>Word-Vorlagen bereitstellen</h1><p class="lead">Führungskräfte auswählen, personalisierte Formulare erzeugen und per Outlook zustellen.</p></div>
 {% if cycles %}<form method="get" class="context-selector"><label>Durchlauf<select name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}" {% if selected_cycle and selected_cycle.id==cycle.id %}selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></label><button class="button">Anzeigen</button></form>{% endif %}</section>
 <section class="info-box"><p>Jede Führungskraft erhält ein eigenes ZIP mit ihren Word-Formularen. Neue Ausgaben berücksichtigen die aktuellen Stammdaten und Vorjahresziele. Bereits bearbeitete Dateien werden nicht automatisch aktualisiert. «Erzeugt» und «Entwurf erstellt» sind noch kein Versandnachweis.</p></section>
-{% if not word_templates.ready %}<p class="issue-text">Lokale Vorlagen fehlen: {{ word_templates.missing|join(', ') }}. Bitte die Word-Konfiguration ergänzen.</p>{% endif %}
+{% include '_word_setup.html' %}
 {% if not hr_sender %}<p class="issue-text">Für Outlook fehlt die HR-Absenderadresse in der lokalen Organisationskonfiguration.</p>{% endif %}
 {% if request.args.get('word_batch') %}<p><a class="button" href="{{ url_for('main.download_word_batch',batch_id=request.args.get('word_batch')) }}">Sammel-ZIP für HR herunterladen</a></p>{% endif %}
 {% if selected_cycle and managers %}

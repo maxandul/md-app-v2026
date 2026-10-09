@@ -53,7 +53,7 @@ def matching_cases(connection, data):
     year_column='outlook_year' if kind=='outlook' else 'review_year'
     return [dict(row) for row in connection.execute(f'''SELECT dc.*,c.review_year,c.outlook_year,e.first_name,e.last_name
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id JOIN employees e ON e.pn=dc.employee_pn
-        WHERE dc.employee_pn=? AND dc.active=1 AND c.{year_column}=? ORDER BY dc.id''',(pn,int(year)))]
+        WHERE dc.employee_pn=? AND c.{year_column}=? ORDER BY dc.id''',(pn,int(year)))]
 
 
 def _validate(reviewed):
@@ -116,6 +116,8 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item or item['status']!='pending':
         raise ValueError('Dieser Rücklauf ist nicht mehr zur Prüfung offen.')
+    if connection.execute('SELECT 1 FROM workflow_pdf_state WHERE import_id=? AND dismissed=1',(import_id,)).fetchone():
+        raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
     if not connection.execute('SELECT id FROM employment_assignments WHERE person_number=? AND assignment_number=?',(pn,assignment)).fetchone():
         raise ValueError('Personalnummer und Anstellung sind nicht in den Stammdaten vorhanden.')
     case=None
@@ -131,8 +133,13 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
         expected=case['outlook_year'] if kind=='outlook' else case['review_year']
         if case['employee_pn']!=pn or case['employment_assignment']!=assignment or expected!=year:
             raise ValueError('Personalnummer, Anstellung oder Zielzeitraum passen nicht zum gewählten Fall.')
-        if not case['active']:
-            raise ValueError('Der gewählte Fall ist nicht mehr aktiv.')
+        event_status=connection.execute('SELECT status FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
+        if event_status and event_status['status']=='cancelled':
+            raise ValueError('Dieses Ereignis wurde aufgehoben. Bitte die Fallzuordnung fachlich klären.')
+        if not case['active'] and len(reason.strip())<10:
+            raise ValueError('Nachzügler zu einem inaktiven Fall: Bitte die historische Zuordnung mit mindestens 10 Zeichen begründen. Der Fall wird dadurch nicht erneut für den Versand aktiviert.')
+        if case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+            raise ValueError('Dieser Durchlauf ist abgeschlossen. Öffne ihn für die Nachbearbeitung zuerst wieder in der Durchlaufübersicht.')
         # Abweichende unterjährige Ereignisse nicht aufgrund des Jahres allein übernehmen.
         if case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
             raise ValueError('Der Zeitraum weicht vom Fall ab. Bitte die Zuordnung begründen.')

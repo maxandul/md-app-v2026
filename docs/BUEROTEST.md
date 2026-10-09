@@ -62,3 +62,21 @@ Nachbearbeitung testen.
 Je Schritt Erwartung, Ergebnis, Dokumentbeispiel und Fehler festhalten. Browser,
 Word-Version, Exportweg und Outlook-Version notieren. Offene Grenzen und bekannte
 Befunde stehen in [ABLAUFPRUEFUNG_WORD_PDF.md](ABLAUFPRUEFUNG_WORD_PDF.md).
+
+
+## Ergänzende Ausnahmefälle und Stellvertretung
+
+1. Als neue HR-Person Hilfe und Einrichtung öffnen; fehlende Voraussetzungen und Zuständigkeiten müssen verständlich sein.
+2. PDF hochladen: Arbeitsliste zeigt den Eingang. Entwurf speichern, Seite verlassen und wieder öffnen; Werte und Zuordnung vergleichen.
+3. Dieselbe Prüfung in zwei Fenstern öffnen, eines speichern und danach das andere: veralteter Stand darf den neueren nicht überschreiben.
+4. Falschen Eingang begründet zurückstellen, über den Filter finden und begründet wieder öffnen. Keine Fachdatenübernahme durch Entwurf oder Zurückstellung.
+5. Mehr als 100 Eingänge mit synthetischen Dateien prüfen: alle über Suche/Seitennavigation erreichbar.
+6. Eingegangenes PDF übernehmen: Unterschriftenaufgabe erscheint. Eine reine HR-Prüfung darf keine Erinnerung auslösen. Offener PDF-Eingang pausiert Erinnerungen.
+7. Manuelles Ereignis ohne Durchlauf zuordnen; bei bestehendem Fall derselben Führungslinie verständliche Konfliktmeldung. Fehlanlage ohne Belege aufheben.
+8. Nachzügler auf inaktiven Fall begründet übernehmen; Fall bleibt inaktiv. Geschlossenen Durchlauf vorher wieder öffnen.
+9. Alten DOCX-Ausblick mit Vorschau importieren; mehrere Zielquellen vergleichen und auswählen. Ändert sich eine Quelle, muss die Auswahl erneut geprüft werden.
+10. Nur in isolierter Testumgebung: abgebrochenen Outlook-Vorgang nach tatsächlicher Outlook-Prüfung klären. Kein zusätzlicher Versand; laufender Vorgang bleibt gesperrt.
+11. Unerreichbare Testablage: verständliche Hilfe und gespeicherten Status prüfen, nach Fehlerbehebung ohne doppelte Ablage weiterarbeiten.
+12. Abschluss ohne externe Prüfung ablehnen; bei Restfällen Grund und zuständige Person verlangen. Folgejahr eröffnen und Zielübernahme prüfen.
+
+Aktuelle Anleitung und verbleibende Grenzen: [HR_BETREUUNG.md](HR_BETREUUNG.md).

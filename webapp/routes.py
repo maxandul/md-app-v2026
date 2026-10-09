@@ -26,6 +26,7 @@ from werkzeug.utils import secure_filename
 
 from .auth import audit, login_required, system_admin_required
 from .db import close_db, connect_database, get_db
+from .services import hr_workflow as workflow
 from .services.cycles import (
     CYCLE_STATUS_LABELS,
     change_cycle_status,
@@ -100,7 +101,16 @@ def protect_hr_cockpit():
     """Alle fachlichen Routen verlangen ein persönliches HR-Konto."""
     if not current_app.config.get("AUTH_DISABLED") and g.user and g.user["password_temporary"]:
         return redirect(url_for("auth.change_password"))
+    chosen = request.args.get('cycle_id',type=int) or (request.view_args or {}).get('cycle_id')
+    if chosen and get_db().execute('SELECT 1 FROM cycles WHERE id=?',(chosen,)).fetchone():
+        session['active_cycle_id']=chosen
     return None
+
+
+@bp.url_defaults
+def preserve_cycle(endpoint, values):
+    if endpoint in {'main.dashboard','main.dialogs','main.dispatch','main.returns_overview','main.worklist','main.analytics'} and 'cycle_id' not in values and not values.get('unassigned') and session.get('active_cycle_id'):
+        values['cycle_id']=session['active_cycle_id']
 
 
 def _storage_dir(name: str) -> Path:
@@ -168,7 +178,7 @@ def dashboard():
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
-        now_year=datetime.now().year,
+        now_year=request.args.get('next_year',datetime.now().year,type=int),
         active_nav="overview",
         **cockpit_overview(get_db(), selected_cycle_id=selected_cycle_id),
     )
@@ -188,7 +198,10 @@ def dialogs():
     connection = get_db()
     data = dashboard_data(connection)
     selected_cycle_id = request.args.get("cycle_id", type=int)
-    if selected_cycle_id is None and data["cycles"]:
+    unassigned = request.args.get('unassigned') == 'yes'
+    if unassigned:
+        selected_cycle_id = None
+    if selected_cycle_id is None and data["cycles"] and not unassigned:
         selected_cycle_id = data["cycles"][0]["id"]
     query = request.args.get("q", "").strip()
     event_type = request.args.get("event_type", "").strip()
@@ -196,6 +209,8 @@ def dialogs():
     page = max(1, request.args.get("page", default=1, type=int) or 1)
     per_page = 50
     all_events = dialog_event_rows(connection, selected_cycle_id)
+    if unassigned:
+        all_events = [item for item in all_events if item["cycle_id"] is None]
     if query:
         needle = query.casefold()
         all_events = [
@@ -221,11 +236,12 @@ def dialogs():
     return render_template(
         "dialogs.html",
         active_nav="dialogs",
-        now_year=datetime.now().year,
+        now_year=request.args.get('next_year',datetime.now().year,type=int),
         selected_cycle_id=selected_cycle_id,
         selected_cycle=selected_cycle,
         events=events,
         event_total=event_total,
+        unassigned=unassigned,
         event_page=page,
         event_pages=event_pages,
         event_query=query,
@@ -428,7 +444,7 @@ def returns_overview():
     selected_cycle = cockpit.get("selected_cycle")
     return render_template(
         "returns.html",
-        word_pdf_queue=connection.execute("SELECT id,original_filename,created_at,status FROM word_pdf_imports ORDER BY (status='pending') DESC,id DESC LIMIT 100").fetchall(),
+        **workflow.pdf_queue(connection,query=request.args.get('pdf_q',''),status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int)),
         active_nav="returns",
         **cockpit,
         feedback_bundles=feedback_overview(
@@ -726,6 +742,7 @@ def cycle_detail(cycle_id: int):
         "cycle.html", cycle=cycle, managers=manager_rows,
         word_status={item['manager_pn']: item for item in word_dispatch_candidates(get_db(),cycle_id=cycle_id,template_paths=current_app.config['WORD_TEMPLATE_PATHS'])},
         export_batches=sap_export_batches(get_db(), cycle_id=cycle_id),
+        closure_record=get_db().execute("SELECT * FROM workflow_cycle_closures WHERE cycle_id=?",(cycle_id,)).fetchone(),
         cycle_status_labels=CYCLE_STATUS_LABELS,
         active_nav="dialogs"
     )
@@ -737,6 +754,7 @@ def set_cycle_status(cycle_id: int):
         old_status, new_status = change_cycle_status(
             get_db(), cycle_id=cycle_id,
             new_status=request.form.get("status", "").strip(),
+            closure_reason=request.form.get('closure_reason',''),closure_owner=request.form.get('closure_owner',''),external_checked=request.form.get('external_checked')=='yes',
         )
     except LookupError:
         abort(404)
@@ -1260,6 +1278,10 @@ def mark_signature_checked(document_id: int):
         result = confirm_digital_signature(
             get_db(), document_id=document_id, handoff_dir=_handoff_dir()
         )
+    except OSError:
+        get_db().rollback()
+        flash('Die Dossierübergabe ist fehlgeschlagen. Prüfe, ob der Ablageordner erreichbar und beschreibbar ist. Der Fall bleibt zur Prüfung offen. Vor einem erneuten Versuch den PDF-Verlauf und Übergabeordner vergleichen; bei Unklarheit die Systemadministration beiziehen.', 'error')
+        return redirect(request.referrer or url_for('main.returns_overview'))
     except ValueError as exc:
         flash(str(exc), "error")
         return redirect(request.referrer or url_for("main.dashboard"))
@@ -1364,12 +1386,30 @@ def word_pdf_review(import_id):
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item:
         abort(404)
+    state=workflow.pdf_state(connection,import_id)
     parsed=json.loads(item['parsed_json'])
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
     if request.method=='POST':
         reviewed=_reviewed_word_form(request.form)
     if request.method=='POST' and request.form.get('refresh')!='yes':
         try:
+            workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+            action=request.form.get('action','confirm')
+            if action in ('draft','dismiss','reopen'):
+                reason=request.form.get('reason','').strip()
+                if action in ('dismiss','reopen') and len(reason)<10:
+                    raise ValueError('Bitte das Zurückstellen oder Wiederöffnen mit mindestens 10 Zeichen begründen.')
+                if state['dismissed'] and action!='reopen':
+                    raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst begründet wieder.')
+                reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
+                connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                connection.commit()
+                audit('word_pdf_'+action,'word_pdf_import',str(import_id),reason=reason)
+                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung begründet zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
+                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+            if state['dismissed']:
+                raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
             if request.form.get('checked')!='yes':
                 raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
             confirm_import(connection,import_id,reviewed=reviewed,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
@@ -1386,11 +1426,12 @@ def word_pdf_review(import_id):
             flash(message, 'success')
             return redirect(url_for('main.word_pdf_review',import_id=import_id))
         except (ValueError,LookupError) as exc:
+            connection.rollback()
             flash(str(exc),'error')
     candidates=matching_cases(connection,reviewed.get('data',{}))
     assignments=connection.execute('SELECT assignment_number FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
     from .services.word_pdf import NARRATIVE_FIELDS
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS)
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS)
 
 
 @bp.get('/word-pdf-imports/<int:import_id>/original')
@@ -1490,3 +1531,141 @@ def discard_word_mail_draft(package_id):
     except ValueError as exc:
         flash(str(exc),'error')
     return redirect(url_for('main.dispatch',cycle_id=row['cycle_id']))
+
+
+@bp.get('/aufgaben')
+def worklist():
+    data=cockpit_overview(get_db(),selected_cycle_id=request.args.get('cycle_id',type=int))
+    kind=request.args.get('kind','');query=request.args.get('q','').casefold()
+    rows=[t for t in data['tasks'] if (not kind or t['kind']==kind) and (not query or query in (t['title']+' '+t['subject']+' '+t.get('context','')).casefold())]
+    return render_template('worklist.html',active_nav='overview',rows=rows,kind=kind,query=query,kinds=sorted({t['kind'] for t in data['tasks']}),**data)
+
+
+@bp.get('/einrichtung')
+def setup_guide():
+    return render_template('setup_guide.html',active_nav='help',checks=workflow.setup_checks(current_app.config,get_db()))
+
+
+@bp.get('/hilfe')
+def help_page():
+    from .services.help_content import SECTIONS
+    return render_template('help.html',active_nav='help',help_sections=SECTIONS)
+
+
+@bp.post('/dialog-events/<int:event_id>/attach')
+def attach_dialog_event(event_id):
+    try:
+        cycle_id=request.form.get('cycle_id',type=int)
+        reason=request.form.get('reason','')
+        case_id=workflow.attach_event(get_db(),event_id,cycle_id,reason)
+        audit('event_attached','dialog_event',str(event_id),cycle_id=cycle_id,reason=reason)
+        flash('Ereignis zugeordnet. Hier kannst du den Fall prüfen und über die Führungslinie Word-Vorlagen erzeugen.','success')
+        return redirect(url_for('main.case_detail',cycle_id=cycle_id,case_id=case_id))
+    except ValueError as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('main.dialogs',unassigned='yes'))
+
+
+@bp.post('/dialog-events/<int:event_id>/cancel')
+def cancel_dialog_event(event_id):
+    try:
+        workflow.cancel_manual_event(get_db(),event_id,request.form.get('reason',''))
+        audit('event_cancelled','dialog_event',str(event_id),reason=request.form.get('reason',''))
+        flash('Manuelles Ereignis aufgehoben. Es bleibt nachvollziehbar gespeichert.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    return redirect(url_for('main.dialogs'))
+
+
+@bp.get('/hilfe/dokument/<name>')
+def help_document(name):
+    if name not in {'HR_BETREUUNG.md','BUEROTEST.md','PLAN_B_WORD_PDF.md','BETRIEBSKONZEPT.md','FLASK_SQLITE_MVP.md','ANFORDERUNGEN.md'}:abort(404)
+    return send_file(Path(current_app.root_path).parent/'docs'/name,as_attachment=True,download_name=name)
+
+
+@bp.get('/cycles/<int:cycle_id>/abschluss')
+def cycle_closure(cycle_id):
+    cycle=get_db().execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
+    if not cycle:abort(404)
+    return render_template('cycle_closure.html',active_nav='dialogs',cycle=cycle,summary=workflow.closure_summary(get_db(),cycle_id))
+
+
+@bp.app_errorhandler(OSError)
+def storage_problem(error):
+    get_db().rollback()
+    reference=uuid.uuid4().hex[:10]
+    current_app.logger.exception('Dateisystemfehler %s',reference)
+    return render_template('operation_error.html',reference=reference),503
+
+
+@bp.post('/word-packages/<int:package_id>/resolve-interrupted')
+def resolve_interrupted_word(package_id):
+    from .services.word_dispatch import resolve_interrupted_delivery
+    try:
+        if request.form.get('outlook_checked')!='yes':raise ValueError('Bitte in Outlook prüfen, ob die Nachricht bereits verschlüsselt versendet wurde oder ob kein Versand und kein Entwurf mehr offen ist. Alte Serverversionen müssen zuvor beendet sein.')
+        resolve_interrupted_delivery(get_db(),package_id,outcome=request.form.get('outcome',''),reason=request.form.get('reason',''))
+        audit('word_delivery_resolved','word_package',str(package_id),outcome=request.form.get('outcome'),reason=request.form.get('reason'))
+        flash('Outlook-Vorgang geklärt. Dabei wurde keine zusätzliche Nachricht versendet.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    return redirect(url_for('main.dispatch'))
+
+
+@bp.route('/zielquellen',methods=['GET','POST'])
+def goal_sources():
+    from .services.word_packages import prior_goals,goal_sources_fingerprint
+    values=request.form if request.method=='POST' else request.args
+    pn=values.get('pn','').strip();assignment=values.get('assignment','').strip();year=values.get('year',type=int)
+    sources=[];fingerprint=''
+    try:
+        if pn and assignment and year:
+            sources=prior_goals(get_db(),employee_pn=pn,assignment=assignment,year=year,sources_only=True)
+            fingerprint=goal_sources_fingerprint(sources)
+        if request.method=='POST':
+            index=values.get('source',type=int);reason=values.get('reason','').strip()
+            if not fingerprint or values.get('fingerprint')!=fingerprint:raise ValueError('Die Quellen haben sich geändert. Bitte die neue Übersicht vergleichen.')
+            if index is None or not 0<=index<len(sources) or len(reason)<10:raise ValueError('Bitte eine Quelle wählen und die Entscheidung mit mindestens 10 Zeichen begründen.')
+            with get_db():
+                get_db().execute("""INSERT INTO workflow_goal_choices VALUES (?,?,?,?,?,?,?) ON CONFLICT(employee_pn,assignment_number,goal_year) DO UPDATE SET source_json=excluded.source_json,sources_fingerprint=excluded.sources_fingerprint,reason=excluded.reason,updated_at=excluded.updated_at""",(pn,assignment,year,json.dumps(sources[index][2]),fingerprint,reason,workflow.stamp()))
+            audit('goal_source_selected','person',pn,assignment=assignment,year=year,source=sources[index][2],reason=reason)
+            flash('Zielquelle festgelegt. Die nächste Word-Erzeugung verwendet diese Quelle; frühere Ausgaben bleiben unverändert.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    choice=get_db().execute('SELECT * FROM workflow_goal_choices WHERE employee_pn=? AND assignment_number=? AND goal_year=?',(pn,assignment,year)).fetchone()
+    selected_source=json.loads(choice['source_json']) if choice else None
+    return render_template('goal_sources.html',active_nav='master_data',sources=sources,pn=pn,assignment=assignment,year=year,fingerprint=fingerprint,choice=choice,selected_source=selected_source)
+
+
+@bp.route('/alte-ziele',methods=['GET','POST'])
+def legacy_goal_upload():
+    if request.method=='POST':
+        year=request.form.get('goal_year',type=int)
+        uploads=[u for u in request.files.getlist('forms') if u.filename]
+        if not year or not 2020<=year<=2100 or not uploads:
+            flash('Bitte Zieljahr und mindestens eine DOCX-Datei wählen.','error')
+        elif any(not u.filename.lower().endswith('.docx') for u in uploads):
+            flash('Hier sind nur DOCX-Dateien vorgesehen. PDF-Ausblicke unter Rückläufe einlesen.','error')
+        else:
+            batch=uuid.uuid4().hex;directory=_storage_dir('legacy_preview')/batch;directory.mkdir()
+            for upload in uploads:upload.save(directory/_stored_name(upload.filename))
+            (directory/'year.json').write_text(json.dumps({'year':year}))
+            return redirect(url_for('main.legacy_goal_preview',batch_id=batch))
+    return render_template('legacy_goal_upload.html',active_nav='master_data')
+
+
+@bp.route('/alte-ziele/<batch_id>',methods=['GET','POST'])
+def legacy_goal_preview(batch_id):
+    import re,hashlib
+    from .services.legacy_forms import scan_legacy_forms,import_legacy_forms
+    if not re.fullmatch('[0-9a-f]{32}',batch_id):abort(404)
+    directory=_storage_dir('legacy_preview')/batch_id
+    if not (directory/'year.json').is_file():abort(404)
+    year=json.loads((directory/'year.json').read_text())['year']
+    result=scan_legacy_forms(get_db(),forms_root=directory,goal_year=year)
+    fingerprint=hashlib.sha256(json.dumps([(i['sha256'],i['status'],i['resolved_assignment']) for i in result['items']]).encode()).hexdigest()
+    if request.method=='POST':
+        if request.form.get('checked')!='yes' or request.form.get('fingerprint')!=fingerprint:
+            flash('Bitte die aktuelle Vorschau einschliesslich Zieljahr und Zuordnungen prüfen und bestätigen.','error')
+        else:
+            result=import_legacy_forms(get_db(),forms_root=directory,goal_year=year)
+            audit('legacy_goals_imported','goal_batch',batch_id,year=year,imported=result['imported'])
+            flash(f"{result['imported']} eindeutig zugeordnete Datei(en) importiert. Nicht zuordenbare Dateien wurden nicht übernommen.",'success')
+            return redirect(url_for('main.legacy_goal_preview',batch_id=batch_id))
+    return render_template('legacy_goal_preview.html',active_nav='master_data',result=result,fingerprint=fingerprint)

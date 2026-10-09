@@ -477,7 +477,7 @@ def resolve_inbound_message(
     if message["status"] == "review_required":
         pending_word = connection.execute("""SELECT w.id FROM word_pdf_imports w
             JOIN inbound_mail_attachments a ON a.sha256=w.sha256
-            WHERE a.mail_message_id=? AND w.status='pending' LIMIT 1""", (message_id,)).fetchone()
+            WHERE a.mail_message_id=? AND w.status='pending' AND NOT EXISTS (SELECT 1 FROM workflow_pdf_state s WHERE s.import_id=w.id AND s.dismissed=1) LIMIT 1""", (message_id,)).fetchone()
         if pending_word:
             raise ValueError('Bitte zuerst die offene Word-PDF-Prüfung abschliessen.')
         if message["review_completed_at"]:

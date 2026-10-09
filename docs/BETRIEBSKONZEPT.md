@@ -149,3 +149,28 @@ Lokale Word-Vorlagen, `instance/word_config.json` und
 `instance/organisation.json` sind zusätzlich zum Prozessbackup zu sichern. Die
 historische Oberfläche bleibt standardmässig mit `LEGACY_WORKBOOKS: "disabled"`
 ausgeblendet. Aktueller Abnahmelauf: [Bürotest](BUEROTEST.md).
+
+
+## Eigenständige HR-Betreuung
+
+Im Cockpit stehen **Hilfe → Einrichtung**, die **vollständige Arbeitsliste** und
+konkrete Hinweise zur Fehlerbehebung zur Verfügung. PDF-Prüfungen lassen sich als
+Entwurf speichern, begründet zurückstellen und wieder öffnen. Die Warteschlange
+ist durchsuchbar und in Seiten unterteilt; parallele Änderungen werden erkannt.
+Eingegangene Dokumente lösen keine Nachforderung wegen offener HR-Prüfung aus.
+Ungeprüfte PDF-Eingänge pausieren die Erstellung von Erinnerungen.
+
+Unter **Stammdaten** können frühere DOCX-Ausblicke mit Vorschau importiert und
+konkurrierende Zielquellen begründet ausgewählt werden. Ereignisse ohne Durchlauf
+können zugeordnet, Fehlanlagen ohne Belege aufgehoben und verspätete Rückläufe
+inaktiven Fällen begründet zugeordnet werden. Vor Bearbeitung geschlossener
+Durchläufe diese wieder öffnen. Unterbrochene Outlook-Vorgänge dürfen erst nach
+Prüfung in Outlook und Beendigung alter Serverprozesse geklärt werden.
+
+Der Jahresabschluss verlangt eine Prüfung der externen Verarbeitung; offene
+Aufgaben benötigen eine Restfallbegründung und eine verantwortliche Person.
+Der Folgejahreslink bereitet das nächste Rückblickjahr vor. Die neuen Tabellen
+werden beim App-Start ergänzt; bestehende Fachdaten bleiben erhalten.
+
+Bedienung, Grenzen und Zuständigkeiten: [HR_BETREUUNG.md](HR_BETREUUNG.md).
+Die Anwendung bestätigt weder SAP-Import noch Dossier-RPA-Verarbeitung automatisch.

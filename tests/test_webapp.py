@@ -420,7 +420,8 @@ class WebAppIntegrationTest(unittest.TestCase):
             connection = get_db()
             for status in ("versand", "ruecklauf", "abgeschlossen", "ruecklauf"):
                 change_cycle_status(
-                    connection, cycle_id=cycle_id, new_status=status
+                    connection, cycle_id=cycle_id, new_status=status, external_checked=True,
+                    closure_reason='Restfälle werden nachbearbeitet', closure_owner='HR Test'
                 )
             current = connection.execute(
                 "SELECT status FROM cycles WHERE id = ?", (cycle_id,)

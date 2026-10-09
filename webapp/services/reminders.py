@@ -16,13 +16,16 @@ def _message(candidate: dict[str, Any], sender_email: str) -> tuple[str, str]:
     name = html.escape(candidate["manager_name"])
     oldest = html.escape(candidate["oldest_due_date"])
     kinds = html.escape(candidate["document_kinds"])
+    details = ''.join('<li>'+html.escape(value)+'</li>' for value in candidate.get('missing_details', []))
     body = f"""
     <p>Guten Tag {name}</p>
-    <p>Für Ihre Mitarbeitenden sind noch {candidate['overdue_count']} Unterlage(n)
-    zum Mitarbeitenden-Dialog überfällig. Die älteste Frist war am {oldest}.</p>
+    <p>Für deine Mitarbeitenden sind noch {candidate['overdue_count']} Unterlage(n)
+    zum Mitarbeitenden-Dialog überfällig. Bereits bei HR eingegangene Unterlagen werden nicht nochmals angefordert. Die älteste Frist war am {oldest}.</p>
     <p><strong>Betroffene Dokumentarten:</strong> {kinds}</p>
-    <p>Bitte senden Sie die erzeugten und elektronisch unterzeichneten PDFs an
+    <ul>{details}</ul>
+    <p>Bitte sende die fehlenden PDFs mit den gemäss Formular erforderlichen Unterschriften an
     <a href="mailto:{html.escape(sender_email)}">{html.escape(sender_email)}</a>.
+    Bei einer offenen Scanpflicht benötigen wir den handschriftlich unterzeichneten Scan.
     Rücksendungen müssen S/MIME-verschlüsselt erfolgen.</p>
     <p>Freundliche Grüsse<br>Human Resources</p>
     """
@@ -43,7 +46,7 @@ def reminder_candidates(
             JOIN dialog_events de ON de.id = o.dialog_event_id
             JOIN manager_assignments ma ON ma.id = de.manager_assignment_id
             WHERE de.cycle_id = ? AND o.required = 1
-              AND o.status NOT IN ('complete', 'waived')
+              AND o.status IN ('open', 'rejected', 'scan_pending') AND de.status <> 'cancelled'
               AND o.due_date <> '' AND o.due_date < ?
         ), latest AS (
             SELECT manager_pn, MAX(id) AS reminder_id
@@ -69,6 +72,8 @@ def reminder_candidates(
         """,
         (cycle_id, cutoff, cycle_id),
     ).fetchall()
+    from .hr_workflow import pending_pdfs
+    review_pending = bool(pending_pdfs(connection))
     result = []
     for row in rows:
         item = dict(row)
@@ -79,7 +84,18 @@ def reminder_candidates(
             kinds.append(f"Ausblick ({item['outlook_count']})")
         item["document_kinds"] = ", ".join(kinds)
         item["draft_open"] = item["latest_status"] == "draft_created"
-        item["ready"] = bool(item["recipient_email"] and not item["draft_open"])
+        item["ready"] = bool(item["recipient_email"] and not item["draft_open"] and not review_pending)
+        item['readiness_error'] = 'Zuerst den offenen PDF-Eingang prüfen; er könnte bereits gesuchte Unterlagen enthalten.' if review_pending else ''
+        details = connection.execute("""SELECT p.first_name,p.last_name,ea.person_number,ea.assignment_number,o.document_kind,o.status,o.due_date
+            FROM document_obligations o JOIN dialog_events de ON de.id=o.dialog_event_id
+            JOIN employment_assignments ea ON ea.id=de.employment_id JOIN persons p ON p.person_number=ea.person_number
+            JOIN manager_assignments ma ON ma.id=de.manager_assignment_id
+            WHERE de.cycle_id=? AND ma.manager_person_number=? AND o.required=1
+              AND o.status IN ('open','rejected','scan_pending') AND de.status<>'cancelled'
+              AND o.due_date<>'' AND o.due_date<? ORDER BY p.last_name,p.first_name,o.id""",(cycle_id,item['manager_pn'],cutoff)).fetchall()
+        item['missing_details'] = [f"{d['first_name']} {d['last_name']} (PN {d['person_number']}, Ans. {d['assignment_number']}): "
+            f"{'Rückblick' if d['document_kind']=='review' else 'Ausblick'} – "
+            f"{ {'open':'noch ausstehend','rejected':'Korrektur erforderlich','scan_pending':'unterschriebener Scan ausstehend'}[d['status']] }, Frist {d['due_date']}" for d in details]
         item["subject"], item["body_html"] = _message(item, sender_email)
         item["obligation_ids"] = [
             value["id"] for value in connection.execute(
@@ -88,7 +104,7 @@ def reminder_candidates(
                 JOIN dialog_events de ON de.id = o.dialog_event_id
                 JOIN manager_assignments ma ON ma.id = de.manager_assignment_id
                 WHERE de.cycle_id = ? AND ma.manager_person_number = ?
-                  AND o.required = 1 AND o.status NOT IN ('complete', 'waived')
+                  AND o.required = 1 AND o.status IN ('open', 'rejected', 'scan_pending') AND de.status <> 'cancelled'
                   AND o.due_date <> '' AND o.due_date < ?
                 ORDER BY o.id
                 """,
@@ -105,6 +121,9 @@ def create_reminder_drafts(
     created_at: datetime | None = None, today: date | None = None,
 ) -> dict[str, Any]:
     sender_email = configured_sender(sender_email)
+    from .hr_workflow import pending_pdfs
+    if pending_pdfs(connection):
+        raise ValueError('Erinnerungen pausiert: Bitte zuerst alle offenen PDF-Eingänge prüfen oder begründet zurückstellen. So werden eingereichte Unterlagen nicht nochmals angefordert.')
     selected = {value.strip() for value in manager_pns if value.strip()}
     if not selected:
         raise ValueError("Bitte wähle mindestens eine überfällige Führungskraft aus.")

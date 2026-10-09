@@ -40,13 +40,13 @@ def word_template_status(paths: dict) -> dict:
     return {"ready": not missing, "missing": missing}
 
 
-def prior_goals(connection, *, employee_pn: str, assignment: str, year: int):
+def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sources_only: bool = False):
     """Eindeutige Quelle für den Zielzeitraum; mehrere Quellen nicht vermischen."""
     previous = connection.execute(
         """SELECT dc.case_id, dc.data_json FROM dialog_cases dc
            JOIN cycles c ON c.id = dc.cycle_id
            WHERE dc.employee_pn = ? AND dc.employment_assignment = ?
-             AND c.outlook_year = ? AND dc.data_json <> ''""",
+             AND c.outlook_year = ? AND dc.data_json <> '' ORDER BY dc.case_id""",
         (employee_pn, assignment, year),
     ).fetchall()
     sources = []
@@ -69,7 +69,7 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int):
             sources.append((performance, development, source))
     pdf_versions = connection.execute(
         """SELECT * FROM word_pdf_goal_versions WHERE employee_pn=? AND assignment_number=?
-           AND goal_year=? AND is_current=1""", (employee_pn, assignment, year)
+           AND goal_year=? AND is_current=1 ORDER BY id""", (employee_pn, assignment, year)
     ).fetchall()
     for version in pdf_versions:
         if version['case_id'] and any(source[2].get('case_id') == version['case_id'] for source in sources):
@@ -92,8 +92,18 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int):
     for source_id in dict.fromkeys(row["legacy_form_import_id"] for row in historical):
         rows = [dict(row) for row in historical if row["legacy_form_import_id"] == source_id]
         sources.append(([g for g in rows if g["goal_kind"] == "performance"], [g for g in rows if g["goal_kind"] == "development"], {"legacy_form_import_id": source_id}))
+    if sources_only:
+        return sources
+    choice=connection.execute('SELECT * FROM workflow_goal_choices WHERE employee_pn=? AND assignment_number=? AND goal_year=?',(employee_pn,assignment,year)).fetchone()
+    if choice:
+        fingerprint=goal_sources_fingerprint(sources)
+        if fingerprint!=choice['sources_fingerprint']:
+            raise ValueError(f'Zielquellen für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} haben sich geändert. Bitte die Auswahl unter Zielquellen erneut prüfen.')
+        selected=json.loads(choice['source_json'])
+        for source in sources:
+            if source[2]==selected:return source
     if len(sources) > 1:
-        raise ValueError(f"Für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} liegen mehrere Zielquellen vor. Bitte vor der Word-Erzeugung klären.")
+        raise ValueError(f"Für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} liegen mehrere Zielquellen vor. Bitte unter «Stammdaten → Zielquellen» vergleichen und eine Quelle begründet auswählen.")
     return sources[0] if sources else ([], [], {})
 
 
@@ -193,3 +203,7 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
         shutil.rmtree(directory)
         raise
     return path, manifest
+
+
+def goal_sources_fingerprint(sources):
+    return hashlib.sha256(json.dumps(sources,ensure_ascii=False,sort_keys=True).encode()).hexdigest()

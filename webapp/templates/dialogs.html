@@ -30,12 +30,13 @@
     {% else %}<div class="empty-state">Noch kein Durchlauf angelegt.</div>{% endif %}
   </section>
 
+<p><a class="button" href="{{ url_for('main.dialogs',unassigned='yes') }}">Ereignisse ohne Durchlauf</a> <a class="button" href="{{ url_for('main.dialogs') }}">Zum Jahresdurchlauf</a></p>
   <section class="content-section" aria-labelledby="events-title">
     <div class="section-heading">
       <div><p class="kicker">Pflichten</p><h2 id="events-title">Dialogereignisse</h2></div>
       {% if cycles %}
-        <form class="compact-filter" method="get">
-          <div><label for="event-cycle">Durchlauf</label><select id="event-cycle" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>
+        <form class="compact-filter" method="get">{% if unassigned %}<input type="hidden" name="unassigned" value="yes">{% endif %}
+          {% if unassigned %}<p>Nur Ereignisse ohne Durchlauf</p>{% else %}<div><label for="event-cycle">Durchlauf</label><select id="event-cycle" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>{% endif %}
           <div><label for="event-search">Suche</label><input id="event-search" name="q" value="{{ event_query }}" placeholder="Name oder Personalnummer"></div>
           <div><label for="event-type">Dialogart</label><select id="event-type" name="event_type"><option value="">Alle</option>{% for key, label in event_types.items() %}<option value="{{ key }}"{% if key == selected_event_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
           <div><label for="event-status">Status</label><select id="event-status" name="status"><option value="">Alle</option><option value="planned"{% if selected_event_status == 'planned' %} selected{% endif %}>Geplant</option><option value="open"{% if selected_event_status == 'open' %} selected{% endif %}>Offen</option><option value="in_progress"{% if selected_event_status == 'in_progress' %} selected{% endif %}>In Bearbeitung</option><option value="completed"{% if selected_event_status == 'completed' %} selected{% endif %}>Abgeschlossen</option><option value="no_md"{% if selected_event_status == 'no_md' %} selected{% endif %}>Kein MD</option><option value="cancelled"{% if selected_event_status == 'cancelled' %} selected{% endif %}>Aufgehoben</option></select></div>
@@ -50,11 +51,13 @@
         <tr>
           <td><strong>{% if event.legacy_case_id %}<a href="{{ url_for('main.case_detail', cycle_id=event.cycle_id, case_id=event.legacy_case_id) }}">{{ event.first_name }} {{ event.last_name }}</a>{% else %}{{ event.first_name }} {{ event.last_name }}{% endif %}</strong><br><span class="muted">PN {{ event.employee_pn }} · Ans. {{ event.assignment_number }}</span></td>
           <td>{{ event.event_type_label }}{% if event.source == 'manual' %}<br><span class="status status--warning">Manuell</span>{% endif %}</td>
-          <td><a href="{{ url_for('main.manager_detail', cycle_id=event.cycle_id, manager_pn=event.manager_pn) }}">{{ event.manager_name }}</a><br><span class="muted">PN {{ event.manager_pn }}</span></td>
+          <td>{% if event.cycle_id %}<a href="{{ url_for('main.manager_detail', cycle_id=event.cycle_id, manager_pn=event.manager_pn) }}">{{ event.manager_name }}</a>{% else %}{{ event.manager_name }}{% endif %}<br><span class="muted">PN {{ event.manager_pn }}</span></td>
           <td>{{ event.scope_label }}<br><span class="muted">{{ event.obligation_done_count or 0 }} von {{ event.obligation_count or 0 }} Pflichtdokumenten erfüllt</span></td>
           <td>{% if event.review_due_date %}<strong>Rückblick:</strong> {{ event.review_due_date }}{% endif %}{% if event.outlook_due_date %}{% if event.review_due_date %}<br>{% endif %}<strong>Ausblick:</strong> {{ event.outlook_due_date }}{% endif %}{% if not event.review_due_date and not event.outlook_due_date %}–{% endif %}</td>
           <td>
-            <span class="status">{{ event.status }}</span>
+            <span class="status">{{ {'open':'Offen','planned':'Geplant','in_progress':'In Bearbeitung','completed':'Abgeschlossen','no_md':'Kein MD','cancelled':'Aufgehoben'}.get(event.status,event.status) }}</span>
+{% if not event.cycle_id and event.status!='cancelled' %}<form action="{{ url_for('main.attach_dialog_event',event_id=event.id) }}" method="post"><label>Durchlauf<select name="cycle_id" required>{% for c in cycles if c.review_year==event.review_year and c.status!='abgeschlossen' %}<option value="{{ c.id }}">{{ c.review_year }}/{{ c.outlook_year }}</option>{% endfor %}</select></label><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Durchlauf zuordnen</button></form><p>Kein passender Durchlauf? Zuerst oben eröffnen oder wieder öffnen.</p>{% endif %}
+{% if event.source=='manual' and event.status!='cancelled' %}<details><summary>Fehlanlage aufheben</summary><form action="{{ url_for('main.cancel_dialog_event',event_id=event.id) }}" method="post"><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Unbenutztes Ereignis aufheben</button></form></details>{% endif %}
             {% if event.sap_leading %}<br><span class="muted">Führend für SAP</span>
             {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Als SAP-führend markieren</button></form>
             {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Fallverknüpfung</span>{% endif %}
@@ -62,7 +65,7 @@
         </tr>
       {% endfor %}
       </tbody></table></div>
-      {% if event_pages > 1 %}<nav class="pagination" aria-label="Seiten der Dialogereignisse">{% if event_page > 1 %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page-1) }}">Zurück</a>{% endif %}<span>Seite {{ event_page }} von {{ event_pages }}</span>{% if event_page < event_pages %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page+1) }}">Weiter</a>{% endif %}</nav>{% endif %}
+      {% if event_pages > 1 %}<nav class="pagination" aria-label="Seiten der Dialogereignisse">{% if event_page > 1 %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page-1,unassigned='yes' if unassigned else '') }}">Zurück</a>{% endif %}<span>Seite {{ event_page }} von {{ event_pages }}</span>{% if event_page < event_pages %}<a class="button button--small" href="{{ url_for('main.dialogs', cycle_id=selected_cycle_id, q=event_query, event_type=selected_event_type, status=selected_event_status, page=event_page+1,unassigned='yes' if unassigned else '') }}">Weiter</a>{% endif %}</nav>{% endif %}
     {% else %}<div class="empty-state">Für den gewählten Durchlauf sind keine Dialogereignisse vorhanden.</div>{% endif %}
   </section>
 
@@ -101,7 +104,7 @@
         <td><input type="checkbox" name="manager_pn" value="{{ row.manager_pn }}" aria-label="{{ row.manager_name }} auswählen"{% if not row.ready %} disabled{% endif %}></td>
         <td><strong>{{ row.manager_name }}</strong><br><span class="muted">{{ row.recipient_email or 'E-Mail-Adresse fehlt' }}</span></td>
         <td>{{ row.overdue_count }}<br><span class="muted">{{ row.document_kinds }}</span></td>
-        <td>{{ row.oldest_due_date }}</td>
+        <td>{{ row.oldest_due_date }}{% if row.readiness_error %}<p class="issue-text">{{ row.readiness_error }}</p>{% endif %}</td>
         <td>{% if row.latest_status == 'draft_created' %}<span class="status status--warning">Entwurf offen</span><br><button class="link-button compact-action" type="submit" formaction="{{ url_for('main.mark_reminder_sent', reminder_id=row.latest_reminder_id) }}" formmethod="post">Versand manuell bestätigen</button>{% elif row.latest_status == 'sent_confirmed' %}<span class="status status--staged">Versand bestätigt</span><br><span class="muted">{{ row.latest_updated_at }}</span>{% elif row.latest_status == 'failed' %}<span class="status status--danger">Fehler</span><br><span class="muted">{{ row.error_message }}</span>{% else %}<span class="muted">Noch keine</span>{% endif %}</td>
       </tr>{% endfor %}
       </tbody></table></div>

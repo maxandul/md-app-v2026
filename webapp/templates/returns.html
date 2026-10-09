@@ -16,9 +16,10 @@
   </section>
 
 
-  <section class="content-card"><h2>Word-PDF-Prüfungen</h2><p>Diese Warteschlange zeigt die letzten 100 Einträge über alle Durchläufe, offene Prüfungen zuerst. Noch nicht zugeordnete PDFs haben keinen Durchlauf.</p>
-  {% if word_pdf_queue %}<ul>{% for item in word_pdf_queue %}<li><a href="{{ url_for('main.word_pdf_review', import_id=item.id) }}">{{ item.original_filename }}</a> · {{ {'pending':'Prüfung offen','imported':'Dem Fall zugeordnet','historical':'Nachgereichte Zielquelle','duplicate':'Inhaltliche Dublette'}.get(item.status) }}</li>{% endfor %}</ul>{% else %}<p>Noch keine Word-PDFs eingelesen.</p>{% endif %}
-  </section>
+  <section class="content-card"><h2>Word-PDF-Prüfungen</h2><p>Gesamter Eingang über alle Durchläufe. Unzugeordnete Dateien sind noch keinem Jahr zugeordnet. {{ pdf_total }} Treffer.</p>
+  <form method="get"><label>Dateiname oder Personalnummer<input name="pdf_q" value="{{ pdf_query }}"></label><label>Status<select name="pdf_status">{% for k,l in [('pending','Prüfung offen'),('dismissed','Zurückgestellt'),('imported','Übernommen'),('historical','Zielquelle'),('duplicate','Dublette'),('all','Alle')] %}<option value="{{ k }}" {% if pdf_status==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label><button class="button">Suchen</button></form>
+  <ul>{% for item in word_pdf_queue %}<li><a href="{{ url_for('main.word_pdf_review',import_id=item.id) }}">{{ item.original_filename }}</a> · {{ 'Zurückgestellt' if item.dismissed else {'pending':'Prüfung offen','imported':'Übernommen','historical':'Zielquelle','duplicate':'Dublette'}.get(item.status) }} · {{ item.created_at }}</li>{% else %}<li>Keine passenden Eingänge.</li>{% endfor %}</ul>
+  <nav>Seite {{ pdf_page }} von {{ pdf_pages }} {% if pdf_page>1 %}<a href="{{ url_for('main.returns_overview',pdf_page=pdf_page-1,pdf_q=pdf_query,pdf_status=pdf_status) }}">Zurück</a>{% endif %} {% if pdf_page<pdf_pages %}<a href="{{ url_for('main.returns_overview',pdf_page=pdf_page+1,pdf_q=pdf_query,pdf_status=pdf_status) }}">Weiter</a>{% endif %}</nav></section>
   <section class="split-layout">
     {% if legacy_workbooks_enabled %}<div class="content-card">
       <p class="kicker">Arbeitsmappen</p><h2>PDF-Rückläufe mit Datenblock einlesen</h2>

@@ -36,6 +36,26 @@ class WordDispatchTest(unittest.TestCase):
     def candidates(self):
         return word_dispatch_candidates(self.db,cycle_id=self.cycle_id,template_paths=self.paths)
 
+    def test_interrupted_delivery_recovery_checks_lock_and_does_not_send(self):
+        from webapp.services.outlook_lock import package_lock
+        from webapp.services.word_dispatch import resolve_interrupted_delivery
+        self.prepare()
+        item=self.candidates()[0]
+        fake=FakeOutlook()
+        self.send([item['id']],fake)
+        self.db.execute("UPDATE word_mail_deliveries SET status='processing' WHERE package_id=?",(item['id'],))
+        self.db.commit()
+        client=self.app.test_client()
+        self.assertIn(f"/word-packages/{item['id']}/resolve-interrupted",client.get(f'/versand?cycle_id={self.cycle_id}').text)
+        with package_lock(item['stored_path']):
+            with self.assertRaisesRegex(ValueError,'läuft noch'):
+                resolve_interrupted_delivery(self.db,item['id'],outcome='cancelled',reason='Outlook geprüft, Entwurf entfernt')
+        resolve_interrupted_delivery(self.db,item['id'],outcome='cancelled',reason='Outlook geprüft, Entwurf entfernt')
+        self.assertEqual(len(fake.calls),1)
+        self.assertEqual(self.db.execute('SELECT status FROM word_mail_deliveries').fetchone()[0],'cancelled')
+        with self.assertRaisesRegex(ValueError,'nicht mehr'):
+            resolve_interrupted_delivery(self.db,item['id'],outcome='sent_confirmed',reason='Doppelte Bestätigung unterbinden')
+
     def test_prepare_versions_without_marking_sent_or_changing_workbooks(self):
         batch,result=self.prepare()
         self.assertTrue(batch.is_file())

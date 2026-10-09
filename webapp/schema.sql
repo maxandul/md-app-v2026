@@ -603,3 +603,28 @@ CREATE TABLE IF NOT EXISTS word_mail_deliveries (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS workflow_pdf_state (
+ import_id INTEGER PRIMARY KEY REFERENCES word_pdf_imports(id),
+ revision INTEGER NOT NULL DEFAULT 0,
+ dismissed INTEGER NOT NULL DEFAULT 0,
+ reason TEXT NOT NULL DEFAULT '',
+ updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workflow_cycle_closures (
+ cycle_id INTEGER PRIMARY KEY REFERENCES cycles(id),
+ reason TEXT NOT NULL,
+ owner TEXT NOT NULL,
+ summary_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workflow_goal_choices (
+ employee_pn TEXT NOT NULL,
+ assignment_number TEXT NOT NULL,
+ goal_year INTEGER NOT NULL,
+ source_json TEXT NOT NULL,
+ sources_fingerprint TEXT NOT NULL,
+ reason TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ PRIMARY KEY(employee_pn,assignment_number,goal_year)
+);

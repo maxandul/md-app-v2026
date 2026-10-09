@@ -4,6 +4,8 @@ Stand: 9. Oktober 2026. Standard ist Word-Erzeugung mit geprüftem PDF-Rücklauf
 
 | Dokument | Zweck |
 |---|---|
+| [HR-Betreuung](HR_BETREUUNG.md) | Erststart, laufende Arbeit, Ausnahmen und Folgejahr |
+| [Selbständigkeitsprüfung](HR_SELBSTAENDIGKEITSPRUEFUNG.md) | Ursprüngliche Befunde mit Verweis auf die Nachbearbeitung |
 | [Anforderungen](ANFORDERUNGEN.md) | Aktueller fachlicher Umfang und Grenzen |
 | [Word/PDF](PLAN_B_WORD_PDF.md) | Implementierung, Einrichtung und Versionierung |
 | [Technik](FLASK_SQLITE_MVP.md) | Architektur und Betriebseinstieg |

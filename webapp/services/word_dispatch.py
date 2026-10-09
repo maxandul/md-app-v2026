@@ -162,7 +162,7 @@ Human Resources'''
     return subject, ''.join('<p>'+html.escape(p).replace('\n','<br>')+'</p>' for p in body.replace('\r\n','\n').split('\n\n') if p.strip())
 
 
-def dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths, sender_email,
+def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths, sender_email,
                            delivery_mode='draft', subject_template='', body_template='', retry_confirmed=False, adapter=None):
     if delivery_mode not in ('draft','send'):
         raise ValueError('Ungültige Versandart.')
@@ -230,3 +230,26 @@ def discard_word_draft(connection, package_id):
         cursor = connection.execute("UPDATE word_mail_deliveries SET status='cancelled',updated_at=? WHERE package_id=? AND status IN ('draft_created','failed')", (_stamp(),package_id))
         if cursor.rowcount!=1:
             raise ValueError('Nur ein offener Entwurf oder fehlgeschlagener Outlook-Vorgang kann als verworfen markiert werden.')
+
+
+def dispatch_word_packages(connection, *, cycle_id, package_ids, **kwargs):
+    from contextlib import ExitStack
+    from .outlook_lock import package_lock
+    with ExitStack() as stack:
+        for package_id in sorted(set(package_ids)):
+            row=connection.execute('SELECT stored_path FROM word_dispatch_packages WHERE id=? AND cycle_id=?',(package_id,cycle_id)).fetchone()
+            if not row:raise ValueError('Die Word-Ausgabe gehört nicht zu diesem Durchlauf.')
+            stack.enter_context(package_lock(row['stored_path']))
+        return _dispatch_word_packages(connection,cycle_id=cycle_id,package_ids=package_ids,**kwargs)
+
+
+def resolve_interrupted_delivery(connection, package_id, *, outcome, reason):
+    from .outlook_lock import package_lock
+    if outcome not in ('sent_confirmed','cancelled') or len(reason.strip())<10:
+        raise ValueError('Bitte Ergebnis der Outlook-Prüfung wählen und mit mindestens 10 Zeichen begründen.')
+    row=connection.execute('SELECT stored_path FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row:raise ValueError('Word-Ausgabe nicht gefunden.')
+    with package_lock(row['stored_path']):
+        with connection:
+            cursor=connection.execute("UPDATE word_mail_deliveries SET status=?,encryption_flag_verified=?,error_message=?,updated_at=? WHERE package_id=? AND status='processing'",(outcome,int(outcome=='sent_confirmed'),'Manuell geklärt: '+reason,_stamp(),package_id))
+            if cursor.rowcount!=1:raise ValueError('Der Vorgang ist nicht mehr als unterbrochen offen. Bitte Ansicht aktualisieren.')

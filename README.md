@@ -19,6 +19,8 @@ Die Auswertung ergänzt Ja/Nein/offen-Angaben und Zeichenanzahlen geprüfter Tex
 Einrichtung, Umsetzungsstand und nächste Schritte:
 [`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
 
+Im Cockpit führen **Hilfe → Einrichtung** durch den Erststart und **Arbeitsliste** durch die offenen Aufgaben. Die [HR-Betreuungsanleitung](docs/HR_BETREUUNG.md) beschreibt Unterbrechungen, Ausnahmen und Jahreswechsel.
+
 ## Aktueller Standardablauf
 
 - SAP-Stammdaten importieren, Zuordnungskonflikte prüfen und Durchlauf eröffnen.

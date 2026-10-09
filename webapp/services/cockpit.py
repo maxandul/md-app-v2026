@@ -207,6 +207,9 @@ def cockpit_overview(
                     AND pe.manager_pn = dc.manager_pn
                     AND pe.direction = 'versand'
               )
+              AND COALESCE(NULLIF(dc.official_scope,''),dc.suggested_scope) <> 'none'
+              AND NOT EXISTS (SELECT 1 FROM word_dispatch_packages wp
+                  WHERE wp.cycle_id=dc.cycle_id AND wp.manager_pn=dc.manager_pn)
             GROUP BY dc.manager_pn, manager_name
             ORDER BY manager_name
             """,
@@ -218,8 +221,8 @@ def cockpit_overview(
                 {
                     "priority": "mittel",
                     "priority_rank": 5,
-                    "kind": "Arbeitsmappe",
-                    "title": "START-Datei bereitstellen",
+                    "kind": "Versand",
+                    "title": "Vorlagen bereitstellen",
                     "subject": manager["manager_name"],
                     "context": f"{manager['case_count']} Mitarbeitende",
                     "date": selected_cycle["created_at"],
@@ -228,6 +231,20 @@ def cockpit_overview(
                     "manager_pn": manager["manager_pn"],
                 }
             )
+
+        pending_word_mail = connection.execute("""SELECT p.manager_pn,p.created_at,
+            COALESCE(NULLIF(TRIM(e.first_name || ' ' || e.last_name),''),p.manager_pn) AS manager_name,
+            d.status FROM word_dispatch_packages p LEFT JOIN employees e ON e.pn=p.manager_pn
+            LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
+            WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2
+                WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn)
+            AND COALESCE(d.status,'')<>'sent_confirmed'""",(cycle_id,)).fetchall()
+        for package in pending_word_mail:
+            tasks.append({'priority':'mittel','priority_rank':5,'kind':'Versand',
+                'title':'Word-Versand abschliessen','subject':package['manager_name'],
+                'context':'Entwurf versenden und bestätigen' if package['status']=='draft_created' else 'Word-Paket und Outlook-Status prüfen',
+                'date':package['created_at'],'target':'dispatch','cycle_id':cycle_id,
+                'manager_pn':package['manager_pn']})
 
         scans_pending = connection.execute(
             """

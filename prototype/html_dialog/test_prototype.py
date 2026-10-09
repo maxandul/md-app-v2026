@@ -97,16 +97,12 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertEqual(missing, [])
 
     def test_html_is_self_contained_and_roundtrips(self) -> None:
-        html = render_html(self.payload)
+        html = render_html(self.payload,organisation={"hr_email":"test@example.invalid","special_cases_url":"https://example.invalid/special"})
         self.assertNotIn("__MD_PACKAGE_JSON__", html)
         self.assertNotRegex(html, re.compile(r"src=[\"']https?://", re.I))
         external_links = re.findall(r"href=[\"'](https?://[^\"']+)", html, re.I)
-        self.assertEqual(
-            external_links,
-            [
-                "https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle",
-            ],
-        )
+        self.assertEqual(external_links, [])
+        self.assertIn('specialCasesLink()', html)
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "package.html"
             path.write_text(html, encoding="utf-8")
@@ -114,6 +110,8 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         preparation_template = extracted["configuration"].pop("preparation_template")
         self.assertIn("__MD_PREPARATION_JSON__", preparation_template)
         self.assertIn("Feedback als PDF", preparation_template)
+        self.assertEqual(extracted['configuration'].pop('hr_email'),'test@example.invalid')
+        self.assertEqual(extracted['configuration'].pop('special_cases_url'),'https://example.invalid/special')
         self.assertEqual(extracted, self.payload)
 
     def test_json_embedding_escapes_script_endings(self) -> None:
@@ -159,7 +157,7 @@ class HtmlDialogPrototypeTest(unittest.TestCase):
         self.assertIn('Die «Kein MD»-PDFs benötigen keine Unterschrift.', template)
         self.assertIn('E-Mails mit MD-Dokumenten werden automatisch verarbeitet.', template)
         self.assertIn('angepasste Stellenbeschreibungen', template)
-        self.assertIn('href="mailto:hr@vd.zh.ch"', template)
+        self.assertIn('state.configuration.hr_email', template)
         self.assertNotIn('die Feedbacks gesammelt in einer S/MIME', template)
         self.assertIn("isNoMd ? 'KEIN_MD'", template)
         self.assertIn("Sie wird nicht an das Personaldossier übergeben.", template)

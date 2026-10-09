@@ -62,6 +62,7 @@ from .services.word_pdf import inspect_word_pdf
 from .services.word_pdf_imports import stage_pdf, matching_cases, confirm_import
 from .services.legacy_forms import COMPETENCY_TAGS
 from .services.word_packages import create_word_package, word_template_status
+from .services.word_dispatch import prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -409,7 +410,11 @@ def dispatch():
             sender_email=current_app.config["HR_MAILBOX_EMAIL"],
         )
     return render_template(
-        "dispatch.html", active_nav="dispatch", managers=managers,
+        "dispatch_legacy.html" if request.args.get('workflow')=='workbook' else "dispatch.html",
+        active_nav="dispatch", managers=managers,
+        word_candidates=word_dispatch_candidates(get_db(),cycle_id=data['selected_cycle']['id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if data['selected_cycle'] else [],
+        word_templates=word_template_status(current_app.config['WORD_TEMPLATE_PATHS']),
+        hr_sender=current_app.config['HR_MAILBOX_EMAIL'],
         org_units=org_units, mail_candidates=mail_candidates, **data
     )
 
@@ -891,12 +896,16 @@ def download_existing_sap_export(batch_id: int):
 @bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/word-package")
 def download_word_package(cycle_id: int, manager_pn: str):
     try:
-        path, manifest = create_word_package(
-            get_db(), cycle_id=cycle_id, manager_pn=manager_pn,
-            template_paths=current_app.config["WORD_TEMPLATE_PATHS"],
-            output_dir=_storage_dir("word_packages"),
-            case_id=request.form.get("case_id", "").strip(),
-        )
+        case_id = request.form.get('case_id','').strip()
+        if case_id:
+            path, manifest = create_word_package(
+                get_db(), cycle_id=cycle_id, manager_pn=manager_pn,
+                template_paths=current_app.config['WORD_TEMPLATE_PATHS'],
+                output_dir=_storage_dir('word_packages'), case_id=case_id)
+        else:
+            _batch, result = prepare_word_batch(get_db(),cycle_id=cycle_id,manager_pns=[manager_pn],
+                template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_dispatch'))
+            path, manifest = result['packages'][0]['path'],result['packages'][0]['manifest']
     except (LookupError, ValueError) as exc:
         flash(str(exc), "error")
         return redirect(url_for("main.manager_detail", cycle_id=cycle_id, manager_pn=manager_pn))
@@ -1059,7 +1068,7 @@ def prepare_mail_drafts(cycle_id: int):
                 + " ".join(result["errors"]),
                 "error",
             )
-    return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    return redirect(url_for("main.dispatch", cycle_id=cycle_id, workflow="workbook"))
 
 
 @bp.post("/returns")
@@ -1369,3 +1378,93 @@ def word_pdf_original(import_id):
     if not item or not Path(item['stored_path']).is_file():
         abort(404)
     return send_file(item['stored_path'],download_name=item['original_filename'],mimetype='application/pdf')
+
+
+@bp.post('/cycles/<int:cycle_id>/word-packages/batch')
+def prepare_word_packages(cycle_id):
+    try:
+        selection = request.form.get('selection_mode','selected')
+        if selection=='all':
+            _cycle, managers = cycle_overview(get_db(),cycle_id)
+            numbers = [row['manager_pn'] for row in managers]
+        elif selection=='org_unit':
+            numbers = _manager_pns_for_org_unit(get_db(),cycle_id,request.form.get('org_unit','').strip())
+        elif selection=='selected':
+            numbers = request.form.getlist('manager_pn')
+        else:
+            raise ValueError('Unbekannte Auswahl.')
+        batch, result = prepare_word_batch(get_db(),cycle_id=cycle_id,manager_pns=numbers,
+            template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_dispatch'))
+        audit('word_dispatch_prepared','cycle',str(cycle_id),package_ids=[p['id'] for p in result['packages']])
+        flash(f"{len(result['packages'])} Word-Paket(e) für Outlook vorbereitet. {len(result['skipped'])} Führungslinie(n) ohne Formularpflicht übersprungen.",'success')
+        return redirect(url_for('main.dispatch',cycle_id=cycle_id,word_batch=batch.parent.name))
+    except (ValueError,LookupError) as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.get('/word-packages/batch/<batch_id>')
+def download_word_batch(batch_id):
+    import re
+    if not re.fullmatch(r'WORD-BATCH-[0-9a-f]{32}',batch_id):
+        abort(404)
+    path = _storage_dir('word_dispatch') / batch_id / 'MD_Word_Sammelausgabe.zip'
+    if not path.is_file():
+        abort(404)
+    return send_file(path,as_attachment=True,download_name=path.name)
+
+
+@bp.get('/word-packages/<int:package_id>/download')
+def download_prepared_word_package(package_id):
+    row=get_db().execute('SELECT stored_path FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row or not Path(row['stored_path']).is_file():
+        abort(404)
+    return send_file(row['stored_path'],as_attachment=True,download_name=Path(row['stored_path']).name)
+
+
+@bp.post('/cycles/<int:cycle_id>/word-mail')
+def prepare_word_mail(cycle_id):
+    try:
+        result=dispatch_word_packages(get_db(),cycle_id=cycle_id,package_ids=request.form.getlist('word_package_id',type=int),
+            template_paths=current_app.config['WORD_TEMPLATE_PATHS'],sender_email=current_app.config['HR_MAILBOX_EMAIL'],
+            delivery_mode=request.form.get('delivery_mode','draft'),subject_template=request.form.get('subject_template',''),
+            body_template=request.form.get('body_template',''),retry_confirmed=request.form.get('retry_confirmed')=='yes')
+        audit('word_mail_processed','cycle',str(cycle_id),created=result['created'],sent=result['sent'],failed=result['failed'])
+        flash(f"{result['created']} Outlook-Entwurf/Entwürfe erstellt, {result['sent']} direkt versendet, {result['failed']} fehlgeschlagen.",'error' if result['failed'] else 'success')
+        for error in result['errors']:
+            flash(error,'error')
+    except (LookupError,ValueError) as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.post('/word-packages/<int:package_id>/confirm-sent')
+def confirm_word_sent(package_id):
+    row=get_db().execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        if request.form.get('sent_checked')!='yes':
+            raise ValueError('Bitte den tatsächlichen Versand des Entwurfs in Outlook bestätigen.')
+        confirm_word_draft_sent(get_db(),package_id)
+        audit('word_draft_sent_confirmed','word_package',str(package_id))
+        flash('Der manuelle Outlook-Versand ist bestätigt.','success')
+    except ValueError as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=row['cycle_id']))
+
+
+@bp.post('/word-packages/<int:package_id>/discard-draft')
+def discard_word_mail_draft(package_id):
+    row=get_db().execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        if request.form.get('discard_checked')!='yes':
+            raise ValueError('Bitte in Outlook prüfen, dass die Nachricht nicht versendet wurde, und einen vorhandenen Entwurf löschen.')
+        discard_word_draft(get_db(),package_id)
+        audit('word_draft_discarded','word_package',str(package_id))
+        flash('Entwurf als verworfen markiert. Ein neues Paket kann erzeugt werden.','success')
+    except ValueError as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=row['cycle_id']))

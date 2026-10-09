@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Any
 
 from webapp.adapters.outlook import OutlookDraftAdapter
-from webapp.services.mail_dispatch import DEFAULT_SENDER
+from webapp.services.mail_dispatch import DEFAULT_SENDER, configured_sender
 
 
 def _message(candidate: dict[str, Any], sender_email: str) -> tuple[str, str]:
@@ -104,6 +104,7 @@ def create_reminder_drafts(
     sender_email: str = DEFAULT_SENDER, adapter: OutlookDraftAdapter | None = None,
     created_at: datetime | None = None, today: date | None = None,
 ) -> dict[str, Any]:
+    sender_email = configured_sender(sender_email)
     selected = {value.strip() for value in manager_pns if value.strip()}
     if not selected:
         raise ValueError("Bitte wähle mindestens eine überfällige Führungskraft aus.")

@@ -576,3 +576,30 @@ CREATE TABLE IF NOT EXISTS word_pdf_goal_versions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_word_goal_version_current
     ON word_pdf_goal_versions(employee_pn,assignment_number,goal_year) WHERE is_current=1;
+
+CREATE TABLE IF NOT EXISTS word_dispatch_packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    export_id TEXT NOT NULL UNIQUE,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id),
+    manager_pn TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    source_fingerprint TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_word_dispatch_manager ON word_dispatch_packages(cycle_id,manager_pn,id);
+CREATE TABLE IF NOT EXISTS word_mail_deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    package_id INTEGER NOT NULL UNIQUE REFERENCES word_dispatch_packages(id),
+    sender_email TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('processing','draft_created','sent_confirmed','failed','cancelled')),
+    encryption_flag_verified INTEGER NOT NULL DEFAULT 0,
+    outlook_entry_id TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);

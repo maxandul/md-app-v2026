@@ -228,7 +228,7 @@ def build_demo() -> dict:
 
 def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(render_html(build_demo()), encoding="utf-8")
+    OUTPUT.write_text(render_html(build_demo(), organisation={'hr_email':'','special_cases_url':''}), encoding="utf-8")
     print(OUTPUT)
     return 0
 

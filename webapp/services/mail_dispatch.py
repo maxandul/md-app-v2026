@@ -11,7 +11,16 @@ from typing import Any
 from webapp.adapters.outlook import OutlookDraftAdapter
 
 
-DEFAULT_SENDER = "hr@vd.zh.ch"
+DEFAULT_SENDER = ""
+
+
+def configured_sender(value=""):
+    if not value:
+        from webapp.organisation import workbook_configuration
+        value = workbook_configuration()['hr_email']
+    if not value or '@' not in value or any(ch.isspace() for ch in value):
+        raise ValueError("Bitte die HR-Absenderadresse lokal konfigurieren.")
+    return value
 
 
 def _message_text(
@@ -133,6 +142,7 @@ def create_outlook_drafts(
     adapter: OutlookDraftAdapter | None = None,
     created_at: datetime | None = None,
 ) -> dict[str, Any]:
+    sender_email = configured_sender(sender_email)
     if delivery_mode not in {"draft", "send"}:
         raise ValueError("Die gewählte Versandart ist ungültig.")
     selected = {int(value) for value in package_event_ids}

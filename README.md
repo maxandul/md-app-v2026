@@ -6,7 +6,10 @@ gemeinsame Tests und die schrittweise Weiterentwicklung.
 
 Die Umstellung auf Word-Vorlagen mit PDF-Rücklauf ist begonnen. In der
 **Führungslinie → Word-Vorlagen** lassen sich personalisierte Formulare einzeln
-oder für die Führungslinie als ZIP erzeugen. Unter **Rückläufe → Word-PDFs
+oder für die Führungslinie als ZIP erzeugen. Unter **Versand** werden Word-Pakete
+für ausgewählte Führungskräfte, eine Organisationseinheit oder den ganzen Durchlauf
+vorbereitet. Die Outlook-Zustellung und der tatsächliche Versand sind separat
+protokolliert. Unter **Rückläufe → Word-PDFs
 einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
 Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
 nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
@@ -111,15 +114,23 @@ vollständige Nachweis ist mit dem produktiven HR-Postfach, den Zertifikaten und
 der konkreten Outlook-Version durchzuführen.
 
 Für die Entwurfserstellung sind Windows, klassisches Outlook und `pywin32`
-erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
+erforderlich. Die Organisationswerte werden lokal hinterlegt:
 
-```powershell
-$env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
-$env:MD_OUTLOOK_MAILBOX = "VD-GS HR"
-$env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
-$env:MD_ROBOT_INPUT_ROOT = "K:\VD-GS-PUO-Personal\100 Roboter\Input"
-$env:MD_ANALYTICS_MIN_GROUP_SIZE = "5"
-```
+1. `config/organisation.example.json` nach `instance/organisation.json` kopieren.
+2. `HR_MAILBOX_EMAIL` (Absenderadresse), `OUTLOOK_MAILBOX_NAME` (Postfachname),
+   `OUTLOOK_TARGET_FOLDER`, `DOSSIER_HANDOFF_ROOT` und `SPECIAL_CASES_URL` setzen.
+3. App neu starten. Ohne Absenderadresse bleibt der Outlook-Versand gesperrt.
+   Ohne Spezialfälle-Link wird in der HTML-Alternative auf HR verwiesen.
+
+`MD_ORG_CONFIG` kann auf eine andere JSON-Datei zeigen. Umgebungsvariablen
+`MD_HR_MAILBOX_EMAIL`, `MD_OUTLOOK_MAILBOX`, `MD_OUTLOOK_TARGET_FOLDER`,
+`MD_ROBOT_INPUT_ROOT` (alternativ `MD_DOSSIER_HANDOFF_ROOT`) und
+`MD_SPECIAL_CASES_URL` überschreiben die jeweiligen Dateieinträge.
+Relative Ablagepfade beziehen sich auf das Konfigurationsverzeichnis. Ohne
+Ablagepfad verwendet die App lokal `STORAGE_ROOT/dossier_ready`; es gibt keinen
+fest eingebauten Netzlaufwerkspfad. Organisationsdatei und Word-Vorlagen bleiben
+in `instance/` und werden nicht in Git aufgenommen. Sie sind zusätzlich zum
+Datenbank-/Dateibackup lokal zu sichern.
 
 Das Einlesen ignoriert Mails ohne MD-Bezug. Erfolgreich verarbeitete reine
 MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails

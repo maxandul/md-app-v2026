@@ -790,7 +790,7 @@
       <details class="guidance-step"><summary data-help-step="review">3 · Rückblick</summary><p>Lass die mitarbeitende Person ihre Sicht einbringen und ergänze deine Einschätzung anhand konkreter Beobachtungen. Besprecht Gemeinsamkeiten und Unterschiede und klärt, was ihr festhaltet. Nimm auch ihr Feedback an dich auf. Das Feedback-PDF wird nach der Besprechung noch im Gespräch oder anschliessend erstellt und dir zugestellt. Sobald das Rückblick-Dokument vollständig ist, kannst du es unabhängig vom Ausblick erstellen. Dies gilt auch für den Probezeitrückblick.</p></details>
       <details class="guidance-step"><summary data-help-step="outlook">4 · Ausblick</summary><p>Besprecht Entwicklungsinteressen, Erwartungen und anstehende Aufgaben. Vereinbart gemeinsam Ziele, nächste Schritte und Unterstützung. HR empfiehlt zwei bis drei relevante und umsetzbare Entwicklungsziele. Klärt auch, wann ihr Fortschritte wieder besprecht.</p></details>
       <details class="guidance-step"><summary data-help-step="finish">5 · Prüfen und PDF</summary><p>Erstelle die PDFs unter «Prüfen und PDF», prüfe auch übernommene Mitarbeitendenbeiträge und hole die erforderlichen Unterschriften ein. Standardmässig genügt die einfache elektronische Unterschrift in Adobe Acrobat. Die «Kein MD»-PDFs benötigen keine Unterschrift. Beachte gegebenenfalls den Hinweis zum zusätzlichen handschriftlichen Scan. Sende die fertigen Dokumente S/MIME-verschlüsselt an HR. Schliesse anschliessend den Fall ab und speichere deine Arbeitsmappe.</p></details>
-      <details class="guidance-step"><summary>Datei speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Die Speicheranleitung erklärt das lokale Speichern und Überschreiben. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
+      <details class="guidance-step"><summary>Datei speichern und aktualisieren</summary><p>Diese Arbeitsmappe und alle deine Eingaben bleiben bei dir. Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Die Speicheranleitung erklärt das lokale Speichern und Überschreiben. Falls dir Mitarbeitende fehlen, melde dich bei <span id="hr-contact-help">deiner HR-Ansprechperson</span>. Wir schicken dir eine Update-Datei zum Einlesen.</p></details>
       <details class="guidance-step"><summary>Dokumente an HR senden</summary><p>Verschlüssle die E-Mail in Outlook über Optionen &gt; Verschlüsseln. Du kannst PDFs einzeln, gesammelt oder in Chargen senden. Du musst die Feedbacks nicht zu einem PDF zusammenführen. E-Mails mit MD-Dokumenten werden automatisch verarbeitet. Sende zusätzliche Informationen oder andere Dokumente (z.B. angepasste Stellenbeschreibungen) in einer separaten E-Mail. Die HTML-Arbeitsmappe bleibt bei dir.</p></details>
       <details class="guidance-step"><summary>Was bedeuten Status und Prozentzahlen?</summary><p>Die Prozentzahl zeigt, ob die Pflichtangaben vorhanden sind. Sie bestätigt weder ein geführtes Gespräch noch Unterschriften oder Versand. «Datei erstellt» bestätigt die Erstellung der Vorbereitungsdatei, nicht ihren Versand. Den Dokumentstand kannst du zur eigenen Übersicht manuell pflegen.</p></details>
       <div class="data-storage-note"><strong>Wo werden meine Daten gespeichert?</strong><p>Alle deine Eingaben befinden sich nur in dieser Arbeitsmappe. Es werden keine Daten an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>
@@ -918,6 +918,17 @@
       const employeeList = document.getElementById('employee-list');
       const archivedEmployeeList = document.getElementById('archived-employee-list');
       const printRoot = document.getElementById('print-root');
+
+      function hrContact() {
+        const email = state.configuration.hr_email || '';
+        return email ? `<a href="mailto:${h(email)}">${h(email)}</a>` : 'deiner HR-Ansprechperson';
+      }
+
+      function specialCasesLink() {
+        const url = state.configuration.special_cases_url || '';
+        return /^https?:\/\//i.test(url) ? `<a href="${h(url)}" target="_blank" rel="noopener">Bestimmungen zu Spezialfällen</a>` : 'die bei HR erhältlichen Bestimmungen zu Spezialfällen';
+      }
+      document.getElementById('hr-contact-help').innerHTML = hrContact();
 
       function h(value) {
         return String(value == null ? '' : value)
@@ -1458,7 +1469,7 @@
         ];
         return `
           <section class="section" id="scope-section">
-            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Hier steuerst du, welche Gesprächsteile (Rückblick/Ausblick) du mit ${h(employee.employee.first_name || employee.employee.full_name)} führst. Prüfe die aktuelle Auswahl. Sie ist aus den Stammdaten abgeleitet und berücksichtigt nicht alle konkreten Umstände. Passe die Auswahl bei Bedarf an und bestätige sie anschliessend. Hier findest du <a href="https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-(MD).aspx#spezialf%C3%A4lle" target="_blank" rel="noopener">Bestimmungen zu Spezialfällen</a>.</p></div></div>
+            <div class="section-head"><div><h2 class="section-title">Umfang festlegen</h2><p class="section-intro">Hier steuerst du, welche Gesprächsteile (Rückblick/Ausblick) du mit ${h(employee.employee.first_name || employee.employee.full_name)} führst. Prüfe die aktuelle Auswahl. Sie ist aus den Stammdaten abgeleitet und berücksichtigt nicht alle konkreten Umstände. Passe die Auswahl bei Bedarf an und bestätige sie anschliessend. Hier findest du ${specialCasesLink()}.</p></div></div>
             <div class="scope-grid">
               ${options.map(option => `
                 <label class="scope-option">
@@ -1674,7 +1685,7 @@
         return `<details id="process-overview" class="process-overview" ${open ? 'open' : ''}><summary>Dein Weg durch den Mitarbeitenden-Dialog · <span id="overview-toggle-label">${open ? 'Prozessübersicht einklappen' : 'Prozessübersicht anzeigen'}</span></summary>
           <p class="section-intro">Die Arbeitsmappe begleitet dich bei der Vorbereitung, im Gespräch und beim Erstellen der Dokumente. Unterschriften und Versand erledigst du ausserhalb der Arbeitsmappe.</p>
           ${employee.scope === 'none' ? '' : '<p><strong>Gemeinsam zurückblicken und weiterentwickeln</strong><br>Der Mitarbeitenden-Dialog ist ein gemeinsamer Austausch über Leistung, Zusammenarbeit und Entwicklung. Höre die Sicht der mitarbeitenden Person, bringe deine eigene Sicht und deine Erwartungen ein und klärt gemeinsam, was ihr festhaltet und wie es weitergeht. Als Führungskraft gibst du Orientierung und verantwortest die Beurteilung. Nutzt den Dialog, um voneinander zu lernen und die Zusammenarbeit weiterzugestalten.</p>'}
-          <p>Auf der linken Seite findest du deine Mitarbeitenden. Falls dir Mitarbeitende fehlen, melde dich über <a href="mailto:hr@vd.zh.ch">hr@vd.zh.ch</a>. Wir schicken dir eine Update-Datei zum Einlesen. Für deinen Dialog mit ${h(employee.employee.first_name || employee.employee.full_name)} sind aktuell folgende Prozessschritte vorgesehen:</p>
+          <p>Auf der linken Seite findest du deine Mitarbeitenden. Falls dir Mitarbeitende fehlen, melde dich bei ${hrContact()}. Wir schicken dir eine Update-Datei zum Einlesen. Für deinen Dialog mit ${h(employee.employee.first_name || employee.employee.full_name)} sind aktuell folgende Prozessschritte vorgesehen:</p>
           <div class="process-grid">${workflowSteps(employee).map((step,index) => `<button class="process-card" type="button" data-action="show-step" data-step="${step.key}" ${step.available ? '' : 'disabled'}><strong>${index + 1} · ${h(step.name)}</strong><span class="process-description">${h(step.description)}</span><span class="step-status" data-status-step="${step.key}">${h(stepStatus(employee,step.key))}</span></button>`).join('')}</div>
           ${employee.scope !== 'none' ? '<p class="section-intro">Standortgespräche kannst du unabhängig davon unterjährig festhalten.</p>' : ''}
           <div class="data-storage-note"><strong>Deine Arbeitsmappe bleibt bei dir.</strong><p>Speichere deinen bearbeiteten Stand über «Arbeitsmappe speichern». Es werden keine Daten und Dokumente an einen Server oder automatisch an deine Mitarbeitenden oder an HR übermittelt.</p></div>

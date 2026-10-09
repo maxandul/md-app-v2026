@@ -108,9 +108,10 @@ betreffenden Anstellung in den Grundlagen erscheinen.
 
 ## 5. Outlook und Rücklauf
 
-Das produktive Outlook-Postfach wird standardmässig über den Anzeigenamen
-`VD-GS HR` geöffnet; die Absenderadresse bleibt davon getrennt `hr@vd.zh.ch`.
-Falls der Anzeigename lokal abweicht, wird er über `MD_OUTLOOK_MAILBOX` gesetzt.
+Postfach-Anzeigename und HR-Absenderadresse sind getrennt in
+`instance/organisation.json` zu konfigurieren. Alternativ gelten
+`MD_OUTLOOK_MAILBOX` und `MD_HR_MAILBOX_EMAIL`. Es sind keine produktiven
+Postfachdaten im Code vorbelegt.
 
 1. START- und Update-Dateien zunächst an ein internes Testkonto adressieren.
 2. Direktversand zunächst an interne Testkonten prüfen: Absender, Empfänger,
@@ -140,3 +141,23 @@ Den Restore ausschliesslich mit einer Testkopie durchführen:
 Für jede Abweichung mindestens Bildschirm, betroffene Personalnummer,
 Anstellungsnummer, erwartetes Ergebnis und tatsächliches Ergebnis notieren. Keine
 produktiven Dateien oder Personendaten in GitHub oder ungeschützte Kanäle laden.
+
+
+## Word-Versand (Plan B)
+
+1. Die drei lokalen Vorlagen sowie Organisationswerte konfigurieren.
+2. Im Testdurchlauf zwei Führungskräfte auswählen und Word-Pakete erzeugen.
+   Das Sammel-ZIP bleibt bei HR; jeder Outlook-Anhang enthält nur die Formulare
+   der jeweiligen Führungskraft.
+3. Zunächst Entwürfe für freigegebene interne Testempfänger erzeugen und
+   Absender, Empfänger, Anhänge, Text und S/MIME kontrollieren. Der Status bleibt
+   «Entwurf erstellt», bis der tatsächliche Versand bestätigt wird.
+4. Einen Entwurf in Outlook löschen und im Cockpit als verworfen markieren.
+   Danach eine neue Ausgabe erzeugen. Kein automatisches Löschen oder Ersetzen
+   in Outlook erwarten.
+5. Nachträglich ein Vorjahresziel importieren: eine zuvor nur erzeugte Ausgabe
+   muss als nicht mehr aktuell gesperrt sein. Neu erzeugen und Ziel prüfen.
+6. Einen Fehlerfall testen und vor Wiederholung prüfen, ob Outlook die Nachricht
+   trotz Fehlermeldung angelegt oder gesendet hat. Keine automatische Wiederholung.
+7. Anschliessend Direktversand nur an freigegebene Testempfänger prüfen und den
+   tatsächlichen Eingang sowie die S/MIME-Verschlüsselung kontrollieren.

@@ -127,9 +127,9 @@ dies wird nicht stillschweigend überschrieben.
   Berechtigungen und Laufwerksverschlüsselung.
 - `instance/` enthält SQLite und Prozessdateien und wird nicht in Git
   aufgenommen.
-- Unter Windows ist der Roboter-Input standardmässig
-  `K:\VD-GS-PUO-Personal\100 Roboter\Input`. Mit `MD_ROBOT_INPUT_ROOT` kann ein
-  anderer definierter lokaler oder gemounteter Ordner konfiguriert werden.
+- Der Dossierpfad wird in `instance/organisation.json` konfiguriert.
+  `MD_ROBOT_INPUT_ROOT` kann ihn überschreiben. Ohne Konfiguration wird
+  `STORAGE_ROOT/dossier_ready` verwendet; ein Netzlaufwerk ist nicht vorbelegt.
 - Netzwerkzugriff wird erst nach Festlegung von Windows-Authentisierung, TLS,
   Berechtigungsmodell, Backup, Protokollierung und Betriebsverantwortung
   freigegeben.

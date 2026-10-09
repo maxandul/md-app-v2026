@@ -101,15 +101,50 @@ Die neuen Module benötigen nur die Python-Standardbibliothek und vorhandene
 Projektabhängigkeiten. Word/LibreOffice ist zur Erzeugung auf dem HR-Gerät
 nicht erforderlich; die Führungskraft öffnet und bearbeitet die DOCX in Word.
 
+## Word-Versand und lokale Organisation
+
+Unter Versand ist die Word-Variante der Standard. Die Sammelauswahl unterstützt
+markierte Führungskräfte, Organisationseinheiten einschliesslich Untereinheiten
+und den ganzen Durchlauf. Pro Führungskraft wird ein eigenes ZIP erzeugt; das
+zusätzliche Sammel-ZIP ist für HR. Eine fehlgeschlagene Sammelerzeugung hinterlässt
+keine teilweise registrierte Ausgabe. Einzelne Personendownloads bleiben reine
+Erzeugungen; die vollständige Führungslinien-Ausgabe steht auch für Outlook bereit.
+
+Die Tabellen `word_dispatch_packages` und `word_mail_deliveries` protokollieren
+die Word-Ausgaben unabhängig vom bisherigen Arbeitsmappenweg. Erzeugt,
+Outlook-Übernahme läuft, Entwurf erstellt, Versand bestätigt und fehlgeschlagen
+sind unterschiedliche Zustände. Für manuell versendete Entwürfe bestätigt HR den
+tatsächlichen Outlook-Versand. Ein offener Entwurf oder fehlgeschlagener Versuch muss vor einer neuen Ausgabe
+versendet oder in Outlook gelöscht und hier als verworfen markiert werden.
+Die App löscht keine Outlook-Nachrichten. Bei einem nach einem Abbruch hängenden
+Status «Outlook-Übernahme läuft» ist eine manuelle Klärung erforderlich; es erfolgt
+keine automatische Wiederholung mit möglicher Doppelzustellung.
+
+Vor Outlook werden Empfänger, Paketprüfsumme, Vorlage und Quelldaten geprüft.
+Später eingegangene Vorjahresziele oder geänderte Stammdaten verlangen eine neue
+Ausgabe. Bereits übernommene oder abgelöste Pakete sind serverseitig gesperrt.
+Fehlgeschlagene Outlook-Aufrufe dürfen erst nach bestätigter Prüfung in Outlook
+wiederholt werden. Der Standardtext beschreibt Word und PDF-Rücklauf, verwendet
+die Du-Form und kann vor der Zustellung angepasst werden. Ein Sammelpaket wird
+niemals als Anhang an alle Führungskräfte verwendet.
+
+Organisationswerte stehen in `instance/organisation.json`; eine neutrale Vorlage
+liegt unter `config/organisation.example.json`. Absender, Outlook-Postfach,
+Zielordner, Dossierpfad und Spezialfälle-Link sind konfigurierbar. Die vorhandenen
+Umgebungsvariablen bleiben als Overrides unterstützt. Die HTML-Alternative nutzt
+dieselben konfigurierten Kontaktdaten. Die öffentliche Demo verwendet ausdrücklich
+neutrale Werte und übernimmt keine lokalen Organisationsdaten.
+
+Outlook-Zustellung wurde mit einem Testadapter geprüft. Es wurden keine echten
+Nachrichten oder Entwürfe erzeugt. Der S/MIME-Nachweis mit klassischem Outlook,
+Produktivpostfach und Zertifikaten bleibt Teil des Bürotests.
+
 ## Nächste Schritte
 
-1. Word-Versand: Sammelauswahl über mehrere Führungslinien, Outlook-Anbindung
-   und Versandstatus. Die reine Word-Erzeugung ist bereits umgesetzt.
-2. Echte alte PDF-Vorlagen sowie ausgefüllte Ausblick- und Probezeit-PDFs beider
+1. Echte alte PDF-Vorlagen sowie ausgefüllte Ausblick- und Probezeit-PDFs beider
    Microsoft-Exportwege für die Layoutfreigabe prüfen. Bis dahin bleibt die
    Kontrolle am Original verpflichtend. Unbekannte Vorlagen werden manuell ergänzt.
-3. Den Nichtdurchführungs-/Kein-MD-Weg direkt in die neue PDF-Prüfung integrieren.
-4. Organisationsspezifische Links und Pfade aus bestehendem Code in lokale
-   Konfiguration verschieben. Lokale Vorlagen, PDFs und Konfigurationen bleiben
-   vom öffentlichen Repository ausgeschlossen.
-5. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.
+2. Den Nichtdurchführungs-/Kein-MD-Weg direkt in die neue PDF-Prüfung integrieren.
+3. Weitere Auswertungsfelder im Word-PDF-Weg abbilden: SAP-Aktualität, Gespräch mit
+   nächsthöherer Führungskraft, Laufbahnwunsch und Zeichenanzahlen.
+4. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.

@@ -599,7 +599,7 @@ def export_analytics():
     audit(
         "analytics_exported", "analytics", report,
         cycle_id=cycle_id, org_unit=org_unit, event_type=event_type,
-        row_count=len(data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
+        row_count=len(data["form_fields"] if report == "form_fields" else data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
     )
     return send_file(
         BytesIO(content), as_attachment=True, download_name=filename,
@@ -1328,8 +1328,10 @@ def upload_word_pdfs():
 
 
 def _reviewed_word_form(form):
-    data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues')}
-    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes'}
+    data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues','no_md_reason','higher_manager_requested','sap_current','career_requested')}
+    from .services.word_pdf import NARRATIVE_FIELDS
+    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes',
+            'narratives':{key: form.get('narrative_'+key,'').strip() for key in NARRATIVE_FIELDS if form.get('narrative_present_'+key)=='yes' or form.get('narrative_'+key,'').strip()}}
     for group in ('performance','development'):
         keys=('title','criteria','steps','target_date') + (('competency',) if group=='development' else ())
         columns={key:form.getlist(group+'_'+key) for key in keys}
@@ -1368,7 +1370,8 @@ def word_pdf_review(import_id):
             flash(str(exc),'error')
     candidates=matching_cases(connection,reviewed.get('data',{}))
     assignments=connection.execute('SELECT assignment_number FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS)
+    from .services.word_pdf import NARRATIVE_FIELDS
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS)
 
 
 @bp.get('/word-pdf-imports/<int:import_id>/original')

@@ -133,12 +133,13 @@ def case_review_detail(
         )
     return {
         "case": item,
+        "word_pdf_case": any(document['data_block'].get('source')=='word_pdf' for document in documents),
         "documents": documents,
         "obligations": obligations,
         "corrections": corrections,
         "correction_locked": any(
             document["is_current"]
-            and (document["signature_checked"] or document["handoff_status"] == "staged")
+            and (document["signature_checked"] or document["handoff_status"] == "staged" or document["variant"] == "administrative")
             for document in documents
         ),
     }
@@ -177,7 +178,7 @@ def correct_case_data(
         """
         SELECT 1 FROM official_documents
         WHERE case_id = ? AND is_current = 1
-          AND (signature_checked = 1 OR handoff_status = 'staged')
+          AND (signature_checked = 1 OR handoff_status = 'staged' OR variant = 'administrative')
         LIMIT 1
         """,
         (case_id,),

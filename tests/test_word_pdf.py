@@ -42,6 +42,26 @@ class WordPdfTest(unittest.TestCase):
         self.assertEqual(result["data"]["conducted"], "")
         self.assertTrue(result["issues"])
 
+    def test_optional_answers_are_explicit_and_missing_is_unknown(self):
+        result=parse_word_pdf_text(REVIEW + """
+Ist ein Gespräch mit der nächsthöheren vorgesetzten Person gewünscht? Nein
+Sind die oben aufgeführten Bewilligungen vollständig und aktuell?
+(Nur relevant beim ordentlichen MD mit automatisiertem Versand) Ja
+""")
+        self.assertEqual(result['data']['higher_manager_requested'],'nein')
+        self.assertEqual(result['data']['sap_current'],'ja')
+        self.assertEqual(parse_word_pdf_text(REVIEW)['data']['sap_current'],'')
+        result=parse_word_pdf_text(REVIEW.replace('Rückblick','Ausblick') +
+                                  ' Besteht ein Wunsch bezüglich laufbahnorientierter Entwicklung? Ja')
+        self.assertEqual(result['data']['career_requested'],'ja')
+
+    def test_nonconducted_outlook_needs_no_conversation_date(self):
+        text=REVIEW.replace('Rückblick','Ausblick').replace('? Ja','? Nein').replace('15.01.2027','Datum')
+        result=parse_word_pdf_text(text)
+        self.assertEqual(result['data']['conducted'],'nein')
+        self.assertEqual(result['data']['dialog_date'],'')
+        self.assertFalse(result['issues'])
+
     def test_invalid_and_reversed_dates_need_review(self):
         for replacement in ["31.02.2026", "01.01.2028"]:
             with self.subTest(replacement=replacement):

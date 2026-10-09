@@ -54,8 +54,32 @@ Anstellung und konkreter Fall müssen bestätigt werden. Abweichende Führungskr
 Zeitraum oder unlesbare Grundangaben erfordern eine Prüfnotiz. Erst danach werden
 Fachdaten übernommen. Die vorhandene Unterschriften-/Ablageprüfung bleibt ein
 separater Schritt; Bewertungen D/E und negative Probezeitentscheide verlangen
-einen Scan. Nicht durchgeführte Rückblicke bleiben vorerst in der Prüfung und
-werden über die bestehende Kein-MD-Fallklärung erledigt.
+einen Scan.
+
+Nicht durchgeführte Rückblicke und Ausblicke können direkt mit der Begründung aus
+dem PDF bestätigt werden. Sie werden als administrative Nachweise gespeichert,
+ohne Gesprächsdatum, Beurteilung, Unterschrift oder Dossier-Bereitstellung zu
+erfinden. Nur die Pflicht des eingereichten Gesprächsteils wird abgeschlossen;
+der übrige Umfang bleibt erhalten. Erst wenn alle erforderlichen Teile als nicht
+durchgeführt bestätigt sind, erhält der Fall den Status «Kein MD». Ein ausgefallener
+Rückblick wird auch bei abgeschlossenem Ausblick nicht als SAP-Beurteilung exportiert.
+Bestehende Gesprächsdokumente und widersprechende Zielquellen können dabei nicht
+überschrieben werden; solche Widersprüche erfordern eine separate Fallklärung.
+Nicht durchgeführte Ausblicke werden nicht als neue Zielquelle verwendet.
+
+Die Prüfmaske erfasst auch den Wunsch nach einem Gespräch mit der nächsthöheren
+Führungskraft, die Aktualität der aufgeführten Bewilligungen für Nebenbeschäftigungen
+und öffentliche Ämter sowie den Laufbahnwunsch im Ausblick. Das Bewilligungsfeld ist
+keine Bestätigung sämtlicher SAP-Stammdaten. «Nein» weist Klärungsbedarf aus; fehlende
+Antworten bleiben offen. Die neue operative Auswertung und ihr CSV enthalten die
+geprüften Angaben, Zeiträume, Leistungszielanzahl, Kompetenzen und Zeichenanzahlen.
+Freitexte werden im CSV nicht ausgegeben. Gezählt werden normalisierte Textzeichen
+inklusive Leerzeichen und Zeilenumbrüchen, ohne Rand-Leerraum. Ein unbekanntes oder
+nicht erkanntes Feld bleibt leer; nur ein erkanntes bzw. bestätigtes leeres Feld
+zählt als 0. HR kann Freitexte ergänzen und leere Felder ausdrücklich bestätigen.
+Die automatische Freitextzuordnung ist layoutabhängig; nicht erkannte Felder müssen
+am Original geprüft werden. Einigkeit wird auch in der Einzelfallmaske für
+Word-PDF-Fälle nicht abgefragt.
 
 Ausblicke lassen sich auch ohne damaligen Cockpit-Fall als nachgereichte Zielquelle
 übernehmen. Sie gelten für PN, Anstellung und Zieljahr und werden bei der nächsten
@@ -144,7 +168,4 @@ Produktivpostfach und Zertifikaten bleibt Teil des Bürotests.
 1. Echte alte PDF-Vorlagen sowie ausgefüllte Ausblick- und Probezeit-PDFs beider
    Microsoft-Exportwege für die Layoutfreigabe prüfen. Bis dahin bleibt die
    Kontrolle am Original verpflichtend. Unbekannte Vorlagen werden manuell ergänzt.
-2. Den Nichtdurchführungs-/Kein-MD-Weg direkt in die neue PDF-Prüfung integrieren.
-3. Weitere Auswertungsfelder im Word-PDF-Weg abbilden: SAP-Aktualität, Gespräch mit
-   nächsthöherer Führungskraft, Laufbahnwunsch und Zeichenanzahlen.
-4. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.
+2. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.

@@ -161,3 +161,22 @@ produktiven Dateien oder Personendaten in GitHub oder ungeschützte Kanäle lade
    trotz Fehlermeldung angelegt oder gesendet hat. Keine automatische Wiederholung.
 7. Anschliessend Direktversand nur an freigegebene Testempfänger prüfen und den
    tatsächlichen Eingang sowie die S/MIME-Verschlüsselung kontrollieren.
+
+
+## Word-PDF-Prüfung: Nichtdurchführung und Zusatzangaben
+
+1. Rückblick mit «Nein» und Begründung einlesen: Datum, Bewertung und Scan-Anforderung
+   leer lassen. Nur der Rückblick muss abgeschlossen sein; der Ausblick bleibt offen.
+2. Ausblick mit «Nein» ergänzen: Der Fall wird «Kein MD», ohne neue Zielquelle oder
+   SAP-Beurteilung. Alternativ einen durchgeführten Ausblick übernehmen und dessen
+   normale Unterschriften-/Ablageprüfung abschliessen; auch dann kein SAP-Rückblick.
+3. Eine Nichtdurchführung zu einem bestehenden Gesprächsdokument einreichen:
+   Der Import muss die widersprüchliche Ersetzung blockieren und das Original erhalten.
+4. Ausgefüllte Rückblick-, Ausblick- und Probezeit-PDFs aus beiden Microsoft-Exportwegen
+   mit dem Original vergleichen: Ja/Nein/offen, allgemeine Bemerkungen, Leistung,
+   Kommentare, Bewilligungspräzisierung und Laufbahnkommentar. Nicht erkannte Felder
+   ergänzen; bestätigte leere Felder ausdrücklich markieren. Auch Zeilenumbrüche,
+   Aufzählungen und über Seiten getrennte Fragen prüfen.
+5. Unter Auswertungen die Formularangaben exportieren: «Nein» bei Bewilligungen als
+   Klärungsbedarf, fehlende Antworten als offen, leeres geprüftes Textfeld als 0,
+   unbekanntes Textfeld leer. CSV darf keine eingegebenen Freitexte enthalten.

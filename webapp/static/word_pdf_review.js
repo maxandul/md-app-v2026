@@ -12,3 +12,11 @@ document.addEventListener('click', event => {
   if (row.parentElement.children.length > 1) row.remove();
   else row.querySelectorAll('textarea,select').forEach(field => { field.value = ''; });
 });
+
+const conducted = document.querySelector('[name="conducted"]');
+function updateRequiredFields() {
+  document.querySelector('[name="dialog_date"]').required = conducted.value !== 'nein';
+  document.querySelector('[name="no_md_reason"]').required = conducted.value === 'nein';
+}
+conducted.addEventListener('change', updateRequiredFields);
+updateRequiredFields();

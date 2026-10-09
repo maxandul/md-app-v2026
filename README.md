@@ -14,6 +14,8 @@ einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
 Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
 nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
 landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt erhalten.
+Nichtdurchführungen lassen sich je Gesprächsteil mit Begründung bestätigen.
+Die Auswertung ergänzt Ja/Nein/offen-Angaben und Zeichenanzahlen geprüfter Textfelder.
 Einrichtung, Umsetzungsstand und nächste Schritte:
 [`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
 

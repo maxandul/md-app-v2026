@@ -13,6 +13,29 @@ from pathlib import Path
 from .documents import inspect_pdf
 
 
+# Stable keys are shared by extraction, review and character-count exports.
+NARRATIVE_FIELDS = {
+    'general_comment': ('Allgemeine Bemerkungen', r'Gibt es allgemeine Bemerkungen'),
+    'performance_comment': ('Leistung / ergänzender Freitext', r'Optionales Freitext-Feld|Wie wird die bisherige Leistung eingeschätzt|Wie wird die Leistung'),
+    'manager_comment': ('Bemerkungen der Führungskraft', r'Gibt es Bemerkungen der vorgesetzten Person'),
+    'employee_comment': ('Bemerkungen der Mitarbeitenden', r'Gibt es Bemerkungen des/der Mitarbeitenden\?'),
+    'higher_manager_comment': ('Bemerkungen der nächsthöheren Führungskraft', r'Gibt es Bemerkungen der nächsthöheren vorgesetzten Person'),
+    'higher_employee_comment': ('Bemerkungen zum Gespräch mit der nächsthöheren Führungskraft', r'Gibt es Bemerkungen des/der Mitarbeitenden zum Gespräch'),
+    'sap_comment': ('Präzisierung zu Bewilligungen', r'Falls nicht vollständig und/oder aktuell, bitte präzisieren'),
+    'career_comment': ('Bemerkungen zur Laufbahnentwicklung', r'Gibt es Bemerkungen bezüglich laufbahnorientierter Entwicklung'),
+}
+
+
+def _answer(pattern, text):
+    values = re.findall(pattern + r'\s*(Ja|Nein)\b', text, re.I)
+    return values[0].lower() if len(values) == 1 else ''
+
+
+def _field_text(value):
+    value = value.strip()
+    return '' if value.lower().startswith(('klicken sie', 'klicken oder tippen', 'bitte wählen')) else value
+
+
 DATE = r"\d{2}\.\d{2}\.\d{4}"
 
 
@@ -38,6 +61,7 @@ def inspect_word_pdf(path: Path) -> dict:
     inspection = inspect_pdf(path)
     result = parse_word_pdf_text(inspection.text, page_count=inspection.page_count)
     result.update(extract_form_content(path, result['data'].get('document_kind', ''), probation=result['data'].get('probation')=='ja'))
+    result['data']['no_md_reason'] = result.pop('no_md_reason', '')
     result['issues'].extend(result.pop('content_issues'))
     result['status'] = 'needs_review'
     return result
@@ -73,13 +97,18 @@ def parse_word_pdf_text(text: str, *, page_count: int = 0) -> dict:
                 issues.append("Der Zeitraum endet vor seinem Beginn.")
         else:
             issues.append("Zeitraum: nicht eindeutig lesbar oder nicht ausgefüllt.")
-        dialog_date = _single(rf"Gespräch\s+vom\s*:\s*({DATE})", flat, "Gesprächsdatum", issues)
-        data["dialog_date"] = _iso_date(dialog_date, "Gesprächsdatum", issues)
-        if data["document_kind"] == "review":
-            conducted = re.findall(r"Wird der Rückblick(?: auf (?:die )?Probezeit)? durchgeführt\?\s*(Ja|Nein)\b", flat, re.IGNORECASE)
-            data["conducted"] = conducted[0].lower() if len(conducted) == 1 else ""
-            if not data["conducted"]:
-                issues.append("Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.")
+        label = 'Rückblick' if data['document_kind'] == 'review' else 'Ausblick'
+        data['conducted'] = _answer(rf'Wird der {label}(?: auf (?:die )?Probezeit)? durchgeführt\?', flat)
+        if not data['conducted']:
+            issues.append('Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.')
+        date_issues = [] if data['conducted'] == 'nein' else issues
+        dialog_date = _single(rf"Gespräch\s+vom\s*:\s*({DATE})", flat, "Gesprächsdatum", date_issues)
+        data['dialog_date'] = _iso_date(dialog_date, 'Gesprächsdatum', date_issues)
+        if data['document_kind'] == 'review':
+            data['higher_manager_requested'] = _answer(r'Ist ein Gespräch mit der nächsthöheren vorgesetzten Person gewünscht\?', flat)
+            data['sap_current'] = _answer(r'Sind die oben aufgeführten Bewilligungen vollständig und aktuell\?(?:\s*\(Nur relevant beim ordentlichen MD mit automatisiertem Versand\))?', flat)
+        else:
+            data['career_requested'] = _answer(r'Besteht ein Wunsch bezüglich laufbahnorientierter Entwicklung\?', flat)
     if not flat:
         issues.append("Kein lesbarer Text: Scan oder Bild-PDF muss manuell geprüft werden.")
     if data.get('probation') == 'ja':
@@ -99,6 +128,8 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
     from .pdf_cells import read_cells
     from .legacy_forms import COMPETENCY_TAGS
     performance, development, assessments, fields, issues = [], [], {}, [], []
+    narratives = {}
+    no_md_reason = ''
     context = ''
     assessment_done = False
     goal_rows = 0
@@ -113,14 +144,20 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
             else:
                 lines[-1][1] += run['text']
         anchors = []
+        narrative_anchors = []
         for y, text in lines:
             text = re.sub(r'\s+', ' ', text).strip()
+            for key, (_label, pattern) in NARRATIVE_FIELDS.items():
+                if re.search(pattern, text, re.I):
+                    narrative_anchors.append((y, key))
+            if 'Falls nein, hier Begründung' in text:
+                narrative_anchors.append((y, 'no_md_reason'))
             if re.search(r'Leistungsziele|^1\.\s*Zielvereinbarung', text, re.I):
                 anchors.append((y, 'performance'))
             for name in COMPETENCY_TAGS.values():
                 if re.sub(r'[\s-]+', '', text).startswith(re.sub(r'[\s-]+', '', name)):
                     anchors.append((y, name))
-            if re.match(r'\d+(?:\.\d+)*\.\s*(?:Gesamt|Weitere|Bemerkungen|Unterschriften|Entwicklungsperspektiven|Gespräch|Anstellungsentscheid|Bestätigung)', text):
+            if re.match(r'\d+(?:\.\d+)*\.\s*(?:Gesamt|Weitere|Bemerkungen|Unterschriften|Entwicklungsperspektiven|Laufbahn|Nebenbeschäftigungen|Gespräch|Anstellungsentscheid|Bestätigung)', text):
                 anchors.append((y, ''))
         rows=[]
         for cell in cells:
@@ -128,11 +165,17 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
                 rows.append([cell])
             else:
                 rows[-1].append(cell)
+        narrative_index = 0
+        narrative_key = ''
+        narrative_anchors.sort()
         anchor_index=0
         anchors.sort()
         for row in rows:
             while anchor_index < len(anchors) and anchors[anchor_index][0] < row[0]['y0']:
                 context=anchors[anchor_index][1]; assessment_done=False; anchor_index+=1
+            while narrative_index < len(narrative_anchors) and narrative_anchors[narrative_index][0] < row[0]['y0']:
+                narrative_key = narrative_anchors[narrative_index][1]
+                narrative_index += 1
             row.sort(key=lambda c:c['x0'])
             evidence = {'page': page['page'], 'top': round(row[0]['y0'],1)}
             if len(row)==4 and all(c['color']==('blue' if kind=='outlook' else 'grey') for c in row) and context:
@@ -153,6 +196,17 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
                     value=cell['text']
                     if cell['color']=='blue':
                         fields.append({**evidence,'text':value,'lines':cell['lines']})
+                        if narrative_key and cell['x1']-cell['x0']>300:
+                            if narrative_key == 'no_md_reason':
+                                no_md_reason = _field_text(value)
+                            elif narrative_key in narratives:
+                                issues.append('Freitextfeld mehrfach erkannt: ' + NARRATIVE_FIELDS[narrative_key][0])
+                            else:
+                                narratives[narrative_key] = _field_text(value)
+                            narrative_key = ''
+                        if kind=='review' and context=='performance' and cell['x1']-cell['x0']>300 and not assessment_done:
+                            assessment_done = True
+                            narratives['performance_comment'] = _field_text(value.removeprefix('Einschätzung:'))
                         if kind=='review' and context not in ('','performance') and cell['x1']-cell['x0']>300 and not assessment_done:
                             assessment_done=True
                             assessment=value.removeprefix('Einschätzung:').strip()
@@ -166,5 +220,5 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
     if not goal_rows and not probation:
         issues.append('Zieltabellen nicht sicher erkannt. Ältere oder abweichende Vorlage: Ziele anhand des Original-PDF prüfen und nötigenfalls erfassen.')
     return {'performance_goals':performance, 'development_goals':development,
-            'assessments':assessments, 'fields':fields, 'content_issues':issues,
+            'assessments':assessments, 'narratives':narratives, 'no_md_reason':no_md_reason, 'fields':fields, 'content_issues':issues,
             'goal_context':'previous' if kind=='review' else 'agreed'}

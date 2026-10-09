@@ -22,7 +22,7 @@ from webapp.adapters.outlook import InboundAttachment, InboundMessage
 from webapp.services.mail_intake import process_inbound_messages, resolve_inbound_message, mail_inbox_overview
 
 
-def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year=2025):
+def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year=2025, narrative=False):
     c=canvas.Canvas(str(path),pagesize=(595,842))
     if printed:
         c.translate(0,842); c.scale(.75,-.75)
@@ -40,7 +40,7 @@ def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year
             c.rect(x,y,w,h,fill=1,stroke=0)
         c.setFillColorRGB(0,0,0)
     label='Ausblick' if kind=='outlook' else 'Rückblick'
-    for y,s in [(805,f'Mitarbeitenden-Dialog (MD) - {label}'),(785,'Name: Test PN: 111113'),(770,'Name VG: Andere Person PN VG: 111116'),(755,'Wird der Rückblick durchgeführt? Ja'),(740,f'{label} auf: 01.01.{year} bis 31.12.{year} Gespräch vom: 15.01.{year+1}')]:
+    for y,s in [(805,f'Mitarbeitenden-Dialog (MD) - {label}'),(785,'Name: Test PN: 111113'),(770,'Name VG: Andere Person PN VG: 111116'),(755,f'Wird der {label} durchgeführt? Ja'),(740,f'{label} auf: 01.01.{year} bis 31.12.{year} Gespräch vom: 15.01.{year+1}')]:
         text(40,y,s)
     if not old:
         text(40,705,'1. Zielvereinbarung' if kind=='outlook' else 'Leistungsziele aus dem Vorjahr')
@@ -53,6 +53,11 @@ def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year
         if kind=='review':
             box(40,510,513,23,True);text(44,520,'Einschätzung:')
     text(40,460,marker)
+    if narrative:
+        text(40,440,'2. Bemerkungen zum Gespräch')
+        text(40,420,'Gibt es allgemeine Bemerkungen?')
+        box(40,350,513,55,True)
+        text(44,390,'Erster Absatz'); text(44,375,'1. Ein Schritt'); text(44,360,'2. Noch ein Schritt')
     c.save()
     return path
 
@@ -95,6 +100,14 @@ class WordPdfImportsTest(unittest.TestCase):
             for result in results:
                 for goal in result[key]:goal.pop('evidence')
             self.assertEqual(results[0][key],results[1][key])
+
+    def test_narrative_cells_retain_numbered_lines_for_both_export_paths(self):
+        for printed in (False,True):
+            with self.subTest(printed=printed):
+                path=sample_pdf(self.root/'narrative.pdf', printed=printed, narrative=True)
+                result=inspect_word_pdf(path)
+                self.assertEqual(result['narratives']['general_comment'],'Erster Absatz\n1. Ein Schritt\n2. Noch ein Schritt')
+                self.assertEqual(result['assessments'],{})
 
     def test_queue_is_persistent_and_duplicate_does_not_import(self):
         item_id=self.stage()
@@ -221,5 +234,102 @@ class WordPdfImportsTest(unittest.TestCase):
         response=client.post(f'/word-pdf-imports/{item_id}',data=form)
         self.assertEqual(response.status_code,302)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents').fetchone()[0],1)
+
+    def nonconducted(self, item_id):
+        reviewed = self.reviewed(item_id)
+        reviewed['data'].update(conducted='nein', dialog_date='', rating='', no_md_reason='Längere Abwesenheit')
+        reviewed['assessments'] = {}
+        if reviewed['data']['document_kind']=='outlook':
+            reviewed['performance_goals'] = []; reviewed['development_goals'] = []
+        return reviewed
+
+    def test_nonconducted_review_leaves_outlook_open_without_signature(self):
+        item = self.stage(); doc_id = self.confirm(item, self.nonconducted(item))
+        doc = self.db.execute('SELECT * FROM official_documents WHERE id=?',(doc_id,)).fetchone()
+        self.assertEqual(doc['variant'],'administrative')
+        self.assertFalse(doc['signature_checked']); self.assertFalse(doc['scan_required'])
+        case = self.db.execute('SELECT * FROM dialog_cases WHERE case_id=?',(self.case,)).fetchone()
+        self.assertEqual(case['status'],'in_bearbeitung')
+        self.assertEqual(case['dialog_date'],''); self.assertEqual(case['overall_rating_code'],'')
+        obligations = {r['document_kind']: r for r in self.db.execute('SELECT o.* FROM document_obligations o JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.legacy_case_id=?',(self.case,))}
+        self.assertEqual(obligations['review']['status'],'complete')
+        self.assertEqual(obligations['outlook']['status'],'open'); self.assertEqual(obligations['outlook']['required'],1)
+        with self.assertRaises(ValueError):
+            confirm_digital_signature(self.db,document_id=doc_id,handoff_dir=self.root/'handoff')
+        self.assertEqual(self.app.test_client().get(f'/cycles/{self.cycle}/cases/{self.case}').status_code,200)
+
+    def test_both_parts_nonconducted_finish_without_goals_or_sap(self):
+        from webapp.services.sap_export import collect_sap_upload_rows
+        first=self.stage(); self.confirm(first,self.nonconducted(first))
+        second=self.stage(kind='outlook',year=2026); self.confirm(second,self.nonconducted(second))
+        self.assertEqual(self.db.execute('SELECT status FROM dialog_cases WHERE case_id=?',(self.case,)).fetchone()[0],'kein_md')
+        self.assertEqual(self.db.execute('SELECT status FROM dialog_events WHERE legacy_case_id=?',(self.case,)).fetchone()[0],'no_md')
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_pdf_goal_versions').fetchone()[0],0)
+        with self.assertRaisesRegex(ValueError,'keine neuen'):
+            collect_sap_upload_rows(self.db,self.cycle)
+
+    def test_nonconducted_review_and_completed_outlook_are_not_sap_assessment(self):
+        from webapp.services.sap_export import collect_sap_upload_rows
+        first=self.stage(); self.confirm(first,self.nonconducted(first))
+        second=self.stage(kind='outlook',year=2026); doc=self.confirm(second)
+        confirm_digital_signature(self.db,document_id=doc,handoff_dir=self.root/'handoff')
+        self.assertEqual(self.db.execute('SELECT status FROM dialog_cases WHERE case_id=?',(self.case,)).fetchone()[0],'vollstaendig')
+        with self.assertRaisesRegex(ValueError,'keine neuen'):
+            collect_sap_upload_rows(self.db,self.cycle)
+
+    def test_nonconducted_requires_reason_and_rejects_invented_facts_or_scope_reduction(self):
+        item=self.stage()
+        for field,value in [('no_md_reason',''),('dialog_date','2026-01-01'),('rating','C'),('conducted','')]:
+            reviewed=self.nonconducted(item); reviewed['data'][field]=value
+            with self.subTest(field=field), self.assertRaises(ValueError): self.confirm(item,reviewed)
+        reviewed=self.nonconducted(item); reviewed['scope']='review_only'
+        with self.assertRaisesRegex(ValueError,'MD-Umfang'): self.confirm(item,reviewed)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents').fetchone()[0],0)
+
+    def test_nonconducted_cannot_replace_completed_or_become_historical_goal_source(self):
+        first=self.stage(); doc=self.confirm(first)
+        second=self.stage(marker='Nicht durchgeführt')
+        with self.assertRaisesRegex(ValueError,'bestehendes Gesprächsdokument'):
+            confirm_import(self.db,second,reviewed=self.nonconducted(second),assignment='1',case_id=self.case,historical=False,reason='Korrektur')
+        self.assertEqual(self.db.execute('SELECT is_current FROM official_documents WHERE id=?',(doc,)).fetchone()[0],1)
+        third=self.stage(kind='outlook')
+        with self.assertRaisesRegex(ValueError,'Zielquelle'):
+            confirm_import(self.db,third,reviewed=self.nonconducted(third),assignment='1',case_id='',historical=True,reason='Nachreichung')
+
+    def test_conducted_document_cannot_shadow_nonconducted_record(self):
+        first=self.stage(); self.confirm(first,self.nonconducted(first))
+        second=self.stage(marker='Doch durchgeführt')
+        with self.assertRaisesRegex(ValueError,'Nichtdurchführung'):
+            confirm_import(self.db,second,reviewed=self.reviewed(second),assignment='1',case_id=self.case,historical=False,reason='Korrektur')
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents').fetchone()[0],1)
+
+    def test_analytics_preserves_unknown_no_and_zero_without_exporting_text(self):
+        from webapp.services.analytics import analytics_data, analytics_csv
+        item=self.stage(); reviewed=self.reviewed(item)
+        reviewed['data'].update(higher_manager_requested='',sap_current='nein')
+        reviewed['narratives']={'general_comment':'  Sichtbarer Text\nZweite Zeile  ', 'manager_comment':''}
+        reviewed['assessments']={'Selbstmanagement':'Eine aktuelle Einschätzung'}
+        self.confirm(item,reviewed)
+        report=analytics_data(self.db,cycle_id=self.cycle,minimum_group_size=1)
+        row=report['form_fields'][0]
+        self.assertEqual(row['higher_manager_requested'],'Offen'); self.assertEqual(row['sap_current'],'Nein')
+        self.assertEqual(row['sap_clarification'],'Klärung erforderlich')
+        self.assertEqual(row['character_counts']['general_comment'],len('Sichtbarer Text\nZweite Zeile'))
+        self.assertEqual(row['character_counts']['manager_comment'],0)
+        self.assertNotIn('employee_comment',row['character_counts'])
+        name,content=analytics_csv('form_fields',report)
+        self.assertNotIn(b'Sichtbarer Text',content); self.assertNotIn('Eine aktuelle Einschätzung'.encode(),content)
+        self.assertEqual(name,'MD_Formularangaben.csv')
+        client=self.app.test_client()
+        self.assertEqual(client.get('/auswertungen').status_code,200)
+        self.assertEqual(client.post('/auswertungen/export',data={'report':'form_fields','cycle_id':self.cycle}).status_code,200)
+
+    def test_nonconducted_post_and_old_missing_outlook_selection(self):
+        item=self.stage(kind='outlook',year=2026)
+        reviewed=self.nonconducted(item)
+        form={**reviewed['data'],'scope':'full','assignment':'1','case_id':self.case,'destination':'case','checked':'yes'}
+        response=self.app.test_client().post(f'/word-pdf-imports/{item}',data=form)
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(self.db.execute('SELECT status FROM word_pdf_imports WHERE id=?',(item,)).fetchone()[0],'imported')
 
 if __name__=='__main__':unittest.main()

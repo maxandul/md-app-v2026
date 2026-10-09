@@ -2,7 +2,7 @@
 
 Entscheid vom 09.10.2026: Word-Vorlagen pro Mitarbeitenden für den aktuellen
 Durchlauf. Das bestehende Repository wird weitergeführt; die HTML-Arbeitsmappe
-bleibt erhalten. Die Implementierung beginnt auf `plan-b-word-pdf`.
+bleibt technisch erhalten und ist standardmässig ausgeblendet. Der aktuelle Teststand liegt auf `plan-b-word-pdf`.
 
 ## Implementierter Stand
 
@@ -169,3 +169,17 @@ Produktivpostfach und Zertifikaten bleibt Teil des Bürotests.
    Microsoft-Exportwege für die Layoutfreigabe prüfen. Bis dahin bleibt die
    Kontrolle am Original verpflichtend. Unbekannte Vorlagen werden manuell ergänzt.
 2. Gemeinsamer fachlicher Abnahmetest von Versand bis Dossier und SAP-Export.
+
+## Oberfläche und Serveradresse (9. Oktober 2026)
+
+Die Standardoberfläche verwendet Word/PDF auch in der Durchlaufübersicht. Alte
+Arbeitsmappen-Einstiege und Importmasken werden nur mit `LEGACY_WORKBOOKS: "enabled"`
+in der Organisationskonfiguration eingeblendet (Umgebung: `MD_LEGACY_WORKBOOKS`).
+Daten und technische Kompatibilitätsrouten bleiben erhalten; dies ist keine
+Berechtigungseinstellung.
+
+`PUBLIC_BASE_URL` bzw. `MD_PUBLIC_BASE_URL` enthält den vereinbarten vollständigen
+Zugriffslink für HR. Unter Administration stehen dieser Link, der Server-Rechnername
+und die vom Starter gemeldete Bindung/Port. Ein abgeleiteter Rechnernamen-Link ist
+nicht auf Erreichbarkeit geprüft. DNS und Serverbindung werden dadurch nicht geändert.
+Weitere Angaben: [Technik](FLASK_SQLITE_MVP.md).

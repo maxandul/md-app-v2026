@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 
 
 DEFAULTS = {
+    'PUBLIC_BASE_URL':'',
+    'LEGACY_WORKBOOKS':'disabled',
     'HR_MAILBOX_EMAIL':'',
     'OUTLOOK_MAILBOX_NAME':'',
     'OUTLOOK_TARGET_FOLDER':'Mitarbeitenden-Dialog',
@@ -15,6 +17,8 @@ DEFAULTS = {
     'SPECIAL_CASES_URL':'',
 }
 ENVIRONMENT = {
+    'PUBLIC_BASE_URL':'MD_PUBLIC_BASE_URL',
+    'LEGACY_WORKBOOKS':'MD_LEGACY_WORKBOOKS',
     'HR_MAILBOX_EMAIL':'MD_HR_MAILBOX_EMAIL',
     'OUTLOOK_MAILBOX_NAME':'MD_OUTLOOK_MAILBOX',
     'OUTLOOK_TARGET_FOLDER':'MD_OUTLOOK_TARGET_FOLDER',
@@ -27,6 +31,17 @@ def validate_organisation(values):
     for key in DEFAULTS:
         if not isinstance(values.get(key,''),str):
             raise ValueError(f'Organisationskonfiguration: {key} muss Text enthalten.')
+    if values.get('LEGACY_WORKBOOKS','disabled') not in ('enabled','disabled'):
+        raise ValueError('LEGACY_WORKBOOKS muss enabled oder disabled sein.')
+    public_url = values.get('PUBLIC_BASE_URL','')
+    if public_url:
+        parsed = urlsplit(public_url)
+        if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or any(c.isspace() for c in public_url):
+            raise ValueError('PUBLIC_BASE_URL: vollständige HTTP(S)-Adresse ohne Zugangsdaten, Abfrage oder Fragment verwenden.')
+        try:
+            parsed.port
+        except ValueError as exc:
+            raise ValueError('PUBLIC_BASE_URL: ungültiger Port.') from exc
     email = values.get('HR_MAILBOX_EMAIL','')
     if email and ('@' not in email or any(ch.isspace() for ch in email) or any(ch in email for ch in '<>"')):
         raise ValueError('Organisationskonfiguration: ungültige HR-Absenderadresse.')

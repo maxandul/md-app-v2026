@@ -35,7 +35,7 @@
 
   <section class="security-note" aria-labelledby="package-note-title">
     <h2 id="package-note-title">Versandablauf</h2>
-    <p>Die HTML-Arbeitsmappe bleibt bei der vorgesetzten Person und kann versioniert gespeichert werden. An HR zurückgesendet werden ausschliesslich die daraus erzeugten PDFs - immer das elektronisch unterzeichnete PDF und bei D/E oder Uneinigkeit zusätzlich der handschriftlich unterzeichnete Scan.</p>
+    <p>Die Führungskraft erhält personalisierte Word-Formulare. An HR werden die ausgefüllten PDFs zurückgesendet. Beachte die Unterschrifts- und Scanvorgaben im jeweiligen Formular. Word-Dateien bleiben bei der Führungskraft.</p>
   </section>
 
   <section class="content-section" aria-labelledby="sap-export-title">
@@ -64,16 +64,14 @@
             <td>
               {{ manager.done_count or 0 }} abgeschlossen
               {% if manager.progress_count %}<br><span class="muted">{{ manager.progress_count }} in Bearbeitung</span>{% endif %}
-              {% if manager.signature_check_count %}<br><span class="status status--warning">{{ manager.signature_check_count }} Altbestand/Altbestände bereitstellen</span>{% endif %}
+              {% if manager.signature_check_count %}<br><span class="status status--warning">{{ manager.signature_check_count }} Unterschriftenprüfung(en) offen</span>{% endif %}
               {% if manager.scan_pending_count %}<br><span class="status status--danger">{{ manager.scan_pending_count }} Scan(s) ausstehend</span>{% endif %}
             </td>
-            <td>{{ manager.sent_at or '–' }}</td>
+            <td>{% set word = word_status.get(manager.manager_pn) %}{% if word and word.delivery_status == 'sent_confirmed' %}{{ word.delivery_updated_at }}{% elif word and word.delivery_status == 'draft_created' %}Entwurf – noch nicht versendet{% else %}Kein bestätigter Word-Versand{% endif %}</td>
             <td>{{ manager.returned_at or '–' }}</td>
             <td>
-              {% if manager.package_blocking %}<span class="status status--danger">Zuordnung prüfen</span>
-              {% elif manager.package_state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--small" type="submit">START-Datei erzeugen</button></form>
-              {% elif manager.package_state == 'update_required' %}<form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post"><button class="button button--small" type="submit">Update-Datei erzeugen</button></form><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--small" type="submit" data-confirm-recreate>START neu</button></form>
-              {% else %}<span class="status status--staged">Aktuell</span><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--small" type="submit" data-confirm-recreate>START neu</button></form>{% endif %}
+              {% if manager.package_blocking %}<span class="status status--danger">Zuordnung prüfen</span>{% else %}<form action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--small">Word-Vorlagen erzeugen</button></form>{% endif %}
+              <a href="{{ url_for('main.manager_detail', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}">Führungslinie öffnen</a>
             </td>
           </tr>
         {% endfor %}

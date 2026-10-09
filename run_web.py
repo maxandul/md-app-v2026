@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     app = create_app()
+    app.config.update(SERVER_BIND_HOST=args.host, SERVER_BIND_PORT=args.port)
     print(f"MD-Verwaltung läuft auf http://{args.host}:{args.port}")
     if args.dev:
         if args.host not in {"127.0.0.1", "localhost", "::1"}:

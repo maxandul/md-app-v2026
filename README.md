@@ -13,58 +13,27 @@ protokolliert. Unter **Rückläufe → Word-PDFs
 einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
 Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
 nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
-landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt erhalten.
+landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt technisch erhalten, ist aber standardmässig ausgeblendet.
 Nichtdurchführungen lassen sich je Gesprächsteil mit Begründung bestätigen.
 Die Auswertung ergänzt Ja/Nein/offen-Angaben und Zeichenanzahlen geprüfter Textfelder.
 Einrichtung, Umsetzungsstand und nächste Schritte:
 [`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
 
-## Was bereits funktioniert
+## Aktueller Standardablauf
 
-- SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern
-- einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
-- den Jahresprozess sichtbar durch Vorbereitung, Versand, Rücklauf/Verarbeitung
-  und Abschluss führen; die Phase kann kontrolliert vor- und zurückgesetzt werden
-- den regulären und den unterjährigen Ablauf sowie Auswirkungen auf Outlook,
-  Roboter-Input, Personaldossier und SAP direkt im Cockpit erklären
-- pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
-- START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
-- S/MIME-markierte Nachrichten direkt versenden oder als Outlook-Entwürfe erzeugen
-- Outlook-Posteingang einlesen, MD-Dokumente verarbeiten und reine MD-Mails
-  idempotent verschieben
-- gemeinsam eingereichte Feedback-PDFs je vorgesetzter Person mit Deckblatt zu
-  einem RPA-bereiten PDF zusammenführen, ohne fehlende Feedbacks zu mahnen
-- mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
-- Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
-- pro Person eine eigenständige Offline-Datei zur Gesprächsvorbereitung erzeugen;
-  ihr Inhalt passt sich an Rückblick und/oder Ausblick an
-- Gesprächsvorbereitung und Feedback getrennt als PDF ausgeben; Feedback wird
-  nur bei einem Rückblick angeboten und von der mitarbeitenden Person an die
-  vorgesetzte Person übermittelt
-- Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
-- elektronisch unterzeichnete PDFs einlesen und ihren MD-Datenblock übernehmen
-- Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
-- fehlerhaft übernommene Angaben vor der Freigabe begründet korrigieren
-- korrigierte PDF-Versionen kontrolliert ersetzen, ohne die Vorversion zu löschen
-- Rückblick- und Ausblickfristen für den Durchlauf, eine Führungslinie oder einen
-  Einzelfall begründet anpassen und jede betroffene Pflicht protokollieren
-- überfällige Pflichten als Vorschau bündeln und ausgewählte oder alle
-  Erinnerungen als S/MIME-markierte Outlook-Entwürfe vorbereiten
-- bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
-  unterzeichneten Scan nachverfolgen
-- nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen
-- protokollierte SAP-Exportbatches aus abgeschlossenen Rückblicken erzeugen;
-  Doppelverarbeitung wird verhindert und der Zeitraum auf Eintritts- und
-  Austrittsdatum begrenzt
-- Gesprächszeitpunkte personenbezogen sowie Gesamtbeurteilungen und Kompetenzen
-  aggregiert auswerten und als Excel-kompatible CSV-Dateien exportieren
-- aggregierte Auswertungen bei Unterschreitung der konfigurierten
-  Mindestgruppengrösse automatisch unterdrücken
-- kritische Aktionen in einer geschützten Administrationsansicht prüfen
-- vollständige, prüfsummengesicherte Backups erstellen und kontrolliert
-  wiederherstellen
-- Ziele aus früheren Word-Ausblickformularen zunächst als Vorschau prüfen und
-  danach idempotent in den nächsten Rückblick übernehmen
+- SAP-Stammdaten importieren, Zuordnungskonflikte prüfen und Durchlauf eröffnen.
+- Personalisierte Word-Vorlagen einzeln oder als Führungslinien-/Sammelpakete erzeugen.
+- Eigene ZIP-Anhänge je Führungskraft über klassisches Outlook bereitstellen; Entwurf und Versand getrennt nachhalten.
+- Word-PDFs einlesen, am Original prüfen und dem Fall zuordnen.
+- Unterschriften und erforderliche Scans prüfen, danach Dossierübergabe bereitstellen.
+- Nachgereichte Ausblicke als Zielquelle übernehmen; bestehende Word-Ausgaben unverändert lassen.
+- Nichtdurchführung je Gesprächsteil dokumentieren; Auswertungen und SAP-Batches erzeugen.
+- Benutzer, Audit, Prozessbackups und Wiederherstellung verwalten.
+
+Die [Dokumentationsübersicht](docs/README.md) trennt aktuelle Anleitungen von
+historischen Spezifikationen. Alte Offline-Funktionen sind standardmässig
+unsichtbar und bleiben technisch verfügbar; zum ausdrücklichen Einblenden dient
+`LEGACY_WORKBOOKS: "enabled"` in der Organisationskonfiguration.
 
 ## Lokal unter Windows starten
 
@@ -105,7 +74,7 @@ HR-Gerät und sind durch `.gitignore` vom Commit ausgeschlossen.
 
 ## Wichtige Sicherheitsgrenze des MVP
 
-Der Server bindet absichtlich nur an `127.0.0.1` und ist für den Betrieb auf
+Der Server bindet standardmässig an `127.0.0.1` und ist für den Betrieb auf
 einem einzelnen HR-Laptop gedacht. Vor einem Zugriff weiterer Arbeitsplätze
 müssen mindestens Windows-Authentisierung, Rollen/Berechtigungen, TLS, Backup,
 Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
@@ -147,19 +116,17 @@ vorgesetzte Person. Diese übermittelt die gesammelten Feedbacks in einer
 S/MIME-verschlüsselten E-Mail an HR. Die Anwendung führt die eingegangenen
 Feedbacks pro Führungskraft zusammen; HR verfolgt deren Vollständigkeit nicht.
 
-## Dateinamen
+## Zugriffsadresse für HR
 
-- Versand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_START.html`
-- Zwischenstand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_BEARBEITET_v01_YYYYMMDD_HHMM.html`
-- Rückblick: `Rueckblick_2025_Nachname_Rufname_123456.pdf`
-- Ausblick: `Ausblick_2026_Nachname_Rufname_123456.pdf`
-- Handschriftlicher Scan: `Rueckblick_2025_Nachname_Rufname_HANDSCAN_123456.pdf`
-- Kein MD: `Kein_MD_2025_Nachname_Rufname_123456.pdf`
-- Vorbereitung MA: `Vorbereitung_MD_2025_Nachname_Rufname_123456.html`
-- Einzelnes Feedback: `MA-Nachname_MA-Rufname_Feedback_an_VG-Nachname_VG-Rufname_123456.pdf`
-- Feedback-Sammeldatei: `Feedback_2025_VG-Nachname_VG-Rufname_123456.pdf`
+Unter **Administration** stehen Rechnername, Bindung/Port und der konfigurierte
+Zugriffslink. Trage in `instance/organisation.json` den vollständigen Link unter
+`PUBLIC_BASE_URL` ein, z. B. `http://md-server.example.invalid:5050`; alternativ
+`MD_PUBLIC_BASE_URL`. Vor dem Verteilen auf einem zweiten HR-PC testen.
 
-Die Personalnummer steht bei dossierrelevanten PDFs am Ende des Dateinamens.
+Ein Rechner-/DNS-Name kann bei wechselnder IP gleich bleiben, sofern die interne
+Namensauflösung aktualisiert wird. Die Linkeinstellung ändert weder Serverbindung
+noch Firewall. Der BAT-Starter bleibt lokal; ein bereits eingerichteter
+Netzwerkstart wird dadurch nicht umkonfiguriert. Details: [Technik](docs/FLASK_SQLITE_MVP.md).
 
 ## Tests
 

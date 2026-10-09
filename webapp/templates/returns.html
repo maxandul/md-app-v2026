@@ -20,7 +20,7 @@
   {% if word_pdf_queue %}<ul>{% for item in word_pdf_queue %}<li><a href="{{ url_for('main.word_pdf_review', import_id=item.id) }}">{{ item.original_filename }}</a> · {{ {'pending':'Prüfung offen','imported':'Dem Fall zugeordnet','historical':'Nachgereichte Zielquelle','duplicate':'Inhaltliche Dublette'}.get(item.status) }}</li>{% endfor %}</ul>{% else %}<p>Noch keine Word-PDFs eingelesen.</p>{% endif %}
   </section>
   <section class="split-layout">
-    <div class="content-card">
+    {% if legacy_workbooks_enabled %}<div class="content-card">
       <p class="kicker">Arbeitsmappen</p><h2>PDF-Rückläufe mit Datenblock einlesen</h2>
       <p>Elektronische Rückblick-, Ausblick- und Kein-MD-PDFs werden über den MD-Datenblock zugeordnet.</p>
       <form action="{{ url_for('main.upload_pdf_returns') }}" method="post" enctype="multipart/form-data">
@@ -28,7 +28,7 @@
         <button class="button button--primary" type="submit">PDFs prüfen und importieren</button>
       </form>
     </div>
-    <aside class="info-box">
+    {% endif %}<aside class="info-box">
       <h2>Postfachbearbeitung</h2>
       <p>Mails ohne MD-Bezug werden ignoriert. Word-PDFs landen zuerst in der Prüfwarteschlange; ihre Fallzuordnung und Ablage werden hier manuell bestätigt. Reine, erfolgreich verarbeitete MD-Mails werden in den konfigurierten Outlook-Zielordner verschoben. Gemischte Mails bleiben zur Prüfung sichtbar.</p>
       <form action="{{ url_for('main.scan_mail_inbox') }}" method="post"><button class="button" type="submit">Outlook-Postfach jetzt prüfen</button></form>
@@ -90,5 +90,5 @@
     {% else %}<div class="empty-state empty-state--success">Keine weiteren Fallaufgaben vorhanden. Offene Word-PDF-Prüfungen stehen in der Warteschlange oben.</div>{% endif %}
   </section>
 
-  <details class="legacy-box"><summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary><form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data"><label for="return_file">Bearbeitete HTML-Datei</label><input id="return_file" name="return_file" type="file" accept=".html,.htm" required><button class="button" type="submit">HTML-Rücklauf importieren</button></form></details>
+  {% if legacy_workbooks_enabled %}<details class="legacy-box"><summary>Technischer Übergangsweg: gespeicherte HTML-Datei importieren</summary><form action="{{ url_for('main.upload_return') }}" method="post" enctype="multipart/form-data"><label for="return_file">Bearbeitete HTML-Datei</label><input id="return_file" name="return_file" type="file" accept=".html,.htm" required><button class="button" type="submit">HTML-Rücklauf importieren</button></form></details>{% endif %}
 {% endblock %}

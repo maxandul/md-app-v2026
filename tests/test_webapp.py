@@ -471,6 +471,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
 
     def test_replacement_start_uses_current_state_and_supersedes_old_package(self) -> None:
+        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
         cycle_id = self._prepare_cycle()
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
@@ -623,6 +624,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertTrue(all(name.startswith("START/") for name in names))
 
     def test_outlook_draft_is_prepared_and_logged_without_sending(self) -> None:
+        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
             connection = get_db()

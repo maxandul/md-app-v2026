@@ -3,5 +3,7 @@
   "OUTLOOK_MAILBOX_NAME": "",
   "OUTLOOK_TARGET_FOLDER": "Mitarbeitenden-Dialog",
   "DOSSIER_HANDOFF_ROOT": "data/dossier_ready",
-  "SPECIAL_CASES_URL": ""
+  "SPECIAL_CASES_URL": "",
+  "PUBLIC_BASE_URL": "",
+  "LEGACY_WORKBOOKS": "disabled"
 }

@@ -71,12 +71,12 @@
       <p>Die Datei wird vollständig neu validiert. Die bisherige Version bleibt erhalten. Bereits für die Ablage bereitgestellte Dokumente können nicht automatisch ersetzt werden.</p>
       <p>Für eine korrigierte Word-PDF-Datei: unter «Rückläufe» erneut einlesen, denselben Fall wählen und einen Ersetzungsgrund angeben.</p>
       <p><a class="button" href="{{ url_for('main.returns_overview') }}">Korrigiertes Word-PDF einlesen</a></p>
-      <details><summary>Alternative: Arbeitsmappen-PDF mit Datenblock ersetzen</summary>
+      {% if legacy_workbooks_enabled %}<details><summary>Alternative: Arbeitsmappen-PDF mit Datenblock ersetzen</summary>
       <form action="{{ url_for('main.replace_case_pdf', cycle_id=cycle_id, case_id=case.case_id) }}" method="post" enctype="multipart/form-data">
         <label for="replacement_pdf">Korrigierte PDF-Datei</label><input id="replacement_pdf" name="replacement_pdf" type="file" accept=".pdf,application/pdf" required>
         <label for="replacement_reason">Ersetzungsgrund</label><input id="replacement_reason" name="replacement_reason" minlength="10" required placeholder="Weshalb ersetzt diese Datei die aktuelle Version?">
         <button class="button" type="submit">Neue Version prüfen und übernehmen</button>
-      </form></details>
+      </form></details>{% endif %}
     </div>
   </section>
 

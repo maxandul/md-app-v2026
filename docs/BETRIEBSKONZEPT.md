@@ -1,13 +1,13 @@
 # Betriebskonzept MD-App v2026
 
-**Stand:** 21. September 2026  
+**Stand:** 9. Oktober 2026
 **Status:** Technischer Entwurf; vor dem Produktivbetrieb durch Fachverantwortung,
 Applikationsverantwortung und Informationssicherheit freizugeben.
 
 ## 1. Geltungsbereich und Betriebsmodell
 
 Die MD-App ist eine lokale Übergangslösung für besonders schützenswerte
-Personaldaten. Sie läuft auf einem verwalteten Windows-HR-Gerät und bindet nur an
+Personaldaten. Sie läuft auf einem verwalteten Windows-HR-Gerät und bindet standardmässig an
 `127.0.0.1`. Eine Freigabe im Netzwerk, gemeinsamer Mehrplatzbetrieb oder das
 Ablegen in einem nicht genehmigten Cloud-Speicher ist nicht Bestandteil dieses
 Betriebsmodells.
@@ -17,7 +17,7 @@ System-Python ohne virtuelle Umgebung. Die festgelegten Pakete werden einmalig
 für das aktuelle Windows-Konto installiert. Sie kann parallel zum ABW-Tool auf
 demselben Gerät betrieben werden. Beide Anwendungen müssen unterschiedliche
 Ports sowie vollständig getrennte Daten-, Konfigurations- und Logverzeichnisse
-verwenden; für die MD-App ist `127.0.0.1:5050` vorgesehen.
+verwenden; der Standardstarter verwendet `127.0.0.1:5050`. Ein vor Ort abweichend eingerichteter Netzwerkbetrieb ist separat zu dokumentieren.
 
 Die Anwendung umfasst die SQLite-Datenbank, alle Dateien unter `instance/data`,
 den konfigurierten Dossier-Übergabeordner sowie lokale Backups. Outlook und die
@@ -45,7 +45,7 @@ vollverschlüsselt, verwaltet und durch restriktive NTFS-Berechtigungen geschüt
 sein. Backups besitzen denselben Schutzbedarf wie die Originaldaten.
 
 Folgende Inhalte dürfen nie in Git gelangen: produktive Datenbank, SAP-Exporte,
-Arbeitsmappen, Rückläufe, PDFs, Dossier-Dateien, Backups und Schlüssel. Die
+Word-Vorlagen, Word-Ausgaben, Rückläufe, PDFs, Dossier-Dateien, Backups und Schlüssel. Die
 vorhandene `.gitignore` ist nur eine zusätzliche Schutzschicht und ersetzt keine
 Zugriffskontrolle.
 
@@ -91,7 +91,7 @@ erfolgreichen Restore-Test als nachgewiesen wiederherstellbar.
 Die Administrationsansicht zeigt die letzten 200 Audit-Einträge mit Zeitpunkt,
 Konto, Aktion, Objekt und strukturierten Details. Protokolliert werden insbesondere
 Anmeldung, fehlgeschlagene beziehungsweise begrenzte Anmeldeversuche,
-Benutzerverwaltung, SAP-Import, Durchlauferöffnung, Arbeitsmappen, Rückläufe,
+Benutzerverwaltung, SAP-Import, Durchlauferöffnung, Word-Ausgaben, Rückläufe,
 Korrekturen, Dokumentersetzungen, Exporte, Backup und Restore.
 
 Passwörter, eingegebene E-Mail-Adressen fehlgeschlagener Anmeldungen und
@@ -136,3 +136,16 @@ Arbeitstag (RPO) und ein Wiederanlauf innerhalb von vier Arbeitsstunden (RTO).
 - [ ] RPO, RTO, Backup-Rotation, Aufbewahrung und Löschung freigegeben
 - [ ] Incident- und Stellvertretungsweg bekannt
 - [ ] keine echten Personaldaten im Git-Repository vorhanden
+
+## Zugriffslink und lokale Konfiguration
+
+Administration zeigt Rechnername, vom Starter gemeldete Bindung und Port sowie
+den optionalen `PUBLIC_BASE_URL`. Ein DNS-Name vermeidet einen IP-Link, sofern die
+Namensauflösung von den HR-PCs funktioniert und bei IP-Wechsel aktualisiert wird.
+Die tatsächliche Netzwerkfreigabe, TLS und Betriebsverantwortung sind vor Ort zu
+dokumentieren. Die Linkeinstellung ändert keine Netzwerkfreigaben.
+
+Lokale Word-Vorlagen, `instance/word_config.json` und
+`instance/organisation.json` sind zusätzlich zum Prozessbackup zu sichern. Die
+historische Oberfläche bleibt standardmässig mit `LEGACY_WORKBOOKS: "disabled"`
+ausgeblendet. Aktueller Abnahmelauf: [Bürotest](BUEROTEST.md).

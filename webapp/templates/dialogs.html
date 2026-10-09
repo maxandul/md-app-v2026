@@ -57,7 +57,7 @@
             <span class="status">{{ event.status }}</span>
             {% if event.sap_leading %}<br><span class="muted">Führend für SAP</span>
             {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Als SAP-führend markieren</button></form>
-            {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Arbeitsmappen-Verknüpfung</span>{% endif %}
+            {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Fallverknüpfung</span>{% endif %}
           </td>
         </tr>
       {% endfor %}

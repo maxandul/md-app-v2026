@@ -1,3 +1,5 @@
+> Historische Architekturentscheidung. Nachtrag vom 9. Oktober 2026: Standard ist inzwischen Word/PDF; die Offline-HTML-Ausgabe bleibt technische Kompatibilität und ist standardmässig ausgeblendet. Aktueller Stand: [Technik](FLASK_SQLITE_MVP.md) und [Word/PDF](PLAN_B_WORD_PDF.md).
+
 # ADR-001: Architektur der MD-App v2026
 
 **Status:** Angenommen  

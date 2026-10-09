@@ -76,6 +76,22 @@ class WordWorkflowAuditTest(unittest.TestCase):
         self.assertNotIn(action,Forms(client.get(case).text).actions)
         self.assertEqual(self.db.execute("SELECT handoff_status FROM official_documents WHERE variant='scan'").fetchone()[0],'staged')
 
+    def test_default_ui_hides_legacy_and_admin_shows_configured_address(self):
+        from unittest.mock import patch
+        client=self.app.test_client()
+        for page in ['/', '/stammdaten','/dialoge','/versand','/ruecklaeufe',f'/cycles/{self.cycle_id}',f'/cycles/{self.cycle_id}/managers/111116',f'/cycles/{self.cycle_id}/cases/{self.case_id}']:
+            html=client.get(page).text
+            self.assertNotIn('Arbeitsmappe',html,page)
+            self.assertNotIn('START-Datei',html,page)
+        self.app.config.update(PUBLIC_BASE_URL='https://md.example.invalid',SERVER_BIND_HOST='127.0.0.1',SERVER_BIND_PORT=5050)
+        with patch('socket.gethostname',return_value='TEST-SERVER'):
+            html=client.get('/administration').text
+        self.assertIn('TEST-SERVER',html)
+        self.assertIn('https://md.example.invalid',html)
+        self.assertIn('Erreichbarkeit nicht geprüft',html)
+        self.app.config['LEGACY_WORKBOOKS']='enabled'
+        self.assertIn('Arbeitsmappe',client.get('/versand?workflow=workbook').text)
+
     def test_setup_explains_default_config_and_relative_paths(self):
         self.app.config['WORD_TEMPLATE_PATHS']={}
         for page in ['/versand',f'/cycles/{self.cycle_id}/managers/111116']:

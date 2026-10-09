@@ -1,182 +1,64 @@
-# Bürotest MD-App v2026
+# Bürotest – Word/PDF
 
-## Ziel
+Stand: 9. Oktober 2026. Testbranch: `plan-b-word-pdf`.
+Die [früheren Arbeitsmappen-Tests](historisch/BUEROTEST.md) sind keine Anleitung
+für diesen Ablauf. Mit isolierten Testdaten und einem Testempfänger arbeiten.
 
-Der Bürotest prüft den Ablauf mit den realen SAP-Strukturen, früheren
-Word-Formularen, dem produktiven klassischen Outlook und der vorgesehenen lokalen
-Ablage. Produktive Daten bleiben ausschliesslich auf dem verwalteten HR-Gerät.
+## 1. Einrichtung und Zugriff
 
-## 1. Teststand vorbereiten
+1. Branch als ZIP herunterladen und entpacken. Bestehende Datenbank, lokale Konfiguration und Vorlagen bei Updates erhalten; vorher sichern.
+2. Abhängigkeiten gemäss Projektinstallation einrichten. Word-Konfiguration unter `instance/word_config.json` und Organisationskonfiguration unter `instance/organisation.json` prüfen.
+3. App starten und persönliches Konto verwenden. Unter Administration Rechnername, Bindung und Port kontrollieren.
+4. Für bereits eingerichteten Netzwerkbetrieb den vollständigen Rechner-/DNS-Namen von einem zweiten HR-PC testen, z. B. mit `Resolve-DnsName RECHNERNAME` und anschliessend im Browser mit dem richtigen Port. DNS-Aktualisierung mit der IT klären.
+5. Den geprüften Link als `PUBLIC_BASE_URL` hinterlegen, neu starten und unter Administration prüfen. Die Einstellung ändert keine Bindung und keine Firewall.
+6. Prozessbackup sowie Vorlagen und Konfiguration separat sichern. Wiederherstellung nur in isolierter Testumgebung prüfen.
 
-1. Den aktuellen Stand von `main` beziehen und einmalig `INSTALL_MD.bat`
-   ausführen. Für den Produktivstarter wird keine virtuelle Umgebung benötigt.
-2. Prüfen, dass die Anwendung nur unter `127.0.0.1:5050` erreichbar ist.
-   Das parallel laufende ABW-Tool muss einen anderen Port verwenden.
-3. Ein persönliches Systemadministrationskonto anlegen.
-4. Unter **Administration** ein Backup erstellen und auf einem genehmigten,
-   verschlüsselten Medium ablegen.
-5. Zuerst mit einer Kopie der produktiven Dateien und nicht mit den einzigen
-   Originalen arbeiten.
+## 2. Stammdaten und Durchlauf
 
-## 2. SAP-Import prüfen
+SAP-Testexport unter Stammdaten importieren. Personen, Anstellungen, direkte
+Führungslinien und Konflikte stichprobenartig prüfen. Durchlauf eröffnen, Jahre und
+Fristen prüfen. Pflichtumfang und unterjährige Ereignisse kontrollieren.
 
-Der Beispielexport umfasst 1'246 Datensätze, davon 1'186 aktive Personen und 183
-unterschiedliche referenzierte Führungskräfte. Dieses Mengengerüst ist für die
-lokale Verarbeitung vorgesehen.
+## 3. Word-Erzeugung
 
-Beim realen Import insbesondere kontrollieren:
+Einzelperson, Führungslinie und Sammelauswahl testen. ZIP herunterladen und in Word
+öffnen. Namen, Personalnummern, Anstellungen, Zeiträume und Nebenbeschäftigungen
+prüfen. Vorjahresziele mit mehreren Zeilen und mehreren Zielen pro Kompetenz
+prüfen. Probezeitfall mit eigener Vorlage prüfen. Leere Felder müssen bearbeitbar
+bleiben. Nach nachgereichten Zielen neu erzeugen: neue Ausgabe enthält sie, alte
+Ausgabe bleibt unverändert. Fehler einer fehlenden Vorlage muss verständlich sein.
 
-- Anzahl aktiver und wegen `BsGrd = 0` ignorierter Personen,
-- identische Dubletten gegenüber widersprüchlichen Mehrfacheinträgen,
-- mehrere Anstellungen derselben Personalnummer,
-- mehrere Bewilligungen derselben Anstellung,
-- Führungskräfte, die selbst nicht als aktive Person im Export vorkommen,
-- Eintritt, Austritt und Ende Probezeit an Stichproben.
+## 4. Versand
 
-## 3. Vorjahresziele aus Word-Formularen übernehmen
+Unter Versand eigenen Anhang je Test-Führungskraft prüfen. Zunächst Outlook-Entwurf
+erstellen. Empfänger, Absender, Inhalt, richtigen Anhang und S/MIME in klassischem
+Outlook prüfen. Ein Entwurf zählt noch nicht als Versand. Erst nach manuellem
+Versand bestätigen. Veraltete Pakete müssen gesperrt werden. Fehlgeschlagene oder
+abgebrochene Vorgänge zuerst in Outlook klären; nicht unkontrolliert wiederholen.
 
-Die Datei `MD_Textfeldanalyse_20260917_140612.xlsx` ist nur eine anonymisierte
-Strukturanalyse. Sie enthält keine Texte oder Personalnummern. Der Import liest
-deshalb die ursprünglichen `.docx`- beziehungsweise `.docm`-Ausblickformulare.
+## 5. PDF-Rücklauf
 
-Zuerst nur eine Vorschau ausführen:
+1. Rückblick und Ausblick ausfüllen und jeweils über «Speichern als PDF» und «Drucken als PDF» ausgeben.
+2. Unter Rückläufe einlesen. Original öffnen und alle erkannten Angaben vergleichen; Person, Anstellung, Zeitraum, Fall und Umfang ausdrücklich prüfen.
+3. Fehlende Angaben ergänzen; leere Antworten nicht als «Nein» behandeln. Vorjahresziele nicht als aktuelle Kompetenzbesprechung zählen.
+4. Übernehmen und Fallprüfung öffnen. Unterschriften bestätigen; lokale Dossierübergabe und Original-Zugriff prüfen.
+5. Scanpflicht-Fall testen: vor Scan keine endgültige Ablage; nach geprüftem Scan korrekte Übergabedatei.
+6. Dublette, korrigierte Version vor Freigabe und Ersatzversuch nach Freigabe testen. Bereits bereitgestellte Belege dürfen nicht automatisch ersetzt werden.
+7. Nur Rückblick nicht durchgeführt, nur Ausblick nicht durchgeführt und beide nicht durchgeführt testen. Anderer Pflichtteil bleibt gegebenenfalls offen.
+8. Nachgereichten Ausblick als Zielquelle übernehmen; erneute Word-Ausgabe prüfen.
+9. Testmail mit nur MD-Anlagen sowie gemischten Anlagen einlesen. Word-PDFs müssen zunächst in die Prüfwarteschlange gelangen; Mailprüfung ist von Ablagefreigabe getrennt.
 
-```powershell
-python import_legacy_forms.py "K:\Pfad\zu\den\Formularen" `
-  --goal-year 2026 `
-  --report "K:\Geschuetzter_Pfad\MD_Vorjahresimport_Vorschau.json"
-```
+## 6. Abschluss und Export
 
-`--goal-year` bezeichnet das Jahr, für das die im Ausblick vereinbarten Ziele
-gelten. Die Vorschau verändert die Datenbank nicht. Der Detailbericht enthält
-Dateinamen und Personalnummern und muss daher geschützt abgelegt werden.
+Auswertungen einschliesslich offener Antworten und Zeichenanzahlen prüfen.
+Vollständigen Fall als SAP-Batch exportieren; erneuter Export darf ihn nicht erneut
+aufnehmen. Bestehenden Batch erneut herunterladen. SAP-Import und Dossier-RPA mit
+den zuständigen Stellen kontrollieren. Der Export wartet derzeit auf den gesamten
+Fall, gegebenenfalls inklusive Ausblick. Durchlauf schliessen und begründete
+Nachbearbeitung testen.
 
-Wichtige Statuswerte:
+## Abnahmeprotokoll
 
-| Status | Bedeutung und Handlung |
-|---|---|
-| `matched` | Person und Anstellung sind eindeutig; Import ist möglich. |
-| `already_imported` | Identischer Dateiinhalt wurde bereits übernommen. |
-| `duplicate_in_batch` | Identischer Dateiinhalt kommt im aktuellen Ordner mehrfach vor; nur die erste Datei wird berücksichtigt. |
-| `ambiguous_assignment` | Mehrere aktive Anstellungen, aber keine Anstellungsnummer im Formular; manuell klären. |
-| `assignment_not_found` | Formular und aktueller SAP-Stand enthalten unterschiedliche Anstellungsnummern. |
-| `person_not_active` | Personalnummer ist im aktuellen SAP-Stand nicht aktiv. |
-| `missing_person_number` | Keine auswertbare Personalnummer im Formular. |
-| `no_goals` | Ausblickformular enthält keine erkannten ausgefüllten Ziele. |
-| `not_outlook` | Datei wurde nicht als Ausblick erkannt. |
-| `read_error` | Datei ist kein lesbares Word-Open-XML-Dokument. |
-
-Nach fachlicher Kontrolle und einem Backup denselben Befehl mit `--apply`
-ausführen:
-
-```powershell
-python import_legacy_forms.py "K:\Pfad\zu\den\Formularen" `
-  --goal-year 2026 `
-  --report "K:\Geschuetzter_Pfad\MD_Vorjahresimport_Ergebnis.json" `
-  --apply
-```
-
-Der Import ist fehlertolerant: Nur Dateien mit Status `matched` werden
-übernommen. Dubletten, Rückblicke, leere beziehungsweise nicht auslesbare
-Formulare sowie nicht eindeutig zuordenbare Fälle werden im Bericht ausgewiesen
-und automatisch übersprungen. Identische Kopien müssen nicht vorgängig manuell
-bereinigt werden.
-
-Der Import übernimmt Leistungs- und Entwicklungsziele, Messkriterien, Schritte,
-Termine und die zugehörige Kompetenz. Er ist anhand der Datei-Prüfsumme
-idempotent. Bei der Erzeugung der neuen Arbeitsmappe erscheinen diese Angaben als
-unveränderte Quelleninformation für den Rückblick.
-
-## 4. Stichproben in der Arbeitsmappe
-
-Mindestens folgende Konstellationen prüfen:
-
-- regulärer Fall mit Vorjahreszielen,
-- Person ohne Vorjahresformular,
-- mehrere Leistungsziele,
-- mindestens ein Entwicklungsziel mit Kompetenz,
-- Neueintritt und Probezeitfall,
-- interne Veränderung oder Mehrfachanstellung,
-- sehr lange Texte gemäss P95 der Textfeldanalyse,
-- Speichern, erneutes Öffnen sowie Rückblick- und Ausblick-PDF.
-
-Der aus den SAP-Stammdaten abgeleitete Mindestumfang muss bei einer neu
-erzeugten START-Datei bereits ausgewählt sein. Vorjahresziele sind optionale
-Gesprächsgrundlagen und dürfen den Abschluss nicht blockieren. Bei mehreren
-Nebenbeschäftigungen beziehungsweise Bewilligungen müssen alle Einträge der
-betreffenden Anstellung in den Grundlagen erscheinen.
-
-## 5. Outlook und Rücklauf
-
-Postfach-Anzeigename und HR-Absenderadresse sind getrennt in
-`instance/organisation.json` zu konfigurieren. Alternativ gelten
-`MD_OUTLOOK_MAILBOX` und `MD_HR_MAILBOX_EMAIL`. Es sind keine produktiven
-Postfachdaten im Code vorbelegt.
-
-1. START- und Update-Dateien zunächst an ein internes Testkonto adressieren.
-2. Direktversand zunächst an interne Testkonten prüfen: Absender, Empfänger,
-   Anhang, E-Mailtext und S/MIME-Markierung.
-3. Zusätzlich die weiterhin verfügbare Erstellung bearbeitbarer Entwürfe testen.
-4. Rücklauf mit einem Standard-PDF, D/E-/Uneinigkeitsfall und einer zusätzlichen
-   Fremdbeilage testen.
-5. Prüfen, dass ein wiederholter Postfachscan keine Dubletten erzeugt.
-6. Reine, erfolgreich verarbeitete MD-Mails müssen automatisch nach
-   `12 Mitarbeitenden-Dialog` verschoben werden. Gemischte Mails bleiben bis zur
-   manuellen Bestätigung im Posteingang; Fremdanlagen werden nicht gespeichert.
-7. Standard-PDFs müssen direkt im Roboter-Input erscheinen. Bei D/E oder
-   Uneinigkeit darf nur der fehlende handschriftliche Scan offen bleiben.
-
-## 6. Backup und Restore
-
-Den Restore ausschliesslich mit einer Testkopie durchführen:
-
-1. Einen klar erkennbaren Testfall anlegen und Backup erstellen.
-2. Den Testfall verändern.
-3. Backup über **Administration** wiederherstellen.
-4. Neuanmeldung, Datenstand, Prozessdateien und Dossier-Übergabe prüfen.
-5. Resultat und Dauer im Betriebsjournal festhalten.
-
-## 7. Testergebnis festhalten
-
-Für jede Abweichung mindestens Bildschirm, betroffene Personalnummer,
-Anstellungsnummer, erwartetes Ergebnis und tatsächliches Ergebnis notieren. Keine
-produktiven Dateien oder Personendaten in GitHub oder ungeschützte Kanäle laden.
-
-
-## Word-Versand (Plan B)
-
-1. Die drei lokalen Vorlagen sowie Organisationswerte konfigurieren.
-2. Im Testdurchlauf zwei Führungskräfte auswählen und Word-Pakete erzeugen.
-   Das Sammel-ZIP bleibt bei HR; jeder Outlook-Anhang enthält nur die Formulare
-   der jeweiligen Führungskraft.
-3. Zunächst Entwürfe für freigegebene interne Testempfänger erzeugen und
-   Absender, Empfänger, Anhänge, Text und S/MIME kontrollieren. Der Status bleibt
-   «Entwurf erstellt», bis der tatsächliche Versand bestätigt wird.
-4. Einen Entwurf in Outlook löschen und im Cockpit als verworfen markieren.
-   Danach eine neue Ausgabe erzeugen. Kein automatisches Löschen oder Ersetzen
-   in Outlook erwarten.
-5. Nachträglich ein Vorjahresziel importieren: eine zuvor nur erzeugte Ausgabe
-   muss als nicht mehr aktuell gesperrt sein. Neu erzeugen und Ziel prüfen.
-6. Einen Fehlerfall testen und vor Wiederholung prüfen, ob Outlook die Nachricht
-   trotz Fehlermeldung angelegt oder gesendet hat. Keine automatische Wiederholung.
-7. Anschliessend Direktversand nur an freigegebene Testempfänger prüfen und den
-   tatsächlichen Eingang sowie die S/MIME-Verschlüsselung kontrollieren.
-
-
-## Word-PDF-Prüfung: Nichtdurchführung und Zusatzangaben
-
-1. Rückblick mit «Nein» und Begründung einlesen: Datum, Bewertung und Scan-Anforderung
-   leer lassen. Nur der Rückblick muss abgeschlossen sein; der Ausblick bleibt offen.
-2. Ausblick mit «Nein» ergänzen: Der Fall wird «Kein MD», ohne neue Zielquelle oder
-   SAP-Beurteilung. Alternativ einen durchgeführten Ausblick übernehmen und dessen
-   normale Unterschriften-/Ablageprüfung abschliessen; auch dann kein SAP-Rückblick.
-3. Eine Nichtdurchführung zu einem bestehenden Gesprächsdokument einreichen:
-   Der Import muss die widersprüchliche Ersetzung blockieren und das Original erhalten.
-4. Ausgefüllte Rückblick-, Ausblick- und Probezeit-PDFs aus beiden Microsoft-Exportwegen
-   mit dem Original vergleichen: Ja/Nein/offen, allgemeine Bemerkungen, Leistung,
-   Kommentare, Bewilligungspräzisierung und Laufbahnkommentar. Nicht erkannte Felder
-   ergänzen; bestätigte leere Felder ausdrücklich markieren. Auch Zeilenumbrüche,
-   Aufzählungen und über Seiten getrennte Fragen prüfen.
-5. Unter Auswertungen die Formularangaben exportieren: «Nein» bei Bewilligungen als
-   Klärungsbedarf, fehlende Antworten als offen, leeres geprüftes Textfeld als 0,
-   unbekanntes Textfeld leer. CSV darf keine eingegebenen Freitexte enthalten.
+Je Schritt Erwartung, Ergebnis, Dokumentbeispiel und Fehler festhalten. Browser,
+Word-Version, Exportweg und Outlook-Version notieren. Offene Grenzen und bekannte
+Befunde stehen in [ABLAUFPRUEFUNG_WORD_PDF.md](ABLAUFPRUEFUNG_WORD_PDF.md).

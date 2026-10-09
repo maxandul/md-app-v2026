@@ -34,7 +34,7 @@ class OrganisationTest(unittest.TestCase):
 
     def test_invalid_links_unknown_keys_and_non_string_are_rejected(self):
         for values in ({'SPECIAL_CASES_URL':'javascript:alert(1)'},{'SPECIAL_CASES_URL':'https://user:secret@example.invalid'},
-                       {'HR_MAILBOX_EMAIL':'bad\n@example.invalid'},{'unknown':'value'},{'OUTLOOK_MAILBOX_NAME':5}):
+                       {'HR_MAILBOX_EMAIL':'bad\n@example.invalid'},{'unknown':'value'},{'OUTLOOK_MAILBOX_NAME':5},{'PUBLIC_BASE_URL':'javascript:alert(1)'},{'PUBLIC_BASE_URL':'https://user:password@example.invalid'},{'PUBLIC_BASE_URL':'http://example.invalid:bad'},{'LEGACY_WORKBOOKS':'yes'}):
             with self.subTest(values=values):
                 self.write(values)
                 with self.assertRaises(ValueError):

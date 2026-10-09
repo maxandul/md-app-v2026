@@ -410,7 +410,7 @@ def dispatch():
             sender_email=current_app.config["HR_MAILBOX_EMAIL"],
         )
     return render_template(
-        "dispatch_legacy.html" if request.args.get('workflow')=='workbook' else "dispatch.html",
+        "dispatch_legacy.html" if request.args.get('workflow')=='workbook' and current_app.config.get('LEGACY_WORKBOOKS')=='enabled' else "dispatch.html",
         active_nav="dispatch", managers=managers,
         word_candidates=word_dispatch_candidates(get_db(),cycle_id=data['selected_cycle']['id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if data['selected_cycle'] else [],
         word_templates=word_template_status(current_app.config['WORD_TEMPLATE_PATHS']),
@@ -480,8 +480,16 @@ def analytics():
 @bp.get("/administration")
 @system_admin_required
 def administration():
+    import socket
+    hostname = socket.gethostname()
+    port = current_app.config.get('SERVER_BIND_PORT')
     return render_template(
         "administration.html", active_nav="administration",
+        server_hostname=hostname,
+        public_base_url=current_app.config.get('PUBLIC_BASE_URL',''),
+        server_bind_host=current_app.config.get('SERVER_BIND_HOST','Nicht vom Starter gemeldet'),
+        server_bind_port=port,
+        hostname_url=('http://' + hostname + ':' + str(port)) if port else '',
         audit_entries=audit_rows(get_db()), backups=list_backups(_backup_root()),
     )
 
@@ -716,6 +724,7 @@ def cycle_detail(cycle_id: int):
         manager_rows.append(item)
     return render_template(
         "cycle.html", cycle=cycle, managers=manager_rows,
+        word_status={item['manager_pn']: item for item in word_dispatch_candidates(get_db(),cycle_id=cycle_id,template_paths=current_app.config['WORD_TEMPLATE_PATHS'])},
         export_batches=sap_export_batches(get_db(), cycle_id=cycle_id),
         cycle_status_labels=CYCLE_STATUS_LABELS,
         active_nav="dialogs"

@@ -88,4 +88,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         )
         return response
 
+    @app.context_processor
+    def workflow_visibility():
+        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled'}
+
     return app

@@ -3,6 +3,14 @@
 {% block content %}
   <section class="page-head page-head--compact"><p class="kicker">Systemadministration</p><h1>Betrieb und Audit</h1><p class="lead">Benutzerkonten, revisionsfähige Aktionen sowie geprüfte Datensicherungen verwalten.</p><a class="button" href="{{ url_for('auth.users') }}">Benutzerkonten verwalten</a></section>
 
+  <section class="content-card"><h2>Server und Zugriffsadresse</h2>
+  <dl><dt>Rechnername des Servers</dt><dd><code>{{ server_hostname }}</code></dd>
+  <dt>Bind-Adresse / Port</dt><dd>{{ server_bind_host }} / {{ server_bind_port or 'Nicht vom Starter gemeldet' }}</dd>
+  <dt>Konfigurierter Link für HR-Administrationen</dt><dd>{% if public_base_url %}<a href="{{ public_base_url }}">{{ public_base_url }}</a>{% else %}Noch nicht hinterlegt{% endif %}</dd></dl>
+  {% if hostname_url %}<p>Vorschlag anhand des Rechnernamens (Erreichbarkeit nicht geprüft): <code>{{ hostname_url }}</code></p>{% endif %}
+  <p>Hinterlege den vereinbarten Link als <code>PUBLIC_BASE_URL</code> in <code>instance/organisation.json</code> oder über <code>MD_PUBLIC_BASE_URL</code> und starte die App neu. Vor dem Verteilen auf einem anderen HR-PC testen. Ein vollständiger DNS-Name oder ein von der IT gepflegter Alias ist vorzuziehen.</p>
+  <p>Der Link ändert weder die Serverbindung noch DNS oder Firewall. Bei Bindung an 127.0.0.1 ist nur lokaler Zugriff möglich; bei Bindung an eine einzelne IP muss auch diese nach einem IP-Wechsel angepasst werden.</p>
+  </section>
   <section class="split-layout">
     <div class="content-card"><p class="kicker">Datensicherung</p><h2>Prozessdaten sichern</h2><p>Erstellt eine konsistente Datenbankkopie zusammen mit Prozessdateien und Dossier-Übergabe. Word-Vorlagen und lokale Konfigurationsdateien sind nicht enthalten und müssen zusätzlich gesichert werden. Das ZIP enthält ein SHA-256-Manifest und ist gleichwertig wie die Originaldaten zu schützen.</p><form action="{{ url_for('main.create_backup') }}" method="post"><button class="button button--primary" type="submit">Backup erstellen und herunterladen</button></form></div>
     <aside class="info-box"><h2>Restore-Schutz</h2><p>Vor jeder Wiederherstellung entsteht automatisch ein Sicherheitsbackup des aktuellen Zustands. Danach werden Archivpfade, Prüfsummen und Datenbankintegrität geprüft.</p></aside>

@@ -15,6 +15,23 @@ Der Serverlink steht unter Administration. Ein geprüfter Rechner-/DNS-Name kann
 als `PUBLIC_BASE_URL` hinterlegt werden; die IT muss Namensauflösung und Zugriffe
 einrichten. Die Angabe allein macht den Server nicht im Netzwerk erreichbar.
 
+## Dateien, Postfach und Ablage prüfen
+
+Unter «Geladene Konfiguration und Ablageorte» siehst du, welche Organisationsdatei
+beim Start gelesen wurde. Standard ist `instance/organisation.json`; nach jeder
+Änderung Server neu starten. `SPECIAL_CASES_URL` ist ein optionaler Link zu den
+Spezialfallregeln und darf leer bleiben.
+
+Jedes Führungskräftepaket enthält nun eine Reflexionsvorlage und eine Feedbackvorlage
+zur Weiterleitung an Mitarbeitende. Das Feedback enthält bereits Name und
+Personalnummer der Führungskraft. `NameMA` im Dateinamen ersetzen die Mitarbeitenden.
+
+Word-Pakete werden direkt auf dem Server gespeichert; Outlook greift darauf zu.
+Ein Download ist nur eine zusätzliche Kopie. ZIP-Dateien nicht nach `dossier_ready`
+kopieren: Hier stellt die App die geprüften Rücklauf-PDFs automatisch bereit.
+`data/dossier_ready` in der Organisationsdatei verweist auf einen Unterordner der
+Dateiablage `instance`, nicht auf einen Ordner im Projektverzeichnis.
+
 ## Welche Arbeit ist als Nächstes nötig?
 
 **Arbeitsliste** zeigt alle ermittelten Aufgaben des gewählten Durchlaufs. PDF-Eingang,
@@ -84,7 +101,7 @@ nachträglich verändert.
 
 ## Umfang der Prüfung
 
-Die gesamte automatisierte Suite umfasst 119 erfolgreiche Tests. HTTP- und Diensttests decken die neuen Arbeitswege, Parallelbearbeitung,
+Die gesamte automatisierte Suite umfasst 123 erfolgreiche Tests (Stand 10. Oktober 2026). HTTP- und Diensttests decken die neuen Arbeitswege, Parallelbearbeitung,
 Warteschlangen über 100 Dateien, Quellenänderungen, Aufhebung/Zuordnung, Nachzügler,
 Erinnerungen, Abschluss und unterbrochene Vorgänge mit synthetischen Daten ab.
 Outlook wird in diesen Tests simuliert; es werden keine echten Nachrichten versendet.

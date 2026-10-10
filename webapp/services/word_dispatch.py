@@ -13,7 +13,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from webapp.adapters.outlook import OutlookDraftAdapter
 from .packages import _secondary_employment_text
-from .word_packages import create_word_package, prior_goals
+from .word_packages import create_word_package, prior_goals, preparation_templates
 
 
 def _stamp():
@@ -54,6 +54,10 @@ def source_fingerprint(connection, *, cycle_id, manager_pn, template_paths):
         path = template_paths.get(kind)
         if not path or not Path(path).is_file():
             raise ValueError(f'Word-Vorlage «{kind}» fehlt in der lokalen Konfiguration.')
+        snapshot['templates'][kind] = _hash(path)
+    for kind,path in preparation_templates(template_paths).items():
+        if not path.is_file():
+            raise ValueError(f'Beilage «{kind}» fehlt. Vorlagenkonfiguration prüfen.')
         snapshot['templates'][kind] = _hash(path)
     numbers = [manager_pn, *(row['employee_pn'] for row in cases)]
     conflicts = connection.execute(f"SELECT COUNT(*) FROM sap_import_issues WHERE sap_import_id=? AND status='open' AND severity='blocking' AND person_number IN ({','.join('?' for _ in numbers)})", (cycle['sap_import_id'],*numbers)).fetchone()[0]
@@ -119,6 +123,7 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         item = dict(row)
         item['filename'] = Path(row['stored_path']).name
         item['document_count'] = len(json.loads(row['manifest_json'])['documents'])
+        item['attachment_count'] = len(json.loads(row['manifest_json']).get('attachments',[]))
         try:
             if not Path(row['stored_path']).is_file() or _hash(row['stored_path'])!=row['sha256']:
                 raise ValueError('Die Versanddatei fehlt oder wurde verändert. Bitte neu erzeugen.')
@@ -140,7 +145,7 @@ def word_message(row, *, sender_email, subject_template='', body_template=''):
               'review_due':row['review_due_date'] or 'noch nicht festgelegt',
               'outlook_due':row['outlook_due_date'] or 'noch nicht festgelegt',
               'sender_email':sender_email,
-              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden als ZIP. Entpacke die Dateien und bearbeite sie in Word.'}
+              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden als ZIP. Entpacke die Dateien und bearbeite sie in Word. Die Reflexionsvorlage und die Feedbackvorlage mit deinen Stammdaten kannst du zur Vorbereitung an deine Mitarbeitenden weiterleiten. NameMA im Feedback-Dateinamen ist durch den Namen der mitarbeitenden Person zu ersetzen.'}
     default_body = '''Guten Tag {manager_name}
 
 {introduction}

@@ -12,16 +12,22 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from .packages import _filename_part, _secondary_employment_text, bounded_review_period
-from .word_templates import render_word_form
+from .word_templates import render_word_form, render_feedback_form
+
+
+def preparation_templates(paths):
+    bundled = Path(__file__).resolve().parents[2] / 'templates' / 'preparation'
+    return {kind: Path(paths.get(kind) or bundled / filename) for kind, filename in
+            [('reflection', 'MD_Reflexion.docx'), ('feedback', 'MD_Feedback.docx')]}
 
 
 def load_word_config(path: Path) -> dict[str, str]:
     if not path.exists():
         return {}
     try:
-        content = json.loads(path.read_text(encoding="utf-8"))
+        content = json.loads(path.read_text(encoding="utf-8-sig"))
         templates = content["templates"]
-        if not isinstance(templates, dict) or set(templates) - {"review", "outlook", "probation"}:
+        if not isinstance(templates, dict) or set(templates) - {"review", "outlook", "probation", "reflection", "feedback"}:
             raise ValueError("Unbekannte Vorlagenart")
         result = {}
         for key, value in templates.items():
@@ -195,6 +201,19 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                         "period_start": start, "period_end": end, "sha256": hashlib.sha256(document).hexdigest(),
                         "template_sha256": hashlib.sha256(Path(template_path).read_bytes()).hexdigest(),
                         "goal_source": source, "performance_goals": len(performance), "development_goals": len(development)})
+            if manifest["documents"]:
+                manifest['attachments'] = []
+                for kind, template in preparation_templates(template_paths).items():
+                    if not template.is_file():
+                        raise ValueError(f'Die Beilage «{kind}» fehlt. Vorlage unter templates/preparation prüfen oder in instance/word_config.json konfigurieren.')
+                    raw = template.read_bytes()
+                    if kind == 'feedback':
+                        raw = render_feedback_form(template, manager_name=f"{manager['first_name']} {manager['last_name']}".strip(), manager_pn=manager_pn)
+                        name = f"NameMA_Feedback_an_{_filename_part(manager['last_name'])}_{_filename_part(manager['first_name'])}_{_filename_part(manager_pn)}.docx"
+                    else:
+                        name = 'MD_Reflexion.docx'
+                    bundle.writestr(name, raw)
+                    manifest['attachments'].append({'kind':kind, 'filename':name, 'sha256':hashlib.sha256(raw).hexdigest(), 'template_sha256':hashlib.sha256(template.read_bytes()).hexdigest()})
         if not manifest["documents"]:
             raise ValueError("Für die Auswahl sind keine Rückblick- oder Ausblickvorlagen vorgesehen.")
         manifest["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()

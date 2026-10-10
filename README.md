@@ -25,6 +25,7 @@ Im Cockpit führen **Hilfe → Einrichtung** durch den Erststart und **Arbeitsli
 
 - SAP-Stammdaten importieren, Zuordnungskonflikte prüfen und Durchlauf eröffnen.
 - Personalisierte Word-Vorlagen einzeln oder als Führungslinien-/Sammelpakete erzeugen.
+- Pro Führungskraft eine Reflexionsvorlage und eine mit ihren Stammdaten befüllte Feedbackvorlage zur Weiterleitung beilegen.
 - Eigene ZIP-Anhänge je Führungskraft über klassisches Outlook bereitstellen; Entwurf und Versand getrennt nachhalten.
 - Word-PDFs einlesen, am Original prüfen und dem Fall zuordnen.
 - Unterschriften und erforderliche Scans prüfen, danach Dossierübergabe bereitstellen.

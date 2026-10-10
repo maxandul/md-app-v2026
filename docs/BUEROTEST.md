@@ -80,3 +80,12 @@ Befunde stehen in [ABLAUFPRUEFUNG_WORD_PDF.md](ABLAUFPRUEFUNG_WORD_PDF.md).
 12. Abschluss ohne externe Prüfung ablehnen; bei Restfällen Grund und zuständige Person verlangen. Folgejahr eröffnen und Zielübernahme prüfen.
 
 Aktuelle Anleitung und verbleibende Grenzen: [HR_BETREUUNG.md](HR_BETREUUNG.md).
+
+
+## Beilagen und Konfigurationsdiagnose (10. Oktober 2026)
+
+- Zwei Führungskräfte vorbereiten: jedes Paket enthält Reflexion unverändert und genau eine Feedbackvorlage mit den Stammdaten der jeweils richtigen Führungskraft. Mitarbeitendenname und Antworten bleiben offen. Dateiname beginnt mit `NameMA_Feedback_an_` und endet mit der Personalnummer der Führungskraft.
+- Feedback in Word öffnen: Formularlayout, Befüllung und Bearbeitbarkeit der übrigen Felder prüfen.
+- Unter «Geladene Konfiguration und Ablageorte» tatsächliche JSON-Datei, HR-Absender, Outlook-Postfach und vollständigen Dossierpfad vergleichen. Änderungen erfordern einen Neustart.
+- Pakete ohne Download in Outlook bereitstellen. ZIP liegt bereits im serverseitigen Versandordner; im Dossierordner darf dadurch kein ZIP erscheinen.
+- Nach PDF-Freigabe automatische Bereitstellung im angezeigten Dossierordner prüfen.

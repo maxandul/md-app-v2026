@@ -53,16 +53,27 @@ def validate_organisation(values):
 
 
 def load_organisation(path=None):
-    path = Path(path or os.environ.get('MD_ORG_CONFIG') or Path(__file__).resolve().parents[1]/'instance'/'organisation.json')
+    explicit = path or os.environ.get('MD_ORG_CONFIG')
+    path = Path(explicit or Path(__file__).resolve().parents[1]/'instance'/'organisation.json').expanduser().resolve()
+    aliases = ('organisation_config.json', 'organisatio_config.json')
+    notice = ''
+    if not explicit:
+        found = [candidate for candidate in [path, *(path.parent/name for name in aliases)] if candidate.is_file()]
+        if len(found) > 1:
+            raise ValueError('Mehrere Organisationskonfigurationen gefunden: '+', '.join(str(p) for p in found)+'. Bitte nur die gewünschte Datei als organisation.json behalten; die übrigen umbenennen oder MD_ORG_CONFIG ausdrücklich setzen.')
+        if found:
+            path = found[0]
+            if path.name != 'organisation.json':
+                notice = f'Die Datei {path.name} wird gelesen. Empfohlener Name: organisation.json. Nach Umbenennung Server neu starten.'
     values = dict(DEFAULTS)
     if path.exists():
         try:
-            configured = json.loads(path.read_text(encoding='utf-8'))
+            configured = json.loads(path.read_text(encoding='utf-8-sig'))
             if not isinstance(configured,dict) or set(configured)-set(DEFAULTS):
                 raise ValueError('Unbekannter Konfigurationsschlüssel')
             values.update(configured)
         except (OSError,ValueError,TypeError) as exc:
-            raise ValueError('Die lokale Organisationskonfiguration ist nicht lesbar oder enthält unbekannte Schlüssel.') from exc
+            raise ValueError(f'Die Organisationskonfiguration {path} ist nicht lesbar oder enthält unbekannte Schlüssel. Gültiges JSON ohne zusätzliche Backslashes verwenden.') from exc
         if values['DOSSIER_HANDOFF_ROOT'] and not Path(values['DOSSIER_HANDOFF_ROOT']).is_absolute():
             # Windows-Laufwerk-/UNC-Pfade auch beim Prüfen auf Linux nicht umdeuten.
             value = values['DOSSIER_HANDOFF_ROOT']
@@ -74,6 +85,10 @@ def load_organisation(path=None):
     if 'MD_ROBOT_INPUT_ROOT' in os.environ:
         values['DOSSIER_HANDOFF_ROOT'] = os.environ['MD_ROBOT_INPUT_ROOT']
     validate_organisation(values)
+    values['_ORG_CONFIG_PATH'] = str(path)
+    values['_ORG_CONFIG_LOADED'] = path.is_file()
+    values['_ORG_CONFIG_NOTICE'] = notice
+    values['_ORG_ENV_OVERRIDES'] = [name for name in [*ENVIRONMENT.values(), 'MD_ROBOT_INPUT_ROOT'] if name in os.environ]
     return values
 
 

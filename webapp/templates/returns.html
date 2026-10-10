@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Rückläufe · MD-Verwaltung{% endblock %}
 {% block content %}
+
   <section class="page-head page-head--overview">
     <div><p class="kicker">Rückläufe</p><h1>PDFs prüfen und verarbeiten</h1><p class="lead">Eingegangene MD-Dokumente zuordnen, prüfen und für die Personaldossier-Ablage bereitstellen.</p></div>
     {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
   </section>
+{% include '_configuration_status.html' %}
+
 
   <section class="content-card">
     <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs einlesen</h2>
@@ -30,7 +33,7 @@
       </form>
     </div>
     {% endif %}<aside class="info-box">
-      <h2>Postfachbearbeitung</h2>
+      <h2>Postfachbearbeitung</h2>{% if not config.OUTLOOK_MAILBOX_NAME %}<p class="issue-text">Das Outlook-Postfach ist noch nicht konfiguriert. Oben «Geladene Konfiguration und Ablageorte» öffnen, Datei und OUTLOOK_MAILBOX_NAME prüfen und danach den Server neu starten.</p>{% endif %}
       <p>Mails ohne MD-Bezug werden ignoriert. Word-PDFs landen zuerst in der Prüfwarteschlange; ihre Fallzuordnung und Ablage werden hier manuell bestätigt. Reine, erfolgreich verarbeitete MD-Mails werden in den konfigurierten Outlook-Zielordner verschoben. Gemischte Mails bleiben zur Prüfung sichtbar.</p>
       <form action="{{ url_for('main.scan_mail_inbox') }}" method="post"><button class="button" type="submit">Outlook-Postfach jetzt prüfen</button></form>
     </aside>

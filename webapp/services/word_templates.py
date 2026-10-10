@@ -204,3 +204,11 @@ def render_word_form(template_path: Path, *, kind: str, fields: dict, performanc
         for tag, name in COMPETENCY_TAGS.items():
             template.goals([f"rb_{tag}_vorjahr_{suffix}_1" for suffix in ("ziel", "kriterien", "schritte", "termin")], by_competency[name])
     return template.to_bytes()
+
+
+def render_feedback_form(template_path: Path, *, manager_name: str, manager_pn: str) -> bytes:
+    """Eine weiterleitbare Vorlage je Führungskraft; MA und Antworten bleiben leer."""
+    template = WordTemplate(template_path)
+    template.fill('fb_name_vg', manager_name)
+    template.fill('fb_pn_vg', manager_pn)
+    return template.to_bytes()

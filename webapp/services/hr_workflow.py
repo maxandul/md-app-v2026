@@ -69,6 +69,9 @@ def setup_checks(config,db):
     for kind,name in [('review','Rückblick'),('outlook','Ausblick'),('probation','Probezeit')]:
         ready=bool(templates.get(kind) and Path(templates[kind]).is_file())
         items.append((name+'-Vorlage vorhanden',ready,'Vorlagendatei und Pfad in instance/word_config.json hinterlegen.'))
+    from .word_packages import preparation_templates
+    for kind,path in preparation_templates(templates).items():
+        items.append((('Reflexionsvorlage' if kind=='reflection' else 'Feedbackvorlage')+' vorhanden',path.is_file(),'Dateien unter templates/preparation prüfen; eigene Pfade optional in instance/word_config.json hinterlegen.'))
     for key,name,hint in [('HR_MAILBOX_EMAIL','HR-Absender hinterlegt','HR_MAILBOX_EMAIL in instance/organisation.json ergänzen.'),('OUTLOOK_MAILBOX_NAME','Outlook-Postfach hinterlegt','OUTLOOK_MAILBOX_NAME mit Systemadministration prüfen.')]:
         items.append((name,bool(config.get(key)),hint))
     items.append(('Dossierordner vorhanden',Path(config['DOSSIER_HANDOFF_ROOT']).is_dir(),'Dossierpfad mit Systemadministration prüfen; Schreibzugriff und RPA separat testen.'))

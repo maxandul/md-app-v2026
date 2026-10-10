@@ -208,3 +208,43 @@ werden beim App-Start ergänzt; bestehende Fachdaten bleiben erhalten.
 
 Bedienung, Grenzen und Zuständigkeiten: [HR_BETREUUNG.md](HR_BETREUUNG.md).
 Die Anwendung bestätigt weder SAP-Import noch Dossier-RPA-Verarbeitung automatisch.
+
+
+## Beilagen und Konfiguration (10. Oktober 2026)
+
+Jedes Word-Paket enthält zusätzlich genau eine `MD_Reflexion.docx` und eine
+`NameMA_Feedback_an_{NachnameVG}_{VornameVG}_{PersonalnummerVG}.docx`.
+Die Feedbackvorlage ist mit Name und Personalnummer der empfangenden Führungskraft
+gefüllt. Mitarbeitendenname, Gesprächsdatum und Antworten bleiben zur Bearbeitung
+offen. `NameMA` ist der Platzhalter, den Mitarbeitende beim Speichern ersetzen.
+Die Führungskraft kann beide Vorlagen zur Vorbereitung weiterleiten.
+
+Die bereitgestellten leeren Vorlagen werden unter `templates/preparation/`
+mitgeliefert. Für eigene Varianten können unter `templates` in
+`instance/word_config.json` zusätzlich die Schlüssel `reflection` und `feedback`
+mit lokalen Dateipfaden gesetzt werden. Beim Feedback werden die Inhaltssteuerelemente
+`fb_name_vg` und `fb_pn_vg` benötigt. Die anderen Felder bleiben erhalten.
+Fehlende/defekte Beilagen brechen die gesamte Paketerzeugung ab. Änderungen an den
+Beilagen machen bereits vorbereitete Versandpakete veraltet; diese neu erzeugen.
+
+Unter «Geladene Konfiguration und Ablageorte» auf Versand, Rückläufe, Einrichtung
+und Administration stehen der tatsächlich gelesene Pfad und die wirksamen Werte.
+Standarddatei ist `instance/organisation.json`; ersatzweise werden
+`organisation_config.json` und `organisatio_config.json` erkannt. Bei mehreren
+Dateien wird der Start mit einer Klärungsaufforderung abgebrochen. `MD_ORG_CONFIG`
+legt bei Bedarf ausdrücklich eine Datei fest. Änderungen erst nach Serverneustart
+wirksam; mögliche Umgebungsvariablen-Übersteuerungen werden angezeigt. UTF-8 mit
+Windows-BOM wird unterstützt. Keine zusätzliche `.txt`-Endung verwenden.
+
+`SPECIAL_CASES_URL` ist ein optionaler HTTP(S)-Link zu den internen Spezialfallregeln.
+Ein leerer Wert verhindert weder Paketerzeugung noch Outlook-Nutzung.
+
+Word-Versandpakete liegen automatisch unter `instance/data/word_dispatch/`
+(bzw. unter dem konfigurierten Prozessspeicher); einzelne Fallausgaben unter
+`word_packages/`. Outlook verwendet die serverseitigen Dateien. Downloads sind
+zusätzliche Kopien und müssen nicht zurückkopiert werden.
+`DOSSIER_HANDOFF_ROOT` nimmt ausschliesslich freigegebene Rücklauf-PDFs auf.
+Die Einstellung `data/dossier_ready` in `instance/organisation.json` bedeutet
+`instance/data/dossier_ready`, da relative Pfade zur Konfigurationsdatei gehören.
+Dort keine Versand-ZIPs ablegen. Die App stellt die PDFs nach der entsprechenden
+Unterschriften-/Scanfreigabe selbst bereit.

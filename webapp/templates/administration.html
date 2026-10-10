@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Administration · MD-Verwaltung{% endblock %}
 {% block content %}
+
   <section class="page-head page-head--compact"><p class="kicker">Systemadministration</p><h1>Betrieb und Audit</h1><p class="lead">Benutzerkonten, revisionsfähige Aktionen sowie geprüfte Datensicherungen verwalten.</p><a class="button" href="{{ url_for('auth.users') }}">Benutzerkonten verwalten</a></section>
+{% include '_configuration_status.html' %}
+
 
   <section class="content-card"><h2>Server und Zugriffsadresse</h2>
   <dl><dt>Rechnername des Servers</dt><dd><code>{{ server_hostname }}</code></dd>

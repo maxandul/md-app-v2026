@@ -1,0 +1,11 @@
+<details class="content-card"><summary>Geladene Konfiguration und Ablageorte</summary>
+<dl><dt>Organisationsdatei beim Serverstart</dt><dd><code>{{ config.get('_ORG_CONFIG_PATH','instance/organisation.json') }}</code> · {{ 'geladen' if config.get('_ORG_CONFIG_LOADED') else 'nicht gefunden' }}</dd>
+<dt>HR-Absender</dt><dd>{{ config.HR_MAILBOX_EMAIL or 'Nicht konfiguriert' }}</dd><dt>Outlook-Postfach</dt><dd>{{ config.OUTLOOK_MAILBOX_NAME or 'Nicht konfiguriert' }}</dd>
+<dt>Outlook-Zielordner</dt><dd>{{ config.OUTLOOK_TARGET_FOLDER }}</dd>
+<dt>Word-Versandpakete auf dem Server</dt><dd><code>{{ config.STORAGE_ROOT }}/word_dispatch</code></dd>
+<dt>Geprüfte Dossier-PDFs auf dem Server</dt><dd><code>{{ config.DOSSIER_HANDOFF_ROOT }}</code></dd></dl>
+{% if config.get('_ORG_CONFIG_NOTICE') %}<p>{{ config._ORG_CONFIG_NOTICE }}</p>{% endif %}
+{% if config.get('_ORG_ENV_OVERRIDES') %}<p>Umgebungsvariablen überschreiben Dateiangaben: {{ config._ORG_ENV_OVERRIDES|join(', ') }}.</p>{% endif %}
+<p>Nach einer Änderung der JSON-Datei den Server beenden und neu starten. Prüfe bei fehlender Datei auch, ob Windows eine zusätzliche Endung «.txt» angehängt hat.</p>
+<p>Word-Pakete werden automatisch auf dem Server gespeichert und von dort an Outlook übergeben. Herunterladen erzeugt nur eine zusätzliche Kopie. ZIP-Dateien gehören nicht in den Dossierordner; dort stellt die App Rücklauf-PDFs nach Prüfung und Freigabe automatisch bereit.</p>
+<p><code>SPECIAL_CASES_URL</code> ist der optionale HTTP(S)-Link zur internen Anleitung für Spezialfälle wie Eintritt, Übertritt oder Austritt. Leer lassen, wenn kein Link benötigt wird; für Outlook ist er nicht erforderlich.</p></details>

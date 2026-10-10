@@ -144,11 +144,33 @@ class WordPackagesTest(unittest.TestCase):
         self.add_goals()
         self.assertEqual(prior_goals(self.db, employee_pn='111113', assignment='2', year=2025), ([], [], {}))
 
+    def test_preparation_attachments_once_with_manager_data_and_blank_employee(self):
+        from webapp.services.word_packages import preparation_templates
+        path, manifest = self.generate()
+        self.assertEqual(len(manifest['attachments']), 2)
+        manager = self.db.execute("SELECT * FROM employees WHERE pn='111116'").fetchone()
+        with ZipFile(path) as archive:
+            self.assertEqual(archive.read('MD_Reflexion.docx'), preparation_templates({})['reflection'].read_bytes())
+            feedback = next(a for a in manifest['attachments'] if a['kind']=='feedback')
+            self.assertTrue(feedback['filename'].startswith('NameMA_Feedback_an_'))
+            self.assertTrue(feedback['filename'].endswith('_111116.docx'))
+            values = controls(xml_for(archive.read(feedback['filename'])))
+            self.assertEqual(values['fb_name_vg'], f"{manager['first_name']} {manager['last_name']}")
+            self.assertEqual(values['fb_pn_vg'], '111116')
+            self.assertIn('Mitarbeitende/r', values['fb_name_ma'])
+            self.assertNotIn('111113', values['fb_name_ma'])
+
+    def test_broken_feedback_template_removes_incomplete_package(self):
+        self.paths['feedback'] = str(self.root/'missing.docx')
+        with self.assertRaisesRegex(ValueError, 'Beilage'):
+            self.generate()
+        self.assertEqual(list((self.root/'output').iterdir()), [])
+
     def test_route_downloads_zip_and_records_generation(self):
         response = self.app.test_client().post(f'/cycles/{self.cycle_id}/managers/111116/word-package', data={'case_id': self.case_id})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, 'application/zip')
-        self.assertEqual(len(ZipFile(io.BytesIO(response.data)).namelist()), 2)
+        self.assertEqual(len(ZipFile(io.BytesIO(response.data)).namelist()), 4)
         self.assertEqual(self.db.execute("SELECT COUNT(*) FROM audit_log WHERE action='word_package_created'").fetchone()[0], 1)
         response.close()
 

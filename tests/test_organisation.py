@@ -40,6 +40,28 @@ class OrganisationTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     load_organisation()
 
+    def test_windows_utf8_bom_and_missing_config_diagnostics(self):
+        self.assertFalse(load_organisation()['_ORG_CONFIG_LOADED'])
+        self.assertEqual(load_organisation()['_ORG_CONFIG_PATH'],str(self.config))
+        self.config.write_text(json.dumps({'HR_MAILBOX_EMAIL':'hr@example.invalid','OUTLOOK_MAILBOX_NAME':'HR Test'}),encoding='utf-8-sig')
+        values=load_organisation()
+        self.assertTrue(values['_ORG_CONFIG_LOADED'])
+        self.assertEqual(values['OUTLOOK_MAILBOX_NAME'],'HR Test')
+
+    def test_alias_filename_is_loaded_and_ambiguity_rejected(self):
+        directory=self.root/'instance';directory.mkdir()
+        alias=directory/'organisatio_config.json'
+        alias.write_text(json.dumps({'HR_MAILBOX_EMAIL':'hr@example.invalid','OUTLOOK_MAILBOX_NAME':'HR Test','DOSSIER_HANDOFF_ROOT':'data/dossier_ready'}))
+        with patch.dict(os.environ,{},clear=True), patch('webapp.organisation.__file__',str(self.root/'webapp/organisation.py')):
+            values=load_organisation()
+            self.assertEqual(values['OUTLOOK_MAILBOX_NAME'],'HR Test')
+            self.assertEqual(values['_ORG_CONFIG_PATH'],str(alias))
+            self.assertEqual(values['DOSSIER_HANDOFF_ROOT'],str(directory/'data/dossier_ready'))
+            (directory/'organisation.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError,'Mehrere Organisationskonfigurationen'):
+                load_organisation()
+            self.assertEqual(load_organisation(alias)['HR_MAILBOX_EMAIL'],'hr@example.invalid')
+
     def test_html_embeds_configuration_as_json_without_interpolating_script_source(self):
         url='https://intranet.example.invalid/special?x=`${test}</script>'
         self.write({'HR_MAILBOX_EMAIL':'hr@example.invalid','SPECIAL_CASES_URL':url})

@@ -142,7 +142,10 @@ class WordDispatchTest(unittest.TestCase):
             expected={row['case_id'] for row in self.db.execute('SELECT case_id FROM dialog_cases WHERE manager_pn=?',(item['manager_pn'],))}
             self.assertTrue({doc['case_id'] for doc in manifest['documents']}.issubset(expected))
             with ZipFile(call['attachments'][0]) as archive:
-                self.assertEqual(set(archive.namelist()),{doc['filename'] for doc in manifest['documents']})
+                self.assertEqual(set(archive.namelist()),{doc['filename'] for doc in manifest['documents'] + manifest['attachments']})
+                feedback=next(doc for doc in manifest['attachments'] if doc['kind']=='feedback')
+                values=fixtures.controls(fixtures.xml_for(archive.read(feedback['filename'])))
+                self.assertEqual(values['fb_pn_vg'],item['manager_pn'])
 
     def test_open_draft_must_be_resolved_before_new_generation(self):
         self.prepare();item=self.candidates()[0];self.send([item['id']],FakeOutlook())

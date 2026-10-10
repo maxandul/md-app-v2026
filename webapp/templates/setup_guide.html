@@ -1,5 +1,8 @@
 {% extends 'base.html' %}{% block title %}Einrichtung · MD{% endblock %}{% block content %}
+
 <section class="page-head"><h1>Einrichtung und Betriebsbereitschaft</h1><p>Beginne hier, wenn das Cockpit erstmals eingerichtet wird. HR prüft die fachlichen Daten; die Systemadministration richtet Konten, Dateien, Outlook und Ablage ein.</p></section>
+{% include '_configuration_status.html' %}
+
 <section class="content-card"><h2>Automatisch prüfbare Voraussetzungen</h2><p>Die Prüfung zeigt vorhandene Dateien und Einstellungen. Sie bestätigt weder Word-Layout noch Outlook-Zertifikate, Schreibrechte oder externe Verarbeitung.</p>
 <table><thead><tr><th>Voraussetzung</th><th>Stand</th><th>Bei fehlender Einrichtung</th></tr></thead><tbody>{% for name,ready,hint in checks %}<tr><td>{{ name }}</td><td>{{ 'Vorhanden' if ready else 'Noch einzurichten' }}</td><td>{{ hint }}</td></tr>{% endfor %}</tbody></table></section>
 <section class="content-card"><h2>Einmal mit der Systemadministration prüfen</h2><ol><li>Alle drei freigegebenen Word-Vorlagen hinterlegen; ein Testpaket öffnen und Inhalte prüfen.</li><li>In klassischem Outlook einen Testentwurf an ein Testkonto erstellen, Empfänger, Anhang und S/MIME prüfen.</li><li>Test-PDF bis zum vereinbarten Dossierordner übergeben; anschliessende RPA-Verarbeitung separat bestätigen.</li><li>Konten und Stellvertretung einrichten. Bei vergessenem Passwort setzt die Systemadministration ein temporäres Passwort.</li><li>Prozessbackup, Konfiguration und Vorlagen sichern; Wiederherstellung in isolierter Umgebung testen.</li><li>Serverlink auf einem zweiten HR-PC testen, falls Netzwerkbetrieb eingerichtet ist.</li></ol><p>Diese Prüfschritte werden nicht automatisch als bestanden angenommen.</p></section>

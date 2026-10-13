@@ -248,3 +248,31 @@ Die Einstellung `data/dossier_ready` in `instance/organisation.json` bedeutet
 `instance/data/dossier_ready`, da relative Pfade zur Konfigurationsdatei gehören.
 Dort keine Versand-ZIPs ablegen. Die App stellt die PDFs nach der entsprechenden
 Unterschriften-/Scanfreigabe selbst bereit.
+
+## Vorjahresziele aus einem Ordner importieren
+
+Unter **Stammdaten → Vorjahresziele aus Ordner importieren** das Zieljahr angeben
+und einen Ordner oder einzelne Dateien auswählen. Unterordner werden einbezogen;
+unterstützt sind alte und aktuelle DOCX-/DOCM-Ausblicke sowie textbasierte PDFs.
+Die Dateien werden einzeln mit Fortschrittsanzeige übertragen (maximal 20 MB je
+Datei, 5000 Dateien und 1 GB pro Auswahl). Es wird erst nach bestätigter Vorschau
+in die Zieldatentabellen geschrieben.
+
+Die Vorschau zeigt Personalnummer, Anstellung, erkanntes Zieljahr und die vier
+Zielfelder. Vor der Übernahme am Original prüfen. Identische Dateien und
+inhaltlich identische Ziele werden nicht doppelt übernommen. Abweichende Quellen
+für dieselbe Person/Anstellung verlangen eine Auswahl. Bereits gespeicherte
+abweichende Quellen bleiben erhalten; die massgebende Quelle kann anschliessend
+unter «Vorjahresziele und Quellen klären» bestimmt werden.
+
+Ein erkennbar abweichendes Zieljahr wird nicht durch die Eingabe übersteuert.
+Mehrdeutige Anstellungen, Rückblicke, unlesbare Dateien und nicht sicher
+zugeordnete Zielzeilen werden nicht importiert. Bild-PDFs ohne Text benötigen
+Texterkennung oder das ursprüngliche Word-Dokument. Das Verfahren übernimmt die
+Zieltabellen; allgemeine Bemerkungen und ergänzende Freitexte sind keine
+strukturierten Vorjahresziele.
+
+Nach dem Import die Word-Dossiers neu erzeugen. Bestehende Word-Dateien bleiben
+unverändert. Die Funktion erzeugt keine offiziellen Rückläufe und löst keine
+Dossier-/SAP-Übergabe aus. Das Kommandozeilenskript `import_legacy_forms.py` bleibt
+verfügbar und verwendet dieselbe Word-/PDF-Erkennung.

@@ -67,7 +67,21 @@ def page_cells(page):
     def text(value,cm,tm,font,size):
         if value.strip():
             x,y=xy(tm[4],tm[5],cm)
-            runs.append(dict(x=x,y=y,text=value.rstrip('\n'),size=size))
+            run = dict(x=x, y=y, text=value.rstrip('\n'), size=size)
+            # Some Word exports omit spaces between separately positioned runs.
+            # Use embedded simple-font advances, not an average letter width:
+            # arbitrary splitting (e.g. äu + ss + eren) must stay intact.
+            if font and font.get('/Encoding') == '/WinAnsiEncoding' and '/Widths' in font:
+                try:
+                    encoded = run['text'].encode('cp1252')
+                    widths = font['/Widths']
+                    first = int(font.get('/FirstChar', 0))
+                    if all(0 <= code-first < len(widths) for code in encoded):
+                        width = sum(float(widths[code-first]) for code in encoded) * float(size) / 1000
+                        run['end_x'] = x + width * float(cm[0])
+                except (UnicodeEncodeError, TypeError, ValueError):
+                    pass
+            runs.append(run)
     page.extract_text(visitor_operand_before=operand, visitor_text=text)
     # Word zeichnet Zellfläche und Absatzhintergründe mehrfach. Nur äussere
     # Rechtecke behalten; benachbarte Zielzeilen niemals zusammenführen.
@@ -83,7 +97,18 @@ def page_cells(page):
                 grouped.append((run['y'],[run]))
             else:
                 grouped[-1][1].append(run)
-        return [''.join(r['text'] for r in sorted(row,key=lambda r:r['x'])).strip() for _,row in grouped]
+        result = []
+        for _, row in grouped:
+            value = ''
+            previous = None
+            for run in sorted(row, key=lambda r: r['x']):
+                if (previous and value and not value[-1].isspace() and not run['text'][0].isspace()
+                        and 'end_x' in previous and run['x'] - previous['end_x'] > float(previous['size']) * .15):
+                    value += ' '
+                value += run['text']
+                previous = run
+            result.append(value.strip())
+        return result
     for cell in cells:
         selected=[r for r in runs if cell['x0']-.2<=r['x']<cell['x1'] and cell['y0']<=r['y']<=cell['y1']+.2]
         cell['lines']=lines(selected)

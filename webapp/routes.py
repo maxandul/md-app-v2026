@@ -1637,39 +1637,87 @@ def goal_sources():
     return render_template('goal_sources.html',active_nav='master_data',sources=sources,pn=pn,assignment=assignment,year=year,fingerprint=fingerprint,choice=choice,selected_source=selected_source)
 
 
-@bp.route('/alte-ziele',methods=['GET','POST'])
+def _goal_batch_directory(batch_id):
+    import re
+    if not re.fullmatch('[0-9a-f]{32}', batch_id):
+        abort(404)
+    directory = _storage_dir('legacy_preview') / batch_id
+    if not (directory / 'year.json').is_file():
+        abort(404)
+    return directory
+
+
+@bp.route('/alte-ziele', methods=['GET', 'POST'])
 def legacy_goal_upload():
-    if request.method=='POST':
-        year=request.form.get('goal_year',type=int)
-        uploads=[u for u in request.files.getlist('forms') if u.filename]
-        if not year or not 2020<=year<=2100 or not uploads:
-            flash('Bitte Zieljahr und mindestens eine DOCX-Datei wählen.','error')
-        elif any(not u.filename.lower().endswith('.docx') for u in uploads):
-            flash('Hier sind nur DOCX-Dateien vorgesehen. PDF-Ausblicke unter Rückläufe einlesen.','error')
-        else:
-            batch=uuid.uuid4().hex;directory=_storage_dir('legacy_preview')/batch;directory.mkdir()
-            for upload in uploads:upload.save(directory/_stored_name(upload.filename))
-            (directory/'year.json').write_text(json.dumps({'year':year}))
-            return redirect(url_for('main.legacy_goal_preview',batch_id=batch))
-    return render_template('legacy_goal_upload.html',active_nav='master_data')
+    from .services.goal_batches import create_batch, save_upload
+    if request.method == 'POST':
+        try:
+            uploads = [u for u in request.files.getlist('forms') if u.filename]
+            if not uploads:
+                raise ValueError('Bitte mindestens eine Word- oder PDF-Datei wählen.')
+            batch, directory = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
+            for upload in uploads:
+                save_upload(directory, upload)
+            return redirect(url_for('main.legacy_goal_preview', batch_id=batch))
+        except ValueError as exc:
+            flash(str(exc), 'error')
+    return render_template('legacy_goal_upload.html', active_nav='master_data')
 
 
-@bp.route('/alte-ziele/<batch_id>',methods=['GET','POST'])
+@bp.post('/alte-ziele/batches')
+def create_goal_batch():
+    from .services.goal_batches import create_batch
+    try:
+        batch, _ = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
+    except ValueError as exc:
+        return {'error': str(exc)}, 400
+    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch),
+            'preview_url': url_for('main.legacy_goal_preview', batch_id=batch)}
+
+
+@bp.post('/alte-ziele/<batch_id>/files')
+def upload_goal_batch_file(batch_id):
+    from .services.goal_batches import save_upload
+    directory = _goal_batch_directory(batch_id)
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        return {'error': 'Keine Datei erhalten.'}, 400
+    try:
+        file_id = save_upload(directory, upload)
+    except ValueError as exc:
+        return {'error': str(exc)}, 400
+    return {'file_id': file_id}
+
+
+@bp.get('/alte-ziele/<batch_id>/original/<file_id>')
+def download_goal_original(batch_id, file_id):
+    import re
+    if not re.fullmatch('[0-9a-f]{32}', file_id):
+        abort(404)
+    directory = _goal_batch_directory(batch_id) / 'files' / file_id
+    paths = list(directory.glob('*'))
+    if len(paths) != 1 or not paths[0].is_file():
+        abort(404)
+    return send_file(paths[0], as_attachment=True, download_name=paths[0].name)
+
+
+@bp.route('/alte-ziele/<batch_id>', methods=['GET', 'POST'])
 def legacy_goal_preview(batch_id):
-    import re,hashlib
-    from .services.legacy_forms import scan_legacy_forms,import_legacy_forms
-    if not re.fullmatch('[0-9a-f]{32}',batch_id):abort(404)
-    directory=_storage_dir('legacy_preview')/batch_id
-    if not (directory/'year.json').is_file():abort(404)
-    year=json.loads((directory/'year.json').read_text())['year']
-    result=scan_legacy_forms(get_db(),forms_root=directory,goal_year=year)
-    fingerprint=hashlib.sha256(json.dumps([(i['sha256'],i['status'],i['resolved_assignment']) for i in result['items']]).encode()).hexdigest()
-    if request.method=='POST':
-        if request.form.get('checked')!='yes' or request.form.get('fingerprint')!=fingerprint:
-            flash('Bitte die aktuelle Vorschau einschliesslich Zieljahr und Zuordnungen prüfen und bestätigen.','error')
-        else:
-            result=import_legacy_forms(get_db(),forms_root=directory,goal_year=year)
-            audit('legacy_goals_imported','goal_batch',batch_id,year=year,imported=result['imported'])
-            flash(f"{result['imported']} eindeutig zugeordnete Datei(en) importiert. Nicht zuordenbare Dateien wurden nicht übernommen.",'success')
-            return redirect(url_for('main.legacy_goal_preview',batch_id=batch_id))
-    return render_template('legacy_goal_preview.html',active_nav='master_data',result=result,fingerprint=fingerprint)
+    from .services.goal_batches import preview, validate_selection
+    from .services.legacy_forms import import_legacy_forms
+    directory = _goal_batch_directory(batch_id)
+    year = json.loads((directory / 'year.json').read_text())['year']
+    result, fingerprint = preview(get_db(), directory, year)
+    if request.method == 'POST':
+        try:
+            if request.form.get('checked') != 'yes' or request.form.get('fingerprint') != fingerprint:
+                raise ValueError('Bitte die aktuelle Vorschau einschliesslich Zieljahr und Zuordnungen prüfen und bestätigen.')
+            selected = set(request.form.getlist('source'))
+            validate_selection(result, selected)
+            imported = import_legacy_forms(get_db(), forms_root=directory, goal_year=year, selected_hashes=selected)
+            audit('legacy_goals_imported', 'goal_batch', batch_id, year=year, imported=imported['imported'])
+            flash(f"{imported['imported']} ausgewählte Quelle(n) importiert. Bitte die Word-Dossiers neu erzeugen.", 'success')
+            return redirect(url_for('main.legacy_goal_preview', batch_id=batch_id))
+        except ValueError as exc:
+            flash(str(exc), 'error')
+    return render_template('legacy_goal_preview.html', active_nav='master_data', result=result, fingerprint=fingerprint, batch_id=batch_id)

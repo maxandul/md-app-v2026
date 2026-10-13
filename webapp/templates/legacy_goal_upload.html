@@ -1,1 +1,17 @@
-{% extends 'base.html' %}{% block content %}<h1>Frühere Word-Ausblicke importieren</h1><p>Wähle frühere DOCX-Ausblicke und das Jahr, für das die vereinbarten Ziele gelten. Zunächst entsteht nur eine Vorschau. Bei abweichenden alten Vorlagen kann die Erkennung unvollständig sein; kontrolliere den Originaltext.</p><form method="post" enctype="multipart/form-data"><label>Zieljahr<input name="goal_year" type="number" min="2020" max="2100" required></label><label>DOCX-Dateien<input name="forms" type="file" accept=".docx" multiple required></label><button class="button">Vorschau erstellen</button></form>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<h1>Vorjahresziele importieren</h1>
+<p>Wähle einen Ordner mit alten oder neuen Ausblicken. Word-Dateien (.docx/.docm) und textbasierte PDFs werden inklusive Unterordnern geprüft. Andere Dateien werden übersprungen. Anschliessend kontrollierst du die erkannten Ziele und wählst die Quellen für die Übernahme aus.</p>
+<p>Das Zieljahr bezeichnet das Jahr, für das die Ziele vereinbart wurden: Ausblick 2026 → Rückblick 2026. Bereits gespeicherte Ziele werden nicht überschrieben. Bei mehreren Versionen kannst du die massgebende Quelle unter <a href="{{ url_for('main.goal_sources') }}">Zielquellen</a> klären.</p>
+<form method="post" enctype="multipart/form-data" id="goal-import" data-batch-url="{{ url_for('main.create_goal_batch') }}">
+  <label>Zieljahr<input name="goal_year" type="number" min="2020" max="2100" required></label>
+  <label>Ordner auswählen<input id="goal-folder" type="file" webkitdirectory multiple></label>
+  <p>Alternativ einzelne Dateien auswählen:</p>
+  <label>Word- oder PDF-Ausblicke<input name="forms" id="goal-files" type="file" accept=".docx,.docm,.pdf" multiple></label>
+  <p>Maximal 20 MB je Datei. Bild-PDFs/Scans ohne Text werden zur manuellen Klärung ausgewiesen.</p>
+  <button class="button" type="submit">Auswahl prüfen</button>
+  <p id="goal-import-status" role="status" aria-live="polite"></p>
+</form>
+<noscript><p>Für die Ordnerauswahl muss JavaScript aktiviert sein. Einzelne Dateien können auch ohne JavaScript übermittelt werden.</p></noscript>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='goal_import.js') }}" defer></script>{% endblock %}

@@ -25,11 +25,11 @@ def _summary(result: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Liest frühere MD-DOCX/DOCM-Dateien. Ohne --apply wird nur eine "
+            "Liest alte und neue MD-Ausblicke als DOCX/DOCM oder textbasierte PDFs. Ohne --apply wird nur eine "
             "Vorschau erstellt; die Datenbank bleibt unverändert."
         )
     )
-    parser.add_argument("forms_root", type=Path, help="Ordner mit früheren Word-Formularen")
+    parser.add_argument("forms_root", type=Path, help="Ordner mit Word-/PDF-Ausblicken (inklusive Unterordner)")
     parser.add_argument("--goal-year", type=int, required=True, help="Jahr, für das die Ziele gelten")
     parser.add_argument("--database", type=Path, help="Abweichender Pfad zur SQLite-Datenbank")
     parser.add_argument("--apply", action="store_true", help="Eindeutig zugeordnete Ziele importieren")

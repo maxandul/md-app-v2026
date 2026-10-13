@@ -173,7 +173,11 @@ def _performance_goals(controls: dict[str, list[str]]) -> list[dict[str, str]]:
 
 
 def parse_legacy_form(path: Path) -> dict[str, Any]:
+    from .goal_documents import word_tables, goal_years, pdf_goals
+    if path.suffix.lower() == '.pdf':
+        return {'path': path, 'filename': path.name, 'sha256': _sha256(path), **pdf_goals(path)}
     controls = extract_content_controls(path)
+    tables = word_tables(path)
     pn = _person_number(_first(controls, "ab_pn", "pn", "rb_pn"))
     assignment = _person_number(
         _first(controls, "ab_ans", "ans", "anstellungsnummer", "rb_ans")
@@ -184,10 +188,15 @@ def parse_legacy_form(path: Path) -> dict[str, Any]:
             _goal_rows(controls, prefix=f"ab_{slug}", competency=competency)
         )
     performance = _performance_goals(controls)
+    if tables['recognized']:
+        performance, development = tables['performance_goals'], tables['development_goals']
     document_type = (
         "outlook" if "ab_pn" in controls or performance or development else "unknown"
     )
+    if re.search(r'Mitarbeitenden[-–]Dialog\s*\(MD\)\s*[-–]\s*Rückblick', re.sub(r'\s+', ' ', tables['text']), re.I):
+        document_type = 'review'
     return {
+        'detected_years': goal_years(tables['text']), 'issues': tables['issues'],
         "path": path,
         "filename": path.name,
         "sha256": _sha256(path),
@@ -226,16 +235,38 @@ def _match_assignment(
     return "matched", assignments[0]
 
 
+
+def _goal_content_key(performance, development):
+    """Compare content across Word/PDF, ignoring layout whitespace and metadata."""
+    return tuple(tuple(tuple(re.sub(r'\s+', ' ', str(goal.get(key, '') or '')).strip()
+                             for key in ('competency', 'title', 'criteria', 'steps', 'target_date'))
+                       for goal in goals) for goals in (performance, development))
+
+
 def scan_legacy_forms(
     connection: sqlite3.Connection, *, forms_root: Path, goal_year: int,
 ) -> dict[str, Any]:
     paths = sorted(
         path for path in forms_root.rglob("*")
-        if path.is_file() and path.suffix.lower() in {".docx", ".docm"}
+        if path.is_file() and path.suffix.lower() in {".docx", ".docm", ".pdf"}
         and not path.name.startswith("~$")
     )
     items = []
     seen_hashes: dict[str, str] = {}
+    known_content = {}
+    imported_rows = connection.execute(
+        """SELECT h.*, i.original_filename FROM historical_goals h
+           JOIN legacy_form_imports i ON i.id=h.legacy_form_import_id
+           WHERE h.goal_year=? ORDER BY h.legacy_form_import_id,h.goal_kind,h.sequence,h.id""", (goal_year,)
+    ).fetchall()
+    imported_groups = {}
+    for row in imported_rows:
+        imported_groups.setdefault(row['legacy_form_import_id'], []).append(dict(row))
+    for rows in imported_groups.values():
+        key = (rows[0]['employee_pn'], rows[0]['assignment_number'],
+               _goal_content_key([r for r in rows if r['goal_kind']=='performance'],
+                                 [r for r in rows if r['goal_kind']=='development']))
+        known_content[key] = rows[0]['original_filename']
     for path in paths:
         try:
             item = parse_legacy_form(path)
@@ -249,6 +280,10 @@ def scan_legacy_forms(
                 item["duplicate_of"] = seen_hashes[item["sha256"]]
             elif item["document_type"] != "outlook":
                 status, resolved_assignment = "not_outlook", ""
+            elif item.get('detected_years') and item['detected_years'] != [goal_year]:
+                status, resolved_assignment = 'year_mismatch', ''
+            elif item.get('issues'):
+                status, resolved_assignment = 'extraction_uncertain', ''
             elif not item["performance_goals"] and not item["development_goals"]:
                 status, resolved_assignment = "no_goals", ""
             else:
@@ -257,9 +292,17 @@ def scan_legacy_forms(
                     employee_pn=item["employee_pn"],
                     assignment_number=item["assignment_number"],
                 )
+            if status == 'matched':
+                key = (item['employee_pn'], resolved_assignment,
+                       _goal_content_key(item['performance_goals'], item['development_goals']))
+                if key in known_content:
+                    status = 'same_goals'
+                    item['duplicate_of'] = known_content[key]
+                else:
+                    known_content[key] = item['filename']
             seen_hashes.setdefault(item["sha256"], item["filename"])
             item.setdefault("duplicate_of", "")
-            item.update(status=status, resolved_assignment=resolved_assignment, error="")
+            item.update(status=status, resolved_assignment=resolved_assignment, error=" ".join(item.get("issues", [])))
         except (OSError, ValueError) as exc:
             item = {
                 "path": path, "filename": path.name, "sha256": "",
@@ -288,14 +331,15 @@ def scan_legacy_forms(
 
 def import_legacy_forms(
     connection: sqlite3.Connection, *, forms_root: Path, goal_year: int,
-    imported_at: datetime | None = None,
+    imported_at: datetime | None = None, selected_hashes: set[str] | None = None,
 ) -> dict[str, Any]:
     result = scan_legacy_forms(connection, forms_root=forms_root, goal_year=goal_year)
     timestamp = (imported_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     imported = 0
+    imported_performance = imported_development = 0
     try:
         for item in result["items"]:
-            if item["status"] != "matched":
+            if item["status"] != "matched" or (selected_hashes is not None and item["sha256"] not in selected_hashes):
                 continue
             cursor = connection.execute(
                 """
@@ -335,6 +379,8 @@ def import_legacy_forms(
                         ),
                     )
             imported += 1
+            imported_performance += len(item["performance_goals"])
+            imported_development += len(item["development_goals"])
         connection.execute(
             """
             INSERT INTO audit_log (user_id, action, object_type, object_id, details_json, created_at)
@@ -344,8 +390,8 @@ def import_legacy_forms(
                 str(goal_year),
                 json.dumps({
                     "documents": imported,
-                    "performance_goals": result["performance_goals"],
-                    "development_goals": result["development_goals"],
+                    "performance_goals": imported_performance,
+                    "development_goals": imported_development,
                     "status_counts": result["counts"],
                 }, ensure_ascii=False, sort_keys=True),
                 timestamp,
@@ -356,4 +402,6 @@ def import_legacy_forms(
         connection.rollback()
         raise
     result["imported"] = imported
+    result["imported_performance_goals"] = imported_performance
+    result["imported_development_goals"] = imported_development
     return result

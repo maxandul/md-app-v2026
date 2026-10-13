@@ -113,6 +113,26 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sou
     return sources[0] if sources else ([], [], {})
 
 
+
+def missing_goal_hint(connection, *, employee_pn, assignment, year):
+    """Explain empty goals without guessing another year or employment."""
+    rows = connection.execute(
+        """SELECT goal_year AS year, assignment_number AS assignment FROM historical_goals
+           WHERE employee_pn=?
+           UNION SELECT goal_year, assignment_number FROM word_pdf_goal_versions
+           WHERE employee_pn=? AND is_current=1
+           ORDER BY year, assignment""", (employee_pn, employee_pn)
+    ).fetchall()
+    available = ", ".join(f"{r['year']} / Ans. {r['assignment'] or 'ohne Zuordnung'}" for r in rows)
+    hint = (f"PN {employee_pn}, Ans. {assignment}: Keine Vorjahresziele für das "
+            f"Rückblickjahr {year} gefunden. Import und Zieljahr unter Stammdaten prüfen.")
+    if available:
+        hint += f" Vorhandene Importzuordnungen: {available}."
+    else:
+        hint += " Für diese Personalnummer sind keine Word-/PDF-Zielimporte gespeichert."
+    return hint
+
+
 def _date_text(value):
     return date.fromisoformat(value).strftime("%d.%m.%Y")
 
@@ -148,7 +168,7 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
     directory = output_dir / export_id
     directory.mkdir(parents=True)
     manifest = {"export_id": export_id, "cycle_id": cycle_id, "manager_pn": manager_pn,
-                "created_at": datetime.now().astimezone().isoformat(timespec="seconds"), "documents": [], "skipped_cases": []}
+                "created_at": datetime.now().astimezone().isoformat(timespec="seconds"), "documents": [], "skipped_cases": [], "goal_warnings": []}
     filename = f"MD_Word_{cycle['review_year']}_{cycle['outlook_year']}_{_filename_part(manager_pn)}_{export_id[-8:]}.zip"
     path = directory / filename
     try:
@@ -184,6 +204,8 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                         raise ValueError("Der Dokumentzeitraum endet vor seinem Beginn.")
                     year = date.fromisoformat(end).year
                     performance, development, source = prior_goals(connection, employee_pn=case["employee_pn"], assignment=assignment, year=year) if kind == "review" else ([], [], {})
+                    if kind == "review" and not performance and not development:
+                        manifest["goal_warnings"].append(missing_goal_hint(connection, employee_pn=case["employee_pn"], assignment=assignment, year=year))
                     fields = {
                         "name": f"{case['first_name']} {case['last_name']}".strip(), "pn": case["employee_pn"],
                         "funktion": case["position"], "oe": case["org_unit"],

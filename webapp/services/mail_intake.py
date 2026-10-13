@@ -446,7 +446,7 @@ def scan_outlook_inbox(
 ) -> dict[str, Any]:
     outlook = adapter or OutlookInboxAdapter()
     messages = outlook.read_messages(mailbox_name=mailbox_name)
-    return process_inbound_messages(
+    result = process_inbound_messages(
         connection,
         messages=messages,
         inbox_dir=inbox_dir,
@@ -459,6 +459,10 @@ def scan_outlook_inbox(
             target_folder=folder,
         ),
     )
+    read_errors = getattr(outlook, "read_errors", [])
+    result["failed"] += len(read_errors)
+    result["errors"].extend(read_errors)
+    return result
 
 
 def resolve_inbound_message(

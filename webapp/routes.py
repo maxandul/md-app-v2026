@@ -941,6 +941,9 @@ def download_word_package(cycle_id: int, manager_pn: str):
           cycle_id=cycle_id, manager_pn=manager_pn,
           document_count=len(manifest["documents"]), sha256=manifest["sha256"])
     flash(f"{len(manifest['documents'])} Word-Vorlage(n) erzeugt. Bestehende Ausgaben bleiben erhalten. Ein Versand wurde nicht ausgelöst.", "success")
+    warnings = manifest.get("goal_warnings", [])
+    if warnings:
+        flash(f"{len(warnings)} Rückblick(e) ohne Vorjahresziele. Details unter Versand beim erzeugten Paket prüfen." if not case_id else warnings[0], "warning")
     if manifest["skipped_cases"]:
         flash(f"{len(manifest['skipped_cases'])} Fall/Fälle ohne Rückblick-/Ausblickpflicht übersprungen.", "info")
     return send_file(path, as_attachment=True, download_name=path.name, mimetype="application/zip")
@@ -1234,8 +1237,9 @@ def scan_mail_inbox():
             f"{result['moved']} verarbeitet und verschoben, "
             f"{result['review']} zur HR-Prüfung, {result['ignored']} ohne MD-Bezug ignoriert, "
             f"{result['duplicates']} bereits bekannt, "
-            f"{result['feedback_bundles']} Feedback-Sammel-PDF(s) erstellt.",
-            "success",
+            f"{result['feedback_bundles']} Feedback-Sammel-PDF(s) erstellt, "
+            f"{result['failed']} Nachricht(en)/Verarbeitungsschritt(e) fehlgeschlagen.",
+            "warning" if result["errors"] else "success",
         )
         if result["errors"]:
             flash(" ".join(result["errors"]), "error")

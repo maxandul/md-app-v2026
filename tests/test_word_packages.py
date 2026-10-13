@@ -119,6 +119,19 @@ class WordPackagesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'fehlt'):
             render_word_form(Path(self.paths['outlook']), kind='review', fields={})
 
+    def test_missing_goal_diagnostics_show_wrong_year_without_copying_it(self):
+        self.add_goals()
+        self.db.execute("UPDATE historical_goals SET goal_year=2024")
+        path, manifest = self.generate()
+        self.assertEqual(manifest['documents'][0]['performance_goals'], 0)
+        self.assertEqual(len(manifest['goal_warnings']), 1)
+        self.assertIn('Rückblickjahr 2025', manifest['goal_warnings'][0])
+        self.assertIn('2024 / Ans. 1', manifest['goal_warnings'][0])
+        self.db.execute("UPDATE historical_goals SET goal_year=2025")
+        _, manifest = self.generate()
+        self.assertEqual(manifest['goal_warnings'], [])
+        self.assertEqual(manifest['documents'][0]['performance_goals'], 1)
+
     def test_read_config_resolves_relative_paths(self):
         config = self.root / 'word_config.json'
         config.write_text(json.dumps({'templates': {'review': 'review.docx'}}))

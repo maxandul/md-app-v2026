@@ -122,7 +122,11 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
     for row in rows:
         item = dict(row)
         item['filename'] = Path(row['stored_path']).name
-        item['document_count'] = len(json.loads(row['manifest_json'])['documents'])
+        manifest = json.loads(row['manifest_json'])
+        item['goal_warnings'] = manifest.get('goal_warnings', [])
+        item['performance_goal_count'] = sum(d.get('performance_goals', 0) for d in manifest['documents'])
+        item['development_goal_count'] = sum(d.get('development_goals', 0) for d in manifest['documents'])
+        item['document_count'] = len(manifest['documents'])
         item['attachment_count'] = len(json.loads(row['manifest_json']).get('attachments',[]))
         try:
             if not Path(row['stored_path']).is_file() or _hash(row['stored_path'])!=row['sha256']:

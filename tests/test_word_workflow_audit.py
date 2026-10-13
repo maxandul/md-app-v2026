@@ -35,6 +35,7 @@ class WordWorkflowAuditTest(unittest.TestCase):
             review_url=response.location
             self.assertIn('/word-pdf-imports/',review_url)
             form={'document_kind':kind,'pn':'111113','manager_pn':'111116','period_start':f'{year}-01-01','period_end':f'{year}-12-31','dialog_date':f'{year}-12-15','conducted':'ja','rating':'C' if kind=='review' else '', 'scope':'full','assignment':'1','case_id':self.case_id,'destination':'case','checked':'yes'}
+            form.update(performance_title='Erstes Ziel', performance_criteria='Messbar', performance_steps='1. Schritt eins\n2. Schritt zwei', performance_target_date='31.12.', development_title='Entwicklung', development_competency='Selbstmanagement', development_steps='Plan')
             response=client.post(review_url,data=form,follow_redirects=True)
             self.assertIn('Nächster Schritt: Fallprüfung',response.text)
             row=self.db.execute('SELECT id,handoff_status FROM official_documents WHERE document_kind=?',(kind,)).fetchone()
@@ -57,6 +58,49 @@ class WordWorkflowAuditTest(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM sap_export_rows').fetchone()[0],1)
         self.assertEqual(client.post(f'/cycles/{self.cycle_id}/sap-export').status_code,302)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM sap_export_rows').fetchone()[0],1)
+
+        # The accepted outlook must become next year's Word review goals.
+        from webapp.services.cycles import create_cycle
+        from webapp.services.word_packages import prior_goals
+        from zipfile import ZipFile
+        sap_import = self.db.execute('SELECT sap_import_id FROM cycles WHERE id=?', (self.cycle_id,)).fetchone()[0]
+        next_cycle = create_cycle(self.db, review_year=2026, sap_import_id=sap_import)
+        goals, development, source = prior_goals(self.db, employee_pn='111113', assignment='1', year=2026)
+        self.assertEqual([goal['title'] for goal in goals], ['Erstes Ziel'])
+        self.assertEqual([goal['title'] for goal in development], ['Entwicklung'])
+        self.assertEqual(source['case_id'], self.case_id)
+        next_case = self.db.execute("SELECT case_id FROM dialog_cases WHERE cycle_id=? AND employee_pn='111113'", (next_cycle,)).fetchone()[0]
+        response = client.post(f'/cycles/{next_cycle}/managers/111116/word-package', data={'case_id': next_case})
+        self.assertEqual(response.status_code, 200)
+        with ZipFile(io.BytesIO(response.data)) as archive:
+            reviews = [name for name in archive.namelist() if name.endswith('.docx') and 'Rueckblick' in name]
+            contents = [fixtures.controls(fixtures.xml_for(archive.read(name))) for name in reviews]
+        response.close()
+        self.assertTrue(any('Erstes Ziel' in value.get('rb_ziel_vorjahr_1', '') for value in contents))
+        self.assertEqual(self.db.execute('SELECT status FROM dialog_cases WHERE case_id=?',(next_case,)).fetchone()[0], 'offen')
+
+        # Restore a real workflow snapshot, including stored PDFs and Word ZIPs.
+        from webapp.services.operations import create_system_backup, restore_system_backup
+        from webapp.db import close_db, get_db
+        import hashlib
+        roots = [Path(self.app.config[key]) for key in ('STORAGE_ROOT', 'DOSSIER_HANDOFF_ROOT')]
+        files = {p: hashlib.sha256(p.read_bytes()).hexdigest() for root in roots for p in root.rglob('*') if p.is_file()}
+        self.assertTrue(any(p.suffix == '.zip' for p in files))
+        self.assertTrue(any(p.suffix == '.pdf' for p in files))
+        options = dict(database_path=Path(self.app.config['DATABASE']), storage_root=roots[0], dossier_root=roots[1])
+        backup = create_system_backup(self.db, **options, backup_root=Path(self.app.config['BACKUP_ROOT']))
+        for path in files:
+            path.unlink()
+        self.db.execute('DELETE FROM sap_export_rows')
+        self.db.commit()
+        close_db()
+        restore_system_backup(backup['path'], **options)
+        self.db = get_db()
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM sap_export_rows').fetchone()[0], 1)
+        for path, digest in files.items():
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), digest, str(path))
+        document_paths = [row[0] for row in self.db.execute('SELECT stored_path FROM official_documents')]
+        self.assertTrue(all(Path(path).is_file() for path in document_paths))
 
     def test_scan_action_available_after_signature_and_removed_after_handoff(self):
         from webapp.services.word_pdf_imports import stage_pdf, confirm_import

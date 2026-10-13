@@ -102,18 +102,13 @@ class GoalImportTest(unittest.TestCase):
         self.assertFalse((self.root / 'escape.docx').exists())
         self.assertEqual(client.get(data['preview_url'] + '/original/invalid').status_code, 404)
 
-    def test_pdf_continuation_keeps_all_steps_in_one_goal(self):
-        def goal(title, steps, page, top):
-            return dict(title=title, criteria='', steps=steps, target_date='', competency='Selbstmanagement', evidence={'page': page, 'top': top})
+    def test_pdf_unassigned_fragment_requires_review(self):
         parsed = {'data': {'document_kind': 'outlook', 'pn': '111113'}, 'text': 'Ausblick auf: 2025 bis 2025',
-                  'performance_goals': [], 'development_goals': [goal('Ziel', 'Erster Schritt', 1, 730), goal('', 'Zweiter Schritt', 2, 85)]}
+                  'performance_goals': [], 'development_goals': [dict(title='', criteria='', steps='Nicht zugeordnet',
+                      target_date='', competency='Selbstmanagement', evidence={'page': 2, 'top': 85})]}
         with patch('webapp.services.word_pdf.inspect_word_pdf', return_value=parsed):
             data = pdf_goals(Path('test.pdf'))
-        self.assertEqual(len(data['development_goals']), 1)
-        self.assertEqual(data['development_goals'][0]['steps'], 'Erster Schritt\nZweiter Schritt')
-        parsed['development_goals'][1]['competency'] = 'Kommunikationsfähigkeit'
-        with patch('webapp.services.word_pdf.inspect_word_pdf', return_value=parsed):
-            data = pdf_goals(Path('test.pdf'))
+        self.assertEqual(data['development_goals'][0]['steps'], 'Nicht zugeordnet')
         self.assertTrue(data['issues'])
 
     def test_new_pdf_is_imported_as_goals_without_creating_official_return(self):

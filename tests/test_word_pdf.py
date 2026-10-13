@@ -22,6 +22,55 @@ Altes Ziel Einschätzung:
 
 
 class WordPdfTest(unittest.TestCase):
+    def test_unassigned_wide_text_is_preserved_and_flagged(self):
+        from webapp.services.word_pdf import inspect_word_pdf
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'freitext.pdf'
+            c = canvas.Canvas(str(path), pagesize=(595,842))
+            c.drawString(40,810,'Mitarbeitenden-Dialog (MD) - Ausblick')
+            c.showPage()
+            c.setFillColorRGB(.882,.965,1)
+            c.rect(40,700,513,50,fill=1,stroke=0)
+            c.setFillColorRGB(0,0,0)
+            c.drawString(44,725,'Fortsetzung eines langen Kommentars')
+            c.save()
+            result = inspect_word_pdf(path)
+            self.assertTrue(any('Freitext auf Seite 2' in issue for issue in result['issues']))
+            self.assertIn('Fortsetzung eines langen Kommentars', [field['text'] for field in result['fields']])
+
+    def test_real_pdf_goal_continuation_keeps_text_and_does_not_merge_new_goal(self):
+        from webapp.services.word_pdf import inspect_word_pdf
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'continued.pdf'
+            c = canvas.Canvas(str(path), pagesize=(595, 842))
+            c.drawString(40, 810, 'Mitarbeitenden-Dialog (MD) - Ausblick')
+            c.drawString(40, 700, 'Kommunikationsfähigkeit')
+            def row(y, title, steps):
+                for x, width, text in [(40,150,title),(191,130,''),(322,160,steps),(483,70,'')]:
+                    c.setFillColorRGB(.882,.965,1)
+                    c.rect(x,y,width,40,fill=1,stroke=0)
+                    c.setFillColorRGB(0,0,0)
+                    c.setFont('Helvetica',9)
+                    c.drawString(x+4,y+25,text)
+            row(60, '1. Wirkung verbessern', 'Erster Schritt')
+            c.showPage()
+            row(710, '', 'Zweiter Schritt')
+            row(600, '2. Eigenes Ziel', 'Anderer Schritt')
+            c.save()
+            goals = inspect_word_pdf(path)['development_goals']
+            self.assertEqual(len(goals), 2)
+            self.assertEqual(goals[0]['steps'], 'Erster Schritt\nZweiter Schritt')
+            self.assertEqual(goals[0]['evidence']['last_page'], 2)
+            self.assertEqual(goals[1]['title'], 'Eigenes Ziel')
+
+    def test_ambiguous_fragments_remain_separate_for_hr_review(self):
+        from webapp.services.word_pdf import merge_goal_continuations
+        for page, top, competency in [(1,80,'A'),(3,80,'A'),(2,200,'A'),(2,80,'B')]:
+            with self.subTest(page=page, top=top, competency=competency):
+                goals = [{'title':'Ziel','competency':'A','evidence':{'page':1,'top':700}},
+                         {'title':'','steps':'Fortsetzung','competency':competency,'evidence':{'page':page,'top':top}}]
+                self.assertEqual(len(merge_goal_continuations(goals)),2)
+
     def test_person_number_period_and_dialog_year_are_distinct(self):
         result = parse_word_pdf_text(REVIEW)
         self.assertEqual(result["issues"], [])

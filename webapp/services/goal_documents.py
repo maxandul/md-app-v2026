@@ -94,18 +94,7 @@ def pdf_goals(path):
             goal['competency'] = source.get('competency', '')
             goal['source_tag_family'] = 'pdf_table'
             goal['evidence'] = source.get('evidence', {})
-            # A title-less fragment on the immediately following page belongs to
-            # the preceding goal of the same competency, never to another table.
             if not goal['title'] and any(goal[k] for k in KEYS):
-                previous = destination[-1] if destination else None
-                if (previous and previous['competency'] == goal['competency'] and
-                    goal['evidence'].get('page', 0) == previous['evidence'].get('last_page', previous['evidence'].get('page', 0)) + 1
-                    and goal['evidence'].get('top', 1000) < 150):
-                    for field in KEYS:
-                        if goal[field]:
-                            previous[field] = (previous[field] + '\n' + goal[field]).strip()
-                    previous['evidence']['last_page'] = goal['evidence']['page']
-                    continue
                 issues.append('Zielteil ohne Zielbeschreibung: Zuordnung im Original prüfen.')
             destination.append(goal)
     if not performance and not development and parsed['text'].strip():

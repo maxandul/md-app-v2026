@@ -57,10 +57,32 @@ def _iso_date(value: str, label: str, issues: list[str]) -> str:
         return ""
 
 
+def merge_goal_continuations(goals):
+    """Join a title-less continuation at the top of the next PDF page."""
+    merged = []
+    for goal in goals:
+        previous = merged[-1] if merged else None
+        evidence = goal.get('evidence', {})
+        prior = previous.get('evidence', {}) if previous else {}
+        if (previous and not goal.get('title')
+            and previous.get('competency', '') == goal.get('competency', '')
+            and evidence.get('page', 0) == prior.get('last_page', prior.get('page', 0)) + 1
+            and evidence.get('top', 1000) < 150):
+            for field in ('title', 'criteria', 'steps', 'target_date'):
+                if goal.get(field):
+                    previous[field] = (previous.get(field, '') + '\n' + goal[field]).strip()
+            prior['last_page'] = evidence['page']
+        else:
+            merged.append(goal)
+    return merged
+
+
 def inspect_word_pdf(path: Path) -> dict:
     inspection = inspect_pdf(path)
     result = parse_word_pdf_text(inspection.text, page_count=inspection.page_count)
     result.update(extract_form_content(path, result['data'].get('document_kind', ''), probation=result['data'].get('probation')=='ja'))
+    for key in ('performance_goals', 'development_goals'):
+        result[key] = merge_goal_continuations(result[key])
     result['data']['no_md_reason'] = result.pop('no_md_reason', '')
     result['issues'].extend(result.pop('content_issues'))
     result['status'] = 'needs_review'
@@ -195,8 +217,10 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
                 for cell in row:
                     value=cell['text']
                     if cell['color']=='blue':
+                        assigned = False
                         fields.append({**evidence,'text':value,'lines':cell['lines']})
                         if narrative_key and cell['x1']-cell['x0']>300:
+                            assigned = True
                             if narrative_key == 'no_md_reason':
                                 no_md_reason = _field_text(value)
                             elif narrative_key in narratives:
@@ -205,15 +229,19 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
                                 narratives[narrative_key] = _field_text(value)
                             narrative_key = ''
                         if kind=='review' and context=='performance' and cell['x1']-cell['x0']>300 and not assessment_done:
+                            assigned = True
                             assessment_done = True
                             narratives['performance_comment'] = _field_text(value.removeprefix('Einschätzung:'))
                         if kind=='review' and context not in ('','performance') and cell['x1']-cell['x0']>300 and not assessment_done:
+                            assigned = True
                             assessment_done=True
                             assessment=value.removeprefix('Einschätzung:').strip()
                             if assessment.lower().startswith(('klicken sie','klicken oder tippen','bitte wählen')):
                                 assessment=''
                             if assessment:
                                 assessments[context]=assessment
+                        if not assigned and cell['x1']-cell['x0']>300 and _field_text(value):
+                            issues.append(f"Freitext auf Seite {page['page']} nicht eindeutig zugeordnet. Mögliche Fortsetzung: im Original prüfen und im passenden Feld ergänzen.")
         # Kontext auch dann übertragen, wenn am Seitenende keine Zelle folgt.
         if anchor_index<len(anchors):
             context=anchors[-1][1]

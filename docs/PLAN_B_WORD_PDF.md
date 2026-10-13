@@ -276,3 +276,8 @@ Nach dem Import die Word-Dossiers neu erzeugen. Bestehende Word-Dateien bleiben
 unverändert. Die Funktion erzeugt keine offiziellen Rückläufe und löst keine
 Dossier-/SAP-Übergabe aus. Das Kommandozeilenskript `import_legacy_forms.py` bleibt
 verfügbar und verwendet dieselbe Word-/PDF-Erkennung.
+
+## Feedback-Rücklauf
+
+Word-Feedbacks haben eine eigene HR-Prüfung und Sammlung pro Führungskraft und Rückblickjahr.
+Bedienung, Korrekturen, Bündelung und Nachträge: [Feedback-Rücklauf](FEEDBACK_WORD_PDF.md).

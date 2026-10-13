@@ -76,6 +76,7 @@ from .services.mail_intake import (
     scan_outlook_inbox,
 )
 from .services.feedback import feedback_overview
+from .services import word_feedback
 from .services.case_review import case_review_detail, correct_case_data
 from .services.deadlines import extend_deadlines
 from .services.reminders import (
@@ -447,6 +448,7 @@ def returns_overview():
         **workflow.pdf_queue(connection,query=request.args.get('pdf_q',''),status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int)),
         active_nav="returns",
         **cockpit,
+        feedback_collections=word_feedback.collections(connection),
         feedback_bundles=feedback_overview(
             connection,
             cycle_id=selected_cycle["id"] if selected_cycle else None,
@@ -1392,6 +1394,8 @@ def word_pdf_review(import_id):
         abort(404)
     state=workflow.pdf_state(connection,import_id)
     parsed=json.loads(item['parsed_json'])
+    if parsed.get('data',{}).get('document_kind') == 'feedback':
+        return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
     if request.method=='POST':
         reviewed=_reviewed_word_form(request.form)
@@ -1721,3 +1725,126 @@ def legacy_goal_preview(batch_id):
         except ValueError as exc:
             flash(str(exc), 'error')
     return render_template('legacy_goal_preview.html', active_nav='master_data', result=result, fingerprint=fingerprint, batch_id=batch_id)
+
+
+@bp.post('/word-pdf-imports/<int:import_id>/as-feedback')
+def classify_feedback(import_id):
+    connection=get_db()
+    try:
+        workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+        item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+        if not item or item['status']!='pending':
+            raise ValueError('Nur offene Prüfungen können zugeordnet werden.')
+        parsed=word_feedback.inspect_feedback(Path(item['stored_path']),item['original_filename'])
+        connection.execute("UPDATE word_pdf_imports SET parsed_json=?,reviewed_json='' WHERE id=?",(json.dumps(parsed,ensure_ascii=False),import_id))
+        workflow.advance_pdf(connection,import_id)
+        connection.commit()
+        audit('word_pdf_classified_feedback','word_pdf_import',str(import_id))
+    except (ValueError,LookupError) as exc:
+        connection.rollback(); flash(str(exc),'error')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
+    return redirect(url_for('main.feedback_review',import_id=import_id))
+
+
+@bp.route('/feedback-imports/<int:import_id>',methods=['GET','POST'])
+def feedback_review(import_id):
+    connection=get_db()
+    item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+    if not item: abort(404)
+    parsed=json.loads(item['parsed_json'])
+    if parsed.get('data',{}).get('document_kind')!='feedback': abort(404)
+    state=workflow.pdf_state(connection,import_id)
+    reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else {
+        'manager_pn':parsed['data'].get('manager_pn',''),'cycle_id':'','feedback_fields':parsed.get('feedback_fields',{})}
+    if request.method=='POST':
+        reviewed={'manager_pn':request.form.get('manager_pn','').strip(),'cycle_id':request.form.get('cycle_id',''),
+                  'feedback_fields':{key:request.form.get('field_'+key,'').strip() for key in word_feedback.FIELDS if request.form.get('present_'+key)=='yes' or request.form.get('field_'+key,'').strip()}}
+        reason=request.form.get('reason','').strip()
+        try:
+            workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+            action=request.form.get('action','confirm')
+            if item['status']!='pending': raise ValueError('Bereits verarbeitet; das Original bleibt erhalten.')
+            if state['dismissed'] and action!='reopen': raise ValueError('Bitte die Prüfung zuerst wieder öffnen.')
+            if action in ('dismiss','reopen') and len(reason)<10: raise ValueError('Bitte mit mindestens 10 Zeichen begründen.')
+            if action=='to_document':
+                from .services.word_pdf import inspect_word_pdf
+                connection.execute("UPDATE word_pdf_imports SET parsed_json=?,reviewed_json='' WHERE id=?",(json.dumps(inspect_word_pdf(Path(item['stored_path'])),ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id); connection.commit()
+                audit('feedback_reclassified','word_pdf_import',str(import_id))
+                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+            if action in ('draft','dismiss','reopen'):
+                reviewed['reason']=reason
+                connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                connection.commit()
+                audit('feedback_'+action,'word_pdf_import',str(import_id))
+                flash('Prüfstand gespeichert.','success')
+            elif action=='confirm':
+                if request.form.get('checked')!='yes': raise ValueError('Bitte Führungskraft, Jahr und Inhalte am Original prüfen und bestätigen.')
+                word_feedback.confirm_feedback(connection,import_id,cycle_id=int(reviewed['cycle_id']),manager_pn=reviewed['manager_pn'],fields=reviewed['feedback_fields'],reason=reason,user_id=g.user['id'] if g.user else None)
+                workflow.advance_pdf(connection,import_id); connection.commit()
+                audit('feedback_confirmed','word_pdf_import',str(import_id),cycle_id=reviewed['cycle_id'],manager_pn=reviewed['manager_pn'])
+                flash('Feedback in die Sammlung übernommen. Bündelung unter Rückläufe → Feedbacks.','success')
+            else: raise ValueError('Unbekannte Aktion.')
+            return redirect(url_for('main.feedback_review',import_id=import_id))
+        except (ValueError,LookupError) as exc:
+            connection.rollback(); flash(str(exc) or 'Bitte Jahresprozess auswählen.','error')
+    submission=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
+    managers=connection.execute('SELECT DISTINCT e.pn,e.first_name,e.last_name FROM employees e JOIN dialog_cases d ON d.manager_pn=e.pn ORDER BY e.last_name,e.first_name').fetchall()
+    cycles=connection.execute('SELECT * FROM cycles ORDER BY review_year DESC').fetchall()
+    return render_template('feedback_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,managers=managers,cycles=cycles,fields=word_feedback.FIELDS,submission=submission)
+
+
+@bp.route('/feedback-collections/<int:cycle_id>/<manager_pn>',methods=['GET','POST'])
+def feedback_collection(cycle_id,manager_pn):
+    connection=get_db()
+    if request.method=='POST':
+        try:
+            if request.form.get('checked')!='yes': raise ValueError('Bitte die Zusammenstellung bestätigen.')
+            ids=[int(value) for value in request.form.getlist('import_id')]
+            bundle_id=word_feedback.bundle_feedback(connection,cycle_id=cycle_id,manager_pn=manager_pn,expected_ids=ids,handoff_dir=_handoff_dir(),archive_dir=_storage_dir('feedback_bundles'))
+            audit('feedback_bundle_created','feedback_bundle',str(bundle_id),cycle_id=cycle_id,manager_pn=manager_pn)
+            flash('Feedback-Sammel-PDF für die Dossierablage bereitgestellt.','success')
+            return redirect(url_for('main.returns_overview',cycle_id=cycle_id)+'#feedbacks')
+        except (ValueError,OSError) as exc:
+            connection.rollback(); flash(str(exc),'error')
+    rows=connection.execute('''SELECT w.* FROM word_feedback_submissions s JOIN word_pdf_imports w ON w.id=s.import_id
+        WHERE s.cycle_id=? AND s.manager_pn=? AND s.bundle_id IS NULL ORDER BY w.id''',(cycle_id,manager_pn)).fetchall()
+    cycle=connection.execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
+    manager=connection.execute('SELECT * FROM employees WHERE pn=?',(manager_pn,)).fetchone()
+    if not cycle or not manager: abort(404)
+    pending=connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending' AND json_extract(parsed_json,'$.data.document_kind')='feedback'").fetchone()[0]
+    return render_template('feedback_collection.html',active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
+
+
+@bp.get('/feedback-bundles/<int:bundle_id>/download')
+def feedback_bundle_download(bundle_id):
+    row=get_db().execute('''SELECT b.filename,COALESCE(a.stored_path,b.stored_path) AS path FROM feedback_bundles b
+        LEFT JOIN word_feedback_bundle_archives a ON a.bundle_id=b.id WHERE b.id=?''',(bundle_id,)).fetchone()
+    if not row or not Path(row['path']).is_file(): abort(404)
+    return send_file(row['path'],download_name=row['filename'],mimetype='application/pdf',as_attachment=True)
+
+
+@bp.post('/feedback-imports/<int:import_id>/reopen')
+def reopen_feedback(import_id):
+    connection=get_db()
+    try:
+        reason=request.form.get('reason','').strip()
+        if len(reason)<10: raise ValueError('Bitte die Korrektur mit mindestens 10 Zeichen begründen.')
+        connection.execute('BEGIN IMMEDIATE')
+        state=workflow.pdf_state(connection,import_id)
+        row=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
+        if not row or row['bundle_id'] or str(state['revision'])!=request.form.get('revision'):
+            raise ValueError('Bereits gebündelt oder inzwischen geändert. Bitte die Seite neu laden.')
+        if connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+            raise ValueError('Den Jahresprozess für die Korrektur zuerst wieder öffnen.')
+        previous=dict(row)
+        connection.execute('DELETE FROM word_feedback_submissions WHERE import_id=?',(import_id,))
+        connection.execute("UPDATE word_pdf_imports SET status='pending' WHERE id=?",(import_id,))
+        workflow.advance_pdf(connection,import_id,reason=reason)
+        connection.commit()
+        audit('feedback_correction_opened','word_pdf_import',str(import_id),reason=reason,previous=previous)
+        flash('Feedback zur Korrektur geöffnet. Bitte danach erneut bestätigen.','success')
+    except ValueError as exc:
+        connection.rollback();flash(str(exc),'error')
+    return redirect(url_for('main.feedback_review',import_id=import_id))

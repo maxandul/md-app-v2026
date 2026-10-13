@@ -58,6 +58,7 @@ def closure_summary(db,cycle_id):
       'Offene Unterschriftenprüfungen':count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0"),
       'Offene Word-Versandvorgänge':count("SELECT COUNT(*) FROM word_dispatch_packages p LEFT JOIN word_mail_deliveries d ON d.package_id=p.id WHERE p.cycle_id=? AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn) AND COALESCE(d.status,'') NOT IN ('sent_confirmed','cancelled')"),
       'Noch nicht exportierte vollständige Rückblicke':count("SELECT COUNT(*) FROM dialog_cases c JOIN dialog_events e ON e.legacy_case_id=c.case_id WHERE c.cycle_id=? AND c.status='vollstaendig' AND c.official_scope IN ('full','review_only') AND e.sap_leading=1 AND c.overall_rating_code<>'' AND NOT EXISTS(SELECT 1 FROM sap_export_rows r WHERE r.dialog_event_id=e.id)"),
+      'Ungebündelte Feedbacks':count('SELECT COUNT(*) FROM word_feedback_submissions WHERE cycle_id=? AND bundle_id IS NULL'),
       'Ungeprüfte PDFs (durchlaufübergreifend)':len(pending_pdfs(db)),
       'Ereignisse ohne Durchlauf (gesamt)':db.execute("SELECT COUNT(*) FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'").fetchone()[0],
     }

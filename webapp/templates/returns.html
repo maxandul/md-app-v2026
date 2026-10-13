@@ -11,7 +11,7 @@
 
   <section class="content-card">
     <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs einlesen</h2>
-    <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Ziele und Grundangaben werden zur Prüfung vorgelegt. Erst nach der Bestätigung werden sie dem Fall oder einer nachgereichten Zielquelle zugeordnet.</p>
+    <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Rückblick, Ausblick und Feedback werden erkannt und zur Prüfung vorgelegt. Erst nach der Bestätigung werden sie dem Fall oder einer nachgereichten Zielquelle zugeordnet.</p>
     <form action="{{ url_for('main.upload_word_pdfs') }}" method="post" enctype="multipart/form-data">
       <label for="word_pdf_files">PDF-Dateien aus Word</label><input id="word_pdf_files" name="word_pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
       <button class="button button--primary" type="submit">Einlesen und prüfen</button>
@@ -41,10 +41,13 @@
 
   <section class="content-section" id="feedbacks" aria-labelledby="feedback-title">
     <div class="section-heading"><div><p class="kicker">Feedback an vorgesetzte Personen</p><h2 id="feedback-title">Erstellte Sammel-PDFs</h2></div><span class="section-count">{{ feedback_bundles|length }}</span></div>
-    <p>Die Führungskräfte sammeln die Feedback-PDFs ihrer Mitarbeitenden und senden sie gemeinsam und S/MIME-verschlüsselt an HR. Das System führt alle Feedbacks derselben Nachricht automatisch zu einem dossierfähigen PDF zusammen. Fehlende Feedbacks werden nicht überwacht oder angemahnt.</p>
+    <p>Die Führungskräfte sammeln die Feedback-PDFs ihrer Mitarbeitenden und senden sie gemeinsam und S/MIME-verschlüsselt an HR. Word-Feedbacks werden nach der HR-Prüfung pro Führungskraft und Rückblickjahr gesammelt. HR stellt die Sammlung ausdrücklich für die Dossierablage bereit; spätere Eingänge werden als Nachtrag gebündelt. Fehlende Feedbacks werden nicht überwacht oder angemahnt.</p>
+    <h3>Geprüfte Feedbacks zum Bündeln</h3>
+    <ul>{% for group in feedback_collections %}<li><a href="{{ url_for('main.feedback_collection',cycle_id=group.cycle_id,manager_pn=group.manager_pn) }}">{{ group.first_name }} {{ group.last_name }} · PN {{ group.manager_pn }} · Rückblick {{ group.review_year }} · {{ group.count }} Feedback(s) – Sammlung prüfen</a></li>{% else %}<li>Keine unge­bündelten Feedbacks. Neue PDF-Dateien oben einlesen oder das Postfach prüfen.</li>{% endfor %}</ul>
+    <p>Noch ungeprüfte Feedbacks stehen oben in der PDF-Prüfwarteschlange.</p>
     {% if feedback_bundles %}
       <div class="table-wrap"><table><thead><tr><th>Erstellt</th><th>Vorgesetzte Person</th><th>Feedbacks</th><th>RPA-Datei</th></tr></thead><tbody>
-      {% for bundle in feedback_bundles %}<tr><td>{{ bundle.created_at }}</td><td><strong>{{ bundle.manager_name }}</strong><br><span class="muted">PN {{ bundle.manager_pn }} · Rückblick {{ bundle.review_year }}</span></td><td>{{ bundle.submission_count }}</td><td><span class="status status--staged">Bereitgestellt</span><br><span class="muted">{{ bundle.filename }}</span></td></tr>{% endfor %}
+      {% for bundle in feedback_bundles %}<tr><td>{{ bundle.created_at }}</td><td><strong>{{ bundle.manager_name }}</strong><br><span class="muted">PN {{ bundle.manager_pn }} · Rückblick {{ bundle.review_year }}</span></td><td>{{ bundle.submission_count }}</td><td><span class="status status--staged">Bereitgestellt</span><br><span class="muted">{{ bundle.filename }}</span><br><a href="{{ url_for('main.feedback_bundle_download',bundle_id=bundle.id) }}">Sammel-PDF herunterladen</a></td></tr>{% endfor %}
       </tbody></table></div>
     {% else %}<div class="empty-state">Noch keine Feedback-Sammel-PDFs erstellt. Es entstehen keine offenen Aufgaben, solange keine Feedbacks eingehen.</div>{% endif %}
   </section>

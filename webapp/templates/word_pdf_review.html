@@ -57,6 +57,7 @@
 {% if pdf_state.dismissed %}<button class="button" name="action" value="reopen" formnovalidate>Begründet wieder öffnen</button>{% else %}<button class="button button--primary" name="action" value="confirm">Geprüfte Angaben übernehmen</button><button class="button" name="action" value="dismiss" formnovalidate>Begründet zurückstellen</button>{% endif %}</div>
 <p>Zurückstellen nur bei falschen oder nicht weiter zu bearbeitenden Eingängen. Ein benötigtes, aber noch ungeklärtes Dokument als Entwurf offen lassen. Das Original wird nicht gelöscht.</p><p>Bei durchgeführten Gesprächen erfolgt die Unterschriften- und Ablageprüfung anschliessend beim Fall. Bestehende Word-Ausgaben bleiben unverändert.</p></section>
 </fieldset></form>
+{% if item.status=='pending' and not pdf_state.dismissed %}<form method="post" action="{{ url_for('main.classify_feedback',import_id=item.id) }}"><input type="hidden" name="revision" value="{{ pdf_state.revision }}"><p>Dieses Dokument ist ein Feedback an eine Führungskraft?</p><button class="button">Als Feedback prüfen</button></form>{% endif %}
 <details><summary>Ausgelesenen Originaltext anzeigen</summary><pre class="pdf-extracted-text">{{ parsed.text }}</pre></details>
 <script src="{{ url_for('static', filename='word_pdf_review.js') }}" defer></script>
 {% endblock %}

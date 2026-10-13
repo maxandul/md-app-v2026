@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Feedback-Sammlung · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="kicker">Feedback-Sammlung</p><h1>{{ manager.first_name }} {{ manager.last_name }}</h1><p>PN {{ manager.pn }} · Rückblick {{ cycle.review_year }} · {{ rows|length }} noch nicht gebündelte Feedbacks</p></div></section>
+<p>Das Sammel-PDF enthält ein Deckblatt und die unveränderten Originalseiten. Spätere Eingänge werden als Nachtrag bereitgestellt. Fehlende Feedbacks werden nicht angemahnt.</p>
+{% if pending %}<p class="info-box">Es gibt noch {{ pending }} ungeprüfte Feedback-PDF(s), über alle Führungskräfte und Jahre. Prüfe vor der Bündelung, ob weitere Eingänge zu dieser Sammlung gehören.</p>{% endif %}
+<form method="post"><ul>{% for row in rows %}<li><input type="hidden" name="import_id" value="{{ row.id }}"><a href="{{ url_for('main.feedback_review',import_id=row.id) }}">{{ row.original_filename }}</a> · {{ row.created_at }} · <a href="{{ url_for('main.word_pdf_original',import_id=row.id) }}" target="_blank" rel="noopener">Original</a></li>{% else %}<li>Keine Feedbacks zum Bündeln.</li>{% endfor %}</ul>
+{% if rows %}<label><input type="checkbox" name="checked" value="yes" required> Ich habe die Zusammenstellung geprüft und möchte diese Feedbacks für die Dossierablage bereitstellen.</label><button class="button button--primary">Sammel-PDF erstellen und bereitstellen</button>{% endif %}</form>
+<p><a href="{{ url_for('main.returns_overview') }}#feedbacks">Zurück zu den Rückläufen</a></p>
+{% endblock %}

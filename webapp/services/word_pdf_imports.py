@@ -25,7 +25,11 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
         return existing['id'], True
     if connection.execute('SELECT id FROM official_documents WHERE sha256=?',(digest,)).fetchone():
         raise ValueError('Dieses PDF wurde bereits als offizielles Dokument importiert.')
-    parsed=inspect_word_pdf(path)
+    from .word_feedback import is_feedback, inspect_feedback
+    inspection = inspect_pdf(path)
+    if connection.execute('SELECT id FROM feedback_submissions WHERE sha256=?',(digest,)).fetchone():
+        raise ValueError('Dieses Feedback wurde bereits über das Datenblockverfahren importiert.')
+    parsed = inspect_feedback(path, filename) if is_feedback(inspection.text, filename) else inspect_word_pdf(path)
     directory.mkdir(parents=True,exist_ok=True)
     stored=directory/(digest+'-'+uuid.uuid4().hex[:12]+'.pdf')
     try:

@@ -5,6 +5,9 @@ für Vorjahresziele. Tests mit temporären Datenbanken und synthetischen
 Stammdaten; das gelieferte alte Ausblick-PDF zusätzlich nur lesend geprüft.
 Keine produktiven Mails versendet, verschoben oder SAP-Daten verändert.
 
+> Nachtrag: Der unten als offen dokumentierte Word-Feedback-Rücklauf wurde
+> anschliessend ergänzt. Aktuelle Bedienung und Grenzen: [Feedback-Rücklauf](FEEDBACK_WORD_PDF.md).
+
 ## Ergebnis und Grenzen
 
 Der technische Kernprozess funktioniert in den automatisierten Tests.

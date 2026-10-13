@@ -628,3 +628,16 @@ CREATE TABLE IF NOT EXISTS workflow_goal_choices (
  updated_at TEXT NOT NULL,
  PRIMARY KEY(employee_pn,assignment_number,goal_year)
 );
+
+-- Plan B feedback is assigned to a manager/year, without inventing a case/employee.
+CREATE TABLE IF NOT EXISTS word_feedback_submissions (
+    import_id INTEGER PRIMARY KEY REFERENCES word_pdf_imports(id),
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id),
+    manager_pn TEXT NOT NULL REFERENCES employees(pn),
+    bundle_id INTEGER REFERENCES feedback_bundles(id)
+);
+CREATE INDEX IF NOT EXISTS idx_word_feedback_group ON word_feedback_submissions(cycle_id, manager_pn, bundle_id);
+CREATE TABLE IF NOT EXISTS word_feedback_bundle_archives (
+    bundle_id INTEGER PRIMARY KEY REFERENCES feedback_bundles(id),
+    stored_path TEXT NOT NULL
+);

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Feedback prüfen · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="kicker">Feedback an Führungskräfte</p><h1>{{ item.original_filename }}</h1><p>Führungskraft und Rückblickjahr bestätigen. Es entsteht keine Rückblick-/Ausblickpflicht und keine Mahnung für fehlende Feedbacks.</p></div></section>
+<p><a href="{{ url_for('main.word_pdf_original',import_id=item.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a> · <a href="{{ url_for('main.returns_overview') }}#feedbacks">Zur Sammlung</a></p>
+{% if parsed.issues %}<section class="content-card"><h2>Zu prüfen</h2><ul>{% for issue in parsed.issues %}<li>{{ issue }}</li>{% endfor %}</ul></section>{% endif %}
+{% if item.status!='pending' %}<p class="info-box">{{ 'Dublette' if item.status=='duplicate' else 'Geprüft und in die Sammlung übernommen' }}. Original und bestätigte Angaben bleiben gespeichert.</p>{% endif %}
+{% if pdf_state.dismissed %}<p class="info-box">Zurückgestellt: {{ pdf_state.reason }}</p>{% endif %}
+<form method="post"><input type="hidden" name="revision" value="{{ pdf_state.revision }}"><fieldset {% if item.status!='pending' %}disabled{% endif %}>
+<section class="content-card"><h2>Zuordnung</h2>
+<label>Führungskraft<select name="manager_pn" required><option value="">Bitte wählen</option>{% for manager in managers %}<option value="{{ manager.pn }}" {% if reviewed.manager_pn==manager.pn %}selected{% endif %}>{{ manager.first_name }} {{ manager.last_name }} · PN {{ manager.pn }}</option>{% endfor %}</select></label>
+<label>Rückblickjahr<select name="cycle_id" required><option value="">Bitte wählen</option>{% for cycle in cycles %}<option value="{{ cycle.id }}" {% if reviewed.cycle_id|string==cycle.id|string %}selected{% endif %}>{{ cycle.review_year }} ({{ cycle.status }})</option>{% endfor %}</select></label>
+<p>Ein Gespräch im Januar kann zum Rückblick des Vorjahres gehören. Die Zuordnung wird nicht aus dem Gesprächsdatum abgeleitet.</p></section>
+<section class="content-card"><h2>Kompetenzen und Textfelder</h2><p>Automatisch erkannte Texte mit dem Original vergleichen und ergänzen. Nur geprüfte Felder werden für Kompetenzen und Zeichenanzahlen erfasst; ungeprüft bleibt unbekannt.</p>
+{% for key,label in fields.items() %}<details {% if reviewed.feedback_fields.get(key) %}open{% endif %}><summary>{{ label }}{% if key in reviewed.feedback_fields %} · {{ reviewed.feedback_fields[key]|length }} Zeichen{% endif %}</summary>
+<label><input type="checkbox" name="present_{{ key }}" value="yes" {% if key in reviewed.feedback_fields %}checked{% endif %}> Feld am Original geprüft (auch wenn leer)</label><textarea name="field_{{ key }}" aria-label="{{ label }}" rows="3">{{ reviewed.feedback_fields.get(key,'') }}</textarea></details>{% endfor %}</section>
+<section class="content-card"><label>Prüfnotiz<textarea name="reason" rows="3">{{ request.form.get('reason',reviewed.get('reason',item.review_note)) }}</textarea></label>
+<label><input type="checkbox" name="checked" value="yes" required> Ich habe Führungskraft, Rückblickjahr und erfasste Inhalte mit dem Original-PDF verglichen.</label>
+<div class="form-actions"><button class="button" name="action" value="draft" formnovalidate>Entwurf speichern</button>{% if pdf_state.dismissed %}<button class="button" name="action" value="reopen" formnovalidate>Begründet wieder öffnen</button>{% else %}<button class="button button--primary" name="action" value="confirm">Feedback übernehmen</button><button class="button" name="action" value="dismiss" formnovalidate>Begründet zurückstellen</button><button class="button" name="action" value="to_document" formnovalidate>Als Rückblick/Ausblick prüfen</button>{% endif %}</div></section>
+</fieldset></form>
+{% if submission and not submission.bundle_id %}<form method="post" action="{{ url_for('main.reopen_feedback',import_id=item.id) }}"><input type="hidden" name="revision" value="{{ pdf_state.revision }}"><label>Begründung der Korrektur<textarea name="reason" required minlength="10"></textarea></label><button class="button">Zur Korrektur wieder öffnen</button><p>Das Feedback wird bis zur erneuten Bestätigung aus der Sammlung genommen.</p></form>{% elif submission and submission.bundle_id %}<p>Bereits gebündelt. Eine Korrektur der externen Dossierablage muss mit der zuständigen Stelle abgestimmt werden; das bereitgestellte Original bleibt unverändert.</p>{% endif %}
+<details><summary>Ausgelesenen Originaltext anzeigen</summary><pre class="pdf-extracted-text">{{ parsed.text }}</pre></details>
+{% endblock %}

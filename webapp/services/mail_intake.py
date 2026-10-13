@@ -16,6 +16,7 @@ from webapp.adapters.outlook import InboundMessage, OutlookInboxAdapter
 from webapp.services.documents import import_official_pdf, inspect_pdf
 from webapp.services.word_pdf_imports import stage_pdf
 from webapp.services.word_pdf import parse_word_pdf_text
+from webapp.services.word_feedback import is_feedback as is_word_feedback
 from webapp.services.feedback import (
     create_feedback_bundles_for_message,
     import_feedback_pdf,
@@ -222,7 +223,7 @@ def process_inbound_messages(
                     try:
                         inspection = inspect_pdf(temporary_path)
                         is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
-                        if not inspection.data and (hint or parse_word_pdf_text(inspection.text)['data'].get('document_kind')):
+                        if not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind')):
                             word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports')
                             queued = connection.execute('SELECT * FROM word_pdf_imports WHERE id=?', (word_id,)).fetchone()
                             pending = queued['status'] == 'pending'

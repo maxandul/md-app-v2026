@@ -23,7 +23,7 @@
 <section class="content-card"><h2>2. Outlook-Nachrichten vorbereiten oder versenden</h2><p>Absender: {{ hr_sender or 'noch nicht konfiguriert' }}. Pro Nachricht wird nur das Paket der zugehörigen Führungskraft angehängt.</p>
 <form action="{{ url_for('main.prepare_word_mail',cycle_id=selected_cycle.id) }}" method="post">
 <details open><summary>E-Mailtext prüfen und bearbeiten</summary>
-<p>Diese Vorlage wird für die ausgewählten Führungskräfte verwendet. Änderungen gelten für diesen Versand. Platzhalter: <code>{manager_name}</code>, <code>{years}</code>, <code>{review_year}</code>, <code>{outlook_year}</code>, <code>{review_due}</code>, <code>{outlook_due}</code>, <code>{sender_email}</code>. Fett: **Text**, Links: [Text](https://…), Listen: - Text.</p>
+<p>Diese Vorlage wird für die ausgewählten Führungskräfte verwendet. Änderungen gelten für diesen Versand. Platzhalter: <code>{greeting}</code> (Liebe/Lieber/Hallo und Vorname), <code>{manager_first_name}</code>, <code>{manager_name}</code>, <code>{years}</code>, <code>{review_year}</code>, <code>{outlook_year}</code>, <code>{review_due}</code>, <code>{outlook_due}</code>, <code>{sender_email}</code>. Fett: **Text**, Links: [Text](https://…), Listen: - Text.</p>
 <label>Betreff<input name="subject_template" value="{{ default_word_subject }}"></label>
 <label>Text<textarea name="body_template" rows="24">{{ default_word_body }}</textarea></label>
 <label>Vorschau für<select name="preview_manager_pn">{% for manager in managers %}<option value="{{ manager.manager_pn }}">{{ manager.manager_name }}</option>{% endfor %}</select></label>

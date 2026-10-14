@@ -112,6 +112,7 @@ def prepare_word_batch(connection, *, cycle_id, manager_pns, template_paths, out
 def word_dispatch_candidates(connection, *, cycle_id, template_paths):
     rows = connection.execute('''SELECT p.*, e.email AS recipient_email,
         TRIM(e.first_name || ' ' || e.last_name) AS manager_name,
+        e.first_name AS manager_first_name, e.salutation AS manager_salutation,
         c.review_year,c.outlook_year,c.review_due_date,c.outlook_due_date,
         d.status AS delivery_status,d.error_message,d.updated_at AS delivery_updated_at
         FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
@@ -145,7 +146,7 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
 
 
 DEFAULT_WORD_SUBJECT = 'MD-Unterlagen Durchlauf {years}'
-DEFAULT_WORD_BODY = """Hallo {manager_name}
+DEFAULT_WORD_BODY = """{greeting}
 
 Der jährliche Mitarbeitenden-Dialog steht an. Im angehängten ZIP findest du:
 
@@ -211,7 +212,13 @@ def word_message(row, *, sender_email, subject_template='', body_template=''):
         if not value:
             return 'noch nicht festgelegt'
         return date.fromisoformat(value).strftime('%d.%m.%Y')
+    first_name = (row.get('manager_first_name') or '').strip()
+    salutation = (row.get('manager_salutation') or '').strip().casefold()
+    greeting = {'frau': 'Liebe', 'herr': 'Lieber'}.get(salutation, 'Hallo') if first_name else 'Hallo'
+    if first_name:
+        greeting += ' ' + first_name
     values = {'manager_name':row['manager_name'] or row['manager_pn'],
+              'manager_first_name':first_name, 'greeting':greeting,
               'years':f"{row['review_year']}/{row['outlook_year']}",
               'review_year':row['review_year'], 'outlook_year':row['outlook_year'],
               'review_due':due(row['review_due_date']),

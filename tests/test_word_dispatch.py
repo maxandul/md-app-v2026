@@ -36,6 +36,30 @@ class WordDispatchTest(unittest.TestCase):
     def candidates(self):
         return word_dispatch_candidates(self.db,cycle_id=self.cycle_id,template_paths=self.paths)
 
+    def test_salutation_import_and_preview(self):
+        import openpyxl
+        from webapp.services.sap_import import import_sap_workbook
+        workbook = openpyxl.load_workbook(self.root / 'sap.xlsx')
+        sheet = workbook.active
+        column = sheet.max_column + 1
+        sheet.cell(1, column, 'Anredeschlüssel')
+        for row in range(2, sheet.max_row + 1):
+            sheet.cell(row, column, 'Frau')
+        path = self.root / 'salutations.xlsx'
+        workbook.save(path)
+        import_sap_workbook(self.db, path, original_filename=path.name, stored_filename=path.name)
+        self.assertEqual(self.db.execute("SELECT salutation FROM employees WHERE pn='111116'").fetchone()[0], 'frau')
+        self.db.execute("UPDATE employees SET first_name='Andrea Maria', last_name='Muster' WHERE pn='111116'")
+        self.db.commit()
+        client = self.app.test_client()
+        for value, greeting in [('Frau', 'Liebe Andrea Maria'), ('Herr', 'Lieber Andrea Maria'), ('', 'Hallo Andrea Maria'), ('unbekannt', 'Hallo Andrea Maria')]:
+            self.db.execute("UPDATE employees SET salutation=? WHERE pn='111116'", (value,))
+            self.db.commit()
+            response = client.post(f'/cycles/{self.cycle_id}/word-mail-preview', data={'preview_manager_pn': '111116'})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json['body_html'].startswith('<p>' + greeting + '</p>'))
+            self.assertNotIn('Andrea Maria Muster', response.json['body_html'])
+
     def test_preview_without_packages_and_matches_outlook(self):
         client = self.app.test_client()
         page = client.get(f'/versand?cycle_id={self.cycle_id}')

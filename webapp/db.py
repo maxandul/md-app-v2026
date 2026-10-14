@@ -39,6 +39,8 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
     employee_columns = {
         row["name"] for row in connection.execute("PRAGMA table_info(employees)").fetchall()
     }
+    if "salutation" not in employee_columns:
+        connection.execute("ALTER TABLE employees ADD COLUMN salutation TEXT NOT NULL DEFAULT ''")
     if "employment_assignment" not in employee_columns:
         connection.execute(
             "ALTER TABLE employees ADD COLUMN employment_assignment TEXT NOT NULL DEFAULT ''"

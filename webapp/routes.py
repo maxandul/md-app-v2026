@@ -1499,13 +1499,14 @@ def preview_word_mail(cycle_id):
     cycle = get_db().execute('SELECT * FROM cycles WHERE id=?', (cycle_id,)).fetchone()
     if not cycle:
         abort(404)
-    manager = get_db().execute("""SELECT e.pn, TRIM(e.first_name || ' ' || e.last_name) AS name
+    manager = get_db().execute("""SELECT e.pn, e.first_name, e.salutation, TRIM(e.first_name || ' ' || e.last_name) AS name
         FROM employees e WHERE e.pn=? AND EXISTS
         (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
         (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
     if not manager:
         return {'error': 'Bitte eine Führungskraft für die Vorschau auswählen.'}, 400
-    row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'])
+    row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'],
+               manager_first_name=manager['first_name'], manager_salutation=manager['salutation'])
     try:
         subject, body = word_message(row, sender_email=current_app.config['HR_MAILBOX_EMAIL'],
             subject_template=request.form.get('subject_template', ''), body_template=request.form.get('body_template', ''))

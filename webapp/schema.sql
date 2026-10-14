@@ -116,6 +116,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_assignments_sap_unique
 
 CREATE TABLE IF NOT EXISTS employees (
     pn TEXT PRIMARY KEY,
+    salutation TEXT NOT NULL DEFAULT '',
     first_name TEXT NOT NULL DEFAULT '',
     last_name TEXT NOT NULL DEFAULT '',
     email TEXT NOT NULL DEFAULT '',

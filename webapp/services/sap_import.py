@@ -285,6 +285,11 @@ def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_
                 (pn, first_name, last_name, email, _first_value(rows, "Plans. Bez."), _first_value(rows, "OE Bez."), _first_value(rows, degree_column), _first_date(rows, "Eintritt"), _first_date(rows, "Austritt"), _first_date(rows, "Ende Probezeit"), primary_assignment, _first_value(rows, "Bewilligung für"), import_id, timestamp),
             )
 
+            salutation_column = _column(rows, "Anredeschlüssel", "Anredeschluessel", "Anrede")
+            salutations = {clean(value).casefold() for value in rows[salutation_column] if clean(value)} if salutation_column else set()
+            salutation = next(iter(salutations)) if len(salutations) == 1 else ''
+            connection.execute("UPDATE employees SET salutation=? WHERE pn=?", (salutation, pn))
+
             for assignment, employment_rows in rows.groupby("_assignment", sort=False, dropna=False):
                 assignment = clean(assignment) or "1"
                 result = connection.execute(

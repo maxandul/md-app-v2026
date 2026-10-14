@@ -42,6 +42,14 @@ def _empty_goal(goal_id: str) -> dict[str, str]:
     return {"id": goal_id, "title": "", "criteria": "", "steps": "", "target_date": ""}
 
 
+def _permission_date_text(value) -> str:
+    text = str(value or '').strip()
+    try:
+        return date.fromisoformat(text[:10]).strftime('%d.%m.%Y')
+    except ValueError:
+        return text
+
+
 def _secondary_employment_text(
     connection: sqlite3.Connection, *, employee_pn: str,
     employment_assignment: str, fallback: str = "",
@@ -68,8 +76,8 @@ def _secondary_employment_text(
         )
         period = "–".join(
             value for value in (
-                str(row["valid_from"] or "").strip(),
-                str(row["valid_to"] or "").strip(),
+                _permission_date_text(row["valid_from"]),
+                _permission_date_text(row["valid_to"]),
             ) if value
         )
         text = description or "Nebenbeschäftigung/öffentliches Amt"

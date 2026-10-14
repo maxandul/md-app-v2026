@@ -1,6 +1,38 @@
 (() => {
   'use strict';
 
+  document.querySelectorAll('[data-mail-preview]').forEach(button => {
+    const form = button.form;
+    const status = form.querySelector('[data-preview-status]');
+    const result = form.querySelector('[data-preview-result]');
+    const preview = async () => {
+      button.disabled = true;
+      result.replaceChildren();
+      status.textContent = 'Vorschau wird geladen …';
+      try {
+        const response = await fetch(button.dataset.mailPreview, {method: 'POST', body: new FormData(form), credentials: 'same-origin'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Vorschau konnte nicht geladen werden.');
+        const subject = document.createElement('h3');
+        subject.textContent = data.subject;
+        const body = document.createElement('div');
+        body.innerHTML = data.body_html;
+        result.append(subject, body);
+        status.textContent = 'Vorschau des aktuellen Texts. Es wurde kein Outlook-Entwurf erstellt.';
+      } catch (error) {
+        status.textContent = error.message;
+      } finally { button.disabled = false; }
+    };
+    button.addEventListener('click', preview);
+    form.addEventListener('input', event => {
+      if (['subject_template', 'body_template', 'preview_manager_pn'].includes(event.target.name)) {
+        result.replaceChildren();
+        status.textContent = 'Text oder Führungskraft geändert. Bitte die Vorschau aktualisieren.';
+      }
+    });
+    preview();
+  });
+
   document.querySelectorAll('form[data-refresh-after-download]').forEach((form) => {
     let busy = false;
     let downloadUrl = '';

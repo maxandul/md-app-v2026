@@ -36,6 +36,63 @@ class WordDispatchTest(unittest.TestCase):
     def candidates(self):
         return word_dispatch_candidates(self.db,cycle_id=self.cycle_id,template_paths=self.paths)
 
+    def test_preview_without_packages_and_matches_outlook(self):
+        client = self.app.test_client()
+        page = client.get(f'/versand?cycle_id={self.cycle_id}')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('E-Mail-Vorschau aktualisieren', page.text)
+        payload = {'preview_manager_pn': '111116'}
+        response = client.post(f'/cycles/{self.cycle_id}/word-mail-preview', data=payload)
+        self.assertEqual(response.status_code, 200)
+        preview = response.json
+        self.assertEqual(preview['subject'], 'MD-Unterlagen Durchlauf 2025/2026')
+        self.assertIn('Rückblick_2025_', preview['body_html'])
+        self.assertIn('Ausblick_2026_', preview['body_html'])
+        self.assertIn('31.01.2026', preview['body_html'])
+        self.assertIn('<ul>', preview['body_html'])
+        self.assertIn('<a href="https://ktzuerich.sharepoint.com/', preview['body_html'])
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_mail_deliveries').fetchone()[0], 0)
+        self.prepare()
+        fake = FakeOutlook()
+        self.app.config['HR_MAILBOX_EMAIL'] = 'hr@example.invalid'
+        preview = client.post(f'/cycles/{self.cycle_id}/word-mail-preview', data=payload).json
+        self.send([self.candidates()[0]['id']], fake)
+        self.assertEqual(preview['body_html'], fake.calls[0]['body_html'])
+        self.assertEqual(preview['subject'], fake.calls[0]['subject'])
+
+    def test_preview_custom_text_errors_and_html_escaping(self):
+        client = self.app.test_client()
+        endpoint = f'/cycles/{self.cycle_id}/word-mail-preview'
+        payload = {'preview_manager_pn': '111116', 'subject_template': 'Test {years}',
+                   'body_template': '<script>alert(1)</script> **Hallo** [Link](javascript:alert)'}
+        response = client.post(endpoint, data=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('<script>', response.json['body_html'])
+        self.assertNotIn('href="javascript:', response.json['body_html'])
+        self.assertIn('<strong>Hallo</strong>', response.json['body_html'])
+        payload['body_template'] = '{unknown}'
+        self.assertEqual(client.post(endpoint, data=payload).status_code, 400)
+        self.assertEqual(client.post(endpoint, data={'preview_manager_pn': 'missing'}).status_code, 400)
+
+    def test_document_filenames_without_assignment_and_separate_cases(self):
+        # Duplicate one person's case with another assignment in the same leadership line.
+        original = dict(self.db.execute('SELECT * FROM dialog_cases WHERE case_id=?', (self.case_id,)).fetchone())
+        original.pop('id')
+        original['case_id'] += '-second'
+        original['employment_assignment'] = '2'
+        columns = ','.join(original)
+        self.db.execute(f"INSERT INTO dialog_cases ({columns}) VALUES ({','.join('?' for _ in original)})", tuple(original.values()))
+        self.db.commit()
+        _batch, result = self.prepare()
+        manifest = result['packages'][0]['manifest']
+        docs = manifest['documents']
+        self.assertTrue(any(d['filename'].startswith('Fall_1/') for d in docs))
+        self.assertTrue(any(d['filename'].startswith('Fall_2/') for d in docs))
+        self.assertEqual(len({d['filename'] for d in docs}), len(docs))
+        for doc in docs:
+            self.assertNotIn('_Ans', doc['filename'])
+            self.assertRegex(doc['filename'], r'_\d+\.docx$')
+
     def test_interrupted_delivery_recovery_checks_lock_and_does_not_send(self):
         from webapp.services.outlook_lock import package_lock
         from webapp.services.word_dispatch import resolve_interrupted_delivery
@@ -81,7 +138,7 @@ class WordDispatchTest(unittest.TestCase):
         self.assertEqual(result['created'],1);self.assertEqual(result['sent'],0)
         self.assertEqual(adapter.calls[0]['recipient_email'],item['recipient_email'])
         self.assertEqual(adapter.calls[0]['attachments'],[Path(item['stored_path'])])
-        self.assertIn('Word-Vorlagen',adapter.calls[0]['subject'])
+        self.assertIn('MD-Unterlagen Durchlauf',adapter.calls[0]['subject'])
         self.assertNotIn('Arbeitsmappe',adapter.calls[0]['body_html'])
         with self.assertRaises(ValueError):
             self.send([item['id']],adapter)

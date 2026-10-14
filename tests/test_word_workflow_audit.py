@@ -73,7 +73,7 @@ class WordWorkflowAuditTest(unittest.TestCase):
         response = client.post(f'/cycles/{next_cycle}/managers/111116/word-package', data={'case_id': next_case})
         self.assertEqual(response.status_code, 200)
         with ZipFile(io.BytesIO(response.data)) as archive:
-            reviews = [name for name in archive.namelist() if name.endswith('.docx') and 'Rueckblick' in name]
+            reviews = [name for name in archive.namelist() if name.endswith('.docx') and 'Rückblick' in name]
             contents = [fixtures.controls(fixtures.xml_for(archive.read(name))) for name in reviews]
         response.close()
         self.assertTrue(any('Erstes Ziel' in value.get('rb_ziel_vorjahr_1', '') for value in contents))

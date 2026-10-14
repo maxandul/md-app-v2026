@@ -281,3 +281,25 @@ verfügbar und verwendet dieselbe Word-/PDF-Erkennung.
 
 Word-Feedbacks haben eine eigene HR-Prüfung und Sammlung pro Führungskraft und Rückblickjahr.
 Bedienung, Korrekturen, Bündelung und Nachträge: [Feedback-Rücklauf](FEEDBACK_WORD_PDF.md).
+
+## Versandtext und Dateinamen (14. Oktober 2026)
+
+Unter «Versand» ist die Standardmail sichtbar und für den jeweiligen Versand
+bearbeitbar. Die Vorschau funktioniert bereits vor der Paketerzeugung: Führungskraft
+wählen und nach Änderungen «E-Mail-Vorschau aktualisieren» anklicken. Sie erzeugt
+keinen Outlook-Entwurf. Vorschau und Versand verwenden dieselbe Textaufbereitung.
+Änderungen am Text gelten für den aktuellen Seitenaufruf; sie werden nicht als
+neue dauerhafte Standardvorlage gespeichert.
+
+Betreff, Dateibeispiele, Rückgabefristen und KNF-Jahr werden aus dem gewählten
+Durchlauf eingesetzt (KNF: Ausblickjahr). Die Rückgabefristen werden als TT.MM.JJJJ
+angezeigt. Die Standardmail orientiert sich am jährlichen Durchlauf; für
+unterjährige Einzelereignisse kann HR sie vor dem Versand anpassen.
+
+Word-Dateien tragen keine Anstellungsnummer mehr im Namen. Beispiel:
+`Rückblick_2026_Nachname_Vorname_123456.docx`. Bei mehreren aktiven Fällen derselben
+Person in einem Führungskraftpaket liegen die Formulare in getrennten Ordnern
+`Fall_1`, `Fall_2` usw. Die internen Fall- und Anstellungszuordnungen bleiben erhalten;
+bei mehrdeutigen PDF-Rückläufen muss HR die Zuordnung weiterhin prüfen.
+Bereits erzeugte Versandpakete müssen neu erzeugt werden, um die neuen Dateinamen
+zu erhalten. Offene Outlook-Entwürfe zuerst wie bisher klären.

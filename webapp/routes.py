@@ -63,7 +63,7 @@ from .services.word_pdf import inspect_word_pdf
 from .services.word_pdf_imports import stage_pdf, matching_cases, confirm_import
 from .services.legacy_forms import COMPETENCY_TAGS
 from .services.word_packages import create_word_package, word_template_status
-from .services.word_dispatch import prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
+from .services.word_dispatch import DEFAULT_WORD_SUBJECT, DEFAULT_WORD_BODY, word_message, prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -429,6 +429,7 @@ def dispatch():
     return render_template(
         "dispatch_legacy.html" if request.args.get('workflow')=='workbook' and current_app.config.get('LEGACY_WORKBOOKS')=='enabled' else "dispatch.html",
         active_nav="dispatch", managers=managers,
+        default_word_subject=DEFAULT_WORD_SUBJECT, default_word_body=DEFAULT_WORD_BODY,
         word_candidates=word_dispatch_candidates(get_db(),cycle_id=data['selected_cycle']['id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if data['selected_cycle'] else [],
         word_templates=word_template_status(current_app.config['WORD_TEMPLATE_PATHS']),
         hr_sender=current_app.config['HR_MAILBOX_EMAIL'],
@@ -1491,6 +1492,26 @@ def download_prepared_word_package(package_id):
     if not row or not Path(row['stored_path']).is_file():
         abort(404)
     return send_file(row['stored_path'],as_attachment=True,download_name=Path(row['stored_path']).name)
+
+
+@bp.post('/cycles/<int:cycle_id>/word-mail-preview')
+def preview_word_mail(cycle_id):
+    cycle = get_db().execute('SELECT * FROM cycles WHERE id=?', (cycle_id,)).fetchone()
+    if not cycle:
+        abort(404)
+    manager = get_db().execute("""SELECT e.pn, TRIM(e.first_name || ' ' || e.last_name) AS name
+        FROM employees e WHERE e.pn=? AND EXISTS
+        (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
+        (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
+    if not manager:
+        return {'error': 'Bitte eine Führungskraft für die Vorschau auswählen.'}, 400
+    row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'])
+    try:
+        subject, body = word_message(row, sender_email=current_app.config['HR_MAILBOX_EMAIL'],
+            subject_template=request.form.get('subject_template', ''), body_template=request.form.get('body_template', ''))
+    except ValueError as exc:
+        return {'error': str(exc)}, 400
+    return {'subject': subject, 'body_html': body}
 
 
 @bp.post('/cycles/<int:cycle_id>/word-mail')

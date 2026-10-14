@@ -214,8 +214,12 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                         "nebenbeschaeftigung": _secondary_employment_text(connection, employee_pn=case["employee_pn"], employment_assignment=assignment, fallback=case["secondary_employment"]),
                     }
                     document = render_word_form(Path(template_path), kind=kind, fields=fields, performance_goals=performance, development_goals=development)
-                    label = {"review": "Rueckblick", "outlook": "Ausblick", "probation": "Rueckblick_Probezeit"}[kind]
-                    document_name = f"{label}_{year}_{_filename_part(case['last_name'])}_{_filename_part(case['first_name'])}_Ans{_filename_part(assignment)}_{_filename_part(case['employee_pn'])}.docx"
+                    label = {"review": "Rückblick", "outlook": "Ausblick", "probation": "Rückblick_Probezeit"}[kind]
+                    document_name = f"{label}_{year}_{_filename_part(case['last_name'])}_{_filename_part(case['first_name'])}_{_filename_part(case['employee_pn'])}.docx"
+                    person_cases = [c for c in cases if c['employee_pn'] == case['employee_pn'] and (c['official_scope'] or c['suggested_scope']) != 'none']
+                    if len(person_cases) > 1:
+                        case_number = next(i for i, c in enumerate(person_cases, 1) if c['case_id'] == case['case_id'])
+                        document_name = f"Fall_{case_number}/" + document_name
                     if document_name in bundle.namelist():
                         raise ValueError("Die Auswahl enthält mehrere Ereignisse mit demselben Dokumentnamen. Bitte die Fallzuordnung klären.")
                     bundle.writestr(document_name, document)

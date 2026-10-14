@@ -4,10 +4,11 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import re
 import shutil
 import sqlite3
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -36,7 +37,7 @@ def source_fingerprint(connection, *, cycle_id, manager_pn, template_paths):
         FROM dialog_cases dc JOIN employees e ON e.pn=dc.employee_pn
         LEFT JOIN dialog_events de ON de.legacy_case_id=dc.case_id
         WHERE dc.cycle_id=? AND dc.manager_pn=? AND dc.active=1 ORDER BY dc.case_id''', (cycle_id,manager_pn)).fetchall()
-    snapshot = {'cycle':dict(cycle),'manager':dict(manager),'cases':[],'templates':{}}
+    snapshot = {'package_format': 2, 'cycle':dict(cycle),'manager':dict(manager),'cases':[],'templates':{}}
     needed = set()
     for row in cases:
         item = dict(row)
@@ -143,32 +144,84 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
     return result
 
 
+DEFAULT_WORD_SUBJECT = 'MD-Unterlagen Durchlauf {years}'
+DEFAULT_WORD_BODY = """Hallo {manager_name}
+
+Der jährliche Mitarbeitenden-Dialog steht an. Im angehängten ZIP findest du:
+
+- Ein Formular MD Feedback und MD Reflexion zum Verteilen an deine Mitarbeitenden.
+- Ein Formular MD Rückblick pro Mitarbeiter/in.
+- Ein Formular MD Rückblick Probezeit für Mitarbeitende, die in der Zeit von Oktober bis Januar ihre Probezeit abschliessen.
+- Ein Formular MD Ausblick pro Mitarbeiter/in, es sei denn, sie verlassen die Organisation bis Ende Januar.
+- Für Mitarbeitende, die zwischen Juni und September ihre Probezeit abgeschlossen haben, erhältst du nur einen MD Ausblick.
+
+Bitte überlege dir im Rahmen des Ausblicks, ob Mitarbeitende in deinem Team für die Nominierung für das [KNF I](https://ktzuerich.sharepoint.com/sites/zh-personelles/SitePages/KNF-I.aspx) oder [KNF II](https://ktzuerich.sharepoint.com/sites/zh-personelles/SitePages/KNF-II.aspx) (Kadernachwuchsförderung) für {outlook_year} in Frage kommen. Halte ein allfälliges Interesse im Ausblick unter Punkt 3 schriftlich fest.
+
+Für den Rückversand als PDF S/MIME-verschlüsselt an [{sender_email}](mailto:{sender_email}) gelten folgende Vorgaben:
+
+**Bis zum {review_due}:**
+
+- Pro Mitarbeiter/in ein PDF mit dem Feedback an dich. Beschriftung: NameMitarbeiter/in_Feedback_an_DeinNachname_DeinVorname_DeinePersonalnummer.
+- Pro Mitarbeiter/in ein ausgefüllter Rückblick als PDF mit Unterschrift. Beschriftung: Rückblick_{review_year}_NachnameMA_VornameMA_PersonalnummerMA.
+
+**Bis zum {outlook_due}:**
+
+- Pro Mitarbeiter/in ein ausgefüllter Ausblick als PDF mit Unterschrift. Beschriftung: Ausblick_{outlook_year}_NachnameMA_VornameMA_PersonalnummerMA.
+
+**Hinweise:**
+
+- Entpacke das ZIP und speichere die Word-Dateien vor der Bearbeitung. Beim Speichern als PDF kannst du den vorgegebenen Dateinamen übernehmen. Im Feedback-Dateinamen ersetzt du NameMA durch den Namen der mitarbeitenden Person. Die Word-Dateien bleiben bei dir.
+- Die Dokumente im Anhang sind automatisch generiert. Mitarbeitende in der Probezeit, kurz vor dem Austritt oder mit vakanten Vorgesetzten sind weitgehend berücksichtigt worden. Dennoch können nicht alle Eventualitäten vollständig vorweggenommen werden.
+- Die administrative Verarbeitung erfolgt maschinell. Deshalb ist es wichtig, dass die PDFs die Personalnummern am Ende der Beschriftung tragen.
+- Standardmässig genügt die einfache elektronische Unterschrift auf dem PDF, wie sie in Adobe Acrobat möglich ist. Bei einer Gesamtbewertung genügend / ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien die Dokumente handschriftlich unterzeichnen und den Scan beilegen.
+- Sämtliche Unterlagen und Informationen zum Mitarbeitenden-Dialog sind auf [ZHub](https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-%28MD%29.aspx) zu finden.
+
+Bei Fragen steht dir dein/e HR Verantwortliche/r gerne zur Verfügung.
+
+Wir wünschen dir spannende und konstruktive Dialoge!
+
+Herzliche Grüsse
+Dein Human Resources & Entwicklung
+
+#### Dies ist eine automatisch generierte E-Mail ####"""
+
+
+def _mail_html(body):
+    # Escape all user input; only supported formatting and safe link schemes become HTML.
+    def inline(text):
+        text = html.escape(text)
+        text = re.sub(r'\[([^\]\n]+)\]\(((?:https?://|mailto:)[^\s<>]+?)\)', r'<a href="\2">\1</a>', text)
+        return re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+    parts = []
+    for paragraph in body.replace('\r\n', '\n').split('\n\n'):
+        if not paragraph.strip():
+            continue
+        lines = paragraph.splitlines()
+        if all(line.startswith('- ') for line in lines):
+            parts.append('<ul>' + ''.join('<li>' + inline(line[2:]) + '</li>' for line in lines) + '</ul>')
+        else:
+            parts.append('<p>' + inline(paragraph).replace('\n', '<br>') + '</p>')
+    return ''.join(parts)
+
+
 def word_message(row, *, sender_email, subject_template='', body_template=''):
+    def due(value):
+        if not value:
+            return 'noch nicht festgelegt'
+        return date.fromisoformat(value).strftime('%d.%m.%Y')
     values = {'manager_name':row['manager_name'] or row['manager_pn'],
               'years':f"{row['review_year']}/{row['outlook_year']}",
-              'review_due':row['review_due_date'] or 'noch nicht festgelegt',
-              'outlook_due':row['outlook_due_date'] or 'noch nicht festgelegt',
+              'review_year':row['review_year'], 'outlook_year':row['outlook_year'],
+              'review_due':due(row['review_due_date']),
+              'outlook_due':due(row['outlook_due_date']),
               'sender_email':sender_email,
-              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden als ZIP. Entpacke die Dateien und bearbeite sie in Word. Die Reflexionsvorlage und die Feedbackvorlage mit deinen Stammdaten kannst du zur Vorbereitung an deine Mitarbeitenden weiterleiten. NameMA im Feedback-Dateinamen ist durch den Namen der mitarbeitenden Person zu ersetzen.'}
-    default_body = '''Guten Tag {manager_name}
-
-{introduction}
-
-Rückblick: {review_due}
-Ausblick: {outlook_due}
-
-Speichere die Dateien auf deinem persönlichen Geschäftsgerät. Sende nach dem Gespräch nur die fertig ausgefüllten und gemäss Formular unterzeichneten PDFs S/MIME-verschlüsselt an {sender_email}. Die Word-Dateien bleiben bei dir. Beachte die Unterschriftshinweise im jeweiligen Formular.
-
-Bei einer erneut zugestellten Vorlage übertrage bereits erfasste Angaben bei Bedarf in die neue Datei. Die neue Vorlage ersetzt deinen lokal bearbeiteten Stand nicht automatisch.
-
-Freundliche Grüsse
-Human Resources'''
+              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden als ZIP.'}
     try:
-        subject = (subject_template.strip() or 'Mitarbeitenden-Dialog {years}: Deine Word-Vorlagen').format_map(values)
-        body = (body_template.strip() or default_body).format_map(values)
+        subject = (subject_template.strip() or DEFAULT_WORD_SUBJECT).format_map(values)
+        body = (body_template.strip() or DEFAULT_WORD_BODY).format_map(values)
     except (ValueError,KeyError,IndexError,AttributeError) as exc:
         raise ValueError(f'Ungültiger Platzhalter im Word-E-Mailtext: {exc}') from exc
-    return subject, ''.join('<p>'+html.escape(p).replace('\n','<br>')+'</p>' for p in body.replace('\r\n','\n').split('\n\n') if p.strip())
+    return subject, _mail_html(body)
 
 
 def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths, sender_email,

@@ -104,7 +104,7 @@ class WordPackagesTest(unittest.TestCase):
         self.assertEqual(manifest['documents'][0]['performance_goals'], 1)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM package_events').fetchone()[0], 0)
         with ZipFile(second) as z:
-            review = next(n for n in z.namelist() if n.startswith('Rueckblick'))
+            review = next(n for n in z.namelist() if n.startswith('Rückblick'))
             self.assertIn('Erstes Ziel', controls(xml_for(z.read(review)))['rb_ziel_vorjahr_1'])
 
     def test_conflicting_goal_sources_stop_generation_without_partial_output(self):

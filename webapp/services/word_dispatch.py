@@ -157,7 +157,7 @@ Der jährliche Mitarbeitenden-Dialog steht an. Im angehängten ZIP findest du:
 
 Bitte überlege dir im Rahmen des Ausblicks, ob Mitarbeitende in deinem Team für die Nominierung für das [KNF I](https://ktzuerich.sharepoint.com/sites/zh-personelles/SitePages/KNF-I.aspx) oder [KNF II](https://ktzuerich.sharepoint.com/sites/zh-personelles/SitePages/KNF-II.aspx) (Kadernachwuchsförderung) für {outlook_year} in Frage kommen. Halte ein allfälliges Interesse im Ausblick unter Punkt 3 schriftlich fest.
 
-Für den Rückversand als PDF S/MIME-verschlüsselt an [{sender_email}](mailto:{sender_email}) gelten folgende Vorgaben:
+Für den Rückversand als PDF an [{sender_email}](mailto:{sender_email}) gelten folgende Vorgaben:
 
 **Bis zum {review_due}:**
 
@@ -170,8 +170,9 @@ Für den Rückversand als PDF S/MIME-verschlüsselt an [{sender_email}](mailto:{
 
 **Hinweise:**
 
-- Entpacke das ZIP und speichere die Word-Dateien vor der Bearbeitung. Beim Speichern als PDF kannst du den vorgegebenen Dateinamen übernehmen. Im Feedback-Dateinamen ersetzt du NameMA durch den Namen der mitarbeitenden Person. Die Word-Dateien bleiben bei dir.
-- Die Dokumente im Anhang sind automatisch generiert. Mitarbeitende in der Probezeit, kurz vor dem Austritt oder mit vakanten Vorgesetzten sind weitgehend berücksichtigt worden. Dennoch können nicht alle Eventualitäten vollständig vorweggenommen werden.
+- Speichere das ZIP, entpacke es (Rechtsklick > Alle extrahieren...) und nutze die Wordvorlagen. Beim Speichern als PDF kannst du den vorgegebenen Dateinamen übernehmen. Sende nur die PDFs zurück ans HR.
+- Die Dokumente im Anhang sind automatisch generiert. Mitarbeitende in der Probezeit, kurz vor dem Austritt oder mit vakanten Vorgesetzten sind weitgehend berücksichtigt worden. Dennoch können nicht alle Eventualitäten vollständig vorweggenommen werden. Hier findest du Infos zu den [Spezialfällen](https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-%28MD%29.aspx#spezialf%C3%A4lle).
+- Gemäss der [Allgemeinen Nutzungsrichtlinie M365](https://ktzuerich.sharepoint.com/:b:/r/sites/gd/Freigegebene%20Dokumente/Informationssicherheit/Allgemeine-Nutzungsrichtlinie-Microsoft365-Stand-1.%20Februar%202023.pdf?d=we6c7c63a52394d86a99cc39a42edac14&csf=1&web=1&e=S8GSP1) müssen E-Mails mit vertraulichem Inhalt verschlüsselt versendet werden.
 - Die administrative Verarbeitung erfolgt maschinell. Deshalb ist es wichtig, dass die PDFs die Personalnummern am Ende der Beschriftung tragen.
 - Standardmässig genügt die einfache elektronische Unterschrift auf dem PDF, wie sie in Adobe Acrobat möglich ist. Bei einer Gesamtbewertung genügend / ungenügend oder wenn Uneinigkeit besteht, müssen beide Parteien die Dokumente handschriftlich unterzeichnen und den Scan beilegen.
 - Sämtliche Unterlagen und Informationen zum Mitarbeitenden-Dialog sind auf [ZHub](https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-%28MD%29.aspx) zu finden.

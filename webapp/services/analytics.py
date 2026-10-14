@@ -120,6 +120,7 @@ def analytics_data(
         connection, cycle_id=cycle_id, org_unit=org_unit, event_type=event_type
     )
     timings: list[dict[str, Any]] = []
+    form_fields = []
     rating_cases: dict[str, str] = {}
     competency_cases: dict[str, tuple[set[str], set[str]]] = {}
     for row in rows:
@@ -132,10 +133,32 @@ def analytics_data(
         outlook = payload.get("outlook") if isinstance(payload.get("outlook"), dict) else {}
         case_key = row["legacy_case_id"] or f"event-{row['event_id']}"
 
+        for kind, section, document in (('review', review, review_doc), ('outlook', outlook, outlook_doc)):
+            if document.get('source') != 'word_pdf':
+                continue
+            answer = lambda key: {'ja': 'Ja', 'nein': 'Nein'}.get(document.get(key), 'Offen')
+            counts = section.get('character_counts', {})
+            form_fields.append({
+                'case_id': row['legacy_case_id'], 'cycle': f"{row['review_year']}/{row['outlook_year']}",
+                'employee_pn': row['employee_pn'], 'assignment_number': row['assignment_number'],
+                'dialog_part': 'Rückblick' if kind=='review' else 'Ausblick',
+                'period_start': document.get('period_start',''), 'period_end': document.get('period_end',''),
+                'dialog_date': document.get('dialog_date',''), 'conducted': answer('conducted'),
+                'higher_manager_requested': answer('higher_manager_requested') if kind=='review' else '–',
+                'sap_current': answer('sap_current') if kind=='review' else '–',
+                'sap_clarification': 'Klärung erforderlich' if document.get('sap_current')=='nein' else '',
+                'career_requested': answer('career_requested') if kind=='outlook' else '–',
+                'performance_goal_count': len(section.get('performance_goals',[])) if kind=='outlook' and document.get('conducted')=='ja' else '',
+                'review_competencies': document.get('review_competencies','') if kind=='review' else '',
+                'development_competencies': document.get('development_competencies','') if kind=='outlook' else '',
+                'character_counts': counts,
+                'assessment_character_counts': section.get('assessment_character_counts',{}),
+            })
+
         parts: list[tuple[str, str]] = []
-        if row["required_scope"] in {"full", "review_only"}:
+        if row["required_scope"] in {"full", "review_only"} and review_doc.get("conducted", review.get("conducted")) != "nein":
             parts.append(("Rückblick", row["case_dialog_date"] or review.get("dialog_date") or review_doc.get("dialog_date")))
-        if row["required_scope"] in {"full", "outlook_only"}:
+        if row["required_scope"] in {"full", "outlook_only"} and outlook_doc.get("conducted", outlook.get("conducted")) != "nein":
             parts.append(("Ausblick", outlook.get("dialog_date") or outlook_doc.get("dialog_date") or row["event_dialog_date"]))
         for part, raw_date in parts:
             dialog_date = _valid_date(raw_date)
@@ -157,14 +180,17 @@ def analytics_data(
             })
 
         rating = _rating(row["overall_rating_code"] or review.get("overall_rating") or review_doc.get("rating"))
-        if rating and case_key not in rating_cases:
+        if rating and review_doc.get("conducted", review.get("conducted")) != "nein" and case_key not in rating_cases:
             rating_cases[case_key] = rating
 
         review_names = _names(review.get("competencies"))
-        review_names.update(_names(payload.get("previous_development_goals")))
         review_names.update(_pipe_names(review_doc.get("review_competencies")))
         development_names = _names(outlook.get("development_goals"))
         development_names.update(_pipe_names(outlook_doc.get("development_competencies")))
+        if review_doc.get('conducted', review.get('conducted')) == 'nein':
+            review_names.clear()
+        if outlook_doc.get('conducted', outlook.get('conducted')) == 'nein':
+            development_names.clear()
         if review_names or development_names:
             competency_cases[case_key] = (review_names, development_names)
 
@@ -210,6 +236,7 @@ def analytics_data(
     ]
     timing_max = max((item["total"] for item in timing_months), default=0)
     return {
+        "form_fields": form_fields,
         "timings": timings,
         "timing_months": timing_months,
         "timing_max": timing_max,
@@ -226,7 +253,19 @@ def analytics_data(
 def analytics_csv(report: str, data: dict[str, Any]) -> tuple[str, bytes]:
     output = io.StringIO(newline="")
     writer = csv.writer(output, delimiter=";", lineterminator="\r\n")
-    if report == "timings":
+    if report == 'form_fields':
+        from .word_pdf import NARRATIVE_FIELDS
+        from .legacy_forms import COMPETENCY_TAGS
+        keys = ('cycle','employee_pn','assignment_number','dialog_part','period_start','period_end','dialog_date','conducted','higher_manager_requested','sap_current','sap_clarification','career_requested','performance_goal_count','review_competencies','development_competencies')
+        writer.writerow(['Durchlauf','Personalnummer','Ans.','Gesprächsteil','Zeitraum von','Zeitraum bis','Gesprächsdatum','Durchgeführt','Gespräch nächsthöhere FK gewünscht','Bewilligungen aktuell','Klärungsbedarf','Laufbahnentwicklung gewünscht','Anzahl Leistungsziele','Aktuell eingeschätzte Kompetenzen','Entwicklungskompetenzen'] +
+                        ['Zeichen: '+label for label,_pattern in NARRATIVE_FIELDS.values()] +
+                        ['Zeichen Einschätzung: '+name for name in COMPETENCY_TAGS.values()])
+        for row in data['form_fields']:
+            writer.writerow([row[key] for key in keys] +
+                            [row['character_counts'].get(key,'') for key in NARRATIVE_FIELDS] +
+                            [row['assessment_character_counts'].get(name,'') for name in COMPETENCY_TAGS.values()])
+        name = 'MD_Formularangaben.csv'
+    elif report == "timings":
         headers = ["Durchlauf", "Organisationseinheit", "Dialogart", "Gesprächsteil", "Gesprächsdatum", "Kalenderwoche", "Monat", "Name", "Personalnummer", "Ans."]
         writer.writerow(headers)
         for row in data["timings"]:

@@ -207,6 +207,9 @@ def cockpit_overview(
                     AND pe.manager_pn = dc.manager_pn
                     AND pe.direction = 'versand'
               )
+              AND COALESCE(NULLIF(dc.official_scope,''),dc.suggested_scope) <> 'none'
+              AND NOT EXISTS (SELECT 1 FROM word_dispatch_packages wp
+                  WHERE wp.cycle_id=dc.cycle_id AND wp.manager_pn=dc.manager_pn)
             GROUP BY dc.manager_pn, manager_name
             ORDER BY manager_name
             """,
@@ -218,8 +221,8 @@ def cockpit_overview(
                 {
                     "priority": "mittel",
                     "priority_rank": 5,
-                    "kind": "Arbeitsmappe",
-                    "title": "START-Datei bereitstellen",
+                    "kind": "Versand",
+                    "title": "Vorlagen bereitstellen",
                     "subject": manager["manager_name"],
                     "context": f"{manager['case_count']} Mitarbeitende",
                     "date": selected_cycle["created_at"],
@@ -228,6 +231,20 @@ def cockpit_overview(
                     "manager_pn": manager["manager_pn"],
                 }
             )
+
+        pending_word_mail = connection.execute("""SELECT p.manager_pn,p.created_at,
+            COALESCE(NULLIF(TRIM(e.first_name || ' ' || e.last_name),''),p.manager_pn) AS manager_name,
+            d.status FROM word_dispatch_packages p LEFT JOIN employees e ON e.pn=p.manager_pn
+            LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
+            WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2
+                WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn)
+            AND COALESCE(d.status,'')<>'sent_confirmed'""",(cycle_id,)).fetchall()
+        for package in pending_word_mail:
+            tasks.append({'priority':'mittel','priority_rank':5,'kind':'Versand',
+                'title':'Word-Versand abschliessen','subject':package['manager_name'],
+                'context':'Entwurf versenden und bestätigen' if package['status']=='draft_created' else 'Word-Paket und Outlook-Status prüfen',
+                'date':package['created_at'],'target':'dispatch','cycle_id':cycle_id,
+                'manager_pn':package['manager_pn']})
 
         scans_pending = connection.execute(
             """
@@ -277,6 +294,19 @@ def cockpit_overview(
             """,
             (cycle_id,),
         ).fetchone()["count"]
+
+    from .hr_workflow import pending_pdfs
+    pdfs = pending_pdfs(connection)
+    metrics['pdfs_pending'] = len(pdfs)
+    for item in pdfs:
+        tasks.append(dict(priority='hoch',priority_rank=2,kind='PDF-Prüfung',title='Eingegangenes PDF prüfen',subject=item['original_filename'],context='Durchlaufübergreifender Eingang; noch nicht freigegeben',date=item['created_at'],target='word_pdf',import_id=item['id']))
+    signatures = connection.execute("""SELECT d.*,e.first_name,e.last_name FROM official_documents d JOIN employees e ON e.pn=d.employee_pn
+        WHERE d.is_current=1 AND d.variant='digital' AND d.signature_checked=0 AND (? IS NULL OR d.cycle_id=?)""",(selected_cycle['id'] if selected_cycle else None,selected_cycle['id'] if selected_cycle else None)).fetchall()
+    metrics['signatures_pending'] = len(signatures)
+    for item in signatures:
+        tasks.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title='Unterschriften und Ablage prüfen',subject=item['first_name']+' '+item['last_name'],context='PDF-Fachdaten übernommen; HR-Freigabe noch offen',date=item['received_at'],target='case',case_id=item['case_id'],cycle_id=item['cycle_id'],manager_pn=item['manager_pn']))
+    for item in connection.execute("SELECT * FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'"):
+        tasks.append(dict(priority='hoch',priority_rank=2,kind='Zuordnung',title='Ereignis einem Durchlauf zuordnen',subject=item['event_id'],context='Ohne Zuordnung sind Word-Erzeugung und Fallprüfung noch nicht möglich',date=item['created_at'],target='unassigned'))
 
     tasks.sort(key=lambda item: (item["priority_rank"], item["date"] or ""))
     for cycle in cycles:

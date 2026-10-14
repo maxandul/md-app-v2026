@@ -262,3 +262,14 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
   .app-shell { width: auto; }
   .panel, .table-wrap, .security-note { break-inside: avoid; }
 }
+.pdf-extracted-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
+/* Preserve paragraphs and lists while reviewing imported goal text. */
+.goal-import-table { table-layout: fixed; width: 100%; min-width: 650px; }
+.goal-import-table td { white-space: pre-wrap; overflow-wrap: anywhere; vertical-align: top; }
+.goal-import-table th:last-child { width: 14%; }

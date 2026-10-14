@@ -542,3 +542,102 @@ CREATE TABLE IF NOT EXISTS reminder_obligations (
     due_date_snapshot TEXT NOT NULL,
     PRIMARY KEY (reminder_id, obligation_id)
 );
+
+-- Word/PDF-Rückläufe bleiben bis zur fachlichen Bestätigung in der Prüfwarteschlange.
+CREATE TABLE IF NOT EXISTS word_pdf_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL UNIQUE,
+    parsed_json TEXT NOT NULL,
+    reviewed_json TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','imported','historical','duplicate')),
+    case_id TEXT REFERENCES dialog_cases(case_id),
+    official_document_id INTEGER REFERENCES official_documents(id),
+    review_note TEXT NOT NULL DEFAULT '',
+    reviewed_by INTEGER REFERENCES app_users(id),
+    duplicate_of INTEGER REFERENCES word_pdf_imports(id),
+    created_at TEXT NOT NULL,
+    reviewed_at TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS word_pdf_goal_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    import_id INTEGER NOT NULL UNIQUE REFERENCES word_pdf_imports(id),
+    employee_pn TEXT NOT NULL REFERENCES persons(person_number),
+    assignment_number TEXT NOT NULL,
+    goal_year INTEGER NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    goals_json TEXT NOT NULL,
+    case_id TEXT REFERENCES dialog_cases(case_id),
+    replaces_id INTEGER REFERENCES word_pdf_goal_versions(id),
+    replacement_reason TEXT NOT NULL DEFAULT '',
+    is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0,1))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_word_goal_version_current
+    ON word_pdf_goal_versions(employee_pn,assignment_number,goal_year) WHERE is_current=1;
+
+CREATE TABLE IF NOT EXISTS word_dispatch_packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    export_id TEXT NOT NULL UNIQUE,
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id),
+    manager_pn TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    source_fingerprint TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_word_dispatch_manager ON word_dispatch_packages(cycle_id,manager_pn,id);
+CREATE TABLE IF NOT EXISTS word_mail_deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    package_id INTEGER NOT NULL UNIQUE REFERENCES word_dispatch_packages(id),
+    sender_email TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body_html TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('processing','draft_created','sent_confirmed','failed','cancelled')),
+    encryption_flag_verified INTEGER NOT NULL DEFAULT 0,
+    outlook_entry_id TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS workflow_pdf_state (
+ import_id INTEGER PRIMARY KEY REFERENCES word_pdf_imports(id),
+ revision INTEGER NOT NULL DEFAULT 0,
+ dismissed INTEGER NOT NULL DEFAULT 0,
+ reason TEXT NOT NULL DEFAULT '',
+ updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workflow_cycle_closures (
+ cycle_id INTEGER PRIMARY KEY REFERENCES cycles(id),
+ reason TEXT NOT NULL,
+ owner TEXT NOT NULL,
+ summary_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workflow_goal_choices (
+ employee_pn TEXT NOT NULL,
+ assignment_number TEXT NOT NULL,
+ goal_year INTEGER NOT NULL,
+ source_json TEXT NOT NULL,
+ sources_fingerprint TEXT NOT NULL,
+ reason TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ PRIMARY KEY(employee_pn,assignment_number,goal_year)
+);
+
+-- Plan B feedback is assigned to a manager/year, without inventing a case/employee.
+CREATE TABLE IF NOT EXISTS word_feedback_submissions (
+    import_id INTEGER PRIMARY KEY REFERENCES word_pdf_imports(id),
+    cycle_id INTEGER NOT NULL REFERENCES cycles(id),
+    manager_pn TEXT NOT NULL REFERENCES employees(pn),
+    bundle_id INTEGER REFERENCES feedback_bundles(id)
+);
+CREATE INDEX IF NOT EXISTS idx_word_feedback_group ON word_feedback_submissions(cycle_id, manager_pn, bundle_id);
+CREATE TABLE IF NOT EXISTS word_feedback_bundle_archives (
+    bundle_id INTEGER PRIMARY KEY REFERENCES feedback_bundles(id),
+    stored_path TEXT NOT NULL
+);

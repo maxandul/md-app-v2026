@@ -216,9 +216,13 @@ class OutlookDraftAdapter:
 class OutlookInboxAdapter:
     """Liest Nachrichten/Anhänge und verschiebt abschliessend verarbeitete Mails."""
 
+    def __init__(self):
+        self.read_errors: list[str] = []
+
     def read_messages(
         self, *, mailbox_name: str, limit: int = 1000
     ) -> list[InboundMessage]:
+        self.read_errors = []
         try:
             import pythoncom
             import win32com.client as win32
@@ -234,45 +238,65 @@ class OutlookInboxAdapter:
             items = inbox.Items
             items.Sort("[ReceivedTime]", True)
             messages: list[InboundMessage] = []
+            self.read_errors = []
             for position in range(1, min(int(items.Count), limit) + 1):
-                mail = items.Item(position)
-                if int(getattr(mail, "Class", 0) or 0) != 43:
-                    continue
-                attachments: list[InboundAttachment] = []
-                with TemporaryDirectory(prefix="md-mail-") as temporary:
-                    temporary_dir = Path(temporary)
-                    for index in range(1, int(mail.Attachments.Count) + 1):
-                        attachment = mail.Attachments.Item(index)
-                        filename = str(getattr(attachment, "FileName", "") or "").strip()
-                        if not filename:
-                            filename = f"Anhang-{index}"
-                        temporary_path = temporary_dir / f"attachment-{index}"
-                        attachment.SaveAsFile(str(temporary_path))
-                        attachments.append(
-                            InboundAttachment(index, filename, temporary_path.read_bytes())
-                        )
+                mail = None
                 try:
-                    internet_message_id = str(
-                        mail.PropertyAccessor.GetProperty(
-                            "http://schemas.microsoft.com/mapi/proptag/0x1035001E"
+                    mail = items.Item(position)
+                    if int(getattr(mail, "Class", 0) or 0) != 43:
+                        continue
+                    attachments: list[InboundAttachment] = []
+                    with TemporaryDirectory(prefix="md-mail-") as temporary:
+                        temporary_dir = Path(temporary)
+                        for index in range(1, int(mail.Attachments.Count) + 1):
+                            attachment = mail.Attachments.Item(index)
+                            filename = str(getattr(attachment, "FileName", "") or "").strip()
+                            if not filename:
+                                filename = f"Anhang-{index}"
+                            temporary_path = temporary_dir / f"attachment-{index}"
+                            attachment.SaveAsFile(str(temporary_path))
+                            attachments.append(
+                                InboundAttachment(index, filename, temporary_path.read_bytes())
+                            )
+                    try:
+                        internet_message_id = str(
+                            mail.PropertyAccessor.GetProperty(
+                                "http://schemas.microsoft.com/mapi/proptag/0x1035001E"
+                            )
+                            or ""
                         )
-                        or ""
+                    except Exception:
+                        internet_message_id = ""
+                    received_at = getattr(mail, "ReceivedTime", None)
+                    if not isinstance(received_at, datetime):
+                        received_at = datetime.now().astimezone()
+                    messages.append(
+                        InboundMessage(
+                            entry_id=str(getattr(mail, "EntryID", "") or ""),
+                            internet_message_id=internet_message_id,
+                            sender_email=_sender_email(mail),
+                            subject=str(getattr(mail, "Subject", "") or ""),
+                            received_at=received_at,
+                            attachments=tuple(attachments),
+                        )
                     )
-                except Exception:
-                    internet_message_id = ""
-                received_at = getattr(mail, "ReceivedTime", None)
-                if not isinstance(received_at, datetime):
-                    received_at = datetime.now().astimezone()
-                messages.append(
-                    InboundMessage(
-                        entry_id=str(getattr(mail, "EntryID", "") or ""),
-                        internet_message_id=internet_message_id,
-                        sender_email=_sender_email(mail),
-                        subject=str(getattr(mail, "Subject", "") or ""),
-                        received_at=received_at,
-                        attachments=tuple(attachments),
-                    )
-                )
+                except Exception as exc:
+                    # Never return partial attachments: this mail must be retried
+                    # after Outlook can decrypt/read it, without duplicate marks.
+                    label = f"Nachricht an Position {position}"
+                    if mail is not None:
+                        try:
+                            label = str(mail.Subject or label)
+                        except Exception:
+                            pass
+                    detail = str(exc)
+                    if any(value in detail.casefold() for value in
+                           ("digitalen id", "digital id", "-2146893792", "80090020")):
+                        detail = ("S/MIME-Nachricht konnte nicht entschlüsselt werden. "
+                                  "Bitte diese Mail im klassischen Outlook unter demselben "
+                                  "Windows-Benutzer öffnen und Zertifikat/privaten Schlüssel "
+                                  "prüfen lassen. Anschliessend erneut scannen. " + detail)
+                    self.read_errors.append(f"«{label}» wurde nicht verarbeitet und bleibt im Posteingang: {detail}")
             return messages
         except Exception as exc:
             raise OutlookUnavailableError(

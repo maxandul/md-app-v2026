@@ -47,26 +47,20 @@ def create_app(test_config: dict | None = None) -> Flask:
         ANALYTICS_MIN_GROUP_SIZE=max(
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
         ),
-        HR_MAILBOX_EMAIL=os.environ.get("MD_HR_MAILBOX_EMAIL", "hr@vd.zh.ch"),
-        OUTLOOK_MAILBOX_NAME=os.environ.get("MD_OUTLOOK_MAILBOX", "VD-GS HR"),
-        OUTLOOK_TARGET_FOLDER=os.environ.get(
-            "MD_OUTLOOK_TARGET_FOLDER", "12 Mitarbeitenden-Dialog"
-        ),
     )
+    from .organisation import load_organisation, validate_organisation
+    app.config.update(load_organisation())
     if test_config:
         app.config.update(test_config)
 
-    if "DOSSIER_HANDOFF_ROOT" not in (test_config or {}):
-        windows_robot_input = r"K:\VD-GS-PUO-Personal\100 Roboter\Input"
-        default_handoff = (
-            windows_robot_input
-            if os.name == "nt"
-            else str(Path(app.config["STORAGE_ROOT"]) / "dossier_ready")
-        )
-        app.config["DOSSIER_HANDOFF_ROOT"] = os.environ.get(
-            "MD_ROBOT_INPUT_ROOT",
-            os.environ.get("MD_DOSSIER_HANDOFF_ROOT", default_handoff),
-        )
+    if "WORD_TEMPLATE_PATHS" not in app.config:
+        from .services.word_packages import load_word_config
+        config_path = Path(os.environ.get("MD_WORD_CONFIG", str(Path(app.instance_path) / "word_config.json")))
+        app.config["WORD_TEMPLATE_PATHS"] = load_word_config(config_path)
+
+    validate_organisation(app.config)
+    if not app.config.get("DOSSIER_HANDOFF_ROOT"):
+        app.config["DOSSIER_HANDOFF_ROOT"] = str(Path(app.config["STORAGE_ROOT"]) / "dossier_ready")
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     Path(app.config["STORAGE_ROOT"]).mkdir(parents=True, exist_ok=True)
@@ -93,5 +87,9 @@ def create_app(test_config: dict | None = None) -> Flask:
             "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
         return response
+
+    @app.context_processor
+    def workflow_visibility():
+        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled'}
 
     return app

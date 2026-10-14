@@ -16,7 +16,7 @@
 
   <section class="content-section" aria-labelledby="case-data-title">
     <div class="section-heading"><div><p class="kicker">Übernommene Angaben</p><h2 id="case-data-title">Fachdaten prüfen</h2></div></div>
-    {% if correction_locked %}<div class="info-box"><p>Mindestens ein aktuelles Dokument wurde bereits freigegeben. Direkte Datenkorrekturen sind deshalb gesperrt; verwende eine begründete neue PDF-Version.</p></div>{% endif %}
+    {% if correction_locked %}<div class="info-box"><p>Mindestens ein aktuelles Dokument wurde bereits freigegeben. Direkte Datenkorrekturen sind deshalb gesperrt; Bereits zur Ablage bereitgestellte Dokumente lassen sich auch durch eine neue PDF-Version nicht automatisch ersetzen. Kläre solche Korrekturen zuerst mit der zuständigen Dossier- und SAP-Verarbeitung.</p></div>{% endif %}
     <form action="{{ url_for('main.correct_case', cycle_id=cycle_id, case_id=case.case_id) }}" method="post">
       <div class="form-grid form-grid--three">
         <div><label for="official_scope">Verbindlicher Umfang</label><select id="official_scope" name="official_scope"{% if correction_locked %} disabled{% endif %}>{% if not case.official_scope %}<option value="" selected>Noch nicht festgelegt</option>{% endif %}<option value="full"{% if case.official_scope == 'full' %} selected{% endif %}>Rückblick und Ausblick</option><option value="review_only"{% if case.official_scope == 'review_only' %} selected{% endif %}>Nur Rückblick</option><option value="outlook_only"{% if case.official_scope == 'outlook_only' %} selected{% endif %}>Nur Ausblick</option><option value="none"{% if case.official_scope == 'none' %} selected{% endif %}>Kein MD</option></select></div>
@@ -24,7 +24,7 @@
         <div><label for="overall_rating_code">Gesamtbeurteilung</label><select id="overall_rating_code" name="overall_rating_code"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option>{% for rating in ['A','B','C','D','E'] %}<option value="{{ rating }}"{% if case.overall_rating_code == rating %} selected{% endif %}>{{ rating }}</option>{% endfor %}</select></div>
         <div><label for="period_start">Zeitraum von</label><input id="period_start" name="period_start" type="date" value="{{ case.period_start }}"{% if correction_locked %} disabled{% endif %}></div>
         <div><label for="period_end">Zeitraum bis</label><input id="period_end" name="period_end" type="date" value="{{ case.period_end }}"{% if correction_locked %} disabled{% endif %}></div>
-        <div><label for="agreement">Einigkeitsstatus</label><select id="agreement" name="agreement"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option><option value="JA"{% if case.agreement == 'JA' %} selected{% endif %}>Ja</option><option value="NEIN"{% if case.agreement == 'NEIN' %} selected{% endif %}>Nein</option></select></div>
+        {% if not word_pdf_case %}<div><label for="agreement">Einigkeitsstatus</label><select id="agreement" name="agreement"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option><option value="JA"{% if case.agreement == 'JA' %} selected{% endif %}>Ja</option><option value="NEIN"{% if case.agreement == 'NEIN' %} selected{% endif %}>Nein</option></select></div>{% endif %}
         <div class="form-grid__wide"><label for="reason">Begründung der Korrektur</label><input id="reason" name="reason" minlength="10" placeholder="Was war falsch und weshalb wird es geändert?"{% if correction_locked %} disabled{% endif %}></div>
       </div>
       <button class="button button--primary" type="submit"{% if correction_locked %} disabled{% endif %}>Begründete Korrektur speichern</button>
@@ -50,16 +50,33 @@
 
   <section class="content-section" aria-labelledby="documents-title">
     <div class="section-heading"><div><p class="kicker">Dokumentversionen</p><h2 id="documents-title">PDF-Verlauf</h2></div><span class="section-count">{{ documents|length }}</span></div>
-    {% if documents %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Version</th><th>Eingang</th><th>Status</th><th>Ersetzungsgrund</th></tr></thead><tbody>{% for document in documents %}<tr><td><strong>{{ document.document_name }}</strong><br><span class="muted">{{ document.original_filename }}</span></td><td>{% if document.is_current %}<span class="status status--staged">Aktuell</span>{% else %}<span class="status">Ersetzt</span>{% endif %}<br><code>{{ document.sha256[:12] }}…</code></td><td>{{ document.received_at }}</td><td>{{ document.variant_label }}<br><span class="muted">{{ document.handoff_label }}</span></td><td>{{ document.replacement_reason or '–' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch kein offizielles Dokument vorhanden.</div>{% endif %}
+    {% if documents %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Version</th><th>Eingang</th><th>Status</th><th>Ersetzungsgrund</th></tr></thead><tbody>{% for document in documents %}<tr><td><strong>{{ document.document_name }}</strong><br><span class="muted">{{ document.original_filename }}</span></td><td>{% if document.is_current %}<span class="status status--staged">Aktuell</span>{% else %}<span class="status">Ersetzt</span>{% endif %}<br><code>{{ document.sha256[:12] }}…</code></td><td>{{ document.received_at }}</td><td>{{ document.variant_label }}<br><span class="muted">{{ document.handoff_label }}</span>{% if document.data_block.get('conducted')=='nein' %}<br><strong>Nicht durchgeführt</strong><br>{{ document.data_block.get('no_md_reason','') }}{% endif %}{% if document.data_block.get('word_pdf_import_id') %}<br><a href="{{ url_for('main.word_pdf_review', import_id=document.data_block.word_pdf_import_id|int) }}">PDF-Prüfung und Original</a>{% endif %}</td><td>{{ document.replacement_reason or '–' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch kein offizielles Dokument vorhanden.</div>{% endif %}
 
+    {% for document in documents if document.is_current and document.variant == 'digital' %}
+      {% if not document.signature_checked %}
+      <div class="content-card"><h3>{{ document.document_name }}: Unterschriften und Ablage prüfen</h3>
+      <p>Öffne das Original über «PDF-Prüfung und Original» im PDF-Verlauf. Erst nach deiner Bestätigung wird das Dokument für die Personaldossier-Ablage bereitgestellt. Bei einer Scanpflicht bleibt die Ablage bis zum Eingang des Scans offen.</p>
+      <form action="{{ url_for('main.mark_signature_checked', document_id=document.id) }}" method="post">
+      <label><input type="checkbox" required> Ich habe die erforderlichen Unterschriften am Original-PDF geprüft.</label>
+      <button class="button button--primary">Unterschriften bestätigen und Ablage prüfen</button></form></div>
+      {% elif document.scan_required and document.handoff_status == 'waiting_scan' %}
+      <div class="content-card"><h3>{{ document.document_name }}: Handschriftlichen Scan ergänzen</h3>
+      <form action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.document_kind) }}" method="post" enctype="multipart/form-data">
+      <label>Unterschriebener PDF-Scan<input type="file" name="scan_file" accept=".pdf,application/pdf" required></label>
+      <button class="button">Prüfen und für Personaldossier bereitstellen</button></form></div>
+      {% endif %}
+    {% endfor %}
     <div class="content-card version-upload">
       <h3>Korrigierte PDF-Version importieren</h3>
       <p>Die Datei wird vollständig neu validiert. Die bisherige Version bleibt erhalten. Bereits für die Ablage bereitgestellte Dokumente können nicht automatisch ersetzt werden.</p>
+      <p>Für eine korrigierte Word-PDF-Datei: unter «Rückläufe» erneut einlesen, denselben Fall wählen und einen Ersetzungsgrund angeben.</p>
+      <p><a class="button" href="{{ url_for('main.returns_overview') }}">Korrigiertes Word-PDF einlesen</a></p>
+      {% if legacy_workbooks_enabled %}<details><summary>Alternative: Arbeitsmappen-PDF mit Datenblock ersetzen</summary>
       <form action="{{ url_for('main.replace_case_pdf', cycle_id=cycle_id, case_id=case.case_id) }}" method="post" enctype="multipart/form-data">
         <label for="replacement_pdf">Korrigierte PDF-Datei</label><input id="replacement_pdf" name="replacement_pdf" type="file" accept=".pdf,application/pdf" required>
         <label for="replacement_reason">Ersetzungsgrund</label><input id="replacement_reason" name="replacement_reason" minlength="10" required placeholder="Weshalb ersetzt diese Datei die aktuelle Version?">
         <button class="button" type="submit">Neue Version prüfen und übernehmen</button>
-      </form>
+      </form></details>{% endif %}
     </div>
   </section>
 

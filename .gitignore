@@ -47,3 +47,7 @@ build/
 # Backup/Temp
 *.bak
 *.tmp
+
+# Freigegebene leere Vorlagen zur Weitergabe an Mitarbeitende
+!templates/preparation/MD_Feedback.docx
+!templates/preparation/MD_Reflexion.docx

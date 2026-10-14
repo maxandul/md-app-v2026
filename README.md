@@ -4,52 +4,39 @@ Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
 Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für
 gemeinsame Tests und die schrittweise Weiterentwicklung.
 
-## Was bereits funktioniert
+Die Umstellung auf Word-Vorlagen mit PDF-Rücklauf ist begonnen. In der
+**Führungslinie → Word-Vorlagen** lassen sich personalisierte Formulare einzeln
+oder für die Führungslinie als ZIP erzeugen. Unter **Versand** werden Word-Pakete
+für ausgewählte Führungskräfte, eine Organisationseinheit oder den ganzen Durchlauf
+vorbereitet. Die Outlook-Zustellung und der tatsächliche Versand sind separat
+protokolliert. Unter **Rückläufe → Word-PDFs
+einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
+Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
+nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
+landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt technisch erhalten, ist aber standardmässig ausgeblendet.
+Nichtdurchführungen lassen sich je Gesprächsteil mit Begründung bestätigen.
+Die Auswertung ergänzt Ja/Nein/offen-Angaben und Zeichenanzahlen geprüfter Textfelder.
+Einrichtung, Umsetzungsstand und nächste Schritte:
+[`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
 
-- SAP-Stammdaten als XLSX importieren und versioniert in SQLite speichern
-- einen Jahresprozess mit Rückblick- und Ausblickjahr eröffnen
-- den Jahresprozess sichtbar durch Vorbereitung, Versand, Rücklauf/Verarbeitung
-  und Abschluss führen; die Phase kann kontrolliert vor- und zurückgesetzt werden
-- den regulären und den unterjährigen Ablauf sowie Auswirkungen auf Outlook,
-  Roboter-Input, Personaldossier und SAP direkt im Cockpit erklären
-- pro vorgesetzter Person eine eigenständige Offline-HTML-Datei erzeugen
-- START-Dateien und notwendige Updates einzeln oder gesammelt bereitstellen
-- S/MIME-markierte Nachrichten direkt versenden oder als Outlook-Entwürfe erzeugen
-- Outlook-Posteingang einlesen, MD-Dokumente verarbeiten und reine MD-Mails
-  idempotent verschieben
-- gemeinsam eingereichte Feedback-PDFs je vorgesetzter Person mit Deckblatt zu
-  einem RPA-bereiten PDF zusammenführen, ohne fehlende Feedbacks zu mahnen
-- mehrere Mitarbeitende, Spezialfälle und «Kein MD» in einer Datei bearbeiten
-- Bearbeitungsfortschritt und Vollständigkeit in der Offline-Datei anzeigen
-- pro Person eine eigenständige Offline-Datei zur Gesprächsvorbereitung erzeugen;
-  ihr Inhalt passt sich an Rückblick und/oder Ausblick an
-- Gesprächsvorbereitung und Feedback getrennt als PDF ausgeben; Feedback wird
-  nur bei einem Rückblick angeboten und von der mitarbeitenden Person an die
-  vorgesetzte Person übermittelt
-- Rückblick und Ausblick je Person mit Jahr und Personalnummer als PDF drucken
-- elektronisch unterzeichnete PDFs einlesen und ihren MD-Datenblock übernehmen
-- Einzelfälle mit Dokumentpflichten, PDF-Versionen und Audit-Verlauf prüfen
-- fehlerhaft übernommene Angaben vor der Freigabe begründet korrigieren
-- korrigierte PDF-Versionen kontrolliert ersetzen, ohne die Vorversion zu löschen
-- Rückblick- und Ausblickfristen für den Durchlauf, eine Führungslinie oder einen
-  Einzelfall begründet anpassen und jede betroffene Pflicht protokollieren
-- überfällige Pflichten als Vorschau bündeln und ausgewählte oder alle
-  Erinnerungen als S/MIME-markierte Outlook-Entwürfe vorbereiten
-- bei Gesamtbewertung D/E oder Uneinigkeit einen zusätzlichen handschriftlich
-  unterzeichneten Scan nachverfolgen
-- nur den massgebenden Beleg für die nachgelagerte Dossier-RPA bereitstellen
-- protokollierte SAP-Exportbatches aus abgeschlossenen Rückblicken erzeugen;
-  Doppelverarbeitung wird verhindert und der Zeitraum auf Eintritts- und
-  Austrittsdatum begrenzt
-- Gesprächszeitpunkte personenbezogen sowie Gesamtbeurteilungen und Kompetenzen
-  aggregiert auswerten und als Excel-kompatible CSV-Dateien exportieren
-- aggregierte Auswertungen bei Unterschreitung der konfigurierten
-  Mindestgruppengrösse automatisch unterdrücken
-- kritische Aktionen in einer geschützten Administrationsansicht prüfen
-- vollständige, prüfsummengesicherte Backups erstellen und kontrolliert
-  wiederherstellen
-- Ziele aus früheren Word-Ausblickformularen zunächst als Vorschau prüfen und
-  danach idempotent in den nächsten Rückblick übernehmen
+Im Cockpit führen **Hilfe → Einrichtung** durch den Erststart und **Arbeitsliste** durch die offenen Aufgaben. Die [HR-Betreuungsanleitung](docs/HR_BETREUUNG.md) beschreibt Unterbrechungen, Ausnahmen und Jahreswechsel.
+
+## Aktueller Standardablauf
+
+- SAP-Stammdaten importieren, Zuordnungskonflikte prüfen und Durchlauf eröffnen.
+- Personalisierte Word-Vorlagen einzeln oder als Führungslinien-/Sammelpakete erzeugen.
+- Pro Führungskraft eine Reflexionsvorlage und eine mit ihren Stammdaten befüllte Feedbackvorlage zur Weiterleitung beilegen.
+- Eigene ZIP-Anhänge je Führungskraft über klassisches Outlook bereitstellen; Entwurf und Versand getrennt nachhalten.
+- Word-PDFs einlesen, am Original prüfen und dem Fall zuordnen.
+- Unterschriften und erforderliche Scans prüfen, danach Dossierübergabe bereitstellen.
+- Nachgereichte Ausblicke als Zielquelle übernehmen; bestehende Word-Ausgaben unverändert lassen.
+- Nichtdurchführung je Gesprächsteil dokumentieren; Auswertungen und SAP-Batches erzeugen.
+- Benutzer, Audit, Prozessbackups und Wiederherstellung verwalten.
+
+Die [Dokumentationsübersicht](docs/README.md) trennt aktuelle Anleitungen von
+historischen Spezifikationen. Alte Offline-Funktionen sind standardmässig
+unsichtbar und bleiben technisch verfügbar; zum ausdrücklichen Einblenden dient
+`LEGACY_WORKBOOKS: "enabled"` in der Organisationskonfiguration.
 
 ## Lokal unter Windows starten
 
@@ -76,10 +63,13 @@ genehmigtes, verschlüsseltes und getrenntes Medium übertragen werden.
 ## Erster Testlauf
 
 1. Die App starten.
-2. Den SAP-Export über die Startseite hochladen.
+2. Den SAP-Export unter «Stammdaten» hochladen.
 3. Für diesen Import einen Jahresprozess eröffnen.
 4. In der Prozessübersicht eine vorgesetzte Person auswählen.
-5. Deren `_START.html` erzeugen und lokal im Browser testen.
+5. Die lokalen Word-Vorlagen gemäss `docs/PLAN_B_WORD_PDF.md` einrichten und ein Word-Paket erzeugen.
+6. Unter «Versand» den Paketstatus prüfen. Testformulare in Word ausfüllen und als PDF zurückgeben.
+7. Unter «Rückläufe» einlesen, am Original prüfen und übernehmen. Danach beim Fall die Unterschriften- und Ablageprüfung abschliessen.
+8. Den SAP-Export erzeugen. Outlook, Dossier-RPA und SAP-Import werden auf dem Windows-Testgerät geprüft.
 
 Das Repository enthält bewusst keine SAP-Exporte, Personendaten, ausgefüllten
 Dialoge, PDFs oder lokale Datenbank. Solche Dateien bleiben auf dem geschützten
@@ -87,7 +77,7 @@ HR-Gerät und sind durch `.gitignore` vom Commit ausgeschlossen.
 
 ## Wichtige Sicherheitsgrenze des MVP
 
-Der Server bindet absichtlich nur an `127.0.0.1` und ist für den Betrieb auf
+Der Server bindet standardmässig an `127.0.0.1` und ist für den Betrieb auf
 einem einzelnen HR-Laptop gedacht. Vor einem Zugriff weiterer Arbeitsplätze
 müssen mindestens Windows-Authentisierung, Rollen/Berechtigungen, TLS, Backup,
 Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
@@ -101,15 +91,23 @@ vollständige Nachweis ist mit dem produktiven HR-Postfach, den Zertifikaten und
 der konkreten Outlook-Version durchzuführen.
 
 Für die Entwurfserstellung sind Windows, klassisches Outlook und `pywin32`
-erforderlich. Das Absenderpostfach kann vor dem Start gesetzt werden:
+erforderlich. Die Organisationswerte werden lokal hinterlegt:
 
-```powershell
-$env:MD_HR_MAILBOX_EMAIL = "hr@vd.zh.ch"
-$env:MD_OUTLOOK_MAILBOX = "VD-GS HR"
-$env:MD_OUTLOOK_TARGET_FOLDER = "12 Mitarbeitenden-Dialog"
-$env:MD_ROBOT_INPUT_ROOT = "K:\VD-GS-PUO-Personal\100 Roboter\Input"
-$env:MD_ANALYTICS_MIN_GROUP_SIZE = "5"
-```
+1. `config/organisation.example.json` nach `instance/organisation.json` kopieren.
+2. `HR_MAILBOX_EMAIL` (Absenderadresse), `OUTLOOK_MAILBOX_NAME` (Postfachname),
+   `OUTLOOK_TARGET_FOLDER`, `DOSSIER_HANDOFF_ROOT` und `SPECIAL_CASES_URL` setzen.
+3. App neu starten. Ohne Absenderadresse bleibt der Outlook-Versand gesperrt.
+   Ohne Spezialfälle-Link wird in der HTML-Alternative auf HR verwiesen.
+
+`MD_ORG_CONFIG` kann auf eine andere JSON-Datei zeigen. Umgebungsvariablen
+`MD_HR_MAILBOX_EMAIL`, `MD_OUTLOOK_MAILBOX`, `MD_OUTLOOK_TARGET_FOLDER`,
+`MD_ROBOT_INPUT_ROOT` (alternativ `MD_DOSSIER_HANDOFF_ROOT`) und
+`MD_SPECIAL_CASES_URL` überschreiben die jeweiligen Dateieinträge.
+Relative Ablagepfade beziehen sich auf das Konfigurationsverzeichnis. Ohne
+Ablagepfad verwendet die App lokal `STORAGE_ROOT/dossier_ready`; es gibt keinen
+fest eingebauten Netzlaufwerkspfad. Organisationsdatei und Word-Vorlagen bleiben
+in `instance/` und werden nicht in Git aufgenommen. Sie sind zusätzlich zum
+Datenbank-/Dateibackup lokal zu sichern.
 
 Das Einlesen ignoriert Mails ohne MD-Bezug. Erfolgreich verarbeitete reine
 MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails
@@ -121,19 +119,17 @@ vorgesetzte Person. Diese übermittelt die gesammelten Feedbacks in einer
 S/MIME-verschlüsselten E-Mail an HR. Die Anwendung führt die eingegangenen
 Feedbacks pro Führungskraft zusammen; HR verfolgt deren Vollständigkeit nicht.
 
-## Dateinamen
+## Zugriffsadresse für HR
 
-- Versand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_START.html`
-- Zwischenstand: `MD_Dialog_2025_2026_Nachname_Rufname_123456_BEARBEITET_v01_YYYYMMDD_HHMM.html`
-- Rückblick: `Rueckblick_2025_Nachname_Rufname_123456.pdf`
-- Ausblick: `Ausblick_2026_Nachname_Rufname_123456.pdf`
-- Handschriftlicher Scan: `Rueckblick_2025_Nachname_Rufname_HANDSCAN_123456.pdf`
-- Kein MD: `Kein_MD_2025_Nachname_Rufname_123456.pdf`
-- Vorbereitung MA: `Vorbereitung_MD_2025_Nachname_Rufname_123456.html`
-- Einzelnes Feedback: `MA-Nachname_MA-Rufname_Feedback_an_VG-Nachname_VG-Rufname_123456.pdf`
-- Feedback-Sammeldatei: `Feedback_2025_VG-Nachname_VG-Rufname_123456.pdf`
+Unter **Administration** stehen Rechnername, Bindung/Port und der konfigurierte
+Zugriffslink. Trage in `instance/organisation.json` den vollständigen Link unter
+`PUBLIC_BASE_URL` ein, z. B. `http://md-server.example.invalid:5050`; alternativ
+`MD_PUBLIC_BASE_URL`. Vor dem Verteilen auf einem zweiten HR-PC testen.
 
-Die Personalnummer steht bei dossierrelevanten PDFs am Ende des Dateinamens.
+Ein Rechner-/DNS-Name kann bei wechselnder IP gleich bleiben, sofern die interne
+Namensauflösung aktualisiert wird. Die Linkeinstellung ändert weder Serverbindung
+noch Firewall. Der BAT-Starter bleibt lokal; ein bereits eingerichteter
+Netzwerkstart wird dadurch nicht umkonfiguriert. Details: [Technik](docs/FLASK_SQLITE_MVP.md).
 
 ## Tests
 

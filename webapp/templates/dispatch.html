@@ -1,100 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Versand · MD-Verwaltung{% endblock %}
+{% block title %}Word-Versand · MD-Verwaltung{% endblock %}
 {% block content %}
-  <section class="page-head page-head--overview">
-    <div><p class="kicker">Versand</p><h1>Arbeitsmappen bereitstellen</h1><p class="lead">START-Dateien und notwendige Updates einzeln oder gesammelt erzeugen.</p></div>
-    {% if cycles %}<form class="context-selector" method="get"><label for="cycle_id">Durchlauf</label><select id="cycle_id" name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if selected_cycle and cycle.id == selected_cycle.id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select><button class="button button--small" type="submit">Anzeigen</button></form>{% endif %}
-  </section>
 
-  <section class="info-box info-box--wide"><h2>START oder Update?</h2><p>Beim ersten Bereitstellen erhält die Führungskraft eine vollständige HTML-Arbeitsmappe. Ändern sich danach Stammdaten oder Dialogpflichten, erzeugt die App eine JSON-Update-Datei. Die Führungskraft liest diese in ihrer zuletzt gespeicherten Arbeitsmappe ein; vorhandene Eingaben bleiben erhalten. Wurde die Arbeitsmappe gelöscht, erzeugt «START neu» eine vollständige Ersatzdatei aus dem aktuellen Cockpit-Stand. Frühere Arbeitsmappen und Updates werden dadurch abgelöst. «Erstellt» bedeutet noch nicht «per E-Mail versendet».</p></section>
+<section class="page-head"><div><p class="kicker">Versand</p><h1>Word-Vorlagen bereitstellen</h1><p class="lead">Führungskräfte auswählen, personalisierte Formulare erzeugen und per Outlook zustellen.</p></div>
+{% if cycles %}<form method="get" class="context-selector"><label>Durchlauf<select name="cycle_id">{% for cycle in cycles %}<option value="{{ cycle.id }}" {% if selected_cycle and selected_cycle.id==cycle.id %}selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></label><button class="button">Anzeigen</button></form>{% endif %}</section>
+{% include '_configuration_status.html' %}
 
-  {% if managers %}
-    <form action="{{ url_for('main.download_package_batch', cycle_id=selected_cycle.id) }}" method="post" data-refresh-after-download>
-      <section class="content-section" aria-labelledby="batch-title">
-        <div class="section-heading"><div><p class="kicker">Sammelerzeugung</p><h2 id="batch-title">Auswahl festlegen</h2></div></div>
-        <div class="selection-panel">
-          <label class="choice"><input type="radio" name="selection_mode" value="selected" checked> Markierte Führungskräfte</label>
-          <label class="choice"><input type="radio" name="selection_mode" value="org_unit"> Organisation ab Einheit</label>
-          <select name="org_unit" aria-label="Organisationseinheit">
-            <option value="">Organisationseinheit wählen</option>
-            {% for org_unit in org_units %}<option value="{{ org_unit }}">{{ org_unit }}</option>{% endfor %}
-          </select>
-          <label class="choice"><input type="radio" name="selection_mode" value="all"> Gesamter Durchlauf</label>
-          <button class="button button--primary button--small" type="submit">Erforderliche Dateien als ZIP erzeugen</button>
-        </div>
-        <p class="list-note">Die Sammelerzeugung enthält nur fehlende START-Dateien und erforderliche Updates. Bereits aktuelle Arbeitsmappen werden übersprungen.</p>
-      </section>
-
-      <section class="content-section" aria-labelledby="dispatch-title">
-        <div class="section-heading"><div><p class="kicker">Führungskräfte</p><h2 id="dispatch-title">Arbeitsmappen</h2></div><span class="section-count">{{ managers|length }} Führungskräfte</span></div>
-        <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Vorgesetzte Person</th><th>Organisation</th><th>Fälle</th><th>Arbeitsmappe</th><th>Letzter Rücklauf</th><th>Einzeln erzeugen</th></tr></thead><tbody>
-        {% for manager in managers %}
-          <tr>
-            <td><input class="table-checkbox" type="checkbox" name="manager_pn" value="{{ manager.manager_pn }}" aria-label="{{ manager.manager_name }} auswählen"{% if manager.package_blocking %} disabled{% endif %}></td>
-            <td><strong>{{ manager.manager_name }}</strong><br><span class="muted">PN {{ manager.manager_pn }}</span></td>
-            <td>{{ manager.org_unit or '–' }}</td>
-            <td>{{ manager.case_count }}</td>
-            <td>
-              {% if manager.package_state == 'start_missing' %}<span class="status status--missing">START-Datei fehlt</span>
-              {% elif manager.package_state == 'update_required' %}<span class="status status--warning">Update erforderlich</span>
-              {% else %}<span class="status status--staged">Aktuell</span>{% endif %}
-              {% if manager.sent_at %}<br><span class="muted">zuletzt erstellt {{ manager.sent_at }}</span>{% endif %}
-              {% for issue in manager.package_issues %}<br><span class="issue-text issue-text--{{ issue.severity }}">{{ issue.message }}</span>{% endfor %}
-            </td>
-            <td>{{ manager.returned_at or '–' }}</td>
-            <td>
-              {% if manager.package_blocking %}<span class="status status--danger">Zuordnung prüfen</span>
-              {% elif manager.package_state == 'start_missing' %}
-                <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">START-Datei</button>
-              {% elif manager.package_state == 'update_required' %}
-                <button class="button button--small" type="submit" formaction="{{ url_for('main.download_manager_update', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}">Update-Datei</button>
-                <button class="button button--small" type="submit" formaction="{{ url_for('main.recreate_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}" data-confirm-recreate>START neu</button>
-              {% else %}<button class="button button--small" type="submit" formaction="{{ url_for('main.recreate_manager_package', cycle_id=selected_cycle.id, manager_pn=manager.manager_pn) }}" data-confirm-recreate>START neu</button>{% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody></table></div>
-      </section>
-    </form>
-  {% else %}
-    <section class="content-section"><div class="empty-state">Für den gewählten Durchlauf sind noch keine Führungslinien vorhanden.</div></section>
-  {% endif %}
-
-  {% if selected_cycle %}
-    <section class="content-section" aria-labelledby="mail-title">
-      <div class="section-heading"><div><p class="kicker">Outlook</p><h2 id="mail-title">Arbeitsmappen per E-Mail zustellen</h2></div><span class="section-count">{{ mail_candidates|length }} vorbereitete Dateien</span></div>
-      <div class="info-box"><p>Du kannst die ausgewählten Nachrichten direkt S/MIME-verschlüsselt versenden oder zunächst als Outlook-Entwürfe erstellen. Beim Direktversand werden Empfänger, Anhang und Verschlüsselungsmarkierung vor dem Senden technisch geprüft.</p></div>
-      {% if mail_candidates %}
-        <form action="{{ url_for('main.prepare_mail_drafts', cycle_id=selected_cycle.id) }}" method="post">
-          <details class="content-card mail-template"><summary>E-Mailtext bearbeiten</summary>
-            <p class="list-note">Leer lassen für den Standardtext. Verfügbare Platzhalter: <code>{manager_name}</code>, <code>{years}</code>, <code>{review_due}</code>, <code>{outlook_due}</code>, <code>{sender_email}</code> und <code>{introduction}</code>.</p>
-            <label for="subject-template">Eigener Betreff</label><input id="subject-template" name="subject_template" placeholder="Mitarbeitenden-Dialog {years}: Ihre Arbeitsmappe">
-            <label for="body-template">Eigener E-Mailtext</label><textarea id="body-template" name="body_template" rows="9" placeholder="Guten Tag {manager_name}\n\n{introduction}\n\nRückblick: {review_due}\nAusblick: {outlook_due}"></textarea>
-          </details>
-          <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Vorgesetzte Person</th><th>Empfänger</th><th>Datei</th><th>Status</th></tr></thead><tbody>
-          {% for item in mail_candidates %}
-            <tr>
-              <td><input class="table-checkbox" type="checkbox" name="package_event_id" value="{{ item.package_event_id }}" aria-label="Nachricht an {{ item.manager_name }} auswählen"{% if not item.ready or item.delivery_status in ['draft_created', 'sent_confirmed'] %} disabled{% endif %}></td>
-              <td><strong>{{ item.manager_name }}</strong><br><span class="muted">PN {{ item.manager_pn }}</span></td>
-              <td>{{ item.recipient_email or 'fehlt' }}</td>
-              <td>{{ item.filename }}<br><span class="muted">{{ 'Update' if item.package_kind == 'update' else 'START' }}</span></td>
-              <td>
-                {% if item.delivery_status == 'sent_confirmed' %}<span class="status status--staged">Direkt versendet</span><br><span class="muted">S/MIME-Markierung geprüft</span>
-                {% elif item.delivery_status == 'draft_created' %}<span class="status status--staged">Entwurf erstellt</span><br><span class="muted">Verschlüsselungsmarkierung geprüft</span>
-                {% elif item.delivery_status == 'failed' %}<span class="status status--danger">Fehlgeschlagen</span>{% if item.error_message %}<br><span class="issue-text issue-text--blocking">{{ item.error_message }}</span>{% endif %}
-                {% elif not item.recipient_email %}<span class="status status--danger">E-Mail fehlt</span>
-                {% elif not item.file_available %}<span class="status status--danger">Datei fehlt</span>
-                {% else %}<span class="status status--warning">Entwurf offen</span>{% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-          </tbody></table></div>
-          <div class="form-actions"><button class="button" type="submit" name="delivery_mode" value="draft">Als Outlook-Entwürfe erstellen</button><button class="button button--primary" type="submit" name="delivery_mode" value="send" data-confirm-direct-send>Ausgewählte E-Mails direkt versenden</button></div>
-        </form>
-      {% else %}
-        <div class="empty-state">Noch keine Versanddatei erzeugt.</div>
-      {% endif %}
-    </section>
-  {% endif %}
+<section class="info-box"><p>Jede Führungskraft erhält ein eigenes ZIP mit ihren Word-Formularen sowie je einer Reflexions- und Feedbackvorlage zur Weiterleitung. Die Feedbackvorlage enthält Name und Personalnummer der Führungskraft; «NameMA» bleibt als Platzhalter im Dateinamen. Neue Ausgaben berücksichtigen die aktuellen Stammdaten und Vorjahresziele. Bereits bearbeitete Dateien werden nicht automatisch aktualisiert. «Erzeugt» und «Entwurf erstellt» sind noch kein Versandnachweis.</p></section>
+{% include '_word_setup.html' %}
+{% if not hr_sender %}<p class="issue-text">Für Outlook fehlt die HR-Absenderadresse. Prüfe unter «Geladene Konfiguration und Ablageorte» Dateiname, Pfad und geladene Werte; nach Änderungen den Server neu starten.</p>{% endif %}
+{% if request.args.get('word_batch') %}<p><a class="button" href="{{ url_for('main.download_word_batch',batch_id=request.args.get('word_batch')) }}">Sammel-ZIP für HR herunterladen</a></p>{% endif %}
+{% if selected_cycle and managers %}
+<form action="{{ url_for('main.prepare_word_packages',cycle_id=selected_cycle.id) }}" method="post">
+<section class="content-card"><h2>1. Word-Pakete erzeugen</h2><div class="selection-panel">
+<label><input type="radio" name="selection_mode" value="selected" checked> Markierte Führungskräfte</label>
+<label><input type="radio" name="selection_mode" value="org_unit"> Organisation ab Einheit</label><select name="org_unit" aria-label="Organisationseinheit"><option value="">Bitte wählen</option>{% for unit in org_units %}<option>{{ unit }}</option>{% endfor %}</select>
+<label><input type="radio" name="selection_mode" value="all"> Gesamter Durchlauf</label></div>
+<p>Bei erneuter Erzeugung entsteht eine neue Ausgabe. Frühere Pakete bleiben gespeichert.</p>
+<div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Führungskraft</th><th>Organisation</th><th>Fälle</th><th>Letzte Word-Ausgabe</th></tr></thead><tbody>
+{% for manager in managers %}<tr><td><input type="checkbox" name="manager_pn" value="{{ manager.manager_pn }}" aria-label="{{ manager.manager_name }} auswählen" {% if manager.package_blocking %}disabled{% endif %}></td><td><a href="{{ url_for('main.manager_detail',cycle_id=selected_cycle.id,manager_pn=manager.manager_pn) }}">{{ manager.manager_name }}</a><br>PN {{ manager.manager_pn }}</td><td>{{ manager.org_unit }}</td><td>{{ manager.case_count }}</td><td>{% set previous=word_candidates|selectattr('manager_pn','equalto',manager.manager_pn)|list %}{% if previous %}{{ previous[0].created_at }}{% else %}Noch nicht erzeugt{% endif %}{% for issue in manager.package_issues %}<br><span class="issue-text">{{ issue.message }}</span>{% endfor %}</td></tr>{% endfor %}
+</tbody></table></div><button class="button button--primary">Word-Pakete für Auswahl erzeugen</button></section></form>
+<section class="content-card"><h2>2. Outlook-Nachrichten vorbereiten oder versenden</h2><p>Absender: {{ hr_sender or 'noch nicht konfiguriert' }}. Pro Nachricht wird nur das Paket der zugehörigen Führungskraft angehängt.</p>
+{% if word_candidates %}<form action="{{ url_for('main.prepare_word_mail',cycle_id=selected_cycle.id) }}" method="post">
+<details><summary>E-Mailtext bearbeiten</summary><p>Leer lassen für den Standardtext. Platzhalter: <code>{manager_name}</code>, <code>{years}</code>, <code>{review_due}</code>, <code>{outlook_due}</code>, <code>{sender_email}</code>, <code>{introduction}</code>.</p><label>Betreff<input name="subject_template" placeholder="Mitarbeitenden-Dialog {years}: Deine Word-Vorlagen"></label><label>Text<textarea name="body_template" rows="8"></textarea></label></details>
+<div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Führungskraft und Empfänger</th><th>Paket</th><th>Status</th></tr></thead><tbody>
+{% for item in word_candidates %}<tr><td><input type="checkbox" name="word_package_id" value="{{ item.id }}" aria-label="Nachricht an {{ item.manager_name }} auswählen" {% if not item.ready %}disabled{% endif %}></td><td>{{ item.manager_name }}<br>{{ item.recipient_email or 'E-Mail fehlt' }}</td><td><a href="{{ url_for('main.download_prepared_word_package',package_id=item.id) }}">{{ item.document_count }} Dialogformulare + {{ item.attachment_count }} Beilagen herunterladen</a><br>{{ item.created_at }}<br>Übernommen: {{ item.performance_goal_count }} Leistungsziele, {{ item.development_goal_count }} Entwicklungsziele.{% if item.goal_warnings %}<details><summary>{{ item.goal_warnings|length }} Rückblick(e) ohne Vorjahresziele</summary><ul>{% for warning in item.goal_warnings %}<li>{{ warning }}</li>{% endfor %}</ul></details>{% endif %}</td><td>{{ {'cancelled':'Entwurf verworfen – neues Paket erzeugen','processing':'Outlook-Übernahme läuft / Prüfung offen','draft_created':'Entwurf erstellt – Versand noch offen','sent_confirmed':'Versand bestätigt','failed':'Fehlgeschlagen – Outlook vor Wiederholung prüfen'}.get(item.delivery_status,'Erzeugt – Outlook noch offen') }}{% if item.readiness_error %}<p class="issue-text">{{ item.readiness_error }}</p>{% endif %}{% if item.error_message %}<p class="issue-text">{{ item.error_message }}</p>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+<label><input type="checkbox" name="retry_confirmed" value="yes"> Bei fehlgeschlagenen Versuchen habe ich in Outlook geprüft, dass keine doppelte Zustellung entsteht.</label>
+<div class="form-actions"><button class="button" name="delivery_mode" value="draft">Outlook-Entwürfe erstellen</button><button class="button button--primary" name="delivery_mode" value="send" data-confirm-direct-send>Ausgewählte E-Mails direkt versenden</button></div></form>
+{% for item in word_candidates if item.delivery_status=='processing' %}<details class="content-card"><summary>Abgebrochenen Vorgang für {{ item.manager_name }} klären</summary><form action="{{ url_for('main.resolve_interrupted_word',package_id=item.id) }}" method="post"><p>Nur nach einem Abbruch verwenden. Ein laufender Versand bleibt gesperrt. Stelle sicher, dass keine alte Serverversion mehr läuft.</p><label>Ergebnis<select name="outcome"><option value="">Bitte wählen</option><option value="sent_confirmed">In Outlook S/MIME-verschlüsselt versendet</option><option value="cancelled">Nicht versendet; vorhandenen Entwurf gelöscht</option></select></label><label>Begründung<input name="reason" minlength="10" required></label><label><input type="checkbox" name="outlook_checked" value="yes" required> Ich habe den tatsächlichen Outlook-Stand und das Ende alter Serverprozesse geprüft.</label><button class="button">Vorgang abschliessen</button></form></details>{% endfor %}
+{% for item in word_candidates if item.delivery_status in ['draft_created','failed'] %}<form action="{{ url_for('main.confirm_word_sent',package_id=item.id) }}" method="post" class="content-card"><h3>Versand an {{ item.manager_name }} bestätigen</h3><label><input type="checkbox" name="sent_checked" value="yes" required> Ich habe diesen Entwurf in Outlook S/MIME-verschlüsselt versendet.</label><button class="button">Versand als erfolgt markieren</button></form><form action="{{ url_for('main.discard_word_mail_draft',package_id=item.id) }}" method="post"><label><input type="checkbox" name="discard_checked" value="yes" required> Ich habe in Outlook geprüft, dass diese Nachricht an {{ item.manager_name }} nicht versendet wurde, und einen allenfalls vorhandenen Entwurf gelöscht.</label><button class="button">Entwurf als verworfen markieren</button></form>{% endfor %}
+{% else %}<p>Noch keine Word-Pakete für diesen Durchlauf erzeugt.</p>{% endif %}</section>
+{% else %}<div class="empty-state">Bitte zuerst einen Durchlauf mit Führungslinien anlegen.</div>{% endif %}
+{% if legacy_workbooks_enabled %}<p><a href="{{ url_for('main.dispatch',cycle_id=selected_cycle.id if selected_cycle else '',workflow='workbook') }}">Arbeitsmappen und Updates als alternative Variante öffnen</a></p>{% endif %}
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='dispatch.js') }}" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='dispatch.js') }}" defer></script>{% endblock %}

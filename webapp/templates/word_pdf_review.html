@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Word-PDF prüfen · MD-Verwaltung{% endblock %}
+{% block content %}
+<section class="page-head"><div><p class="kicker">Word-PDF</p><h1>{{ item.original_filename }}</h1><p class="lead">Original-PDF und erkannte Angaben vergleichen. Ältere Vorlagen können hier ergänzt und eindeutig zugeordnet werden.</p></div></section>
+<p><a class="button" href="{{ url_for('main.word_pdf_original', import_id=item.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a> <a href="{{ url_for('main.returns_overview') }}">Alle Rückläufe</a></p>
+{% if item.status != 'pending' %}<div class="info-box">{{ 'Dieser Rücklauf ist eine inhaltliche Dublette.' if item.status=='duplicate' else 'Dieser Rücklauf wurde übernommen.' }} {{ item.review_note }} {% if item.case_id %}<p>Fall: {{ item.case_id }}{% for c in candidates if c.case_id == item.case_id %} · <a href="{{ url_for('main.case_detail', cycle_id=c.cycle_id, case_id=c.case_id) }}">Fallprüfung öffnen</a>{% endfor %}</p>{% endif %}</div>{% endif %}
+{% if parsed.issues %}<section class="content-card"><h2>Zu prüfen</h2><ul>{% for issue in parsed.issues %}<li>{{ issue }}</li>{% endfor %}</ul></section>{% endif %}
+{% if pdf_state.dismissed %}<p class="info-box">Zurückgestellt: {{ pdf_state.reason }}. Zum Weiterbearbeiten bitte unten begründet wieder öffnen.</p>{% endif %}
+<form method="post" data-review-form>
+<input type="hidden" name="revision" value="{{ pdf_state.revision }}">
+<fieldset {% if item.status != 'pending' %}disabled{% endif %}>
+{% set data = reviewed.data %}
+<section class="content-card"><h2>Person und Zeitraum</h2>
+<label>Dokumenttyp<select name="document_kind"><option value="">Bitte wählen</option>{% for k,l in [('review','Rückblick'),('outlook','Ausblick')] %}<option value="{{ k }}" {% if data.get('document_kind')==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+{% for key,label,type in [('pn','Personalnummer','text'),('manager_pn','Personalnummer Führungskraft','text'),('period_start','Zeitraum von','date'),('period_end','Zeitraum bis','date'),('dialog_date','Gesprächsdatum','date')] %}<label>{{ label }}<input name="{{ key }}" type="{{ type }}" value="{{ data.get(key,'') }}" {% if key != 'dialog_date' %}required{% endif %}></label>{% endfor %}
+<label>Anstellung<input name="assignment" value="{{ request.form.get('assignment',reviewed.get('_draft',{}).get('assignment',data.get('ans',assignments[0].assignment_number if assignments|length==1 else ''))) }}" list="assignments" required></label><datalist id="assignments">{% for a in assignments %}<option value="{{ a.assignment_number }}">{% endfor %}</datalist>
+<label>Gesprächsteil durchgeführt<select name="conducted"><option value="">Nicht erfasst / unklar</option>{% for v in ['ja','nein'] %}<option value="{{ v }}" {% if data.get('conducted')==v %}selected{% endif %}>{{ v|capitalize }}</option>{% endfor %}</select></label>
+<label>Begründung der Nichtdurchführung (aus dem PDF)<textarea name="no_md_reason" rows="3">{{ data.get('no_md_reason','') }}</textarea></label>
+<p>Bei «Nein» entfällt nur dieser Gesprächsteil. Gesprächsdatum, Beurteilung, Anstellungsentscheid und Scan-Anforderung bleiben leer. Aktuelle Einschätzungen und neu vereinbarte Ziele müssen vor der Übernahme geklärt werden. Das PDF bleibt als administrativer Nachweis gespeichert; eine Unterschrift ist dafür nicht erforderlich.</p>
+<label>Probezeitformular<select name="probation">{% for v,l in [('nein','Nein'),('ja','Ja')] %}<option value="{{ v }}" {% if data.get('probation')==v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+<label>Anstellungsentscheid (nur Probezeit)<select name="employment_continues"><option value="">Nicht zutreffend / nicht erfasst</option>{% for v,l in [('ja','Arbeitsverhältnis wird weitergeführt'),('nein','Arbeitsverhältnis wird nicht weitergeführt')] %}<option value="{{ v }}" {% if data.get('employment_continues')==v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+<label>Gesamtbeurteilung (jährlicher Rückblick)<select name="rating"><option value="">Bitte am PDF prüfen / Ausblick</option>{% for v in ['A','B','C','D','E'] %}<option value="{{ v }}" {% if data.get('rating')==v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+</section>
+<section class="content-card"><h2>Zuordnung</h2>
+<label>Übernahme<select name="destination"><option value="case">Zu einem MD-Fall</option><option value="historical" {% if request.form.get('destination',reviewed.get('_draft',{}).get('destination'))=='historical' or item.status=='historical' %}selected{% endif %}>Nachgereichter Ausblick als Zielquelle</option></select></label>
+<label>Passender Fall<select name="case_id"><option value="">Bitte Fall wählen / Nachreichung ohne Fall</option>{% for c in candidates %}<option value="{{ c.case_id }}" {% if request.form.get('case_id',reviewed.get('_draft',{}).get('case_id',item.case_id))==c.case_id %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}{% if not c.active %} · Inaktiver Fall (Nachzügler begründen){% endif %} · Ans. {{ c.employment_assignment }} · {{ c.review_year }}/{{ c.outlook_year }} · VG {{ c.manager_pn }} · {{ c.case_id }}</option>{% endfor %}</select></label>
+<p>Die Vorschläge berücksichtigen Personalnummer und Dokumentzeitraum. Bei korrigierten Angaben mit «Vorschläge aktualisieren» neu suchen.</p>
+<button class="button" name="refresh" value="yes" formnovalidate>Vorschläge aktualisieren</button>
+<label>MD-Umfang des Falls<select name="scope"><option value="">Bitte wählen / reine Nachreichung</option>{% for k,l in [('full','Rückblick und Ausblick'),('review_only','Nur Rückblick'),('outlook_only','Nur Ausblick')] %}<option value="{{ k }}" {% if reviewed.get('scope')==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+</section>
+<section class="content-card"><h2>Weitere Angaben</h2>
+<p>Nur ausdrücklich beantwortete Fragen übernehmen. Fehlende oder unklare Antworten bleiben offen. Bei alten Vorlagen am Original prüfen.</p>
+{% for key,label in [('higher_manager_requested','Rückblick: Gespräch mit nächsthöherer Führungskraft gewünscht'),('sap_current','Rückblick: Bewilligungen für Nebenbeschäftigungen / öffentliche Ämter vollständig und aktuell'),('career_requested','Ausblick: Laufbahnorientierte Entwicklung gewünscht')] %}
+<label>{{ label }}<select name="{{ key }}"><option value="">Nicht erfasst / nicht zutreffend / unklar</option>{% for v in ['ja','nein'] %}<option value="{{ v }}" {% if data.get(key)==v %}selected{% endif %}>{{ v|capitalize }}</option>{% endfor %}</select></label>{% endfor %}
+<p>«Nein» bei den Bewilligungen wird in der Auswertung als Klärungsbedarf ausgewiesen.</p>
+<h3>Weitere Textfelder und Zeichenanzahlen</h3>
+<p>Zeichen einschliesslich Leerzeichen und normalisierter Zeilenumbrüche; ohne Rand-Leerraum. Nicht erkannte Felder anhand des Originals ergänzen. Ein leeres Feld wird nur dann mit 0 gezählt, wenn seine Erfassung bestätigt ist.</p>
+{% for key,info in narrative_fields.items() %}<details {% if reviewed.get('narratives',{}).get(key) %}open{% endif %}><summary>{{ info[0] }}</summary>
+<label><input type="checkbox" name="narrative_present_{{ key }}" value="yes" {% if key in reviewed.get('narratives',{}) %}checked{% endif %}> Feld am Original geprüft (auch wenn leer)</label>
+<textarea aria-label="{{ info[0] }}" name="narrative_{{ key }}" rows="3">{{ reviewed.get('narratives',{}).get(key,'') }}</textarea></details>{% endfor %}
+</section>
+{% for group,title in [('performance','Leistungsziele'),('development','Entwicklungsziele')] %}
+<section class="content-card"><h2>{{ title }}{% if data.get('document_kind')=='review' %} aus dem Vorjahr{% endif %}</h2>
+<p>Listen und nummerierte Schritte bleiben als Text erhalten. Leere Zeilen werden nicht übernommen.</p>
+<div class="table-wrap"><table><thead><tr>{% if group=='development' %}<th>Kompetenz</th>{% endif %}<th>Ziel</th><th>Messkriterien</th><th>Weg zum Ziel</th><th>Termin</th><th></th></tr></thead>
+<tbody id="{{ group }}-rows">{% for goal in reviewed.get(group+'_goals',[]) + [{}] %}<tr>
+{% if group=='development' %}<td><select name="development_competency"><option value="">Bitte wählen</option>{% for name in competencies.values() %}<option {% if goal.get('competency')==name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></td>{% endif %}
+{% for key in ['title','criteria','steps','target_date'] %}<td><textarea aria-label="{{ title }} {{ key }}" name="{{ group }}_{{ key }}" rows="4">{{ goal.get(key,'') }}</textarea></td>{% endfor %}<td><button type="button" class="button remove-goal">Entfernen</button></td></tr>{% endfor %}</tbody></table></div>
+<button type="button" class="button add-goal" data-group="{{ group }}">Ziel ergänzen</button>
+</section>{% endfor %}
+<section class="content-card"><h2>Aktuelle Kompetenz-Einschätzungen</h2><p>Nur tatsächlich besprochene und ausgefüllte Einschätzungen erfassen. Vorjahresziele zählen nicht als aktuelle Einschätzung.</p>
+{% for tag,name in competencies.items() %}<details {% if reviewed.get('assessments',{}).get(name) %}open{% endif %}><summary>{{ name }}</summary><textarea aria-label="{{ name }}" name="assessment_{{ tag }}" rows="3">{{ reviewed.get('assessments',{}).get(name,'') }}</textarea></details>{% endfor %}</section>
+<section class="content-card"><label>Prüfnotiz / Ersetzungsgrund<textarea name="reason" rows="3">{{ request.form.get('reason',reviewed.get('_draft',{}).get('reason',item.review_note)) }}</textarea></label>
+<label><input type="checkbox" name="scan_required" value="yes" {% if reviewed.get('scan_required') %}checked{% endif %}> Zusätzlich handschriftlich unterzeichneter Scan vorgesehen</label>
+<label><input type="checkbox" name="checked" value="yes" required> Ich habe Person, Anstellung, Zeitraum, Beurteilung und alle Zielinhalte mit dem Original-PDF verglichen.</label>
+<div class="form-actions"><button class="button" name="action" value="draft" formnovalidate>Prüfentwurf speichern</button>
+{% if pdf_state.dismissed %}<button class="button" name="action" value="reopen" formnovalidate>Begründet wieder öffnen</button>{% else %}<button class="button button--primary" name="action" value="confirm">Geprüfte Angaben übernehmen</button><button class="button" name="action" value="dismiss" formnovalidate>Begründet zurückstellen</button>{% endif %}</div>
+<p>Zurückstellen nur bei falschen oder nicht weiter zu bearbeitenden Eingängen. Ein benötigtes, aber noch ungeklärtes Dokument als Entwurf offen lassen. Das Original wird nicht gelöscht.</p><p>Bei durchgeführten Gesprächen erfolgt die Unterschriften- und Ablageprüfung anschliessend beim Fall. Bestehende Word-Ausgaben bleiben unverändert.</p></section>
+</fieldset></form>
+{% if item.status=='pending' and not pdf_state.dismissed %}<form method="post" action="{{ url_for('main.classify_feedback',import_id=item.id) }}"><input type="hidden" name="revision" value="{{ pdf_state.revision }}"><p>Dieses Dokument ist ein Feedback an eine Führungskraft?</p><button class="button">Als Feedback prüfen</button></form>{% endif %}
+<details><summary>Ausgelesenen Originaltext anzeigen</summary><pre class="pdf-extracted-text">{{ parsed.text }}</pre></details>
+<script src="{{ url_for('static', filename='word_pdf_review.js') }}" defer></script>
+{% endblock %}

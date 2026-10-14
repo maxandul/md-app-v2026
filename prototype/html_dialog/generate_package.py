@@ -410,12 +410,18 @@ def render_html(
     payload: dict[str, Any],
     template_path: Path = DEFAULT_TEMPLATE_PATH,
     preparation_template_path: Path = DEFAULT_PREPARATION_TEMPLATE_PATH,
+    *, organisation: dict[str,str] | None = None,
 ) -> str:
     payload = copy.deepcopy(payload)
     configuration = payload.setdefault("configuration", {})
     configuration["preparation_template"] = preparation_template_path.read_text(
         encoding="utf-8"
     )
+    import sys
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0,str(PROJECT_ROOT))
+    from webapp.organisation import workbook_configuration
+    configuration.update(workbook_configuration() if organisation is None else organisation)
     template = template_path.read_text(encoding="utf-8")
     marker = "__MD_PACKAGE_JSON__"
     if template.count(marker) != 1:

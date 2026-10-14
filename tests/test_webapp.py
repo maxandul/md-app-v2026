@@ -123,6 +123,8 @@ class WebAppIntegrationTest(unittest.TestCase):
                 "DATABASE": str(root / "test.sqlite3"),
                 "STORAGE_ROOT": str(root / "data"),
                 "BACKUP_ROOT": str(root / "backups"),
+                "DOSSIER_HANDOFF_ROOT": str(root / "handoff"),
+                "HR_MAILBOX_EMAIL": "hr@example.invalid",
                 "AUTH_DISABLED": True,
             }
         )
@@ -341,7 +343,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             "/": "Übersicht",
             "/stammdaten": "SAP-Datenstände",
             "/dialoge": "Durchläufe und Dialogpflichten",
-            "/versand": "Arbeitsmappen bereitstellen",
+            "/versand": "Word-Vorlagen bereitstellen",
             "/ruecklaeufe": "PDFs prüfen und verarbeiten",
             "/sap-export": "Massenuploads erstellen",
             "/auswertungen": "Prozess- und Organisationsauswertungen",
@@ -362,7 +364,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(data["metrics"]["workbooks_missing"], 3)
             self.assertEqual(data["metrics"]["cases_open"], 9)
             self.assertEqual(
-                len([task for task in data["tasks"] if task["kind"] == "Arbeitsmappe"]),
+                len([task for task in data["tasks"] if task["kind"] == "Versand"]),
                 3,
             )
 
@@ -418,7 +420,8 @@ class WebAppIntegrationTest(unittest.TestCase):
             connection = get_db()
             for status in ("versand", "ruecklauf", "abgeschlossen", "ruecklauf"):
                 change_cycle_status(
-                    connection, cycle_id=cycle_id, new_status=status
+                    connection, cycle_id=cycle_id, new_status=status, external_checked=True,
+                    closure_reason='Restfälle werden nachbearbeitet', closure_owner='HR Test'
                 )
             current = connection.execute(
                 "SELECT status FROM cycles WHERE id = ?", (cycle_id,)
@@ -469,6 +472,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
 
     def test_replacement_start_uses_current_state_and_supersedes_old_package(self) -> None:
+        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
         cycle_id = self._prepare_cycle()
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
@@ -487,7 +491,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             connection.commit()
 
-        page = self.client.get(f"/versand?cycle_id={cycle_id}")
+        page = self.client.get(f"/versand?cycle_id={cycle_id}&workflow=workbook")
         self.assertIn("START neu", page.get_data(as_text=True))
         response = self.client.post(
             f"/cycles/{cycle_id}/managers/111116/package/recreate"
@@ -621,6 +625,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertTrue(all(name.startswith("START/") for name in names))
 
     def test_outlook_draft_is_prepared_and_logged_without_sending(self) -> None:
+        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
             connection = get_db()
@@ -631,7 +636,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
             )
             candidates = dispatch_candidates(
-                connection, cycle_id=cycle_id, sender_email="md-test@vd.zh.ch"
+                connection, cycle_id=cycle_id, sender_email="md-test@example.invalid"
             )
             candidate = next(
                 row for row in candidates if row["manager_pn"] == "111116"
@@ -642,14 +647,14 @@ class WebAppIntegrationTest(unittest.TestCase):
                 connection,
                 cycle_id=cycle_id,
                 package_event_ids=[candidate["package_event_id"]],
-                sender_email="md-test@vd.zh.ch",
+                sender_email="md-test@example.invalid",
                 adapter=adapter,
             )
             self.assertEqual(
                 result, {"created": 1, "sent": 0, "failed": 0, "errors": []}
             )
             self.assertEqual(adapter.calls[0]["attachments"], [package_path])
-            self.assertEqual(adapter.calls[0]["sender_email"], "md-test@vd.zh.ch")
+            self.assertEqual(adapter.calls[0]["sender_email"], "md-test@example.invalid")
             delivery = connection.execute(
                 "SELECT * FROM mail_deliveries WHERE package_event_id = ?",
                 (candidate["package_event_id"],),
@@ -658,7 +663,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(delivery["encryption_flag_verified"], 1)
             self.assertEqual(delivery["outlook_entry_id"], "draft-1")
 
-        page = self.client.get(f"/versand?cycle_id={cycle_id}")
+        page = self.client.get(f"/versand?cycle_id={cycle_id}&workflow=workbook")
         body = page.get_data(as_text=True)
         self.assertIn("Entwurf erstellt", body)
         self.assertIn("direkt S/MIME-verschlüsselt versenden", body)
@@ -688,6 +693,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 connection,
                 cycle_id=cycle_id,
                 package_event_ids=[candidate["package_event_id"]],
+                sender_email="hr@example.invalid",
                 adapter=adapter,
             )
             self.assertEqual(result["created"], 0)
@@ -712,6 +718,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 connection,
                 cycle_id=cycle_id,
                 package_event_ids=[candidate["package_event_id"]],
+                sender_email="hr@example.invalid",
                 delivery_mode="send",
                 subject_template="MD {years} für {manager_name}",
                 body_template="Guten Tag {manager_name}\n\n{introduction}",
@@ -728,14 +735,14 @@ class WebAppIntegrationTest(unittest.TestCase):
 
     def test_outlook_mailbox_is_resolved_by_display_name(self) -> None:
         class FakeStore:
-            DisplayName = "VD-GS HR"
+            DisplayName = "HR-Postfach"
 
             def GetDefaultFolder(self, folder_kind):
                 self.folder_kind = folder_kind
                 return "HR-INBOX"
 
         class FakeRoot:
-            Name = "Postfach - VD-GS HR"
+            Name = "Postfach - HR-Postfach"
             Store = FakeStore()
 
         class FakeFolders:
@@ -749,7 +756,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         class FakeNamespace:
             Folders = FakeFolders()
 
-        self.assertEqual(_resolve_inbox(FakeNamespace(), "VD-GS HR"), "HR-INBOX")
+        self.assertEqual(_resolve_inbox(FakeNamespace(), "HR-Postfach"), "HR-INBOX")
 
     def test_mail_intake_imports_pdf_and_is_idempotent(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -1006,7 +1013,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             resolved = resolve_inbound_message(
                 connection,
                 message_id=stored["id"],
-                mailbox_name="VD-GS HR",
+                mailbox_name="HR-Postfach",
                 target_folder="12 Mitarbeitenden-Dialog",
                 adapter=inbox_adapter,
             )

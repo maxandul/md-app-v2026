@@ -25,7 +25,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    app = create_app()
+    try:
+        app = create_app()
+    except (ValueError, OSError) as exc:
+        print(f"MD-Verwaltung konnte nicht gestartet werden: {exc}")
+        print("Bitte Konfiguration in instance/organisation.json und instance/word_config.json "
+              "sowie Zugriffe auf Datenbank und Ablage mit der Systemadministration prüfen. "
+              "Bestehende Daten nicht löschen. Hilfe: docs/BETRIEBSKONZEPT.md.")
+        return 1
+    app.config.update(SERVER_BIND_HOST=args.host, SERVER_BIND_PORT=args.port)
     print(f"MD-Verwaltung läuft auf http://{args.host}:{args.port}")
     if args.dev:
         if args.host not in {"127.0.0.1", "localhost", "::1"}:

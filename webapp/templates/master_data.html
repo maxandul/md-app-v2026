@@ -7,6 +7,8 @@
     <p class="lead">Vollständige SAP-Exporte importieren, Änderungen nachvollziehen und Konflikte vor der weiteren Verarbeitung prüfen.</p>
   </section>
 
+  <p><a class="button" href="{{ url_for('main.goal_sources') }}">Vorjahresziele und Quellen klären</a> <a class="button" href="{{ url_for('main.legacy_goal_upload') }}">Vorjahresziele aus Ordner importieren</a> <a href="{{ url_for('main.help_page') }}#2">Hilfe zum SAP-Import</a></p>
+  <p>Verwende einen vollständigen freigegebenen SAP-Export. Eine Teilliste kann Zuordnungen in offenen Durchläufen deaktivieren. Fehlende Spalten werden beim Import benannt.</p>
   <section class="split-layout">
     <div class="content-card">
       <p class="kicker">Aktualisieren</p>
@@ -20,7 +22,7 @@
     </div>
     <aside class="info-box">
       <h2>Wofür wird der Datenstand verwendet?</h2>
-      <p>Die App leitet daraus Personen, Anstellungen und direkte Führungslinien ab. Neue oder geänderte Zuordnungen können später eine neue Arbeitsmappe, ein Update oder einen unterjährigen Dialog auslösen.</p>
+      <p>Die App leitet daraus Personen, Anstellungen und direkte Führungslinien ab. Neue oder geänderte Zuordnungen können später neue Word-Vorlagen oder einen unterjährigen Dialog auslösen.</p>
     </aside>
   </section>
 

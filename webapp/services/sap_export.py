@@ -146,6 +146,8 @@ def collect_sap_upload_rows(
                 payload = json.loads(case["data_json"])
             except json.JSONDecodeError as exc:
                 raise ValueError(f"PN {pn}: gespeicherter MD-Datensatz ist ungültig.") from exc
+        if (payload.get('review') or {}).get('conducted') == 'nein':
+            continue
         scope = case["official_scope"] or payload.get("scope", "")
         if scope not in {"full", "review_only"}:
             continue

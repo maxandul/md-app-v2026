@@ -1,0 +1,6 @@
+{% extends 'base.html' %}{% block title %}Hilfe · MD{% endblock %}{% block content %}
+<section class="page-head"><h1>Anleitung und Fehlerhilfe</h1><p>Wähle den Schritt, bei dem du gerade arbeitest. Nach einer Unterbrechung führt dich die vollständige Arbeitsliste zu den offenen Aufgaben.</p></section>
+<p><a class="button" href="{{ url_for('main.setup_guide') }}">Einrichtung prüfen</a> <a class="button" href="{{ url_for('main.worklist') }}">Offene Aufgaben</a> <a class="button" href="{{ url_for('main.help_document',name='BUEROTEST.md') }}">Windows-Testanleitung herunterladen</a></p>
+{% for title,body in help_sections %}<details class="content-card" id="{{ loop.index }}"><summary>{{ title }}</summary><p>{{ body }}</p></details>{% endfor %}
+<section class="content-card"><h2>Dokumentation zum Nachschlagen</h2><ul>{% for name,label in [('HR_BETREUUNG.md','HR-Betreuung von Anfang bis Folgejahr'),('BUEROTEST.md','Durchgehender Test und Einrichtung'),('PLAN_B_WORD_PDF.md','Funktionsumfang und Vorlagenkonfiguration'),('BETRIEBSKONZEPT.md','Rollen, Sicherung und Wiederherstellung'),('FLASK_SQLITE_MVP.md','Serverstart und Netzwerkadresse'),('ANFORDERUNGEN.md','Fachliche Regeln und Grenzen')] %}<li><a href="{{ url_for('main.help_document',name=name) }}">{{ label }} (Markdown-Datei)</a></li>{% endfor %}</ul></section>
+{% endblock %}

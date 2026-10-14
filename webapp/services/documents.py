@@ -197,6 +197,18 @@ def _store_current_document(
     ).fetchone()
     if duplicate:
         raise ValueError("Dieses PDF wurde bereits importiert.")
+    # A non-conducted part is its own administrative record. Never shadow an
+    # existing conducted document (or vice versa) with another variant.
+    conflicting = connection.execute(
+        """SELECT 1 FROM official_documents WHERE case_id=? AND is_current=1
+           AND ((document_kind=? AND ((variant='administrative' AND ?<>'administrative')
+                 OR (variant<>'administrative' AND ?='administrative')))
+                OR (document_kind='no_md' AND ? IN ('review','outlook'))
+                OR (?='no_md' AND document_kind IN ('review','outlook')))""",
+        (case['case_id'], document_kind, variant, variant, document_kind, document_kind),
+    ).fetchone()
+    if conflicting:
+        raise ValueError('Ein bestehendes Gesprächsdokument oder eine Nichtdurchführung widerspricht diesem Import. Bitte den Fall separat klären; bestehende Dokumente bleiben erhalten.')
     current = connection.execute(
         """
         SELECT * FROM official_documents
@@ -332,6 +344,11 @@ def refresh_dialog_event_status(connection: sqlite3.Connection, case_id: str) ->
         status = "in_progress"
     else:
         status = "open"
+    if required and all(item['status'] == 'complete' for item in required):
+        administrative = {row['document_kind'] for row in connection.execute(
+            "SELECT document_kind FROM official_documents WHERE case_id=? AND is_current=1 AND variant='administrative'", (case_id,))}
+        if all(item['document_kind'] in administrative for item in required):
+            status = 'no_md'
     connection.execute(
         "UPDATE dialog_events SET status = ?, updated_at = ? WHERE id = ?",
         (status, datetime.now().astimezone().isoformat(timespec="seconds"), event["id"]),
@@ -363,6 +380,8 @@ def refresh_case_status(connection: sqlite3.Connection, case_id: str) -> str:
         }.get(scope, [])
         complete = bool(expected)
         for kind in expected:
+            if (kind, "administrative") in documents:
+                continue
             digital = documents.get((kind, "digital"))
             if not digital or not digital["signature_checked"]:
                 complete = False
@@ -373,7 +392,8 @@ def refresh_case_status(connection: sqlite3.Connection, case_id: str) -> str:
                     complete = False
             elif digital["handoff_status"] != "staged":
                 complete = False
-        status = "vollstaendig" if complete else "in_bearbeitung"
+        all_not_conducted = bool(expected) and all((kind, "administrative") in documents for kind in expected)
+        status = "kein_md" if all_not_conducted else ("vollstaendig" if complete else "in_bearbeitung")
     connection.execute(
         "UPDATE dialog_cases SET status = ?, updated_at = ? WHERE case_id = ?",
         (status, datetime.now().astimezone().isoformat(timespec="seconds"), case_id),
@@ -726,7 +746,7 @@ def _document_state(digital: sqlite3.Row | None, scan: sqlite3.Row | None) -> di
     if not digital:
         return {"key": "missing", "label": "Elektronisches PDF fehlt", "digital": None, "scan": scan}
     if not digital["signature_checked"]:
-        return {"key": "legacy", "label": "Vor Umstellung eingegangen", "digital": digital, "scan": scan}
+        return {"key": "legacy", "label": "Unterschriften- und Ablageprüfung offen", "digital": digital, "scan": scan}
     if digital["scan_required"] and not scan:
         return {"key": "scan", "label": "Handschriftlicher Scan ausstehend", "digital": digital, "scan": None}
     if digital["scan_required"]:
@@ -776,6 +796,9 @@ def case_document_overview(
                 state = _document_state(
                     documents.get((kind, "digital")), documents.get((kind, "scan"))
                 )
+                administrative = documents.get((kind, 'administrative'))
+                if administrative:
+                    state = {'key': 'no_md', 'label': 'Nicht durchgeführt – geprüft', 'digital': administrative, 'scan': None}
                 state.update({"kind": kind, "name": DOCUMENT_NAMES[kind]})
                 states.append(state)
         item["scope_label"] = SCOPE_NAMES.get(scope, scope or SCOPE_NAMES[""])

@@ -26,6 +26,7 @@ from werkzeug.utils import secure_filename
 
 from .auth import audit, login_required, system_admin_required
 from .db import close_db, connect_database, get_db
+from .services import hr_workflow as workflow
 from .services.cycles import (
     CYCLE_STATUS_LABELS,
     change_cycle_status,
@@ -58,6 +59,11 @@ from .services.documents import (
     inspect_pdf,
 )
 from .services.sap_import import import_sap_workbook
+from .services.word_pdf import inspect_word_pdf
+from .services.word_pdf_imports import stage_pdf, matching_cases, confirm_import
+from .services.legacy_forms import COMPETENCY_TAGS
+from .services.word_packages import create_word_package, word_template_status
+from .services.word_dispatch import prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -70,6 +76,7 @@ from .services.mail_intake import (
     scan_outlook_inbox,
 )
 from .services.feedback import feedback_overview
+from .services import word_feedback
 from .services.case_review import case_review_detail, correct_case_data
 from .services.deadlines import extend_deadlines
 from .services.reminders import (
@@ -95,7 +102,16 @@ def protect_hr_cockpit():
     """Alle fachlichen Routen verlangen ein persönliches HR-Konto."""
     if not current_app.config.get("AUTH_DISABLED") and g.user and g.user["password_temporary"]:
         return redirect(url_for("auth.change_password"))
+    chosen = request.args.get('cycle_id',type=int) or (request.view_args or {}).get('cycle_id')
+    if chosen and get_db().execute('SELECT 1 FROM cycles WHERE id=?',(chosen,)).fetchone():
+        session['active_cycle_id']=chosen
     return None
+
+
+@bp.url_defaults
+def preserve_cycle(endpoint, values):
+    if endpoint in {'main.dashboard','main.dialogs','main.dispatch','main.returns_overview','main.worklist','main.analytics'} and 'cycle_id' not in values and not values.get('unassigned') and session.get('active_cycle_id'):
+        values['cycle_id']=session['active_cycle_id']
 
 
 def _storage_dir(name: str) -> Path:
@@ -163,7 +179,7 @@ def dashboard():
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
-        now_year=datetime.now().year,
+        now_year=request.args.get('next_year',datetime.now().year,type=int),
         active_nav="overview",
         **cockpit_overview(get_db(), selected_cycle_id=selected_cycle_id),
     )
@@ -183,7 +199,10 @@ def dialogs():
     connection = get_db()
     data = dashboard_data(connection)
     selected_cycle_id = request.args.get("cycle_id", type=int)
-    if selected_cycle_id is None and data["cycles"]:
+    unassigned = request.args.get('unassigned') == 'yes'
+    if unassigned:
+        selected_cycle_id = None
+    if selected_cycle_id is None and data["cycles"] and not unassigned:
         selected_cycle_id = data["cycles"][0]["id"]
     query = request.args.get("q", "").strip()
     event_type = request.args.get("event_type", "").strip()
@@ -191,6 +210,8 @@ def dialogs():
     page = max(1, request.args.get("page", default=1, type=int) or 1)
     per_page = 50
     all_events = dialog_event_rows(connection, selected_cycle_id)
+    if unassigned:
+        all_events = [item for item in all_events if item["cycle_id"] is None]
     if query:
         needle = query.casefold()
         all_events = [
@@ -216,11 +237,12 @@ def dialogs():
     return render_template(
         "dialogs.html",
         active_nav="dialogs",
-        now_year=datetime.now().year,
+        now_year=request.args.get('next_year',datetime.now().year,type=int),
         selected_cycle_id=selected_cycle_id,
         selected_cycle=selected_cycle,
         events=events,
         event_total=event_total,
+        unassigned=unassigned,
         event_page=page,
         event_pages=event_pages,
         event_query=query,
@@ -405,7 +427,11 @@ def dispatch():
             sender_email=current_app.config["HR_MAILBOX_EMAIL"],
         )
     return render_template(
-        "dispatch.html", active_nav="dispatch", managers=managers,
+        "dispatch_legacy.html" if request.args.get('workflow')=='workbook' and current_app.config.get('LEGACY_WORKBOOKS')=='enabled' else "dispatch.html",
+        active_nav="dispatch", managers=managers,
+        word_candidates=word_dispatch_candidates(get_db(),cycle_id=data['selected_cycle']['id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if data['selected_cycle'] else [],
+        word_templates=word_template_status(current_app.config['WORD_TEMPLATE_PATHS']),
+        hr_sender=current_app.config['HR_MAILBOX_EMAIL'],
         org_units=org_units, mail_candidates=mail_candidates, **data
     )
 
@@ -419,8 +445,10 @@ def returns_overview():
     selected_cycle = cockpit.get("selected_cycle")
     return render_template(
         "returns.html",
+        **workflow.pdf_queue(connection,query=request.args.get('pdf_q',''),status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int)),
         active_nav="returns",
         **cockpit,
+        feedback_collections=word_feedback.collections(connection),
         feedback_bundles=feedback_overview(
             connection,
             cycle_id=selected_cycle["id"] if selected_cycle else None,
@@ -470,8 +498,16 @@ def analytics():
 @bp.get("/administration")
 @system_admin_required
 def administration():
+    import socket
+    hostname = socket.gethostname()
+    port = current_app.config.get('SERVER_BIND_PORT')
     return render_template(
         "administration.html", active_nav="administration",
+        server_hostname=hostname,
+        public_base_url=current_app.config.get('PUBLIC_BASE_URL',''),
+        server_bind_host=current_app.config.get('SERVER_BIND_HOST','Nicht vom Starter gemeldet'),
+        server_bind_port=port,
+        hostname_url=('http://' + hostname + ':' + str(port)) if port else '',
         audit_entries=audit_rows(get_db()), backups=list_backups(_backup_root()),
     )
 
@@ -589,7 +625,7 @@ def export_analytics():
     audit(
         "analytics_exported", "analytics", report,
         cycle_id=cycle_id, org_unit=org_unit, event_type=event_type,
-        row_count=len(data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
+        row_count=len(data["form_fields"] if report == "form_fields" else data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
     )
     return send_file(
         BytesIO(content), as_attachment=True, download_name=filename,
@@ -706,7 +742,9 @@ def cycle_detail(cycle_id: int):
         manager_rows.append(item)
     return render_template(
         "cycle.html", cycle=cycle, managers=manager_rows,
+        word_status={item['manager_pn']: item for item in word_dispatch_candidates(get_db(),cycle_id=cycle_id,template_paths=current_app.config['WORD_TEMPLATE_PATHS'])},
         export_batches=sap_export_batches(get_db(), cycle_id=cycle_id),
+        closure_record=get_db().execute("SELECT * FROM workflow_cycle_closures WHERE cycle_id=?",(cycle_id,)).fetchone(),
         cycle_status_labels=CYCLE_STATUS_LABELS,
         active_nav="dialogs"
     )
@@ -718,6 +756,7 @@ def set_cycle_status(cycle_id: int):
         old_status, new_status = change_cycle_status(
             get_db(), cycle_id=cycle_id,
             new_status=request.form.get("status", "").strip(),
+            closure_reason=request.form.get('closure_reason',''),closure_owner=request.form.get('closure_owner',''),external_checked=request.form.get('external_checked')=='yes',
         )
     except LookupError:
         abort(404)
@@ -753,6 +792,8 @@ def manager_detail(cycle_id: int, manager_pn: str):
         package_state=manager_package_state(
             get_db(), cycle_id=cycle_id, manager_pn=manager_pn
         ),
+        word_templates=word_template_status(current_app.config["WORD_TEMPLATE_PATHS"]),
+        word_packages=get_db().execute("SELECT id,created_at FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? ORDER BY id DESC LIMIT 5", (cycle_id,manager_pn)).fetchall(),
         active_nav="dialogs",
     )
 
@@ -880,6 +921,34 @@ def download_existing_sap_export(batch_id: int):
         download_name=batch["filename"],
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/word-package")
+def download_word_package(cycle_id: int, manager_pn: str):
+    try:
+        case_id = request.form.get('case_id','').strip()
+        if case_id:
+            path, manifest = create_word_package(
+                get_db(), cycle_id=cycle_id, manager_pn=manager_pn,
+                template_paths=current_app.config['WORD_TEMPLATE_PATHS'],
+                output_dir=_storage_dir('word_packages'), case_id=case_id)
+        else:
+            _batch, result = prepare_word_batch(get_db(),cycle_id=cycle_id,manager_pns=[manager_pn],
+                template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_dispatch'))
+            path, manifest = result['packages'][0]['path'],result['packages'][0]['manifest']
+    except (LookupError, ValueError) as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("main.manager_detail", cycle_id=cycle_id, manager_pn=manager_pn))
+    audit("word_package_created", "word_package", manifest["export_id"],
+          cycle_id=cycle_id, manager_pn=manager_pn,
+          document_count=len(manifest["documents"]), sha256=manifest["sha256"])
+    flash(f"{len(manifest['documents'])} Word-Vorlage(n) erzeugt. Bestehende Ausgaben bleiben erhalten. Ein Versand wurde nicht ausgelöst.", "success")
+    warnings = manifest.get("goal_warnings", [])
+    if warnings:
+        flash(f"{len(warnings)} Rückblick(e) ohne Vorjahresziele. Details unter Versand beim erzeugten Paket prüfen." if not case_id else warnings[0], "warning")
+    if manifest["skipped_cases"]:
+        flash(f"{len(manifest['skipped_cases'])} Fall/Fälle ohne Rückblick-/Ausblickpflicht übersprungen.", "info")
+    return send_file(path, as_attachment=True, download_name=path.name, mimetype="application/zip")
 
 
 @bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/package")
@@ -1032,7 +1101,7 @@ def prepare_mail_drafts(cycle_id: int):
                 + " ".join(result["errors"]),
                 "error",
             )
-    return redirect(url_for("main.dispatch", cycle_id=cycle_id))
+    return redirect(url_for("main.dispatch", cycle_id=cycle_id, workflow="workbook"))
 
 
 @bp.post("/returns")
@@ -1072,6 +1141,30 @@ def upload_return():
         "success",
     )
     return redirect(url_for("main.cycle_detail", cycle_id=result["cycle_id"]))
+
+
+@bp.post("/word-pdf-preview")
+def preview_word_pdfs():
+    uploads = [item for item in request.files.getlist("word_pdf_files") if item and item.filename]
+    if not uploads:
+        flash("Bitte wähle mindestens ein Word-PDF aus.", "error")
+        return redirect(url_for("main.returns_overview"))
+    results = []
+    for upload in uploads:
+        result = {"filename": upload.filename}
+        if not upload.filename.lower().endswith(".pdf"):
+            result["error"] = "Bitte eine PDF-Datei auswählen."
+        else:
+            temporary = _storage_dir("word_pdf_preview") / _stored_name(upload.filename)
+            try:
+                upload.save(temporary)
+                result.update(inspect_word_pdf(temporary))
+            except ValueError as exc:
+                result["error"] = str(exc)
+            finally:
+                temporary.unlink(missing_ok=True)
+        results.append(result)
+    return render_template("word_pdf_preview.html", active_nav="returns", results=results)
 
 
 @bp.post("/pdf-returns")
@@ -1146,8 +1239,9 @@ def scan_mail_inbox():
             f"{result['moved']} verarbeitet und verschoben, "
             f"{result['review']} zur HR-Prüfung, {result['ignored']} ohne MD-Bezug ignoriert, "
             f"{result['duplicates']} bereits bekannt, "
-            f"{result['feedback_bundles']} Feedback-Sammel-PDF(s) erstellt.",
-            "success",
+            f"{result['feedback_bundles']} Feedback-Sammel-PDF(s) erstellt, "
+            f"{result['failed']} Nachricht(en)/Verarbeitungsschritt(e) fehlgeschlagen.",
+            "warning" if result["errors"] else "success",
         )
         if result["errors"]:
             flash(" ".join(result["errors"]), "error")
@@ -1190,6 +1284,10 @@ def mark_signature_checked(document_id: int):
         result = confirm_digital_signature(
             get_db(), document_id=document_id, handoff_dir=_handoff_dir()
         )
+    except OSError:
+        get_db().rollback()
+        flash('Die Dossierübergabe ist fehlgeschlagen. Prüfe, ob der Ablageordner erreichbar und beschreibbar ist. Der Fall bleibt zur Prüfung offen. Vor einem erneuten Versuch den PDF-Verlauf und Übergabeordner vergleichen; bei Unklarheit die Systemadministration beiziehen.', 'error')
+        return redirect(request.referrer or url_for('main.returns_overview'))
     except ValueError as exc:
         flash(str(exc), "error")
         return redirect(request.referrer or url_for("main.dashboard"))
@@ -1242,3 +1340,511 @@ def upload_scan(case_id: str, document_kind: str):
 def file_too_large(_error):
     flash("Die Datei ist grösser als 25 MB.", "error")
     return redirect(url_for("main.dashboard"))
+
+
+@bp.post("/word-pdf-imports")
+def upload_word_pdfs():
+    uploads = [item for item in request.files.getlist('word_pdf_files') if item and item.filename]
+    if not uploads:
+        flash('Bitte mindestens ein PDF auswählen.', 'error')
+    ids = []
+    for upload in uploads:
+        temporary = _storage_dir('word_pdf_preview') / _stored_name(upload.filename)
+        try:
+            if not upload.filename.lower().endswith('.pdf'):
+                raise ValueError('Bitte eine PDF-Datei auswählen.')
+            upload.save(temporary)
+            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'))
+            ids.append(item_id)
+            if duplicate:
+                flash(f'{upload.filename}: bereits vorhanden; vorhandene Prüfung geöffnet.', 'info')
+        except ValueError as exc:
+            flash(f'{upload.filename}: {exc}', 'error')
+        finally:
+            temporary.unlink(missing_ok=True)
+    return redirect(url_for('main.word_pdf_review', import_id=ids[0]) if len(ids)==1 else url_for('main.returns_overview'))
+
+
+def _reviewed_word_form(form):
+    data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues','no_md_reason','higher_manager_requested','sap_current','career_requested')}
+    from .services.word_pdf import NARRATIVE_FIELDS
+    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes',
+            'narratives':{key: form.get('narrative_'+key,'').strip() for key in NARRATIVE_FIELDS if form.get('narrative_present_'+key)=='yes' or form.get('narrative_'+key,'').strip()}}
+    for group in ('performance','development'):
+        keys=('title','criteria','steps','target_date') + (('competency',) if group=='development' else ())
+        columns={key:form.getlist(group+'_'+key) for key in keys}
+        rows=[]
+        for i in range(len(columns['title'])):
+            row={key:(values[i].strip() if i<len(values) else '') for key,values in columns.items()}
+            if any(row[key] for key in ('title','criteria','steps','target_date')):
+                rows.append(row)
+        result[group+'_goals']=rows
+    for tag,name in COMPETENCY_TAGS.items():
+        text=form.get('assessment_'+tag,'').strip()
+        if text:
+            result['assessments'][name]=text
+    return result
+
+
+@bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
+def word_pdf_review(import_id):
+    connection=get_db()
+    item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+    if not item:
+        abort(404)
+    state=workflow.pdf_state(connection,import_id)
+    parsed=json.loads(item['parsed_json'])
+    if parsed.get('data',{}).get('document_kind') == 'feedback':
+        return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
+    reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
+    if request.method=='POST':
+        reviewed=_reviewed_word_form(request.form)
+    if request.method=='POST' and request.form.get('refresh')!='yes':
+        try:
+            workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+            action=request.form.get('action','confirm')
+            if action in ('draft','dismiss','reopen'):
+                reason=request.form.get('reason','').strip()
+                if action in ('dismiss','reopen') and len(reason)<10:
+                    raise ValueError('Bitte das Zurückstellen oder Wiederöffnen mit mindestens 10 Zeichen begründen.')
+                if state['dismissed'] and action!='reopen':
+                    raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst begründet wieder.')
+                reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
+                connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                connection.commit()
+                audit('word_pdf_'+action,'word_pdf_import',str(import_id),reason=reason)
+                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung begründet zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
+                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+            if state['dismissed']:
+                raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
+            if request.form.get('checked')!='yes':
+                raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
+            confirm_import(connection,import_id,reviewed=reviewed,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            audit('word_pdf_imported','word_pdf_import',str(import_id))
+            status = connection.execute('SELECT status FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()['status']
+            if status == 'historical':
+                message = 'Nachgereichte Zielquelle übernommen. Neue Word-Ausgaben berücksichtigen diese Ziele; bestehende Ausgaben bleiben unverändert.'
+            elif status == 'duplicate':
+                message = 'Inhaltliche Dublette erkannt. Es wurden keine zusätzlichen Fachdaten übernommen.'
+            elif reviewed['data'].get('conducted') == 'nein':
+                message = 'Nichtdurchführung übernommen. Der Nachweis bleibt gespeichert; eine Unterschriften- oder Ablagefreigabe ist dafür nicht vorgesehen.'
+            else:
+                message = 'PDF-Prüfung abgeschlossen. Nächster Schritt: Fallprüfung öffnen und dort Unterschriften sowie Ablage prüfen.'
+            flash(message, 'success')
+            return redirect(url_for('main.word_pdf_review',import_id=import_id))
+        except (ValueError,LookupError) as exc:
+            connection.rollback()
+            flash(str(exc),'error')
+    candidates=matching_cases(connection,reviewed.get('data',{}))
+    assignments=connection.execute('SELECT assignment_number FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
+    from .services.word_pdf import NARRATIVE_FIELDS
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS)
+
+
+@bp.get('/word-pdf-imports/<int:import_id>/original')
+def word_pdf_original(import_id):
+    item=get_db().execute('''SELECT w.original_filename,COALESCE(d.stored_path,w.stored_path) AS stored_path
+        FROM word_pdf_imports w LEFT JOIN official_documents d ON d.id=w.official_document_id WHERE w.id=?''',(import_id,)).fetchone()
+    if not item or not Path(item['stored_path']).is_file():
+        abort(404)
+    return send_file(item['stored_path'],download_name=item['original_filename'],mimetype='application/pdf')
+
+
+@bp.post('/cycles/<int:cycle_id>/word-packages/batch')
+def prepare_word_packages(cycle_id):
+    try:
+        selection = request.form.get('selection_mode','selected')
+        if selection=='all':
+            _cycle, managers = cycle_overview(get_db(),cycle_id)
+            numbers = [row['manager_pn'] for row in managers]
+        elif selection=='org_unit':
+            numbers = _manager_pns_for_org_unit(get_db(),cycle_id,request.form.get('org_unit','').strip())
+        elif selection=='selected':
+            numbers = request.form.getlist('manager_pn')
+        else:
+            raise ValueError('Unbekannte Auswahl.')
+        batch, result = prepare_word_batch(get_db(),cycle_id=cycle_id,manager_pns=numbers,
+            template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_dispatch'))
+        audit('word_dispatch_prepared','cycle',str(cycle_id),package_ids=[p['id'] for p in result['packages']])
+        flash(f"{len(result['packages'])} Word-Paket(e) für Outlook vorbereitet. {len(result['skipped'])} Führungslinie(n) ohne Formularpflicht übersprungen.",'success')
+        return redirect(url_for('main.dispatch',cycle_id=cycle_id,word_batch=batch.parent.name))
+    except (ValueError,LookupError) as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.get('/word-packages/batch/<batch_id>')
+def download_word_batch(batch_id):
+    import re
+    if not re.fullmatch(r'WORD-BATCH-[0-9a-f]{32}',batch_id):
+        abort(404)
+    path = _storage_dir('word_dispatch') / batch_id / 'MD_Word_Sammelausgabe.zip'
+    if not path.is_file():
+        abort(404)
+    return send_file(path,as_attachment=True,download_name=path.name)
+
+
+@bp.get('/word-packages/<int:package_id>/download')
+def download_prepared_word_package(package_id):
+    row=get_db().execute('SELECT stored_path FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row or not Path(row['stored_path']).is_file():
+        abort(404)
+    return send_file(row['stored_path'],as_attachment=True,download_name=Path(row['stored_path']).name)
+
+
+@bp.post('/cycles/<int:cycle_id>/word-mail')
+def prepare_word_mail(cycle_id):
+    try:
+        result=dispatch_word_packages(get_db(),cycle_id=cycle_id,package_ids=request.form.getlist('word_package_id',type=int),
+            template_paths=current_app.config['WORD_TEMPLATE_PATHS'],sender_email=current_app.config['HR_MAILBOX_EMAIL'],
+            delivery_mode=request.form.get('delivery_mode','draft'),subject_template=request.form.get('subject_template',''),
+            body_template=request.form.get('body_template',''),retry_confirmed=request.form.get('retry_confirmed')=='yes')
+        audit('word_mail_processed','cycle',str(cycle_id),created=result['created'],sent=result['sent'],failed=result['failed'])
+        flash(f"{result['created']} Outlook-Entwurf/Entwürfe erstellt, {result['sent']} direkt versendet, {result['failed']} fehlgeschlagen.",'error' if result['failed'] else 'success')
+        for error in result['errors']:
+            flash(error,'error')
+    except (LookupError,ValueError) as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.post('/word-packages/<int:package_id>/confirm-sent')
+def confirm_word_sent(package_id):
+    row=get_db().execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        if request.form.get('sent_checked')!='yes':
+            raise ValueError('Bitte den tatsächlichen Versand des Entwurfs in Outlook bestätigen.')
+        confirm_word_draft_sent(get_db(),package_id)
+        audit('word_draft_sent_confirmed','word_package',str(package_id))
+        flash('Der manuelle Outlook-Versand ist bestätigt.','success')
+    except ValueError as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=row['cycle_id']))
+
+
+@bp.post('/word-packages/<int:package_id>/discard-draft')
+def discard_word_mail_draft(package_id):
+    row=get_db().execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        if request.form.get('discard_checked')!='yes':
+            raise ValueError('Bitte in Outlook prüfen, dass die Nachricht nicht versendet wurde, und einen vorhandenen Entwurf löschen.')
+        discard_word_draft(get_db(),package_id)
+        audit('word_draft_discarded','word_package',str(package_id))
+        flash('Entwurf als verworfen markiert. Ein neues Paket kann erzeugt werden.','success')
+    except ValueError as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=row['cycle_id']))
+
+
+@bp.get('/aufgaben')
+def worklist():
+    data=cockpit_overview(get_db(),selected_cycle_id=request.args.get('cycle_id',type=int))
+    kind=request.args.get('kind','');query=request.args.get('q','').casefold()
+    rows=[t for t in data['tasks'] if (not kind or t['kind']==kind) and (not query or query in (t['title']+' '+t['subject']+' '+t.get('context','')).casefold())]
+    return render_template('worklist.html',active_nav='overview',rows=rows,kind=kind,query=query,kinds=sorted({t['kind'] for t in data['tasks']}),**data)
+
+
+@bp.get('/einrichtung')
+def setup_guide():
+    return render_template('setup_guide.html',active_nav='help',checks=workflow.setup_checks(current_app.config,get_db()))
+
+
+@bp.get('/hilfe')
+def help_page():
+    from .services.help_content import SECTIONS
+    return render_template('help.html',active_nav='help',help_sections=SECTIONS)
+
+
+@bp.post('/dialog-events/<int:event_id>/attach')
+def attach_dialog_event(event_id):
+    try:
+        cycle_id=request.form.get('cycle_id',type=int)
+        reason=request.form.get('reason','')
+        case_id=workflow.attach_event(get_db(),event_id,cycle_id,reason)
+        audit('event_attached','dialog_event',str(event_id),cycle_id=cycle_id,reason=reason)
+        flash('Ereignis zugeordnet. Hier kannst du den Fall prüfen und über die Führungslinie Word-Vorlagen erzeugen.','success')
+        return redirect(url_for('main.case_detail',cycle_id=cycle_id,case_id=case_id))
+    except ValueError as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('main.dialogs',unassigned='yes'))
+
+
+@bp.post('/dialog-events/<int:event_id>/cancel')
+def cancel_dialog_event(event_id):
+    try:
+        workflow.cancel_manual_event(get_db(),event_id,request.form.get('reason',''))
+        audit('event_cancelled','dialog_event',str(event_id),reason=request.form.get('reason',''))
+        flash('Manuelles Ereignis aufgehoben. Es bleibt nachvollziehbar gespeichert.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    return redirect(url_for('main.dialogs'))
+
+
+@bp.get('/hilfe/dokument/<name>')
+def help_document(name):
+    if name not in {'HR_BETREUUNG.md','BUEROTEST.md','PLAN_B_WORD_PDF.md','BETRIEBSKONZEPT.md','FLASK_SQLITE_MVP.md','ANFORDERUNGEN.md'}:abort(404)
+    return send_file(Path(current_app.root_path).parent/'docs'/name,as_attachment=True,download_name=name)
+
+
+@bp.get('/cycles/<int:cycle_id>/abschluss')
+def cycle_closure(cycle_id):
+    cycle=get_db().execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
+    if not cycle:abort(404)
+    return render_template('cycle_closure.html',active_nav='dialogs',cycle=cycle,summary=workflow.closure_summary(get_db(),cycle_id))
+
+
+@bp.app_errorhandler(OSError)
+def storage_problem(error):
+    get_db().rollback()
+    reference=uuid.uuid4().hex[:10]
+    current_app.logger.exception('Dateisystemfehler %s',reference)
+    return render_template('operation_error.html',reference=reference),503
+
+
+@bp.post('/word-packages/<int:package_id>/resolve-interrupted')
+def resolve_interrupted_word(package_id):
+    from .services.word_dispatch import resolve_interrupted_delivery
+    try:
+        if request.form.get('outlook_checked')!='yes':raise ValueError('Bitte in Outlook prüfen, ob die Nachricht bereits verschlüsselt versendet wurde oder ob kein Versand und kein Entwurf mehr offen ist. Alte Serverversionen müssen zuvor beendet sein.')
+        resolve_interrupted_delivery(get_db(),package_id,outcome=request.form.get('outcome',''),reason=request.form.get('reason',''))
+        audit('word_delivery_resolved','word_package',str(package_id),outcome=request.form.get('outcome'),reason=request.form.get('reason'))
+        flash('Outlook-Vorgang geklärt. Dabei wurde keine zusätzliche Nachricht versendet.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    return redirect(url_for('main.dispatch'))
+
+
+@bp.route('/zielquellen',methods=['GET','POST'])
+def goal_sources():
+    from .services.word_packages import prior_goals,goal_sources_fingerprint
+    values=request.form if request.method=='POST' else request.args
+    pn=values.get('pn','').strip();assignment=values.get('assignment','').strip();year=values.get('year',type=int)
+    sources=[];fingerprint=''
+    try:
+        if pn and assignment and year:
+            sources=prior_goals(get_db(),employee_pn=pn,assignment=assignment,year=year,sources_only=True)
+            fingerprint=goal_sources_fingerprint(sources)
+        if request.method=='POST':
+            index=values.get('source',type=int);reason=values.get('reason','').strip()
+            if not fingerprint or values.get('fingerprint')!=fingerprint:raise ValueError('Die Quellen haben sich geändert. Bitte die neue Übersicht vergleichen.')
+            if index is None or not 0<=index<len(sources) or len(reason)<10:raise ValueError('Bitte eine Quelle wählen und die Entscheidung mit mindestens 10 Zeichen begründen.')
+            with get_db():
+                get_db().execute("""INSERT INTO workflow_goal_choices VALUES (?,?,?,?,?,?,?) ON CONFLICT(employee_pn,assignment_number,goal_year) DO UPDATE SET source_json=excluded.source_json,sources_fingerprint=excluded.sources_fingerprint,reason=excluded.reason,updated_at=excluded.updated_at""",(pn,assignment,year,json.dumps(sources[index][2]),fingerprint,reason,workflow.stamp()))
+            audit('goal_source_selected','person',pn,assignment=assignment,year=year,source=sources[index][2],reason=reason)
+            flash('Zielquelle festgelegt. Die nächste Word-Erzeugung verwendet diese Quelle; frühere Ausgaben bleiben unverändert.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    choice=get_db().execute('SELECT * FROM workflow_goal_choices WHERE employee_pn=? AND assignment_number=? AND goal_year=?',(pn,assignment,year)).fetchone()
+    selected_source=json.loads(choice['source_json']) if choice else None
+    return render_template('goal_sources.html',active_nav='master_data',sources=sources,pn=pn,assignment=assignment,year=year,fingerprint=fingerprint,choice=choice,selected_source=selected_source)
+
+
+def _goal_batch_directory(batch_id):
+    import re
+    if not re.fullmatch('[0-9a-f]{32}', batch_id):
+        abort(404)
+    directory = _storage_dir('legacy_preview') / batch_id
+    if not (directory / 'year.json').is_file():
+        abort(404)
+    return directory
+
+
+@bp.route('/alte-ziele', methods=['GET', 'POST'])
+def legacy_goal_upload():
+    from .services.goal_batches import create_batch, save_upload
+    if request.method == 'POST':
+        try:
+            uploads = [u for u in request.files.getlist('forms') if u.filename]
+            if not uploads:
+                raise ValueError('Bitte mindestens eine Word- oder PDF-Datei wählen.')
+            batch, directory = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
+            for upload in uploads:
+                save_upload(directory, upload)
+            return redirect(url_for('main.legacy_goal_preview', batch_id=batch))
+        except ValueError as exc:
+            flash(str(exc), 'error')
+    return render_template('legacy_goal_upload.html', active_nav='master_data')
+
+
+@bp.post('/alte-ziele/batches')
+def create_goal_batch():
+    from .services.goal_batches import create_batch
+    try:
+        batch, _ = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
+    except ValueError as exc:
+        return {'error': str(exc)}, 400
+    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch),
+            'preview_url': url_for('main.legacy_goal_preview', batch_id=batch)}
+
+
+@bp.post('/alte-ziele/<batch_id>/files')
+def upload_goal_batch_file(batch_id):
+    from .services.goal_batches import save_upload
+    directory = _goal_batch_directory(batch_id)
+    upload = request.files.get('file')
+    if not upload or not upload.filename:
+        return {'error': 'Keine Datei erhalten.'}, 400
+    try:
+        file_id = save_upload(directory, upload)
+    except ValueError as exc:
+        return {'error': str(exc)}, 400
+    return {'file_id': file_id}
+
+
+@bp.get('/alte-ziele/<batch_id>/original/<file_id>')
+def download_goal_original(batch_id, file_id):
+    import re
+    if not re.fullmatch('[0-9a-f]{32}', file_id):
+        abort(404)
+    directory = _goal_batch_directory(batch_id) / 'files' / file_id
+    paths = list(directory.glob('*'))
+    if len(paths) != 1 or not paths[0].is_file():
+        abort(404)
+    return send_file(paths[0], as_attachment=True, download_name=paths[0].name)
+
+
+@bp.route('/alte-ziele/<batch_id>', methods=['GET', 'POST'])
+def legacy_goal_preview(batch_id):
+    from .services.goal_batches import preview, validate_selection
+    from .services.legacy_forms import import_legacy_forms
+    directory = _goal_batch_directory(batch_id)
+    year = json.loads((directory / 'year.json').read_text())['year']
+    result, fingerprint = preview(get_db(), directory, year)
+    if request.method == 'POST':
+        try:
+            if request.form.get('checked') != 'yes' or request.form.get('fingerprint') != fingerprint:
+                raise ValueError('Bitte die aktuelle Vorschau einschliesslich Zieljahr und Zuordnungen prüfen und bestätigen.')
+            selected = set(request.form.getlist('source'))
+            validate_selection(result, selected)
+            imported = import_legacy_forms(get_db(), forms_root=directory, goal_year=year, selected_hashes=selected)
+            audit('legacy_goals_imported', 'goal_batch', batch_id, year=year, imported=imported['imported'])
+            flash(f"{imported['imported']} ausgewählte Quelle(n) importiert. Bitte die Word-Dossiers neu erzeugen.", 'success')
+            return redirect(url_for('main.legacy_goal_preview', batch_id=batch_id))
+        except ValueError as exc:
+            flash(str(exc), 'error')
+    return render_template('legacy_goal_preview.html', active_nav='master_data', result=result, fingerprint=fingerprint, batch_id=batch_id)
+
+
+@bp.post('/word-pdf-imports/<int:import_id>/as-feedback')
+def classify_feedback(import_id):
+    connection=get_db()
+    try:
+        workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+        item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+        if not item or item['status']!='pending':
+            raise ValueError('Nur offene Prüfungen können zugeordnet werden.')
+        parsed=word_feedback.inspect_feedback(Path(item['stored_path']),item['original_filename'])
+        connection.execute("UPDATE word_pdf_imports SET parsed_json=?,reviewed_json='' WHERE id=?",(json.dumps(parsed,ensure_ascii=False),import_id))
+        workflow.advance_pdf(connection,import_id)
+        connection.commit()
+        audit('word_pdf_classified_feedback','word_pdf_import',str(import_id))
+    except (ValueError,LookupError) as exc:
+        connection.rollback(); flash(str(exc),'error')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
+    return redirect(url_for('main.feedback_review',import_id=import_id))
+
+
+@bp.route('/feedback-imports/<int:import_id>',methods=['GET','POST'])
+def feedback_review(import_id):
+    connection=get_db()
+    item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+    if not item: abort(404)
+    parsed=json.loads(item['parsed_json'])
+    if parsed.get('data',{}).get('document_kind')!='feedback': abort(404)
+    state=workflow.pdf_state(connection,import_id)
+    reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else {
+        'manager_pn':parsed['data'].get('manager_pn',''),'cycle_id':'','feedback_fields':parsed.get('feedback_fields',{})}
+    if request.method=='POST':
+        reviewed={'manager_pn':request.form.get('manager_pn','').strip(),'cycle_id':request.form.get('cycle_id',''),
+                  'feedback_fields':{key:request.form.get('field_'+key,'').strip() for key in word_feedback.FIELDS if request.form.get('present_'+key)=='yes' or request.form.get('field_'+key,'').strip()}}
+        reason=request.form.get('reason','').strip()
+        try:
+            workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
+            action=request.form.get('action','confirm')
+            if item['status']!='pending': raise ValueError('Bereits verarbeitet; das Original bleibt erhalten.')
+            if state['dismissed'] and action!='reopen': raise ValueError('Bitte die Prüfung zuerst wieder öffnen.')
+            if action in ('dismiss','reopen') and len(reason)<10: raise ValueError('Bitte mit mindestens 10 Zeichen begründen.')
+            if action=='to_document':
+                from .services.word_pdf import inspect_word_pdf
+                connection.execute("UPDATE word_pdf_imports SET parsed_json=?,reviewed_json='' WHERE id=?",(json.dumps(inspect_word_pdf(Path(item['stored_path'])),ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id); connection.commit()
+                audit('feedback_reclassified','word_pdf_import',str(import_id))
+                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+            if action in ('draft','dismiss','reopen'):
+                reviewed['reason']=reason
+                connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
+                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                connection.commit()
+                audit('feedback_'+action,'word_pdf_import',str(import_id))
+                flash('Prüfstand gespeichert.','success')
+            elif action=='confirm':
+                if request.form.get('checked')!='yes': raise ValueError('Bitte Führungskraft, Jahr und Inhalte am Original prüfen und bestätigen.')
+                word_feedback.confirm_feedback(connection,import_id,cycle_id=int(reviewed['cycle_id']),manager_pn=reviewed['manager_pn'],fields=reviewed['feedback_fields'],reason=reason,user_id=g.user['id'] if g.user else None)
+                workflow.advance_pdf(connection,import_id); connection.commit()
+                audit('feedback_confirmed','word_pdf_import',str(import_id),cycle_id=reviewed['cycle_id'],manager_pn=reviewed['manager_pn'])
+                flash('Feedback in die Sammlung übernommen. Bündelung unter Rückläufe → Feedbacks.','success')
+            else: raise ValueError('Unbekannte Aktion.')
+            return redirect(url_for('main.feedback_review',import_id=import_id))
+        except (ValueError,LookupError) as exc:
+            connection.rollback(); flash(str(exc) or 'Bitte Jahresprozess auswählen.','error')
+    submission=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
+    managers=connection.execute('SELECT DISTINCT e.pn,e.first_name,e.last_name FROM employees e JOIN dialog_cases d ON d.manager_pn=e.pn ORDER BY e.last_name,e.first_name').fetchall()
+    cycles=connection.execute('SELECT * FROM cycles ORDER BY review_year DESC').fetchall()
+    return render_template('feedback_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,managers=managers,cycles=cycles,fields=word_feedback.FIELDS,submission=submission)
+
+
+@bp.route('/feedback-collections/<int:cycle_id>/<manager_pn>',methods=['GET','POST'])
+def feedback_collection(cycle_id,manager_pn):
+    connection=get_db()
+    if request.method=='POST':
+        try:
+            if request.form.get('checked')!='yes': raise ValueError('Bitte die Zusammenstellung bestätigen.')
+            ids=[int(value) for value in request.form.getlist('import_id')]
+            bundle_id=word_feedback.bundle_feedback(connection,cycle_id=cycle_id,manager_pn=manager_pn,expected_ids=ids,handoff_dir=_handoff_dir(),archive_dir=_storage_dir('feedback_bundles'))
+            audit('feedback_bundle_created','feedback_bundle',str(bundle_id),cycle_id=cycle_id,manager_pn=manager_pn)
+            flash('Feedback-Sammel-PDF für die Dossierablage bereitgestellt.','success')
+            return redirect(url_for('main.returns_overview',cycle_id=cycle_id)+'#feedbacks')
+        except (ValueError,OSError) as exc:
+            connection.rollback(); flash(str(exc),'error')
+    rows=connection.execute('''SELECT w.* FROM word_feedback_submissions s JOIN word_pdf_imports w ON w.id=s.import_id
+        WHERE s.cycle_id=? AND s.manager_pn=? AND s.bundle_id IS NULL ORDER BY w.id''',(cycle_id,manager_pn)).fetchall()
+    cycle=connection.execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
+    manager=connection.execute('SELECT * FROM employees WHERE pn=?',(manager_pn,)).fetchone()
+    if not cycle or not manager: abort(404)
+    pending=connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending' AND json_extract(parsed_json,'$.data.document_kind')='feedback'").fetchone()[0]
+    return render_template('feedback_collection.html',active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
+
+
+@bp.get('/feedback-bundles/<int:bundle_id>/download')
+def feedback_bundle_download(bundle_id):
+    row=get_db().execute('''SELECT b.filename,COALESCE(a.stored_path,b.stored_path) AS path FROM feedback_bundles b
+        LEFT JOIN word_feedback_bundle_archives a ON a.bundle_id=b.id WHERE b.id=?''',(bundle_id,)).fetchone()
+    if not row or not Path(row['path']).is_file(): abort(404)
+    return send_file(row['path'],download_name=row['filename'],mimetype='application/pdf',as_attachment=True)
+
+
+@bp.post('/feedback-imports/<int:import_id>/reopen')
+def reopen_feedback(import_id):
+    connection=get_db()
+    try:
+        reason=request.form.get('reason','').strip()
+        if len(reason)<10: raise ValueError('Bitte die Korrektur mit mindestens 10 Zeichen begründen.')
+        connection.execute('BEGIN IMMEDIATE')
+        state=workflow.pdf_state(connection,import_id)
+        row=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
+        if not row or row['bundle_id'] or str(state['revision'])!=request.form.get('revision'):
+            raise ValueError('Bereits gebündelt oder inzwischen geändert. Bitte die Seite neu laden.')
+        if connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+            raise ValueError('Den Jahresprozess für die Korrektur zuerst wieder öffnen.')
+        previous=dict(row)
+        connection.execute('DELETE FROM word_feedback_submissions WHERE import_id=?',(import_id,))
+        connection.execute("UPDATE word_pdf_imports SET status='pending' WHERE id=?",(import_id,))
+        workflow.advance_pdf(connection,import_id,reason=reason)
+        connection.commit()
+        audit('feedback_correction_opened','word_pdf_import',str(import_id),reason=reason,previous=previous)
+        flash('Feedback zur Korrektur geöffnet. Bitte danach erneut bestätigen.','success')
+    except ValueError as exc:
+        connection.rollback();flash(str(exc),'error')
+    return redirect(url_for('main.feedback_review',import_id=import_id))

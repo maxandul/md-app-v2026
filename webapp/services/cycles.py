@@ -22,7 +22,7 @@ _CYCLE_STATUS_TRANSITIONS = {
 
 
 def change_cycle_status(
-    connection: sqlite3.Connection, *, cycle_id: int, new_status: str
+    connection: sqlite3.Connection, *, cycle_id: int, new_status: str, closure_reason: str = "", closure_owner: str = "", external_checked: bool = False
 ) -> tuple[str, str]:
     """Ändert die steuernde Prozessphase kontrolliert um genau einen Schritt."""
     cycle = connection.execute(
@@ -37,6 +37,16 @@ def change_cycle_status(
         raise ValueError(
             "Die Prozessphase kann nur um einen Schritt vor- oder zurückgesetzt werden."
         )
+    if new_status == 'abgeschlossen':
+        from .hr_workflow import closure_summary, stamp
+        import json
+        summary = closure_summary(connection,cycle_id)
+        if not external_checked:
+            raise ValueError('Bitte zuerst die Abschlussprüfung öffnen und die externe Dossier-/SAP-Verarbeitung prüfen.')
+        if any(summary.values()) and (len(closure_reason.strip())<10 or not closure_owner.strip()):
+            raise ValueError('Es bestehen offene Aufgaben. Bitte zuerst erledigen oder Restfälle mit Begründung und verantwortlicher Person dokumentieren.')
+        connection.execute("""INSERT INTO workflow_cycle_closures(cycle_id,reason,owner,summary_json,created_at) VALUES (?,?,?,?,?)
+            ON CONFLICT(cycle_id) DO UPDATE SET reason=excluded.reason,owner=excluded.owner,summary_json=excluded.summary_json,created_at=excluded.created_at""",(cycle_id,closure_reason.strip(),closure_owner.strip(),json.dumps(summary,ensure_ascii=False),stamp()))
     connection.execute(
         "UPDATE cycles SET status = ? WHERE id = ?", (new_status, cycle_id)
     )

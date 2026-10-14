@@ -303,3 +303,17 @@ Person in einem Führungskraftpaket liegen die Formulare in getrennten Ordnern
 bei mehrdeutigen PDF-Rückläufen muss HR die Zuordnung weiterhin prüfen.
 Bereits erzeugte Versandpakete müssen neu erzeugt werden, um die neuen Dateinamen
 zu erhalten. Offene Outlook-Entwürfe zuerst wie bisher klären.
+
+## Versehentlich neu erzeugte Versandpakete
+
+Unter «Versand» werden der letzte bestätigte Versand und die aktuelle Ausgabe
+getrennt angezeigt. Die tatsächlich versendete Ausgabe bleibt dort herunterladbar.
+Mit «Neue Ausgabe verwerfen» kann eine noch nicht an Outlook übergebene Ausgabe
+aus der Versandauswahl genommen werden. Dateien und Versandnachweise bleiben
+unverändert gespeichert. Die vorherige nicht verworfene Ausgabe ist danach wieder
+massgebend; bei mehreren versehentlichen Ausgaben kann der Schritt wiederholt werden.
+
+Offene, fehlgeschlagene oder laufende Outlook-Vorgänge können nicht auf diesem Weg
+verworfen werden. Zuerst Outlook prüfen und einen vorhandenen Entwurf löschen,
+dann den Entwurf in der App als verworfen markieren. Anschliessend lässt sich auch
+die Ausgabe verwerfen. Bestätigte Versände lassen sich nicht verwerfen.

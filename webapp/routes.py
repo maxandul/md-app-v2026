@@ -63,7 +63,7 @@ from .services.word_pdf import inspect_word_pdf
 from .services.word_pdf_imports import stage_pdf, matching_cases, confirm_import
 from .services.legacy_forms import COMPETENCY_TAGS
 from .services.word_packages import create_word_package, word_template_status
-from .services.word_dispatch import DEFAULT_WORD_SUBJECT, DEFAULT_WORD_BODY, word_message, prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
+from .services.word_dispatch import DEFAULT_WORD_SUBJECT, DEFAULT_WORD_BODY, word_message, discard_word_package, prepare_word_batch, word_dispatch_candidates, dispatch_word_packages, confirm_word_draft_sent, discard_word_draft
 from .services.sap_export import (
     create_sap_upload_batch,
     get_sap_export_batch,
@@ -1529,6 +1529,20 @@ def prepare_word_mail(cycle_id):
     except (LookupError,ValueError) as exc:
         flash(str(exc),'error')
     return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.post('/word-packages/<int:package_id>/discard')
+def discard_unused_word_package(package_id):
+    row = get_db().execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?', (package_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        discard_word_package(get_db(), package_id)
+        audit('word_package_discarded', 'word_package', str(package_id))
+        flash('Ausgabe verworfen. Die vorherige nicht verworfene Ausgabe ist wieder massgebend; bestätigte Versände bleiben erhalten.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    return redirect(url_for('main.dispatch', cycle_id=row['cycle_id']))
 
 
 @bp.post('/word-packages/<int:package_id>/confirm-sent')

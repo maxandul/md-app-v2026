@@ -209,7 +209,7 @@ def cockpit_overview(
               )
               AND COALESCE(NULLIF(dc.official_scope,''),dc.suggested_scope) <> 'none'
               AND NOT EXISTS (SELECT 1 FROM word_dispatch_packages wp
-                  WHERE wp.cycle_id=dc.cycle_id AND wp.manager_pn=dc.manager_pn)
+                  WHERE wp.cycle_id=dc.cycle_id AND wp.manager_pn=dc.manager_pn AND wp.discarded_at='')
             GROUP BY dc.manager_pn, manager_name
             ORDER BY manager_name
             """,
@@ -237,7 +237,7 @@ def cockpit_overview(
             d.status FROM word_dispatch_packages p LEFT JOIN employees e ON e.pn=p.manager_pn
             LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
             WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2
-                WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn)
+                WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
             AND COALESCE(d.status,'')<>'sent_confirmed'""",(cycle_id,)).fetchall()
         for package in pending_word_mail:
             tasks.append({'priority':'mittel','priority_rank':5,'kind':'Versand',

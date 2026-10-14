@@ -36,6 +36,72 @@ class WordDispatchTest(unittest.TestCase):
     def candidates(self):
         return word_dispatch_candidates(self.db,cycle_id=self.cycle_id,template_paths=self.paths)
 
+    def test_discard_new_output_restores_sent_status_and_task_state(self):
+        from webapp.services.word_dispatch import discard_word_package
+        from webapp.services.cockpit import cockpit_overview
+        self.prepare()
+        sent = self.candidates()[0]
+        self.send([sent['id']], FakeOutlook(), delivery_mode='send')
+        self.prepare()
+        new = self.candidates()[0]
+        self.assertEqual(new['last_sent_package_id'], sent['id'])
+        self.assertTrue(new['last_sent_at'])
+        self.assertTrue(new['can_discard'])
+        client = self.app.test_client()
+        page = client.get(f'/versand?cycle_id={self.cycle_id}').text
+        self.assertIn('Versand bestätigt am', page)
+        self.assertIn('Neue Ausgabe verwerfen', page)
+        response = client.post(f"/word-packages/{new['id']}/discard")
+        self.assertEqual(response.status_code, 302)
+        current = self.candidates()[0]
+        self.assertEqual(current['id'], sent['id'])
+        self.assertEqual(current['delivery_status'], 'sent_confirmed')
+        self.assertFalse(current['can_discard'])
+        self.assertTrue(Path(new['stored_path']).is_file())
+        self.assertTrue(self.db.execute('SELECT discarded_at FROM word_dispatch_packages WHERE id=?', (new['id'],)).fetchone()[0])
+        tasks = cockpit_overview(self.db, selected_cycle_id=self.cycle_id)['tasks']
+        self.assertFalse(any(t['title']=='Word-Versand abschliessen' and t['manager_pn']==sent['manager_pn'] for t in tasks))
+        fake = FakeOutlook()
+        with self.assertRaises(ValueError):
+            self.send([new['id']], fake)
+        self.assertEqual(fake.calls, [])
+        with self.assertRaises(ValueError):
+            discard_word_package(self.db, sent['id'])
+
+    def test_discard_before_first_send_and_after_cancelled_draft(self):
+        from webapp.services.word_dispatch import discard_word_package
+        self.prepare()
+        original = self.candidates()[0]
+        self.prepare()
+        new = self.candidates()[0]
+        with self.assertRaises(ValueError):
+            discard_word_package(self.db, original['id'])
+        self.send([new['id']], FakeOutlook())
+        with self.assertRaisesRegex(ValueError, 'Outlook'):
+            discard_word_package(self.db, new['id'])
+        discard_word_draft(self.db, new['id'])
+        discard_word_package(self.db, new['id'])
+        self.assertEqual(self.candidates()[0]['id'], original['id'])
+        # The transactional send check must also ignore the discarded newer output.
+        self.send([original['id']], FakeOutlook())
+        discard_word_draft(self.db, original['id'])
+        discard_word_package(self.db, original['id'])
+        self.assertEqual(self.candidates(), [])
+        with self.assertRaises(ValueError):
+            discard_word_package(self.db, original['id'])
+
+    def test_discard_rejects_locked_or_failed_outlook_output(self):
+        from webapp.services.word_dispatch import discard_word_package
+        from webapp.services.outlook_lock import package_lock
+        self.prepare()
+        item = self.candidates()[0]
+        with package_lock(item['stored_path']):
+            with self.assertRaises(ValueError):
+                discard_word_package(self.db, item['id'])
+        self.send([item['id']], FakeOutlook(fail=True))
+        with self.assertRaisesRegex(ValueError, 'Outlook'):
+            discard_word_package(self.db, item['id'])
+
     def test_salutation_import_and_preview(self):
         import openpyxl
         from webapp.services.sap_import import import_sap_workbook

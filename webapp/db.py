@@ -127,6 +127,9 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         connection.execute(
             "ALTER TABLE package_events ADD COLUMN stored_path TEXT NOT NULL DEFAULT ''"
         )
+    word_package_columns = {row['name'] for row in connection.execute('PRAGMA table_info(word_dispatch_packages)')}
+    if 'discarded_at' not in word_package_columns:
+        connection.execute("ALTER TABLE word_dispatch_packages ADD COLUMN discarded_at TEXT NOT NULL DEFAULT ''")
     inbound_mail_columns = {
         row["name"]
         for row in connection.execute("PRAGMA table_info(inbound_mail_messages)").fetchall()

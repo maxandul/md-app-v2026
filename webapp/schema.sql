@@ -580,6 +580,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_word_goal_version_current
 
 CREATE TABLE IF NOT EXISTS word_dispatch_packages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    discarded_at TEXT NOT NULL DEFAULT '',
     export_id TEXT NOT NULL UNIQUE,
     cycle_id INTEGER NOT NULL REFERENCES cycles(id),
     manager_pn TEXT NOT NULL,

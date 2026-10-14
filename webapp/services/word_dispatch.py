@@ -118,11 +118,18 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
         LEFT JOIN employees e ON e.pn=p.manager_pn
         LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
-        WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn)
+        WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
         ORDER BY manager_name,p.manager_pn''', (cycle_id,)).fetchall()
     result = []
     for row in rows:
         item = dict(row)
+        last_sent = connection.execute("""SELECT p.id,d.updated_at FROM word_dispatch_packages p
+            JOIN word_mail_deliveries d ON d.package_id=p.id
+            WHERE p.cycle_id=? AND p.manager_pn=? AND d.status='sent_confirmed'
+            ORDER BY d.updated_at DESC,p.id DESC LIMIT 1""", (cycle_id,row['manager_pn'])).fetchone()
+        item['last_sent_at'] = last_sent['updated_at'] if last_sent else ''
+        item['last_sent_package_id'] = last_sent['id'] if last_sent else None
+        item['can_discard'] = row['delivery_status'] in (None, 'cancelled')
         item['filename'] = Path(row['stored_path']).name
         manifest = json.loads(row['manifest_json'])
         item['goal_warnings'] = manifest.get('goal_warnings', [])
@@ -259,7 +266,7 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
         # Ein zweiter Browser darf dieselbe Ausgabe nicht parallel zustellen.
         try:
             connection.execute('BEGIN IMMEDIATE')
-            latest = connection.execute('SELECT MAX(id) FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=?',(cycle_id,row['manager_pn'])).fetchone()[0]
+            latest = connection.execute("SELECT MAX(id) FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? AND discarded_at=''",(cycle_id,row['manager_pn'])).fetchone()[0]
             existing = connection.execute('SELECT status FROM word_mail_deliveries WHERE package_id=?',(package_id,)).fetchone()
             if latest!=package_id or (existing and existing['status']!='failed'):
                 raise ValueError('Die Word-Ausgabe wurde inzwischen abgelöst oder bereits für Outlook übernommen.')
@@ -301,6 +308,29 @@ def discard_word_draft(connection, package_id):
         cursor = connection.execute("UPDATE word_mail_deliveries SET status='cancelled',updated_at=? WHERE package_id=? AND status IN ('draft_created','failed')", (_stamp(),package_id))
         if cursor.rowcount!=1:
             raise ValueError('Nur ein offener Entwurf oder fehlgeschlagener Outlook-Vorgang kann als verworfen markiert werden.')
+
+
+def discard_word_package(connection, package_id):
+    """Archive an unused output without altering any delivery evidence."""
+    from .outlook_lock import package_lock
+    row = connection.execute('SELECT * FROM word_dispatch_packages WHERE id=?', (package_id,)).fetchone()
+    if not row:
+        raise ValueError('Word-Ausgabe nicht gefunden.')
+    with package_lock(row['stored_path']):
+        try:
+            connection.execute('BEGIN IMMEDIATE')
+            latest = connection.execute("""SELECT MAX(id) FROM word_dispatch_packages
+                WHERE cycle_id=? AND manager_pn=? AND discarded_at=''""", (row['cycle_id'], row['manager_pn'])).fetchone()[0]
+            delivery = connection.execute('SELECT status FROM word_mail_deliveries WHERE package_id=?', (package_id,)).fetchone()
+            if latest != package_id:
+                raise ValueError('Diese Ausgabe ist nicht mehr aktuell. Bitte die Ansicht aktualisieren.')
+            if delivery and delivery['status'] != 'cancelled':
+                raise ValueError('Diese Ausgabe wurde bereits an Outlook übergeben. Zuerst den Outlook-Vorgang klären; bestätigte Versände bleiben erhalten.')
+            connection.execute('UPDATE word_dispatch_packages SET discarded_at=? WHERE id=?', (_stamp(), package_id))
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
 
 
 def dispatch_word_packages(connection, *, cycle_id, package_ids, **kwargs):

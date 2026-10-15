@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}MD {{ cycle.review_year }}/{{ cycle.outlook_year }}{% endblock %}
 {% block content %}
-  <nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><span>{{ cycle.review_year }}/{{ cycle.outlook_year }}</span></nav>
+  <nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><a href="{{ url_for('main.dialogs',cycle_id=cycle.id) }}">Dialoge</a><span aria-hidden="true">/</span><span>{{ cycle.review_year }}/{{ cycle.outlook_year }}</span></nav>
   <section class="page-head page-head--compact">
     <p class="kicker">Jahresprozess</p>
     <h1>Rückblick {{ cycle.review_year }} · Ausblick {{ cycle.outlook_year }}</h1>

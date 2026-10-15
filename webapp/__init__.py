@@ -6,7 +6,7 @@ import os
 import secrets
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, request
 
 from . import db
 
@@ -77,10 +77,23 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(bp)
 
     @app.after_request
+    def retain_action_filters(response):
+        if request.method == 'POST' and response.status_code in (302,303) and request.referrer:
+            from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+            source=urlsplit(request.referrer); target=urlsplit(response.headers.get('Location',''))
+            if source.netloc == request.host and (not target.netloc or target.netloc==request.host) and source.path==target.path:
+                params=dict(parse_qsl(target.query,keep_blank_values=True))
+                allowed={'cycle_id','org_unit','event_type','status','q','kind','mail_q','mail_status','mail_page','pdf_q','pdf_status','pdf_page','page','workflow','unassigned'}
+                for key,value in parse_qsl(source.query,keep_blank_values=True):
+                    if key in allowed and key not in params:params[key]=value
+                response.headers['Location']=urlunsplit((target.scheme,target.netloc,target.path,urlencode(params),target.fragment))
+        return response
+
+    @app.after_request
     def add_security_headers(response):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Referrer-Policy"] = "same-origin"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; style-src 'self'; img-src 'self' data:; "

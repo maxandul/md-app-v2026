@@ -663,3 +663,13 @@ CREATE TABLE IF NOT EXISTS hr_followups (
     updated_at TEXT NOT NULL DEFAULT '',
     PRIMARY KEY(case_id,topic)
 );
+
+CREATE TABLE IF NOT EXISTS word_change_decisions (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ package_id INTEGER NOT NULL REFERENCES word_dispatch_packages(id),
+ case_id TEXT NOT NULL,
+ source_signature TEXT NOT NULL,
+ outcome TEXT NOT NULL CHECK(outcome IN ('no_resend','person_corrected')),
+ reason TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);

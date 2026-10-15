@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}SAP-Import {{ imported.id }} · MD-Verwaltung{% endblock %}
 {% block content %}
-<nav class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span>›</span><span>SAP-Import {{ imported.id }}</span></nav>
+<nav class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span>›</span><a href="{{ url_for('main.master_data') }}">Stammdaten</a><span>›</span><span>SAP-Import {{ imported.id }}</span></nav>
 <section class="page-head page-head--compact">
   <p class="kicker">SAP-Prüfliste</p><h1>{{ imported.original_filename }}</h1>
   <p class="lead">{{ imported.employee_count }} Personen · {{ imported.reporting_line_count }} Führungslinien · importiert {{ imported.imported_at }}</p>

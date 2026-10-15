@@ -25,7 +25,7 @@ def _hash(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def source_fingerprint(connection, *, cycle_id, manager_pn, template_paths):
+def source_snapshot(connection, *, cycle_id, manager_pn, template_paths):
     cycle = connection.execute('SELECT review_year,outlook_year,sap_import_id FROM cycles WHERE id=?', (cycle_id,)).fetchone()
     manager = connection.execute('SELECT pn,first_name,last_name,email FROM employees WHERE pn=?', (manager_pn,)).fetchone()
     if not cycle or not manager:
@@ -64,6 +64,11 @@ def source_fingerprint(connection, *, cycle_id, manager_pn, template_paths):
     conflicts = connection.execute(f"SELECT COUNT(*) FROM sap_import_issues WHERE sap_import_id=? AND status='open' AND severity='blocking' AND person_number IN ({','.join('?' for _ in numbers)})", (cycle['sap_import_id'],*numbers)).fetchone()[0]
     if conflicts:
         raise ValueError('Offene SAP-Zuordnungskonflikte müssen zuerst geklärt werden.')
+    return snapshot
+
+
+def source_fingerprint(connection, *, cycle_id, manager_pn, template_paths):
+    snapshot=source_snapshot(connection,cycle_id=cycle_id,manager_pn=manager_pn,template_paths=template_paths)
     return hashlib.sha256(json.dumps(snapshot,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
 
 
@@ -93,6 +98,7 @@ def prepare_word_batch(connection, *, cycle_id, manager_pns, template_paths, out
                 path, manifest = create_word_package(connection,cycle_id=cycle_id,manager_pn=pn,template_paths=template_paths,output_dir=directory)
                 if fingerprint != source_fingerprint(connection,cycle_id=cycle_id,manager_pn=pn,template_paths=template_paths):
                     raise ValueError('Die Quelldaten wurden während der Erzeugung geändert. Bitte erneut erzeugen.')
+                manifest['source_snapshot']=source_snapshot(connection,cycle_id=cycle_id,manager_pn=pn,template_paths=template_paths)
                 cursor = connection.execute('''INSERT INTO word_dispatch_packages(export_id,cycle_id,manager_pn,stored_path,sha256,source_fingerprint,manifest_json,created_at)
                     VALUES (?,?,?,?,?,?,?,?)''', (manifest['export_id'],cycle_id,pn,str(path),manifest['sha256'],fingerprint,json.dumps(manifest,ensure_ascii=False),manifest['created_at']))
                 packages.append({'id':cursor.lastrowid,'path':path,'manifest':manifest})
@@ -137,11 +143,24 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         item['development_goal_count'] = sum(d.get('development_goals', 0) for d in manifest['documents'])
         item['document_count'] = len(manifest['documents'])
         item['attachment_count'] = len(json.loads(row['manifest_json']).get('attachments',[]))
+        item['source_changes']=[]
+        item['changes_resolved']=False
         try:
             if not Path(row['stored_path']).is_file() or _hash(row['stored_path'])!=row['sha256']:
                 raise ValueError('Die Versanddatei fehlt oder wurde verändert. Bitte neu erzeugen.')
             if source_fingerprint(connection,cycle_id=cycle_id,manager_pn=row['manager_pn'],template_paths=template_paths)!=row['source_fingerprint']:
-                raise ValueError('Stammdaten, Ziele oder Vorlagen haben sich geändert. Bitte neu erzeugen.')
+                from .dispatch_changes import changes_for_package
+                current=source_snapshot(connection,cycle_id=cycle_id,manager_pn=row['manager_pn'],template_paths=template_paths)
+                item['source_changes']=changes_for_package(row,manifest,current)
+                for change in item['source_changes']:
+                    decision=connection.execute('SELECT * FROM word_change_decisions WHERE package_id=? AND case_id=? AND source_signature=? ORDER BY id DESC LIMIT 1',(row['id'],change['case_id'],change['signature'])).fetchone()
+                    change['decision']=dict(decision) if decision else None
+                item['changes_resolved']=bool(item['source_changes']) and all(c['decision'] for c in item['source_changes'])
+                if row['delivery_status']=='sent_confirmed':
+                    if not item['changes_resolved']:
+                        raise ValueError('Änderungen seit dieser versendeten Ausgabe: unten je Person prüfen und Vorgehen dokumentieren. Ein neuer Gesamtversand ist nicht automatisch nötig.')
+                else:
+                    raise ValueError('Die Grundlagen haben sich geändert; diese noch nicht versendete Ausgabe ist veraltet. Vor einem Versand neu erzeugen; Einzelkorrekturen bereits versendeter Pakete kannst du unten dokumentieren.')
             if not row['recipient_email']:
                 raise ValueError('Geschäftliche E-Mail-Adresse fehlt.')
             item['readiness_error'] = ''

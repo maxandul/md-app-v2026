@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Feedback prüfen · MD-Verwaltung{% endblock %}
 {% block content %}
+<nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><a href="{{ url_for('main.returns_overview') }}">Rückläufe</a><span aria-hidden="true">/</span><span>Feedback-Prüfung</span></nav>
 <section class="page-head"><div><p class="kicker">Feedback an Führungskräfte</p><h1>{{ item.original_filename }}</h1><p>Führungskraft und Rückblickjahr bestätigen. Es entsteht keine Rückblick-/Ausblickpflicht und keine Mahnung für fehlende Feedbacks.</p></div></section>
 <p><a href="{{ url_for('main.word_pdf_original',import_id=item.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a> · <a href="{{ url_for('main.returns_overview') }}#feedbacks">Zur Sammlung</a></p>
 {% if parsed.issues %}<section class="content-card"><h2>Zu prüfen</h2><ul>{% for issue in parsed.issues %}<li>{{ issue }}</li>{% endfor %}</ul></section>{% endif %}

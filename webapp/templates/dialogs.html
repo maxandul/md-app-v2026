@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dialoge · MD-Verwaltung{% endblock %}
 {% block content %}
+<details class="info-box"><summary>Welcher Rückblick geht an SAP?</summary><p>Pro Person, Anstellung und Rückblickjahr wird ein Rückblick als Quelle der SAP-Beurteilung ausgewählt. Bei mehreren Rückblicken (zum Beispiel Probezeit und Jahresgespräch) prüft HR, welcher massgeblich ist. «Diesen Rückblick für SAP auswählen» ersetzt die bisherige Auswahl für dieselbe Person, Anstellung und dasselbe Jahr. Die Auswahl allein löst keinen Export aus. Bereits exportierte Ereignisse lassen sich nicht auf diesem Weg korrigieren.</p></details>
   <section class="page-head page-head--compact">
     <p class="kicker">Dialoge</p><h1>Durchläufe und Dialogpflichten</h1>
     <p class="lead">Reguläre Jahresprozesse sowie unterjährige und manuell ergänzte Dialogereignisse steuern.</p>
@@ -58,8 +59,8 @@
             <span class="status">{{ {'open':'Offen','planned':'Geplant','in_progress':'In Bearbeitung','completed':'Abgeschlossen','no_md':'Kein MD','cancelled':'Aufgehoben'}.get(event.status,event.status) }}</span>
 {% if not event.cycle_id and event.status!='cancelled' %}<form action="{{ url_for('main.attach_dialog_event',event_id=event.id) }}" method="post"><label>Durchlauf<select name="cycle_id" required>{% for c in cycles if c.review_year==event.review_year and c.status!='abgeschlossen' %}<option value="{{ c.id }}">{{ c.review_year }}/{{ c.outlook_year }}</option>{% endfor %}</select></label><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Durchlauf zuordnen</button></form><p>Kein passender Durchlauf? Zuerst oben eröffnen oder wieder öffnen.</p>{% endif %}
 {% if event.source=='manual' and event.status!='cancelled' %}<details><summary>Fehlanlage aufheben</summary><form action="{{ url_for('main.cancel_dialog_event',event_id=event.id) }}" method="post"><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Unbenutztes Ereignis aufheben</button></form></details>{% endif %}
-            {% if event.sap_leading %}<br><span class="muted">Führend für SAP</span>
-            {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Als SAP-führend markieren</button></form>
+            {% if event.sap_leading %}<br><span class="muted">Für SAP-Export ausgewählter Rückblick</span>
+            {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Diesen Rückblick für SAP auswählen</button></form>
             {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Fallverknüpfung</span>{% endif %}
           </td>
         </tr>

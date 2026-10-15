@@ -829,7 +829,7 @@ def case_detail(cycle_id: int, case_id: str):
     except LookupError:
         abort(404)
     return render_template(
-        "case_detail.html", active_nav="returns", cycle_id=cycle_id, **detail
+        "case_detail.html", active_nav="dialogs", cycle_id=cycle_id, **detail
     )
 
 
@@ -1620,6 +1620,23 @@ def prepare_word_mail(cycle_id):
     except (LookupError,ValueError) as exc:
         flash(str(exc),'error')
     return redirect(url_for('main.dispatch',cycle_id=cycle_id))
+
+
+@bp.post('/word-packages/<int:package_id>/changes')
+def resolve_word_change(package_id):
+    from .services.dispatch_changes import resolve_change
+    db=get_db()
+    package=db.execute('SELECT cycle_id FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
+    if not package:abort(404)
+    try:
+        item=next((x for x in word_dispatch_candidates(db,cycle_id=package['cycle_id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if x['id']==package_id),None)
+        if not item or item['delivery_status']!='sent_confirmed':
+            raise ValueError('Korrekturen hier nur für eine aktuelle, bestätigt versendete Ausgabe dokumentieren.')
+        resolve_change(db,package_id=package_id,case_id=request.form.get('case_id',''),signature=request.form.get('signature',''),outcome=request.form.get('outcome',''),reason=request.form.get('reason',''),current_changes=item['source_changes'])
+        audit('word_change_resolved','word_package',str(package_id),case_id=request.form.get('case_id'),outcome=request.form.get('outcome'))
+        flash('Vorgehen dokumentiert. Der ursprüngliche Versandnachweis bleibt bestehen.','success')
+    except ValueError as exc:flash(str(exc),'error')
+    return redirect(url_for('main.dispatch',cycle_id=package['cycle_id'])+'#changes-'+str(package_id))
 
 
 @bp.post('/word-packages/<int:package_id>/discard')

@@ -36,6 +36,64 @@ class WordDispatchTest(unittest.TestCase):
     def candidates(self):
         return word_dispatch_candidates(self.db,cycle_id=self.cycle_id,template_paths=self.paths)
 
+    def test_person_change_decision_and_new_change(self):
+        self.prepare()
+        item = self.candidates()[0]
+        self.send([item['id']], FakeOutlook(), delivery_mode='send')
+        self.db.execute("UPDATE employees SET first_name='Korrigiert' WHERE pn='111113'")
+        self.db.commit()
+        changed = self.candidates()[0]
+        change = next(c for c in changed['source_changes'] if c['case_id'] == self.case_id)
+        self.assertIn('Vorname:', change['details'])
+        self.assertFalse(changed['changes_resolved'])
+        client = self.app.test_client()
+        self.assertIn('Nur Formulare dieser Person erzeugen', client.get(f'/versand?cycle_id={self.cycle_id}').text)
+        response = client.post(f"/word-packages/{item['id']}/changes", data={
+            'case_id': self.case_id, 'signature': change['signature'],
+            'outcome': 'person_corrected', 'reason': 'Einzelformulare separat zugestellt.'},
+            headers={'Referer': f'http://localhost/versand?cycle_id={self.cycle_id}&org_unit=Test'})
+        self.assertIn('org_unit=Test', response.location)
+        self.assertIn('#changes-', response.location)
+        for other in changed['source_changes']:
+            if other['case_id'] == self.case_id:
+                continue
+            client.post(f"/word-packages/{item['id']}/changes", data={
+                'case_id': other['case_id'], 'signature': other['signature'],
+                'outcome': 'person_corrected', 'reason': 'Weitere Anstellung separat korrigiert.'})
+        decision_count = len(changed['source_changes'])
+        resolved = self.candidates()[0]
+        self.assertTrue(resolved['changes_resolved'])
+        self.assertEqual(resolved['readiness_error'], '')
+        self.assertEqual(resolved['delivery_status'], 'sent_confirmed')
+        self.assertFalse(resolved['ready'])
+        self.db.execute("UPDATE employees SET first_name='Nochmals korrigiert' WHERE pn='111113'")
+        self.db.commit()
+        self.assertFalse(self.candidates()[0]['changes_resolved'])
+        client.post(f"/word-packages/{item['id']}/changes", data={
+            'case_id': self.case_id, 'signature': change['signature'],
+            'outcome': 'no_resend', 'reason': 'Veraltete Ansicht darf nicht gelten.'})
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_change_decisions').fetchone()[0], decision_count)
+        Path(item['stored_path']).write_bytes(b'changed')
+        self.assertIn('Versanddatei', self.candidates()[0]['readiness_error'])
+
+    def test_legacy_package_reports_limits_and_scope_change(self):
+        self.prepare()
+        item = self.candidates()[0]
+        manifest = json.loads(item['manifest_json'])
+        manifest.pop('source_snapshot')
+        self.db.execute('UPDATE word_dispatch_packages SET manifest_json=? WHERE id=?', (json.dumps(manifest), item['id']))
+        self.db.execute("UPDATE dialog_cases SET suggested_scope='outlook_only', official_scope='' WHERE case_id=?", (self.case_id,))
+        self.db.commit()
+        changes = self.candidates()[0]['source_changes']
+        self.assertTrue(any(c['case_id'] == '__shared__' and 'Detailstand' in c['details'] for c in changes))
+        self.assertTrue(any(c['case_id'] == self.case_id and 'Formularumfang' in c['details'] for c in changes))
+        client = self.app.test_client()
+        change = changes[0]
+        client.post(f"/word-packages/{item['id']}/changes", data={
+            'case_id': change['case_id'], 'signature': change['signature'],
+            'outcome': 'no_resend', 'reason': 'Noch nicht versendet, daher unzulässig.'})
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_change_decisions').fetchone()[0], 0)
+
     def test_discard_new_output_restores_sent_status_and_task_state(self):
         from webapp.services.word_dispatch import discard_word_package
         from webapp.services.cockpit import cockpit_overview

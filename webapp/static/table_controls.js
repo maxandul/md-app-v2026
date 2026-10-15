@@ -29,6 +29,15 @@
     const previous = controls.querySelector('[data-page="previous"]');
     const next = controls.querySelector('[data-page="next"]');
     let page = 1;
+    const stateKey = `md-table:${location.pathname}${location.search}:${tableIndex}`;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(stateKey) || 'null');
+      if (saved) {
+        search.value = saved.query || '';
+        if ([25, 50, 100].includes(Number(saved.size))) pageSize.value = String(saved.size);
+        page = Math.max(1, Number(saved.page) || 1);
+      }
+    } catch (_) { /* Storage can be disabled. */ }
 
     const render = () => {
       const needle = search.value.trim().toLocaleLowerCase('de-CH');
@@ -41,6 +50,8 @@
       status.textContent = `${filtered.length} Einträge · Seite ${page} von ${pages}`;
       previous.disabled = page === 1;
       next.disabled = page === pages;
+      try { sessionStorage.setItem(stateKey, JSON.stringify({query: search.value, size, page})); }
+      catch (_) { /* Keep controls usable without storage. */ }
     };
 
     search.addEventListener('input', () => { page = 1; render(); });

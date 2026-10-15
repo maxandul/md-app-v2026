@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Word-PDF prüfen · MD-Verwaltung{% endblock %}
 {% block content %}
+<nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><a href="{{ url_for('main.returns_overview') }}">Rückläufe</a><span aria-hidden="true">/</span><span>PDF-Prüfung</span></nav>
 <section class="page-head"><div><p class="kicker">Word-PDF</p><h1>{{ item.original_filename }}</h1><p class="lead">Original-PDF und erkannte Angaben vergleichen. Ältere Vorlagen können hier ergänzt und eindeutig zugeordnet werden.</p></div></section>
 <p><a class="button" href="{{ url_for('main.word_pdf_original', import_id=item.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a> <a href="{{ url_for('main.returns_overview') }}">Alle Rückläufe</a></p>
 {% if item.status != 'pending' %}<div class="info-box">{{ 'Dieser Rücklauf ist eine inhaltliche Dublette.' if item.status=='duplicate' else 'Dieser Rücklauf wurde übernommen.' }} {{ item.review_note }} {% if item.case_id %}<p>Fall: {{ item.case_id }}{% for c in candidates if c.case_id == item.case_id %} · <a href="{{ url_for('main.case_detail', cycle_id=c.cycle_id, case_id=c.case_id) }}">Fallprüfung öffnen</a>{% endfor %}</p>{% endif %}</div>{% endif %}

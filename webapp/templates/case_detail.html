@@ -3,6 +3,7 @@
 {% block content %}
   <nav class="breadcrumb" aria-label="Brotkrumen">
     <a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span>
+    <a href="{{ url_for('main.dialogs',cycle_id=cycle_id) }}">Dialoge {{ case.review_year }}/{{ case.outlook_year }}</a><span aria-hidden="true">/</span>
     <a href="{{ url_for('main.manager_detail', cycle_id=cycle_id, manager_pn=case.manager_pn) }}">{{ case.manager_name }}</a><span aria-hidden="true">/</span>
     <span>{{ case.first_name }} {{ case.last_name }}</span>
   </nav>

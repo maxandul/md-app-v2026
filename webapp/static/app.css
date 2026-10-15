@@ -273,3 +273,26 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
 .goal-import-table { table-layout: fixed; width: 100%; min-width: 650px; }
 .goal-import-table td { white-space: pre-wrap; overflow-wrap: anywhere; vertical-align: top; }
 .goal-import-table th:last-child { width: 14%; }
+
+.messages--action-result { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; max-width: min(42rem, calc(100vw - 2rem)); max-height: 40vh; overflow: auto; background: white; padding: .8rem; box-shadow: 0 4px 20px #0003; }
+
+/* In-page navigation: a compact mobile disclosure and a desktop side column. */
+.page-layout > main { min-width: 0; }
+.page-chapters { margin: 24px 0 0; padding: 16px; background: var(--zh-black-5, #f5f5f5); border: 1px solid var(--zh-black-10); border-radius: 4px; }
+.page-chapters summary { font-weight: 700; cursor: pointer; }
+.page-chapters ol { list-style: none; padding: 0; margin: 12px 0 0; }
+.page-chapters li { margin: 2px 0; }
+.page-chapters a { display: block; padding: 8px 10px; border-left: 3px solid transparent; color: var(--zh-black-80); text-decoration: none; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.page-chapters a:hover { background: white; color: var(--zh-blue); }
+.page-chapters a[aria-current="location"] { border-left-color: var(--zh-blue); color: var(--zh-blue); background: white; font-weight: 700; }
+.chapter-target { scroll-margin-top: 24px; }
+@media (min-width: 1200px) {
+  .page-layout--chapters { width: min(1460px, calc(100% - 64px)); display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .page-chapters { position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+  .page-chapters summary { cursor: default; list-style: none; }
+  .page-chapters summary::-webkit-details-marker { display: none; }
+}
+@media print {
+  .page-chapters { display: none; }
+  .page-layout--chapters { display: block; width: auto; }
+}

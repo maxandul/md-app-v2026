@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Word-PDF-Prüfung · MD-Verwaltung{% endblock %}
 {% block content %}
+<nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><a href="{{ url_for('main.returns_overview') }}">Rückläufe</a><span aria-hidden="true">/</span><span>PDF-Vorschau</span></nav>
 <section class="page-head"><div><p class="kicker">Word-Vorlagen</p><h1>Ergebnis der PDF-Vorprüfung</h1><p class="lead">Die erkannten Grundangaben sind eine Vorschau. Es wurden keine Fachdaten importiert oder Dokumente zur Ablage weitergegeben.</p></div></section>
 {% for result in results %}
 <section class="content-card">

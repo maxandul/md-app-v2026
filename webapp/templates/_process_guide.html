@@ -42,7 +42,7 @@
         <p>Direktversand sendet über Outlook S/MIME-verschlüsselt. Ein Entwurf bleibt dagegen in Outlook und ist noch nicht versendet.</p>
       {% elif process_cycle.status == 'ruecklauf' %}
         <strong>HR überwacht Fristen und verarbeitet die zurückgesendeten PDF-Dokumente.</strong>
-        <p>Word-PDFs werden zuerst am Original geprüft und danach für die Personaldossier-Ablage freigegeben. Ein gemäss Formular erforderlicher handschriftlicher Scan bleibt bis zum Eingang offen.</p>
+        <p>Word-PDFs werden zuerst am Original geprüft und danach für die Personaldossier-Ablage freigegeben. Nur bei Rückblick D/E wird ein unterschriebener Scan geprüft. Originale bleiben im Projekt; der Roboter erhält Kopien.</p>
       {% else %}
         <strong>Der Jahresprozess ist abgeschlossen und wird nicht mehr mit neuen SAP-Importen synchronisiert.</strong>
         <p>Der Abschluss versendet nichts und löscht keine Daten. Für Nachbearbeitungen kann der Durchlauf wieder in die Rücklaufphase geöffnet werden.</p>
@@ -78,8 +78,8 @@
       <ul>
         <li><strong>Datei erzeugen:</strong> legt nur Word-Vorlagen oder Exportdateien bereit; dadurch wurde noch keine E-Mail versendet und noch nichts in SAP hochgeladen.</li>
         <li><strong>Direkt versenden:</strong> übergibt die Nachricht an das klassische Outlook und sendet sie S/MIME-verschlüsselt. «Entwurf erstellen» sendet nicht.</li>
-        <li><strong>Postfach scannen:</strong> verarbeitet MD-Dokumente und erkennt Feedback-PDFs. Mehrere Feedbacks derselben Nachricht werden je Führungskraft mit einem Deckblatt zusammengeführt. Reine, erfolgreich verarbeitete MD-Mails werden in den konfigurierten MD-Ordner verschoben; gemischte Mails bleiben zur Prüfung sichtbar.</li>
-        <li><strong>Word-PDF übernehmen:</strong> übernimmt zunächst die geprüften Fachdaten. Erst die anschliessende Unterschriften- und Ablageprüfung beim Fall stellt das Dialogdokument im Roboter-Input bereit. Bei Scanpflicht ist zuvor der handschriftlich unterzeichnete Scan nötig. Feedback-Sammeldateien folgen ihrem separaten Ablageweg. Die nachgelagerte Übernahme selbst liegt ausserhalb der App.</li>
+        <li><strong>Postfach scannen:</strong> verarbeitet MD-Dokumente und erkennt Feedback-PDFs. Feedbacks bleiben im Projekt und werden erst auf manuellen Auftrag je Führungskraft zusammengeführt. Reine, erfolgreich verarbeitete MD-Mails werden in den konfigurierten MD-Ordner verschoben; gemischte Mails bleiben zur Prüfung sichtbar.</li>
+        <li><strong>Word-PDF übernehmen:</strong> übernimmt die geprüften Fachdaten und stellt eine Kopie im Roboter-Input bereit. Nur Rückblicke D/E warten zuerst auf einen geprüften unterschriebenen Scan. Originale bleiben im Projekt. Feedback-Sammeldateien folgen ihrem separaten Ablageweg. Die nachgelagerte Übernahme selbst liegt ausserhalb der App.</li>
         <li><strong>SAP-Export erzeugen:</strong> erstellt einen nachvollziehbaren Massenupload-Batch; der eigentliche Import in SAP erfolgt separat.</li>
       </ul>
     </div>

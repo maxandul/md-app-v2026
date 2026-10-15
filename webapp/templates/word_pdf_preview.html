@@ -14,7 +14,7 @@
   {% endfor %}
   </tbody></table></div>
   {% if result.issues %}<ul>{% for issue in result.issues %}<li>{{ issue }}</li>{% endfor %}</ul>{% else %}<p>Die Grundangaben sind eindeutig lesbar.</p>{% endif %}
-  <p>Erkannt: {{ result.performance_goals|length }} Leistungsziele, {{ result.development_goals|length }} Entwicklungsziele und {{ result.assessments|length }} aktuelle Kompetenz-Einschätzungen. Für die Übernahme bitte den Word-PDF-Import unter Rückläufe verwenden. Eine Fallzuordnung oder Unterschriftenprüfung ist hier noch nicht erfolgt.</p>
+  <p>Erkannt: {{ result.performance_goals|length }} Leistungsziele, {{ result.development_goals|length }} Entwicklungsziele und {{ result.assessments|length }} aktuelle Kompetenz-Einschätzungen. Für die Übernahme bitte den Word-PDF-Import unter Rückläufe verwenden. Eine Fallzuordnung ist hier noch nicht erfolgt. Unterschriften werden ausschliesslich beim Rückblick-Scan mit D/E geprüft.</p>
   <details><summary>Ausgelesenen Text anzeigen</summary><pre class="pdf-extracted-text">{{ result.text }}</pre></details>
   {% endif %}
 </section>

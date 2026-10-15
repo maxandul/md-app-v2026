@@ -43,6 +43,8 @@ def inspect_feedback(path, filename=''):
         issues.append('Personalnummer der Führungskraft fehlt oder ist widersprüchlich.')
     if not inspection.text.strip():
         issues.append('Bild-PDF/Scan: keine automatische Texterkennung. Angaben manuell anhand des Originals erfassen.')
+    if inspection.data.get('document','').upper() == 'FEEDBACK':
+        candidates = {inspection.data.get('manager_pn', '')} - {''}
     fields = {}
     context = ''
     for page in read_cells(path):
@@ -75,7 +77,7 @@ def inspect_feedback(path, filename=''):
                     issues.append(f"Freitext auf Seite {page['page']} nicht zugeordnet; am Original prüfen.")
         if i < len(anchors):
             context = anchors[-1][1]
-    return {'data': {'document_kind': 'feedback', 'manager_pn': next(iter(candidates)) if len(candidates)==1 else ''},
+    return {'data': {'document_kind': 'feedback', 'manager_pn': next(iter(candidates)) if len(candidates)==1 else '', 'year': inspection.data.get('year','')},
             'text': inspection.text, 'page_count': inspection.page_count, 'issues': issues,
             'feedback_fields': fields}
 
@@ -107,10 +109,20 @@ def confirm_feedback(connection, import_id, *, cycle_id, manager_pn, fields, rea
 
 
 def collections(connection):
-    return connection.execute('''SELECT s.cycle_id,s.manager_pn,c.review_year,e.first_name,e.last_name,
-        COUNT(*) AS count FROM word_feedback_submissions s JOIN cycles c ON c.id=s.cycle_id
-        JOIN employees e ON e.pn=s.manager_pn WHERE s.bundle_id IS NULL
-        GROUP BY s.cycle_id,s.manager_pn ORDER BY c.review_year DESC,e.last_name,e.first_name''').fetchall()
+    groups = connection.execute("""SELECT d.cycle_id,d.manager_pn,c.review_year,e.first_name,e.last_name,
+        COUNT(DISTINCT CASE WHEN d.active=1 AND COALESCE(NULLIF(d.official_scope,''),d.suggested_scope) IN ('full','review_only') THEN d.employee_pn END) AS expected
+        FROM dialog_cases d JOIN cycles c ON c.id=d.cycle_id JOIN employees e ON e.pn=d.manager_pn
+        GROUP BY d.cycle_id,d.manager_pn ORDER BY c.review_year DESC,e.last_name,e.first_name""").fetchall()
+    result=[]
+    for row in groups:
+        item=dict(row)
+        counts=connection.execute('SELECT COUNT(*) AS total, COALESCE(SUM(bundle_id IS NULL),0) AS unbundled FROM word_feedback_submissions WHERE cycle_id=? AND manager_pn=?',(row['cycle_id'],row['manager_pn'])).fetchone()
+        item.update(count=counts['unbundled'], total=counts['total'], bundled=counts['total']-counts['unbundled'])
+        item['pending']=connection.execute("""SELECT COUNT(*) FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id
+            WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0 AND json_extract(w.parsed_json,'$.data.document_kind')='feedback'
+            AND json_extract(w.parsed_json,'$.data.manager_pn')=?""",(row['manager_pn'],)).fetchone()[0]
+        result.append(item)
+    return result
 
 
 def bundle_feedback(connection, *, cycle_id, manager_pn, expected_ids, handoff_dir, archive_dir):
@@ -158,6 +170,7 @@ def bundle_feedback(connection, *, cycle_id, manager_pn, expected_ids, handoff_d
         bundle_id = cursor.lastrowid
         connection.execute('INSERT INTO word_feedback_bundle_archives VALUES (?,?)',(bundle_id,str(archive)))
         connection.executemany('UPDATE word_feedback_submissions SET bundle_id=? WHERE import_id=?',[(bundle_id,row['id']) for row in rows])
+        connection.executemany('UPDATE feedback_submissions SET bundle_id=? WHERE sha256=? AND bundle_id IS NULL',[(bundle_id,row['sha256']) for row in rows])
         connection.commit()
         return bundle_id
     except Exception:

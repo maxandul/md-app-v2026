@@ -27,6 +27,7 @@ from werkzeug.utils import secure_filename
 from .auth import audit, login_required, system_admin_required
 from .db import close_db, connect_database, get_db
 from .services import hr_workflow as workflow
+from .services.mail_schedule import run_scan, schedule_state
 from .services.cycles import (
     CYCLE_STATUS_LABELS,
     change_cycle_status,
@@ -446,6 +447,7 @@ def returns_overview():
     selected_cycle = cockpit.get("selected_cycle")
     return render_template(
         "returns.html",
+        mail_schedule=schedule_state(connection),
         **workflow.pdf_queue(connection,query=request.args.get('pdf_q',''),status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int)),
         active_nav="returns",
         **cockpit,
@@ -494,6 +496,27 @@ def analytics():
             event_type=event_type, minimum_group_size=minimum_group_size,
         ),
     )
+
+
+@bp.post('/hr-followups/<case_id>/<topic>')
+def save_hr_followup(case_id,topic):
+    status=request.form.get('status','')
+    if topic not in ('career','higher_manager','permissions') or status not in ('offen','kontaktiert','abgeschlossen'): abort(400)
+    db=get_db()
+    if not db.execute('SELECT 1 FROM dialog_cases WHERE case_id=?',(case_id,)).fetchone(): abort(404)
+    try:
+        db.execute('BEGIN IMMEDIATE')
+        previous=db.execute('SELECT updated_at FROM hr_followups WHERE case_id=? AND topic=?',(case_id,topic)).fetchone()
+        if (previous['updated_at'] if previous else '') != request.form.get('revision',''):
+            raise ValueError('Der Kontaktstatus wurde inzwischen geändert. Bitte neu laden.')
+        db.execute("""INSERT INTO hr_followups(case_id,topic,status,note,updated_at) VALUES (?,?,?,?,?)
+            ON CONFLICT(case_id,topic) DO UPDATE SET status=excluded.status,note=excluded.note,updated_at=excluded.updated_at""",
+            (case_id,topic,status,request.form.get('note','').strip(),workflow.stamp()))
+        db.commit();audit('hr_followup_updated','dialog_case',case_id,topic=topic,status=status)
+        flash('Kontaktstatus gespeichert.','success')
+    except ValueError as exc:
+        db.rollback();flash(str(exc),'error')
+    return redirect(url_for('main.analytics',cycle_id=request.form.get('cycle_id'),org_unit=request.form.get('org_unit',''),event_type=request.form.get('event_type',''))+'#hr-klaerungen')
 
 
 @bp.get("/administration")
@@ -626,7 +649,7 @@ def export_analytics():
     audit(
         "analytics_exported", "analytics", report,
         cycle_id=cycle_id, org_unit=org_unit, event_type=event_type,
-        row_count=len(data["form_fields"] if report == "form_fields" else data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
+        row_count=len(data["followups"] if report == "followups" else data["career_requests"] if report == "career_requests" else data["form_fields"] if report == "form_fields" else data["timings"] if report == "timings" else data["ratings"] if report == "ratings" else data["competencies"]),
     )
     return send_file(
         BytesIO(content), as_attachment=True, download_name=filename,
@@ -1220,17 +1243,47 @@ def upload_pdf_returns():
     return redirect(url_for("main.returns_overview"))
 
 
+@bp.post("/mail-inbox/schedule")
+def configure_mail_schedule():
+    enabled = request.form.get('enabled') == '1'
+    if enabled and not current_app.config.get('OUTLOOK_MAILBOX_NAME'):
+        flash('Bitte zuerst das Outlook-Postfach konfigurieren.', 'error')
+    else:
+        get_db().execute('UPDATE mail_scan_schedule SET enabled=? WHERE id=1', (int(enabled),))
+        get_db().commit()
+        audit('mail_scan_schedule_changed', 'mail_scan_schedule', '1', enabled=enabled)
+        flash('Automatische Postfachprüfung aktiviert.' if enabled else 'Automatische Postfachprüfung deaktiviert.', 'success')
+    return redirect(url_for('main.returns_overview'))
+
+
+@bp.post('/mail-inbox/<int:message_id>/retry')
+def retry_mail_message(message_id):
+    from .services.outlook_lock import package_lock
+    try:
+        with package_lock(Path(current_app.config['DATABASE']).with_suffix('.mail-scan')):
+            db=get_db()
+            row=db.execute('SELECT status FROM inbound_mail_messages WHERE id=?',(message_id,)).fetchone()
+            if not row or row['status'] not in ('new','failed'):
+                raise ValueError('Nur unterbrochene Verarbeitungen können erneut gestartet werden.')
+            db.execute("UPDATE inbound_mail_messages SET status='failed' WHERE id=?",(message_id,));db.commit()
+        run_scan(current_app)
+        flash('Postfach erneut geprüft. Bereits gesicherte Anhänge wurden beibehalten.','success')
+    except (ValueError,OSError,RuntimeError) as exc:
+        flash(str(exc),'error')
+    return redirect(url_for('main.returns_overview')+'#postfach')
+
+
+@bp.get('/mail-attachments/<int:attachment_id>/original')
+def mail_attachment_original(attachment_id):
+    row=get_db().execute('SELECT stored_path,original_filename FROM inbound_mail_attachments WHERE id=?',(attachment_id,)).fetchone()
+    if not row or not row['stored_path'] or not Path(row['stored_path']).is_file(): abort(404)
+    return send_file(row['stored_path'],download_name=row['original_filename'],as_attachment=True)
+
+
 @bp.post("/mail-inbox/scan")
 def scan_mail_inbox():
     try:
-        result = scan_outlook_inbox(
-            get_db(),
-            mailbox_name=current_app.config["OUTLOOK_MAILBOX_NAME"],
-            target_folder=current_app.config["OUTLOOK_TARGET_FOLDER"],
-            inbox_dir=_storage_dir("mail_inbox"),
-            pdf_dir=_storage_dir("pdf_processed"),
-            handoff_dir=_handoff_dir(),
-        )
+        result = run_scan(current_app)
     except Exception as exc:
         flash(str(exc), "error")
     else:
@@ -1255,6 +1308,7 @@ def resolve_mail_message(message_id: int):
         result = resolve_inbound_message(
             get_db(),
             message_id=message_id,
+            review_note=request.form.get("review_note", ""),
             mailbox_name=current_app.config["OUTLOOK_MAILBOX_NAME"],
             target_folder=current_app.config["OUTLOOK_TARGET_FOLDER"],
         )
@@ -1279,6 +1333,13 @@ def resolve_mail_message(message_id: int):
     return redirect(url_for("main.returns_overview") + "#postfach")
 
 
+@bp.get('/documents/<int:document_id>/original')
+def document_original(document_id):
+    document=get_db().execute('SELECT stored_path,original_filename FROM official_documents WHERE id=?',(document_id,)).fetchone()
+    if not document or not Path(document['stored_path']).is_file(): abort(404)
+    return send_file(document['stored_path'],download_name=document['original_filename'],mimetype='application/pdf')
+
+
 @bp.post("/documents/<int:document_id>/signature-checked")
 def mark_signature_checked(document_id: int):
     try:
@@ -1293,10 +1354,10 @@ def mark_signature_checked(document_id: int):
         flash(str(exc), "error")
         return redirect(request.referrer or url_for("main.dashboard"))
     if result["scan_required"]:
-        flash("Unterschriften bestätigt. Der handschriftliche Scan ist noch ausstehend.", "success")
+        flash("Rückblick D/E: Der unterschriebene Scan muss noch geprüft werden.", "success")
     else:
         flash(
-            f"Unterschriften bestätigt und «{result['handoff_filename']}» für die Personaldossier-Ablage bereitgestellt.",
+            f"Kopie von «{result['handoff_filename']}» für die Personaldossier-Ablage bereitgestellt.",
             "success",
         )
     return redirect(request.referrer or url_for("main.dashboard"))
@@ -1304,6 +1365,9 @@ def mark_signature_checked(document_id: int):
 
 @bp.post("/cases/<case_id>/scans/<document_kind>")
 def upload_scan(case_id: str, document_kind: str):
+    if request.form.get('scan_checked') != 'yes':
+        flash('Bitte Person, Zeitraum, Vollständigkeit und erforderliche Unterschriften am Scan prüfen und bestätigen.', 'error')
+        return redirect(request.referrer or url_for('main.returns_overview'))
     upload = request.files.get("scan_file")
     if not upload or not upload.filename:
         flash("Bitte wähle den handschriftlich unterzeichneten PDF-Scan aus.", "error")
@@ -1431,16 +1495,43 @@ def word_pdf_review(import_id):
             elif reviewed['data'].get('conducted') == 'nein':
                 message = 'Nichtdurchführung übernommen. Der Nachweis bleibt gespeichert; eine Unterschriften- oder Ablagefreigabe ist dafür nicht vorgesehen.'
             else:
-                message = 'PDF-Prüfung abgeschlossen. Nächster Schritt: Fallprüfung öffnen und dort Unterschriften sowie Ablage prüfen.'
+                doc = connection.execute('SELECT official_document_id FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+                try:
+                    released = confirm_digital_signature(connection, document_id=doc['official_document_id'], handoff_dir=_handoff_dir())
+                    message = 'Angaben übernommen. Rückblick D/E: unterschriebenen Scan anfordern und im Fall prüfen; noch keine Roboterübergabe.' if released['scan_required'] else 'Angaben übernommen und Kopie im Roboter-Ordner bereitgestellt. Original bleibt im Projekt. Keine Unterschriftenprüfung erforderlich.'
+                except (OSError, ValueError) as exc:
+                    connection.rollback()
+                    message = 'Angaben übernommen, aber Dossierübergabe noch offen: ' + str(exc) + ' Im Fall «Dossierübergabe erneut versuchen» verwenden.'
             flash(message, 'success')
             return redirect(url_for('main.word_pdf_review',import_id=import_id))
         except (ValueError,LookupError) as exc:
             connection.rollback()
             flash(str(exc),'error')
     candidates=matching_cases(connection,reviewed.get('data',{}))
-    assignments=connection.execute('SELECT assignment_number FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
+    assignments=connection.execute('SELECT assignment_number,org_unit FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
     from .services.word_pdf import NARRATIVE_FIELDS
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS)
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+
+
+@bp.post('/word-pdf-imports/<int:import_id>/scan')
+def assign_inbound_scan(import_id):
+    db=get_db()
+    try:
+        if request.form.get('scan_checked')!='yes':
+            raise ValueError('Bitte Zuordnung, vollständigen Inhalt und Unterschriften am Original-Scan bestätigen.')
+        workflow.lock_pdf(db,import_id,request.form.get('revision','0'))
+        if workflow.pdf_state(db,import_id)['dismissed']:
+            raise ValueError('Bitte den zurückgestellten Eingang zuerst wieder öffnen.')
+        item=db.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+        result=import_handwritten_scan(db,case_id=request.form.get('case_id',''),document_kind='review',
+            path=Path(item['stored_path']),original_filename=item['original_filename'],handoff_dir=_handoff_dir())
+        db.execute("UPDATE word_pdf_imports SET status='imported',case_id=?,official_document_id=?,review_note='Unterschriebener Rückblick-Scan geprüft',reviewed_at=? WHERE id=?",(result['case_id'],result['document_id'],workflow.stamp(),import_id))
+        workflow.advance_pdf(db,import_id);db.commit()
+        audit('inbound_scan_checked','word_pdf_import',str(import_id),case_id=result['case_id'])
+        flash('Geprüfter Scan als Kopie im Roboter-Ordner bereitgestellt. Original bleibt erhalten.','success')
+    except (ValueError,LookupError,OSError) as exc:
+        db.rollback();flash(str(exc),'error')
+    return redirect(url_for('main.word_pdf_review',import_id=import_id))
 
 
 @bp.get('/word-pdf-imports/<int:import_id>/original')
@@ -1850,7 +1941,7 @@ def feedback_collection(cycle_id,manager_pn):
     manager=connection.execute('SELECT * FROM employees WHERE pn=?',(manager_pn,)).fetchone()
     if not cycle or not manager: abort(404)
     pending=connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending' AND json_extract(parsed_json,'$.data.document_kind')='feedback'").fetchone()[0]
-    return render_template('feedback_collection.html',active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
+    return render_template('feedback_collection.html', collection=next((x for x in word_feedback.collections(connection) if x['cycle_id']==cycle_id and x['manager_pn']==manager_pn),None),active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
 
 
 @bp.get('/feedback-bundles/<int:bundle_id>/download')

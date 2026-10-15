@@ -72,5 +72,5 @@ class OutlookReadTest(unittest.TestCase):
             result = scan_outlook_inbox(None, mailbox_name='Test', target_folder='MD', inbox_dir=Path(tmp), pdf_dir=Path(tmp), handoff_dir=Path(tmp), adapter=adapter)
         self.assertEqual(result['failed'], 1)
         self.assertEqual(result['errors'], ['S/MIME nicht lesbar'])
-        self.assertEqual(process.call_args.kwargs['messages'], [])
+        process.assert_not_called()
         adapter.move_message.assert_not_called()

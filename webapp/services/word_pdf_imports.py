@@ -29,7 +29,7 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
     inspection = inspect_pdf(path)
     if connection.execute('SELECT id FROM feedback_submissions WHERE sha256=?',(digest,)).fetchone():
         raise ValueError('Dieses Feedback wurde bereits über das Datenblockverfahren importiert.')
-    parsed = inspect_feedback(path, filename) if is_feedback(inspection.text, filename) else inspect_word_pdf(path)
+    parsed = inspect_feedback(path, filename) if inspection.data.get('document','').upper()=='FEEDBACK' or is_feedback(inspection.text, filename) else inspect_word_pdf(path)
     directory.mkdir(parents=True,exist_ok=True)
     stored=directory/(digest+'-'+uuid.uuid4().hex[:12]+'.pdf')
     try:
@@ -202,7 +202,7 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
                    'review_competencies':'|'.join(k for k,v in reviewed.get('assessments',{}).items() if v.strip()),
                    'development_competencies':'|'.join(dict.fromkeys(g['competency'] for g in reviewed.get('development_goals',[]) if kind=='outlook'))}
             not_conducted = data['conducted']=='nein'
-            document_id=_store_current_document(connection,case=case,document_kind=kind,variant='administrative' if not_conducted else 'digital',original_filename=item['original_filename'],stored_path=source,digest=item['sha256'],received_at=item['created_at'],inspection=PdfInspection(inspection.text,block,inspection.page_count,inspection.fill_sign_detected,inspection.fill_sign_count),signature_checked=False,scan_required=False if not_conducted else (data.get('rating') in ('D','E') or data.get('employment_continues')=='nein' or reviewed.get('scan_required',False)),handoff_status='not_applicable' if not_conducted else 'needs_signature_check',replacement_reason=reason)
+            document_id=_store_current_document(connection,case=case,document_kind=kind,variant='administrative' if not_conducted else 'digital',original_filename=item['original_filename'],stored_path=source,digest=item['sha256'],received_at=item['created_at'],inspection=PdfInspection(inspection.text,block,inspection.page_count,inspection.fill_sign_detected,inspection.fill_sign_count),signature_checked=False,scan_required=False if not_conducted else (kind=='review' and data.get('rating') in ('D','E')),handoff_status='not_applicable' if not_conducted else 'needs_signature_check',replacement_reason=reason)
             payload=json.loads(case['data_json'] or '{}')
             section=dict(payload.get(kind) or {})
             if kind=='outlook':

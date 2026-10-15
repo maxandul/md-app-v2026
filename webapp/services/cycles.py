@@ -65,12 +65,40 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
             )
     if probation_end:
         parsed = date.fromisoformat(probation_end)
-        if parsed.year == review_year and parsed <= date(review_year, 6, 30):
+        if parsed.year == review_year and parsed < date(review_year, 6, 30):
             return "full", f"Probezeit endete am {parsed.strftime('%d.%m.%Y')}; regulärer Rückblick und Ausblick zum Jahresende."
-        if date(review_year, 7, 1) <= parsed < date(review_year + 1, 3, 1):
+        if date(review_year, 6, 30) <= parsed < date(review_year + 1, 3, 1):
             tense = "endete" if parsed.year == review_year else "endet"
             return "outlook_only", f"Probezeit {tense} am {parsed.strftime('%d.%m.%Y')}; im Jahresdialog ist nur der Ausblick auf das neue Jahr verpflichtend."
     return "full", "Standardfall gemäss SAP-Stammdaten."
+
+
+def repair_probation_boundary(connection: sqlite3.Connection) -> int:
+    """Korrigiert unbestätigte Jahresfälle am 30. Juni, ohne Rückläufe zu verändern."""
+    rows = connection.execute("""SELECT dc.case_id,c.review_year,e.exit_date,e.probation_end,de.id AS event_id
+        FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id
+        JOIN employees e ON e.pn=dc.employee_pn
+        JOIN dialog_events de ON de.legacy_case_id=dc.case_id
+        WHERE c.status<>'abgeschlossen' AND dc.active=1 AND dc.official_scope=''
+          AND dc.status='offen' AND COALESCE(dc.data_json,'') IN ('','{}')
+          AND de.event_type='annual' AND de.source='rule'
+          AND e.probation_end=printf('%04d-06-30',c.review_year)
+          AND dc.suggestion_reason LIKE 'Probezeit %'
+          AND NOT EXISTS (SELECT 1 FROM official_documents od WHERE od.case_id=dc.case_id)
+          AND (dc.suggested_scope='full' OR de.required_scope='full' OR de.sap_leading=1
+               OR EXISTS (SELECT 1 FROM document_obligations o WHERE o.dialog_event_id=de.id AND o.document_kind='review' AND o.required=1))
+        """).fetchall()
+    changed=0
+    for row in rows:
+        scope,reason=_suggest_scope(row['exit_date'],row['probation_end'],row['review_year'])
+        if scope != 'outlook_only':
+            continue
+        connection.execute('UPDATE dialog_cases SET suggested_scope=?,suggestion_reason=? WHERE case_id=?',(scope,reason,row['case_id']))
+        connection.execute('UPDATE dialog_events SET required_scope=?,source_reason=?,sap_leading=0 WHERE id=?',(scope,reason,row['event_id']))
+        connection.execute("UPDATE document_obligations SET required=0,status='waived' WHERE dialog_event_id=? AND document_kind='review' AND status IN ('open','waived')",(row['event_id'],))
+        changed+=1
+    connection.commit()
+    return changed
 
 
 def create_cycle(
@@ -285,6 +313,7 @@ def synchronize_cycle_with_import(
     from .dialog_events import sync_cycle_events
 
     sync_cycle_events(connection, cycle_id)
+    repair_probation_boundary(connection)
     return {"added": added, "reactivated": reactivated, "deactivated": deactivated}
 
 

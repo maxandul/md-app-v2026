@@ -643,3 +643,23 @@ CREATE TABLE IF NOT EXISTS word_feedback_bundle_archives (
     bundle_id INTEGER PRIMARY KEY REFERENCES feedback_bundles(id),
     stored_path TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS mail_scan_schedule (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0,
+    last_slot TEXT NOT NULL DEFAULT '',
+    last_started TEXT NOT NULL DEFAULT '',
+    last_finished TEXT NOT NULL DEFAULT '',
+    last_error TEXT NOT NULL DEFAULT '',
+    last_result TEXT NOT NULL DEFAULT ''
+);
+INSERT OR IGNORE INTO mail_scan_schedule (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS hr_followups (
+    case_id TEXT NOT NULL REFERENCES dialog_cases(case_id),
+    topic TEXT NOT NULL CHECK(topic IN ('career','higher_manager','permissions')),
+    status TEXT NOT NULL DEFAULT 'offen' CHECK(status IN ('offen','kontaktiert','abgeschlossen')),
+    note TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY(case_id,topic)
+);

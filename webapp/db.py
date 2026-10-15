@@ -139,10 +139,26 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
             "ALTER TABLE inbound_mail_messages "
             "ADD COLUMN review_completed_at TEXT NOT NULL DEFAULT ''"
         )
+    if 'review_note' not in inbound_mail_columns:
+        connection.execute("ALTER TABLE inbound_mail_messages ADD COLUMN review_note TEXT NOT NULL DEFAULT ''")
+    # Offene Altfälle an die aktuelle Scanregel anpassen; bereits bereitgestellte Dateien bleiben unangetastet.
+    connection.execute("""UPDATE official_documents SET scan_required=0,signature_checked=0,handoff_status='needs_signature_check'
+        WHERE is_current=1 AND variant='digital' AND scan_required=1 AND handoff_status IN ('waiting_scan','needs_signature_check')
+        AND (document_kind<>'review' OR UPPER(COALESCE(json_extract(data_block_json,'$.rating'),'')) NOT IN ('D','E'))""")
     connection.commit()
     from .services.dialog_events import backfill_dialog_model
 
     backfill_dialog_model(connection)
+    from .services.cycles import repair_probation_boundary
+    repair_probation_boundary(connection)
+    import json
+    for feedback in connection.execute('SELECT * FROM feedback_submissions WHERE bundle_id IS NULL').fetchall():
+        parsed={'data':{'document_kind':'feedback','manager_pn':feedback['manager_pn']},'issues':[],'feedback_fields':{},'text':''}
+        connection.execute("""INSERT OR IGNORE INTO word_pdf_imports(original_filename,stored_path,sha256,parsed_json,reviewed_json,status,created_at)
+            VALUES (?,?,?,?,?,'imported',?)""",(feedback['original_filename'],feedback['stored_path'],feedback['sha256'],json.dumps(parsed),json.dumps({'cycle_id':feedback['cycle_id'],'manager_pn':feedback['manager_pn'],'feedback_fields':{}}),feedback['received_at']))
+        imported=connection.execute('SELECT id FROM word_pdf_imports WHERE sha256=?',(feedback['sha256'],)).fetchone()
+        connection.execute('INSERT OR IGNORE INTO word_feedback_submissions(import_id,cycle_id,manager_pn) VALUES (?,?,?)',(imported['id'],feedback['cycle_id'],feedback['manager_pn']))
+    connection.commit()
     if owns_connection:
         connection.close()
         g.pop("db", None)

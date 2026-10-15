@@ -26,7 +26,7 @@ CORRECTABLE_FIELDS = {
 
 HANDOFF_LABELS = {
     "not_applicable": "Nicht bereitgestellt",
-    "needs_signature_check": "Unterschriften- und Ablageprüfung offen",
+    "needs_signature_check": "Dossierübergabe offen",
     "waiting_scan": "Handschriftlicher Scan ausstehend",
     "staged": "Für Personaldossier-Ablage bereitgestellt",
 }
@@ -252,7 +252,6 @@ def correct_case_data(
         )
         scan_required = (
             normalized["overall_rating_code"] in {"D", "E"}
-            or normalized["agreement"] == "NEIN"
         )
         connection.execute(
             """

@@ -41,6 +41,18 @@ class WordFeedbackTest(unittest.TestCase):
     def confirm(self, item, **kwargs):
         return self.app.test_client().post(f'/feedback-imports/{item}',data=self.form(**kwargs))
 
+    def test_counter_separates_pending_reviewed_and_bundled(self):
+        from webapp.services.word_feedback import collections
+        item=self.stage()
+        group=lambda: next(row for row in collections(self.db) if row['cycle_id']==self.cycle_id and row['manager_pn']=='111116')
+        self.assertGreater(group()['expected'],0)
+        self.assertEqual(group()['pending'],1);self.assertEqual(group()['total'],0)
+        self.confirm(item)
+        self.assertEqual(group()['pending'],0);self.assertEqual(group()['count'],1)
+        bundle_feedback(self.db,cycle_id=self.cycle_id,manager_pn='111116',expected_ids=[item],handoff_dir=self.root/'rpa',archive_dir=self.root/'archive')
+        self.assertEqual(group()['total'],1);self.assertEqual(group()['bundled'],1);self.assertEqual(group()['count'],0)
+        self.assertEqual(self.app.test_client().get(f'/feedback-collections/{self.cycle_id}/111116').status_code,200)
+
     def test_detection_geometry_and_no_inferred_year(self):
         item=self.stage()
         data=json.loads(self.db.execute('SELECT parsed_json FROM word_pdf_imports WHERE id=?',(item,)).fetchone()[0])

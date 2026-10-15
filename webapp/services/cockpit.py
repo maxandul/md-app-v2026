@@ -304,7 +304,7 @@ def cockpit_overview(
         WHERE d.is_current=1 AND d.variant='digital' AND d.signature_checked=0 AND (? IS NULL OR d.cycle_id=?)""",(selected_cycle['id'] if selected_cycle else None,selected_cycle['id'] if selected_cycle else None)).fetchall()
     metrics['signatures_pending'] = len(signatures)
     for item in signatures:
-        tasks.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title='Unterschriften und Ablage prüfen',subject=item['first_name']+' '+item['last_name'],context='PDF-Fachdaten übernommen; HR-Freigabe noch offen',date=item['received_at'],target='case',case_id=item['case_id'],cycle_id=item['cycle_id'],manager_pn=item['manager_pn']))
+        tasks.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title='Dossierübergabe erneut versuchen',subject=item['first_name']+' '+item['last_name'],context='PDF-Fachdaten übernommen; Übergabe noch offen',date=item['received_at'],target='case',case_id=item['case_id'],cycle_id=item['cycle_id'],manager_pn=item['manager_pn']))
     for item in connection.execute("SELECT * FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'"):
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Zuordnung',title='Ereignis einem Durchlauf zuordnen',subject=item['event_id'],context='Ohne Zuordnung sind Word-Erzeugung und Fallprüfung noch nicht möglich',date=item['created_at'],target='unassigned'))
 

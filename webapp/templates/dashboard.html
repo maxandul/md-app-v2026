@@ -53,7 +53,7 @@
 
     <section class="metric-grid" aria-label="Operative Kennzahlen">
       <a class="metric-card" href="{{ url_for('main.returns_overview') }}"><span class="metric-card__value">{{ metrics.pdfs_pending }}</span><span class="metric-card__label">PDFs prüfen</span><span>Gesamter Eingang</span></a>
-      <a class="metric-card" href="{{ url_for('main.worklist', kind='Rücklauf') }}"><span class="metric-card__value">{{ metrics.signatures_pending }}</span><span class="metric-card__label">Unterschriften prüfen</span></a>
+      <a class="metric-card" href="{{ url_for('main.worklist', kind='Rücklauf') }}"><span class="metric-card__value">{{ metrics.signatures_pending }}</span><span class="metric-card__label">Dossierübergaben offen</span></a>
       <a class="metric-card" href="{{ url_for('main.dispatch', cycle_id=selected_cycle.id) }}"><span class="metric-card__value">{{ metrics.workbooks_missing }}</span><span class="metric-card__label">Vorlagen fehlen</span><span class="metric-card__detail">Noch nicht bereitgestellt</span></a>
       <a class="metric-card" href="{{ url_for('main.dialogs', cycle_id=selected_cycle.id) }}#events-title"><span class="metric-card__value">{{ metrics.obligations_open }}</span><span class="metric-card__label">Pflichtdokumente offen</span><span class="metric-card__detail">Rückblicke und Ausblicke</span></a>
       <a class="metric-card{% if metrics.obligations_overdue %} metric-card--critical{% endif %}" href="{{ url_for('main.dialogs', cycle_id=selected_cycle.id) }}#events-title"><span class="metric-card__value">{{ metrics.obligations_overdue }}</span><span class="metric-card__label">Überfällig</span><span class="metric-card__detail">Frist bereits überschritten</span></a>

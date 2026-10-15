@@ -77,6 +77,39 @@ class WordPackagesTest(unittest.TestCase):
             VALUES (?,'111113','1',2025,'performance',1,?,'Kriterium','• Schritt A\n• Schritt B','31.12.2025','2026-10-09')""", (cursor.lastrowid, title))
         self.db.commit()
 
+    def test_probation_june_boundary(self):
+        from webapp.services.cycles import _suggest_scope
+        for end,expected in [('2025-06-29','full'),('2025-06-30','outlook_only'),('2025-07-01','outlook_only'),('2025-12-31','outlook_only'),('2024-06-30','full')]:
+            with self.subTest(end=end):
+                self.assertEqual(_suggest_scope('',end,2025)[0],expected)
+        self.assertEqual(_suggest_scope('2025-11-30','2025-06-30',2025)[0],'review_only')
+
+    def test_existing_june_30_case_corrected_and_package_contains_only_outlook(self):
+        from webapp.services.cycles import repair_probation_boundary
+        self.db.execute("UPDATE employees SET probation_end='2025-06-30',exit_date='' WHERE pn='111113'")
+        self.db.execute("UPDATE dialog_cases SET suggested_scope='full',suggestion_reason='Probezeit endete am 30.06.2025; regulärer Rückblick und Ausblick zum Jahresende.' WHERE case_id=?",(self.case_id,))
+        self.db.commit()
+        self.assertEqual(repair_probation_boundary(self.db),1)
+        event=self.db.execute('SELECT * FROM dialog_events WHERE legacy_case_id=?',(self.case_id,)).fetchone()
+        self.assertEqual(event['required_scope'],'outlook_only');self.assertEqual(event['sap_leading'],0)
+        obligation=self.db.execute("SELECT required,status FROM document_obligations WHERE dialog_event_id=? AND document_kind='review'",(event['id'],)).fetchone()
+        self.assertEqual(tuple(obligation),(0,'waived'))
+        path,manifest=self.generate()
+        self.assertEqual([doc['kind'] for doc in manifest['documents']],['outlook'])
+        self.assertEqual(repair_probation_boundary(self.db),0)
+        from webapp.db import init_db
+        init_db(self.db)
+        self.assertEqual(repair_probation_boundary(self.db),0)
+        self.assertEqual(self.db.execute("SELECT required FROM document_obligations WHERE dialog_event_id=? AND document_kind='review'",(event['id'],)).fetchone()[0],0)
+
+    def test_boundary_repair_preserves_confirmed_scope(self):
+        from webapp.services.cycles import repair_probation_boundary
+        self.db.execute("UPDATE employees SET probation_end='2025-06-30',exit_date='' WHERE pn='111113'")
+        self.db.execute("UPDATE dialog_cases SET official_scope='full',suggestion_reason='Probezeit endete am 30.06.2025' WHERE case_id=?",(self.case_id,))
+        self.db.commit()
+        self.assertEqual(repair_probation_boundary(self.db),0)
+        self.assertEqual(self.db.execute('SELECT official_scope FROM dialog_cases WHERE case_id=?',(self.case_id,)).fetchone()[0],'full')
+
     def test_dynamic_rows_empty_competencies_and_date_metadata(self):
         fields = {'name': 'Test & Beispiel', 'datum_von': '01.01.2026', 'datum_bis': '31.12.2026'}
         goals = [{'title': f'Ziel {i}', 'steps': '• Eins\n• Zwei'} for i in range(6)]

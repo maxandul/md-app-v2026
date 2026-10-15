@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .dossier_files import publish_copy
+
 import hashlib
 import json
 import re
@@ -492,16 +494,8 @@ def import_official_pdf(
     if document_kind == "no_md" and not data.get("no_md_reason"):
         raise ValueError("In der Kein-MD-Bestätigung fehlt der Grund.")
 
-    declared_scan_required = data.get("handwritten_scan_required", "NEIN").upper() == "JA"
-    derived_scan_required = (
-        data.get("rating", "").upper() in {"D", "E"}
-        or data.get("agreement", "").upper() == "NEIN"
-    )
-    scan_required = False if document_kind == "no_md" else derived_scan_required
-    if document_kind != "no_md" and declared_scan_required != derived_scan_required:
-        raise ValueError(
-            "Die Scanpflicht im PDF widerspricht Gesamtbeurteilung oder Einigkeitsstatus."
-        )
+    # Nur genügend/ungenügend im Rückblick erfordert einen geprüften Scan.
+    scan_required = document_kind == 'review' and data.get('rating', '').upper() in {'D', 'E'}
     variant = "administrative" if document_kind == "no_md" else "digital"
     if document_kind == "no_md":
         handoff_status = "not_applicable"
@@ -514,18 +508,12 @@ def import_official_pdf(
     timestamp = (received_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     digest = file_sha256(path)
     accepted_dir.mkdir(parents=True, exist_ok=True)
-    if handoff_status == "staged" and handoff_dir is not None:
-        handoff_dir.mkdir(parents=True, exist_ok=True)
-        handoff_filename = _handoff_filename(case, document_kind, scan=False)
-        stored_path = handoff_dir / handoff_filename
-        if stored_path.exists():
-            raise ValueError(f"Im Roboter-Input existiert bereits «{handoff_filename}».")
-    else:
-        handoff_filename = ""
-        stored_path = accepted_dir / f"{timestamp[:19].replace(':', '').replace('-', '')}_{digest[:10]}_{Path(original_filename).name}"
-
+    stored_path = accepted_dir / f"{digest}_{Path(original_filename).name}"
+    handoff_filename = _handoff_filename(case, document_kind, scan=False) if handoff_status == 'staged' else ''
+    published = False
     try:
-        shutil.move(str(path), str(stored_path))
+        if path.resolve() != stored_path.resolve():
+            shutil.copyfile(path, stored_path)
         document_id = _store_current_document(
             connection,
             case=case,
@@ -587,12 +575,14 @@ def import_official_pdf(
                         document["document_obligation_id"],
                     ),
                 )
+        if handoff_filename:
+            published = publish_copy(stored_path, handoff_dir / handoff_filename)
         refresh_case_status(connection, case["case_id"])
         connection.commit()
     except Exception:
         connection.rollback()
-        if stored_path.exists() and not path.exists():
-            shutil.move(str(stored_path), str(path))
+        if published:
+            (handoff_dir / handoff_filename).unlink(missing_ok=True)
         raise
 
     return {
@@ -620,6 +610,9 @@ def confirm_digital_signature(
     ).fetchone()
     if not document or document["variant"] != "digital":
         raise ValueError("Das elektronische PDF wurde nicht gefunden.")
+    if document['handoff_status'] == 'staged':
+        return {'case_id': document['case_id'], 'cycle_id': document['cycle_id'],
+                'scan_required': False, 'handoff_filename': document['handoff_filename']}
     case = _case_row(connection, document["case_id"])
     timestamp = (checked_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     if document["scan_required"]:
@@ -645,10 +638,7 @@ def confirm_digital_signature(
         handoff_dir.mkdir(parents=True, exist_ok=True)
         handoff_filename = _handoff_filename(case, document["document_kind"], scan=False)
         destination = handoff_dir / handoff_filename
-        if destination.exists() and destination.resolve() != source.resolve():
-            raise ValueError(f"Im Übergabeordner existiert bereits «{handoff_filename}».")
-        if source.resolve() != destination.resolve():
-            shutil.move(str(source), str(destination))
+        publish_copy(source, destination)
         connection.execute(
             """
             UPDATE official_documents
@@ -656,7 +646,7 @@ def confirm_digital_signature(
                 handoff_filename = ?, handoff_at = ?
             WHERE id = ?
             """,
-            (str(destination), handoff_filename, timestamp, document_id),
+            (str(source), handoff_filename, timestamp, document_id),
         )
         if document["document_obligation_id"]:
             connection.execute(
@@ -687,8 +677,8 @@ def import_handwritten_scan(
     handoff_dir: Path,
     received_at: datetime | None = None,
 ) -> dict[str, Any]:
-    if document_kind not in {"review", "outlook"}:
-        raise ValueError("Unbekannter Dokumenttyp für den Scan.")
+    if document_kind != 'review':
+        raise ValueError('Eine Unterschriftenprüfung ist nur für Rückblick-Scans vorgesehen.')
     case = _case_row(connection, case_id)
     documents = _current_documents(connection, case_id)
     digital = documents.get((document_kind, "digital"))
@@ -696,24 +686,29 @@ def import_handwritten_scan(
         raise ValueError("Zuerst muss das elektronische PDF importiert werden.")
     if not digital["scan_required"]:
         raise ValueError("Für dieses Dokument ist kein handschriftlicher Scan erforderlich.")
+    existing = documents.get((document_kind, 'scan'))
+    if existing:
+        if existing['sha256'] == file_sha256(path):
+            return {'document_id':existing['id'], 'cycle_id':case['cycle_id'], 'case_id':case_id, 'handoff_filename':existing['handoff_filename']}
+        raise ValueError('Ein geprüfter Scan wurde bereits bereitgestellt. Korrekturen zuerst mit der Dossierverarbeitung klären.')
     inspection = inspect_pdf(path)
     timestamp = (received_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     digest = file_sha256(path)
     handoff_dir.mkdir(parents=True, exist_ok=True)
     handoff_filename = _handoff_filename(case, document_kind, scan=True)
     destination = handoff_dir / handoff_filename
-    if destination.exists():
-        raise ValueError(f"Im Übergabeordner existiert bereits «{handoff_filename}».")
-
+    archive = Path(digital['stored_path']).parent / ('scan_' + digest + '.pdf')
+    published = False
     try:
-        shutil.move(str(path), str(destination))
+        if path.resolve() != archive.resolve():
+            shutil.copyfile(path, archive)
         document_id = _store_current_document(
             connection,
             case=case,
             document_kind=document_kind,
             variant="scan",
             original_filename=original_filename,
-            stored_path=destination,
+            stored_path=archive,
             digest=digest,
             received_at=timestamp,
             inspection=inspection,
@@ -727,12 +722,13 @@ def import_handwritten_scan(
             "UPDATE official_documents SET handoff_status = 'not_applicable' WHERE id = ?",
             (digital["id"],),
         )
+        published = publish_copy(archive, destination)
         refresh_case_status(connection, case_id)
         connection.commit()
     except Exception:
         connection.rollback()
-        if destination.exists() and not path.exists():
-            shutil.move(str(destination), str(path))
+        if published:
+            destination.unlink(missing_ok=True)
         raise
     return {
         "document_id": document_id,
@@ -746,7 +742,7 @@ def _document_state(digital: sqlite3.Row | None, scan: sqlite3.Row | None) -> di
     if not digital:
         return {"key": "missing", "label": "Elektronisches PDF fehlt", "digital": None, "scan": scan}
     if not digital["signature_checked"]:
-        return {"key": "legacy", "label": "Unterschriften- und Ablageprüfung offen", "digital": digital, "scan": scan}
+        return {"key": "legacy", "label": "Dossierübergabe offen", "digital": digital, "scan": scan}
     if digital["scan_required"] and not scan:
         return {"key": "scan", "label": "Handschriftlicher Scan ausstehend", "digital": digital, "scan": None}
     if digital["scan_required"]:

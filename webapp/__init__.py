@@ -92,4 +92,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def workflow_visibility():
         return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled'}
 
+    from .services.mail_schedule import start_worker
+    start_worker(app)
+
     return app

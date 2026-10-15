@@ -37,14 +37,11 @@ class WordWorkflowAuditTest(unittest.TestCase):
             form={'document_kind':kind,'pn':'111113','manager_pn':'111116','period_start':f'{year}-01-01','period_end':f'{year}-12-31','dialog_date':f'{year}-12-15','conducted':'ja','rating':'C' if kind=='review' else '', 'scope':'full','assignment':'1','case_id':self.case_id,'destination':'case','checked':'yes'}
             form.update(performance_title='Erstes Ziel', performance_criteria='Messbar', performance_steps='1. Schritt eins\n2. Schritt zwei', performance_target_date='31.12.', development_title='Entwicklung', development_competency='Selbstmanagement', development_steps='Plan')
             response=client.post(review_url,data=form,follow_redirects=True)
-            self.assertIn('Nächster Schritt: Fallprüfung',response.text)
+            self.assertIn('Keine Unterschriftenprüfung erforderlich',response.text)
             row=self.db.execute('SELECT id,handoff_status FROM official_documents WHERE document_kind=?',(kind,)).fetchone()
-            self.assertEqual(row['handoff_status'],'needs_signature_check')
+            self.assertEqual(row['handoff_status'],'staged')
             action=f"/documents/{row['id']}/signature-checked"
-            self.assertIn(action,Forms(client.get(case).text).actions)
-            self.assertNotIn('Vor Umstellung eingegangen',client.get(manager).text)
-            response=client.post(action,headers={'Referer':'http://localhost'+case},follow_redirects=True)
-            self.assertIn('für die Personaldossier-Ablage bereitgestellt',response.text)
+            self.assertNotIn(action,Forms(client.get(case).text).actions)
             document=self.db.execute('SELECT * FROM official_documents WHERE id=?',(row['id'],)).fetchone()
             self.assertEqual(document['handoff_status'],'staged')
             self.assertTrue(Path(document['stored_path']).is_file())
@@ -116,7 +113,7 @@ class WordWorkflowAuditTest(unittest.TestCase):
         action=f'/cases/{self.case_id}/scans/review'
         self.assertIn(action,Forms(client.get(case).text).actions)
         scan=sample_pdf(self.root/'scan.pdf',marker='Unterschriebener Testscan')
-        client.post(action,data={'scan_file':(io.BytesIO(scan.read_bytes()),'scan.pdf')},headers={'Referer':'http://localhost'+case})
+        client.post(action,data={'scan_checked':'yes','scan_file':(io.BytesIO(scan.read_bytes()),'scan.pdf')},headers={'Referer':'http://localhost'+case})
         self.assertNotIn(action,Forms(client.get(case).text).actions)
         self.assertEqual(self.db.execute("SELECT handoff_status FROM official_documents WHERE variant='scan'").fetchone()[0],'staged')
 

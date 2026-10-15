@@ -837,7 +837,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("MD Rücklauf", body)
         self.assertIn("Verarbeitet und in Outlook verschoben", body)
 
-    def test_feedbacks_are_grouped_per_manager_without_completeness_tracking(self) -> None:
+    def test_feedbacks_wait_for_manual_review_and_bundling(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
             connection = get_db()
@@ -884,18 +884,21 @@ class WebAppIntegrationTest(unittest.TestCase):
                 target_folder="12 Mitarbeitenden-Dialog",
                 move_message=lambda entry_id, folder: "entry-feedback-moved",
             )
-            self.assertEqual(result["feedback_bundles"], 1)
-            self.assertEqual(result["stored"], 2)
-            self.assertEqual(result["moved"], 1)
-            self.assertEqual(
-                connection.execute("SELECT COUNT(*) FROM feedback_submissions").fetchone()[0],
-                2,
-            )
-            bundle = connection.execute("SELECT * FROM feedback_bundles").fetchone()
-            self.assertEqual(bundle["manager_pn"], "111116")
-            self.assertEqual(bundle["submission_count"], 2)
-            self.assertTrue(bundle["filename"].startswith("Feedback_2025_"))
-            self.assertEqual(len(PdfReader(bundle["stored_path"]).pages), 3)
+            self.assertEqual(result['feedback_bundles'],0)
+            self.assertEqual(result['stored'],2)
+            self.assertEqual(result['moved'],0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending'").fetchone()[0],2)
+            self.assertEqual(connection.execute('SELECT COUNT(*) FROM feedback_bundles').fetchone()[0],0)
+            self.assertEqual(list((root/'rpa').glob('*.pdf')),[])
+            from webapp.services.word_feedback import confirm_feedback,bundle_feedback
+            ids=[row[0] for row in connection.execute('SELECT id FROM word_pdf_imports ORDER BY id')]
+            for item in ids:
+                confirm_feedback(connection,item,cycle_id=cycle_id,manager_pn='111116',fields={})
+            connection.commit()
+            bundle_feedback(connection,cycle_id=cycle_id,manager_pn='111116',expected_ids=ids,handoff_dir=root/'rpa',archive_dir=root/'feedback_archive')
+            bundle=connection.execute('SELECT * FROM feedback_bundles').fetchone()
+            self.assertEqual(bundle['submission_count'],2)
+            self.assertEqual(len(PdfReader(bundle['stored_path']).pages),3)
             self.assertEqual(
                 connection.execute("SELECT COUNT(*) FROM official_documents").fetchone()[0],
                 0,
@@ -1660,7 +1663,7 @@ class WebAppIntegrationTest(unittest.TestCase):
                 accepted_dir=root / "processed",
                 handoff_dir=root / "dossier_ready",
             )
-            self.assertFalse(pdf_path.exists())
+            self.assertTrue(pdf_path.exists())
             case = connection.execute(
                 "SELECT * FROM dialog_cases WHERE case_id = '2025-111116-111111'"
             ).fetchone()

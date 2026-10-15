@@ -139,6 +139,7 @@ def analytics_data(
             answer = lambda key: {'ja': 'Ja', 'nein': 'Nein'}.get(document.get(key), 'Offen')
             counts = section.get('character_counts', {})
             form_fields.append({
+                'cycle_id': row['cycle_id'], 'employee_name': f"{row['first_name']} {row['last_name']}", 'org_unit': row['org_unit'],
                 'case_id': row['legacy_case_id'], 'cycle': f"{row['review_year']}/{row['outlook_year']}",
                 'employee_pn': row['employee_pn'], 'assignment_number': row['assignment_number'],
                 'dialog_part': 'Rückblick' if kind=='review' else 'Ausblick',
@@ -235,7 +236,25 @@ def analytics_data(
         for month in sorted({item["month"] for item in timings})
     ]
     timing_max = max((item["total"] for item in timing_months), default=0)
+    followups=[]
+    topics=(('career','career_requested','Ja','Laufbahnentwicklung'),('higher_manager','higher_manager_requested','Ja','Gespräch nächsthöhere Führungskraft'),('permissions','sap_current','Nein','Bewilligungen klären'))
+    for item in form_fields:
+        for topic,field,answer,label in topics:
+            if item[field] != answer:
+                continue
+            state=connection.execute('SELECT * FROM hr_followups WHERE case_id=? AND topic=?',(item['case_id'],topic)).fetchone()
+            followups.append({**item,'topic':topic,'topic_label':label,'contact_status':state['status'] if state else 'offen','contact_note':state['note'] if state else '', 'contact_updated':state['updated_at'] if state else ''})
+    returns={}
+    for row in rows:
+        group=returns.setdefault(row['org_unit'] or 'Ohne Organisationseinheit', {'org_unit':row['org_unit'] or 'Ohne Organisationseinheit','missing':0,'review':0,'scan':0,'complete':0})
+        for obligation in connection.execute("""SELECT o.status, EXISTS(SELECT 1 FROM official_documents d WHERE d.document_obligation_id=o.id AND d.is_current=1 AND d.handoff_status='needs_signature_check') AS handoff_pending FROM document_obligations o WHERE o.dialog_event_id=? AND o.required=1""",(row['event_id'],)):
+            key='review' if obligation['handoff_pending'] else {'open':'missing','rejected':'missing','received':'review','review':'review','scan_pending':'scan','complete':'complete'}.get(obligation['status'])
+            if key:group[key]+=1
     return {
+        "followups": followups,
+        "return_summary": list(returns.values()),
+        "unassigned_pdf_count": connection.execute("SELECT COUNT(*) FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0").fetchone()[0],
+        "career_requests": [item for item in form_fields if item["career_requested"] == "Ja"],
         "form_fields": form_fields,
         "timings": timings,
         "timing_months": timing_months,
@@ -253,7 +272,17 @@ def analytics_data(
 def analytics_csv(report: str, data: dict[str, Any]) -> tuple[str, bytes]:
     output = io.StringIO(newline="")
     writer = csv.writer(output, delimiter=";", lineterminator="\r\n")
-    if report == 'form_fields':
+    if report == 'followups':
+        writer.writerow(['Durchlauf','Name','Personalnummer','Ans.','Organisationseinheit','Anliegen','Kontaktstatus','Notiz','Aktualisiert'])
+        for row in data['followups']:
+            writer.writerow([row[key] for key in ('cycle','employee_name','employee_pn','assignment_number','org_unit','topic_label','contact_status','contact_note','contact_updated')])
+        name='MD_HR_Klaerungen.csv'
+    elif report == 'career_requests':
+        writer.writerow(['Durchlauf', 'Name', 'Personalnummer', 'Ans.', 'Organisationseinheit', 'Gesprächsdatum', 'Laufbahnentwicklung gewünscht'])
+        for row in data['career_requests']:
+            writer.writerow([row[key] for key in ('cycle', 'employee_name', 'employee_pn', 'assignment_number', 'org_unit', 'dialog_date', 'career_requested')])
+        name = 'MD_Laufbahnwuensche.csv'
+    elif report == 'form_fields':
         from .word_pdf import NARRATIVE_FIELDS
         from .legacy_forms import COMPETENCY_TAGS
         keys = ('cycle','employee_pn','assignment_number','dialog_part','period_start','period_end','dialog_date','conducted','higher_manager_requested','sap_current','sap_clarification','career_requested','performance_goal_count','review_competencies','development_competencies')

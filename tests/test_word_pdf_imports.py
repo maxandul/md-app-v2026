@@ -86,6 +86,70 @@ class WordPdfImportsTest(unittest.TestCase):
     def confirm(self,item_id,reviewed=None,**kwargs):
         return confirm_import(self.db,item_id,reviewed=reviewed or self.reviewed(item_id),assignment='1',case_id=self.case,historical=False,reason='',**kwargs)
 
+    def test_original_survives_robot_consumption_and_release_is_idempotent(self):
+        item=self.stage(); doc=self.confirm(item)
+        original=Path(self.db.execute('SELECT stored_path FROM official_documents WHERE id=?',(doc,)).fetchone()[0])
+        result=confirm_digital_signature(self.db,document_id=doc,handoff_dir=self.root/'handoff')
+        published=self.root/'handoff'/result['handoff_filename']
+        self.assertTrue(original.is_file());self.assertEqual(original.read_bytes(),published.read_bytes())
+        published.unlink()  # Robot consumed its copy.
+        confirm_digital_signature(self.db,document_id=doc,handoff_dir=self.root/'handoff')
+        self.assertFalse(published.exists())
+        self.assertEqual(self.app.test_client().get(f'/word-pdf-imports/{item}/original').status_code,200)
+
+    def test_interrupted_mail_resumes_existing_pdf_without_duplicate_or_move(self):
+        from unittest.mock import patch
+        path=sample_pdf(self.root/'mail.pdf')
+        message=InboundMessage('resume','<resume>','test@example.invalid','MD Rückblick',datetime.now(timezone.utc),(InboundAttachment(1,'Rueckblick.pdf',path.read_bytes()),InboundAttachment(2,'Zusatz.txt',b'Andere Aufgabe')))
+        options=dict(messages=[message],inbox_dir=self.root/'inbox',pdf_dir=self.root/'processed',handoff_dir=self.root/'handoff',target_folder='MD')
+        with patch('webapp.services.mail_intake._insert_attachment',side_effect=RuntimeError('Unterbrochen')):
+            with self.assertRaises(RuntimeError):process_inbound_messages(self.db,**options)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_pdf_imports').fetchone()[0],1)
+        process_inbound_messages(self.db,**options)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_pdf_imports').fetchone()[0],1)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM inbound_mail_attachments').fetchone()[0],2)
+        progress=mail_inbox_overview(self.db)['mail_messages'][0]
+        self.assertEqual(progress['status'],'review_required')
+        self.assertIn('PDF-Prüfung offen',progress['attachments'][0]['progress'])
+        self.assertIn('Fremdanlage',progress['attachments'][1]['progress'])
+        self.assertFalse(list((self.root/'handoff').glob('*.pdf')))
+
+    def test_hr_followup_status_and_revision_are_persisted(self):
+        from webapp.services.analytics import analytics_data
+        item=self.stage(kind='outlook',year=2026);reviewed=self.reviewed(item)
+        reviewed['data']['career_requested']='ja';self.confirm(item,reviewed)
+        client=self.app.test_client()
+        url=f'/hr-followups/{self.case}/career'
+        client.post(url,data={'status':'kontaktiert','note':'Gespräch vereinbart','revision':''})
+        rows=analytics_data(self.db,cycle_id=self.cycle)['followups']
+        self.assertEqual(rows[0]['contact_status'],'kontaktiert')
+        self.assertEqual(rows[0]['contact_note'],'Gespräch vereinbart')
+        client.post(url,data={'status':'abgeschlossen','revision':''})
+        self.assertEqual(analytics_data(self.db,cycle_id=self.cycle)['followups'][0]['contact_status'],'kontaktiert')
+        client.post(url,data={'status':'abgeschlossen','revision':rows[0]['contact_updated']})
+        self.assertEqual(analytics_data(self.db,cycle_id=self.cycle)['followups'][0]['contact_status'],'abgeschlossen')
+
+    def test_inbound_scan_requires_explicit_signature_check_and_keeps_original(self):
+        item=self.stage();reviewed=self.reviewed(item);reviewed['data']['rating']='D'
+        doc=self.confirm(item,reviewed)
+        confirm_digital_signature(self.db,document_id=doc,handoff_dir=self.root/'handoff')
+        scan=self.stage(marker='Geprüfter unterschriebener Scan')
+        client=self.app.test_client();url=f'/word-pdf-imports/{scan}/scan'
+        client.post(url,data={'case_id':self.case,'revision':'0'})
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM official_documents WHERE variant='scan'").fetchone()[0],0)
+        response=client.post(url,data={'case_id':self.case,'revision':'0','scan_checked':'yes'})
+        self.assertEqual(response.status_code,302)
+        row=self.db.execute("SELECT * FROM official_documents WHERE variant='scan'").fetchone()
+        self.assertTrue(Path(row['stored_path']).is_file())
+        self.assertEqual(row['handoff_status'],'staged')
+        self.assertEqual(self.db.execute('SELECT status FROM word_pdf_imports WHERE id=?',(scan,)).fetchone()[0],'imported')
+        from webapp.services.documents import import_handwritten_scan
+        handoff=Path(self.app.config['DOSSIER_HANDOFF_ROOT'])
+        published=handoff/row['handoff_filename'];published.unlink()
+        import_handwritten_scan(self.db,case_id=self.case,document_kind='review',path=Path(row['stored_path']),original_filename='scan.pdf',handoff_dir=handoff)
+        self.assertFalse(published.exists())
+        self.assertEqual(client.get(f"/documents/{row['id']}/original").status_code,200)
+
     def test_geometry_for_rectangle_and_print_paths_preserves_lists(self):
         results=[]
         for printed in (False,True):
@@ -185,14 +249,14 @@ class WordPdfImportsTest(unittest.TestCase):
             confirm_import(self.db,second,reviewed=reviewed,assignment='1',case_id=self.case,historical=False,reason='Korrektur')
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents WHERE is_current=1').fetchone()[0],1)
 
-    def test_probation_negative_decision_requires_scan_without_rating(self):
+    def test_probation_negative_decision_does_not_require_signature_scan(self):
         item_id=self.stage()
         reviewed=self.reviewed(item_id)
         reviewed['data'].update(probation='ja',employment_continues='nein',rating='')
         self.db.execute("UPDATE dialog_events SET event_type='probation_review' WHERE legacy_case_id=?",(self.case,))
         self.db.commit()
         doc=self.confirm(item_id,reviewed)
-        self.assertTrue(self.db.execute('SELECT scan_required FROM official_documents WHERE id=?',(doc,)).fetchone()[0])
+        self.assertFalse(self.db.execute('SELECT scan_required FROM official_documents WHERE id=?',(doc,)).fetchone()[0])
         self.assertEqual(self.db.execute('SELECT agreement FROM dialog_cases WHERE case_id=?',(self.case,)).fetchone()[0],'')
 
     def test_ambiguous_assignment_is_never_selected_by_matching(self):
@@ -323,6 +387,29 @@ class WordPdfImportsTest(unittest.TestCase):
         client=self.app.test_client()
         self.assertEqual(client.get('/auswertungen').status_code,200)
         self.assertEqual(client.post('/auswertungen/export',data={'report':'form_fields','cycle_id':self.cycle}).status_code,200)
+
+    def test_career_requests_include_only_confirmed_yes_and_export_names(self):
+        from webapp.services.analytics import analytics_data, analytics_csv
+        item=self.stage(kind='outlook',year=2026)
+        reviewed=self.reviewed(item)
+        reviewed['data']['career_requested']='ja'
+        self.confirm(item,reviewed)
+        report=analytics_data(self.db,cycle_id=self.cycle,minimum_group_size=1)
+        self.assertEqual(len(report['career_requests']),1)
+        row=report['career_requests'][0]
+        self.assertEqual(row['case_id'],self.case)
+        self.assertTrue(row['employee_name'])
+        name,content=analytics_csv('career_requests',report)
+        self.assertEqual(name,'MD_Laufbahnwuensche.csv')
+        self.assertIn(row['employee_name'],content.decode('utf-8-sig'))
+        self.assertEqual(self.app.test_client().get('/auswertungen').status_code,200)
+        self.assertEqual(self.app.test_client().post('/auswertungen/export',data={'report':'career_requests','cycle_id':self.cycle}).status_code,200)
+        for answer in ('nein',''):
+            document=self.db.execute("SELECT id,data_block_json FROM official_documents WHERE document_kind='outlook'").fetchone()
+            data=json.loads(document['data_block_json']);data['career_requested']=answer
+            self.db.execute('UPDATE official_documents SET data_block_json=? WHERE id=?',(json.dumps(data),document['id']))
+            self.db.commit()
+            self.assertEqual(analytics_data(self.db,cycle_id=self.cycle)['career_requests'],[])
 
     def test_nonconducted_post_and_old_missing_outlook_selection(self):
         item=self.stage(kind='outlook',year=2026)

@@ -74,7 +74,10 @@ def _existing_attachment_path(
         "SELECT stored_path FROM official_documents WHERE sha256 = ? LIMIT 1",
         (digest,),
     ).fetchone()
-    return row["stored_path"] if row else ""
+    if row:
+        return row['stored_path']
+    row = connection.execute('SELECT stored_path FROM word_pdf_imports WHERE sha256=?', (digest,)).fetchone()
+    return row['stored_path'] if row else ''
 
 
 def _insert_attachment(
@@ -143,7 +146,7 @@ def process_inbound_messages(
             continue
         duplicate = connection.execute(
             """
-            SELECT id FROM inbound_mail_messages
+            SELECT id, status FROM inbound_mail_messages
             WHERE outlook_entry_id = ?
                OR (internet_message_id <> '' AND internet_message_id = ?)
             LIMIT 1
@@ -160,31 +163,38 @@ def process_inbound_messages(
                 """,
                 (entry_id, message.internet_message_id or ""),
             ).fetchone()
-        if duplicate:
+        resume = duplicate and 'status' in duplicate.keys() and duplicate['status'] in {'new', 'failed'}
+        if duplicate and not resume:
             result["duplicates"] += 1
             continue
 
         received_at = _timestamp(message.received_at)
         created_at = datetime.now().astimezone().isoformat(timespec="seconds")
-        cursor = connection.execute(
-            """
-            INSERT INTO inbound_mail_messages (
-                outlook_entry_id, internet_message_id, sender_email, subject,
-                received_at, status, target_folder, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, 'new', ?, ?, ?)
-            """,
-            (
-                entry_id, message.internet_message_id or "", message.sender_email,
-                message.subject, received_at, target_folder, created_at, created_at,
-            ),
-        )
-        message_id = int(cursor.lastrowid)
-        connection.commit()
+        if resume:
+            message_id = duplicate['id']
+            connection.execute("UPDATE inbound_mail_messages SET status='new', error_message='' WHERE id=?", (message_id,))
+            connection.commit()
+        else:
+            cursor = connection.execute(
+                """
+                INSERT INTO inbound_mail_messages (
+                    outlook_entry_id, internet_message_id, sender_email, subject,
+                    received_at, status, target_folder, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'new', ?, ?, ?)
+                """,
+                (
+                    entry_id, message.internet_message_id or "", message.sender_email,
+                    message.subject, received_at, target_folder, created_at, created_at,
+                ),
+            )
+            message_id = int(cursor.lastrowid)
+            connection.commit()
 
         message_dir = inbox_dir / f"mail-{message_id:06d}"
-        needs_review = False
+        saved = connection.execute('SELECT * FROM inbound_mail_attachments WHERE mail_message_id=?', (message_id,)).fetchall()
+        needs_review = any(a['status']=='review_required' for a in saved)
         contains_probation = False
-        md_relevant = False
+        md_relevant = bool(saved)
         foreign_attachments: list[tuple[Any, str, str]] = []
 
         with TemporaryDirectory(prefix="md-intake-") as temporary:
@@ -192,6 +202,8 @@ def process_inbound_messages(
             for attachment in message.attachments:
                 filename = Path(attachment.filename or f"Anhang-{attachment.index}").name
                 digest = hashlib.sha256(attachment.content).hexdigest()
+                if any(a['attachment_index']==attachment.index and a['sha256']==digest for a in saved):
+                    continue
                 file_kind = _kind(filename)
                 hint = _md_hint(filename)
                 probation = "probezeit" in f"{filename} {message.subject}".casefold()
@@ -223,7 +235,7 @@ def process_inbound_messages(
                     try:
                         inspection = inspect_pdf(temporary_path)
                         is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
-                        if not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind')):
+                        if is_feedback or (not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind'))):
                             word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports')
                             queued = connection.execute('SELECT * FROM word_pdf_imports WHERE id=?', (word_id,)).fetchone()
                             pending = queued['status'] == 'pending'
@@ -335,30 +347,10 @@ def process_inbound_messages(
                 else:
                     foreign_attachments.append((attachment, filename, digest))
 
-        try:
-            bundles = create_feedback_bundles_for_message(
-                connection,
-                message_id=message_id,
-                handoff_dir=handoff_dir,
-                created_at=created_at,
-            )
-        except Exception as exc:
-            connection.execute(
-                """
-                UPDATE inbound_mail_attachments
-                SET status = 'review_required', error_message = ?
-                WHERE mail_message_id = ? AND stored_path IN (
-                    SELECT stored_path FROM feedback_submissions
-                    WHERE source_message_id = ? AND bundle_id IS NULL
-                )
-                """,
-                (str(exc), message_id, message_id),
-            )
-            connection.commit()
+        # Feedbacks bleiben bis zur manuellen Bündelung ausschliesslich im Projekt.
+        if not md_relevant and _md_hint(message.subject):
+            md_relevant = True
             needs_review = True
-            result["errors"].append(str(exc))
-        else:
-            result["feedback_bundles"] += len(bundles)
 
         if not md_relevant:
             connection.execute("DELETE FROM inbound_mail_messages WHERE id = ?", (message_id,))
@@ -447,19 +439,23 @@ def scan_outlook_inbox(
 ) -> dict[str, Any]:
     outlook = adapter or OutlookInboxAdapter()
     messages = outlook.read_messages(mailbox_name=mailbox_name)
-    result = process_inbound_messages(
-        connection,
-        messages=messages,
-        inbox_dir=inbox_dir,
-        pdf_dir=pdf_dir,
-        handoff_dir=handoff_dir,
-        target_folder=target_folder,
-        move_message=lambda entry_id, folder: outlook.move_message(
-            mailbox_name=mailbox_name,
-            entry_id=entry_id,
-            target_folder=folder,
-        ),
-    )
+    result = {key: 0 for key in ('read','stored','ready','moved','review','ignored','duplicates','feedback_bundles','failed')}
+    result['errors'] = []
+    for message in messages:
+        try:
+            part = process_inbound_messages(connection, messages=[message], inbox_dir=inbox_dir,
+                pdf_dir=pdf_dir, handoff_dir=handoff_dir, target_folder=target_folder,
+                move_message=lambda entry_id, folder: outlook.move_message(mailbox_name=mailbox_name, entry_id=entry_id, target_folder=folder))
+            for key,value in part.items():
+                if key == 'errors': result[key].extend(value)
+                else: result[key] += value
+        except Exception as exc:
+            connection.rollback()
+            connection.execute("UPDATE inbound_mail_messages SET status='failed',error_message=? WHERE outlook_entry_id=? AND status='new'",(str(exc),message.entry_id))
+            connection.commit()
+            result['read'] += 1
+            result['failed'] += 1
+            result['errors'].append(f'«{message.subject}»: {exc}. Bereits gespeicherte Anhänge bleiben erhalten; Verarbeitung erneut versuchen.')
     read_errors = getattr(outlook, "read_errors", [])
     result["failed"] += len(read_errors)
     result["errors"].extend(read_errors)
@@ -473,6 +469,7 @@ def resolve_inbound_message(
     mailbox_name: str,
     target_folder: str,
     adapter: OutlookInboxAdapter | None = None,
+    review_note: str = "",
 ) -> dict[str, Any]:
     message = connection.execute(
         "SELECT * FROM inbound_mail_messages WHERE id = ?", (message_id,)
@@ -491,10 +488,10 @@ def resolve_inbound_message(
         connection.execute(
             """
             UPDATE inbound_mail_messages
-            SET review_completed_at = ?, error_message = '', updated_at = ?
+            SET review_completed_at = ?, review_note = ?, error_message = '', updated_at = ?
             WHERE id = ?
             """,
-            (timestamp, timestamp, message_id),
+            (timestamp, review_note.strip(), timestamp, message_id),
         )
         connection.commit()
         return {"id": message_id, "status": "review_completed"}
@@ -517,6 +514,35 @@ def resolve_inbound_message(
     )
     connection.commit()
     return {"id": message_id, "status": "moved", "target_folder": target_folder}
+
+
+def attachment_progress(connection, attachment):
+    item=dict(attachment)
+    item.update(progress='Prüfung erforderlich; noch keine Roboterübergabe', next_step='Original prüfen. Bei Unklarheit Rückfrage halten; erst nach Klärung die Mailprüfung abschliessen.', case_id='', cycle_id=None, original_available=bool(item['stored_path'] and Path(item['stored_path']).is_file()))
+    word=connection.execute('SELECT w.*, COALESCE(s.dismissed,0) AS dismissed FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.sha256=?',(item['sha256'],)).fetchone()
+    doc=connection.execute('SELECT * FROM official_documents WHERE id=? OR sha256=? ORDER BY id DESC LIMIT 1',(word['official_document_id'] if word else item.get('official_document_id'),item['sha256'])).fetchone()
+    if doc:
+        item.update(case_id=doc['case_id'],cycle_id=doc['cycle_id'])
+        status=doc['handoff_status']
+        item['progress']={'staged':'Kopie an Roboter übergeben; Original im Projekt','waiting_scan':'Original im Projekt; Scan ausstehend, noch keine Roboterübergabe','needs_signature_check':'Angaben übernommen; Dossierübergabe noch offen','not_applicable':'Original im Projekt; keine weitere Übergabe dieses Dokuments vorgesehen'}.get(status,status)
+        item['next_step']={'staged':'Keine erneute Ablage. Bei Fehlern bereits erfolgte Dossierverarbeitung separat klären.','waiting_scan':'Rückblick D/E: unterschriebenen Scan anfordern, zuordnen und Unterschriften prüfen.','needs_signature_check':'Fall öffnen und Dossierübergabe erneut versuchen; bei falschen Angaben zuerst korrigiertes PDF einlesen.','not_applicable':'Kein weiterer Ablageschritt für dieses Dokument.'}.get(status,'Fall öffnen.')
+    elif word:
+        item['word_pdf_import_id']=word['id']
+        if word['dismissed']:
+            item.update(progress='Begründet zurückgestellt; Original im Projekt, keine Roboterübergabe',next_step='Bei Bedarf Prüfung begründet wieder öffnen. Sonst Mailprüfung nach Bearbeitung aller übrigen Anhänge abschliessen.')
+        elif word['status']=='pending':
+            item.update(progress='Original im Projekt; PDF-Prüfung offen, keine Roboterübergabe',next_step='PDF-Prüfung öffnen: Person/Anstellung, Zeitraum und Angaben vergleichen. OK: übernehmen. Nicht OK: Entwurf und Rückfrage oder begründet zurückstellen.')
+        elif word['status']=='historical':
+            item.update(progress='Als historische Zielquelle im Projekt gespeichert; keine Roboterübergabe',next_step='Keine weitere Ablage. Ziele stehen für neue Word-Ausgaben bereit.')
+        else:
+            feedback=connection.execute('SELECT bundle_id FROM word_feedback_submissions WHERE import_id=?',(word['id'],)).fetchone()
+            if feedback:
+                item.update(progress='Feedback-Sammel-PDF an Roboter übergeben; Original im Projekt' if feedback['bundle_id'] else 'Feedback in Projektsammlung; noch keine Roboterübergabe',next_step='Keine erneute Ablage.' if feedback['bundle_id'] else 'Unter Feedbacks die Sammlung prüfen und manuell zusammenführen.')
+            else:
+                item.update(progress='Dublette; keine zusätzliche Ablage',next_step='Bereits vorhandene Verarbeitung prüfen; nicht erneut ablegen.')
+    elif not item['stored_path']:
+        item.update(progress='Fremdanlage nicht im Projekt gespeichert; keine Roboterübergabe',next_step='In Outlook öffnen und ausserhalb des MD-Prozesses bearbeiten. Danach Mailprüfung als erledigt markieren.')
+    return item
 
 
 def mail_inbox_overview(
@@ -568,7 +594,7 @@ def mail_inbox_overview(
             item["status"] = "review_completed"
         item["status_label"] = STATUS_LABELS.get(item["status"], item["status"])
         item["attachments"] = [
-            dict(attachment)
+            attachment_progress(connection, attachment)
             for attachment in connection.execute(
                 """
                 SELECT a.*, w.id AS word_pdf_import_id FROM inbound_mail_attachments a

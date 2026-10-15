@@ -57,15 +57,15 @@
                     <strong>{{ document.name }}</strong>
                     <span class="status status--{{ document.key }}">{{ document.label }}</span>
                     {% if document.digital and document.key == 'legacy' %}
-                      <div class="muted">Prüfe die Unterschriften am Original-PDF und gib das Dokument anschliessend für die Ablage frei.</div>
+                      <div class="muted">Die Fachdaten sind übernommen. Dossierübergabe erneut versuchen; keine Unterschriftenprüfung am digitalen PDF.</div>
                       <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
-                        <button class="button button--small" type="submit">Unterschriften bestätigen und Ablage prüfen</button>
+                        <button class="button button--small" type="submit">Dossierübergabe erneut versuchen</button>
                       </form>
                     {% elif document.key == 'scan' %}
                       <form class="scan-form" action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.kind) }}" method="post" enctype="multipart/form-data">
                         <label for="scan-{{ case.case_id }}-{{ document.kind }}">Handschriftlicher PDF-Scan</label>
                         <input id="scan-{{ case.case_id }}-{{ document.kind }}" name="scan_file" type="file" accept=".pdf,application/pdf" required>
-                        <button class="button button--small" type="submit">Prüfen und für Personaldossier bereitstellen</button>
+                        <label><input type="checkbox" name="scan_checked" value="yes" required> Person, Zeitraum, vollständigen Inhalt und erforderliche Unterschriften am Scan geprüft.</label><button class="button button--small" type="submit">Geprüften Scan als Kopie bereitstellen</button>
                       </form>
                     {% endif %}
                   </div>

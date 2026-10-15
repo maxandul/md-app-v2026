@@ -78,12 +78,12 @@ class HRIndependenceTest(unittest.TestCase):
         self.assertTrue(candidates)
         self.assertTrue(all(not row['ready'] for row in candidates))
 
-    def test_tasks_follow_pending_pdf_then_signature(self):
+    def test_tasks_follow_pending_pdf_then_handoff(self):
         item = self.stage()
         client = self.app.test_client()
         self.assertIn(f'/word-pdf-imports/{item}', client.get('/aufgaben').text)
         self.confirm(item)
-        self.assertIn('Unterschriften', client.get('/aufgaben').text)
+        self.assertIn('Dossierübergabe', client.get('/aufgaben').text)
 
     def test_inactive_late_return_requires_reason_and_closed_cycle_reopening(self):
         from webapp.services.word_pdf_imports import confirm_import, matching_cases

@@ -146,7 +146,7 @@ def process_inbound_messages(
             continue
         duplicate = connection.execute(
             """
-            SELECT id, status FROM inbound_mail_messages
+            SELECT id, status, review_completed_at FROM inbound_mail_messages
             WHERE outlook_entry_id = ?
                OR (internet_message_id <> '' AND internet_message_id = ?)
             LIMIT 1
@@ -163,7 +163,9 @@ def process_inbound_messages(
                 """,
                 (entry_id, message.internet_message_id or ""),
             ).fetchone()
-        resume = duplicate and 'status' in duplicate.keys() and duplicate['status'] in {'new', 'failed'}
+        pending_goals = duplicate and 'status' in duplicate.keys() and duplicate['status']=='review_required' and not duplicate['review_completed_at'] and connection.execute(
+            "SELECT 1 FROM inbound_mail_attachments WHERE mail_message_id=? AND status='review_required' AND (lower(original_filename) LIKE '%.docx' OR lower(original_filename) LIKE '%.docm') LIMIT 1", (duplicate['id'],)).fetchone()
+        resume = pending_goals or duplicate and 'status' in duplicate.keys() and duplicate['status'] in {'new', 'failed'}
         if duplicate and not resume:
             result["duplicates"] += 1
             continue
@@ -205,6 +207,7 @@ def process_inbound_messages(
                 if any(a['attachment_index']==attachment.index and a['sha256']==digest for a in saved):
                     continue
                 file_kind = _kind(filename)
+                is_word = Path(filename).suffix.lower() in {".docx", ".docm"}
                 hint = _md_hint(filename)
                 probation = "probezeit" in f"{filename} {message.subject}".casefold()
                 contains_probation = contains_probation or probation
@@ -324,7 +327,19 @@ def process_inbound_messages(
                         connection.commit()
                         md_relevant = True
                         result["stored"] += 1
-                elif hint:
+                elif hint or is_word:
+                    if is_word and not hint:
+                        from .legacy_forms import parse_legacy_form
+                        probe = temporary_path.with_suffix(Path(filename).suffix.lower())
+                        temporary_path.rename(probe)
+                        temporary_path = probe
+                        try:
+                            recognized = parse_legacy_form(probe)['document_type']=='outlook'
+                        except Exception:
+                            recognized = False
+                        if not recognized and not _md_hint(message.subject):
+                            foreign_attachments.append((attachment, filename, digest))
+                            continue
                     message_dir.mkdir(parents=True, exist_ok=True)
                     safe_name = secure_filename(filename) or f"Anhang-{attachment.index}"
                     stored_path = message_dir / f"{attachment.index:02d}_{safe_name}"
@@ -386,6 +401,12 @@ def process_inbound_messages(
             )
             needs_review = True
 
+        from .mail_goals import process_word_goals
+        process_word_goals(connection, message_id)
+        processed = connection.execute('SELECT status FROM inbound_mail_attachments WHERE mail_message_id=?', (message_id,)).fetchall()
+        if processed:
+            needs_review = any(a['status']=='review_required' for a in processed) or bool(connection.execute(
+                "SELECT 1 FROM inbound_mail_attachments a JOIN word_pdf_imports w ON w.sha256=a.sha256 WHERE a.mail_message_id=? AND w.status='pending' LIMIT 1", (message_id,)).fetchone())
         if needs_review:
             message_status = "review_required"
             result["review"] += 1
@@ -540,8 +561,22 @@ def attachment_progress(connection, attachment):
                 item.update(progress='Feedback-Sammel-PDF an Roboter übergeben; Original im Projekt' if feedback['bundle_id'] else 'Feedback in Projektsammlung; noch keine Roboterübergabe',next_step='Keine erneute Ablage.' if feedback['bundle_id'] else 'Unter Feedbacks die Sammlung prüfen und manuell zusammenführen.')
             else:
                 item.update(progress='Dublette; keine zusätzliche Ablage',next_step='Bereits vorhandene Verarbeitung prüfen; nicht erneut ablegen.')
+    elif item['stored_path'] and Path(item['original_filename']).suffix.lower() in {'.docx', '.docm'}:
+        if item['status'] in ('imported','duplicate'):
+            item.update(progress=item['error_message'] or 'Word-Zielquelle bereits übernommen; keine Roboterübergabe.', next_step='Unter Versand → Änderungen prüfen die betroffenen Rückblicke einzeln neu erzeugen, prüfen und separat übermitteln. Der Scan verschickt keine Formulare.')
+        else:
+            item.update(progress='Word-Zielquelle noch nicht übernommen: '+item['error_message'], next_step='Zuordnung bzw. Quelle klären. Bei fehlendem Zieljahr über Stammdaten → Vorjahresziele importieren. Danach Postfach erneut prüfen; nicht bloss die Mailprüfung als erledigt markieren.')
     elif not item['stored_path']:
         item.update(progress='Fremdanlage nicht im Projekt gespeichert; keine Roboterübergabe',next_step='In Outlook öffnen und ausserhalb des MD-Prozesses bearbeiten. Danach Mailprüfung als erledigt markieren.')
+    if item['stored_path'] and Path(item['original_filename']).suffix.lower() in {'.docx', '.docm'}:
+        source = connection.execute('SELECT * FROM legacy_form_imports WHERE sha256=?', (item['sha256'],)).fetchone()
+        if source:
+            item['goal_cases'] = [dict(row) for row in connection.execute("""
+                SELECT dc.case_id,dc.cycle_id,dc.manager_pn,e.first_name,e.last_name,dc.employment_assignment
+                FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id JOIN employees e ON e.pn=dc.employee_pn
+                WHERE dc.active=1 AND dc.employee_pn=? AND dc.employment_assignment=? AND c.review_year=?
+                  AND COALESCE(NULLIF(dc.official_scope,''),dc.suggested_scope) IN ('full','review_only')
+                ORDER BY dc.case_id""", (source['employee_pn'],source['assignment_number'],source['goal_year']))]
     return item
 
 

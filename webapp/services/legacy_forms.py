@@ -245,6 +245,7 @@ def _goal_content_key(performance, development):
 
 def scan_legacy_forms(
     connection: sqlite3.Connection, *, forms_root: Path, goal_year: int,
+    allow_partial_word: bool = False,
 ) -> dict[str, Any]:
     paths = sorted(
         path for path in forms_root.rglob("*")
@@ -282,7 +283,7 @@ def scan_legacy_forms(
                 status, resolved_assignment = "not_outlook", ""
             elif item.get('detected_years') and item['detected_years'] != [goal_year]:
                 status, resolved_assignment = 'year_mismatch', ''
-            elif item.get('issues'):
+            elif item.get('issues') and not (allow_partial_word and path.suffix.lower() in {'.docx', '.docm'}):
                 status, resolved_assignment = 'extraction_uncertain', ''
             elif not item["performance_goals"] and not item["development_goals"]:
                 status, resolved_assignment = "no_goals", ""
@@ -332,8 +333,9 @@ def scan_legacy_forms(
 def import_legacy_forms(
     connection: sqlite3.Connection, *, forms_root: Path, goal_year: int,
     imported_at: datetime | None = None, selected_hashes: set[str] | None = None,
+    allow_partial_word: bool = False,
 ) -> dict[str, Any]:
-    result = scan_legacy_forms(connection, forms_root=forms_root, goal_year=goal_year)
+    result = scan_legacy_forms(connection, forms_root=forms_root, goal_year=goal_year, allow_partial_word=allow_partial_word)
     timestamp = (imported_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     imported = 0
     imported_performance = imported_development = 0

@@ -1992,3 +1992,44 @@ def reopen_feedback(import_id):
     except ValueError as exc:
         connection.rollback();flash(str(exc),'error')
     return redirect(url_for('main.feedback_review',import_id=import_id))
+
+
+@bp.route('/cycles/<int:cycle_id>/cases/<case_id>/word-correction', methods=['GET','POST'])
+def person_word_correction(cycle_id, case_id):
+    from .services import person_corrections as corrections
+    db = get_db()
+    try:
+        case = corrections.person(db,case_id,cycle_id)
+    except ValueError:
+        abort(404)
+    if request.method == 'POST':
+        try:
+            correction_id = corrections.prepare(db,case=case,kinds=request.form.getlist('kind'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_corrections'))
+            audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
+            flash('Einzelausgabe erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
+            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+'#correction-'+str(correction_id))
+        except (ValueError,LookupError,OSError) as exc:
+            flash(str(exc),'error')
+    rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]
+    for row in rows: row['manifest'] = json.loads(row['manifest_json'])
+    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows)
+
+
+@bp.get('/word-corrections/<int:correction_id>/download')
+def download_person_correction(correction_id):
+    row = get_db().execute('SELECT stored_path FROM word_person_corrections WHERE id=?',(correction_id,)).fetchone()
+    if not row or not Path(row['stored_path']).is_file(): abort(404)
+    return send_file(row['stored_path'],as_attachment=True,download_name=Path(row['stored_path']).name)
+
+
+@bp.post('/word-corrections/<int:correction_id>/action')
+def person_correction_action(correction_id):
+    from .services.person_corrections import act
+    row = get_db().execute('SELECT p.case_id,dc.cycle_id FROM word_person_corrections p JOIN dialog_cases dc ON dc.case_id=p.case_id WHERE p.id=?',(correction_id,)).fetchone()
+    if not row: abort(404)
+    try:
+        act(get_db(),correction_id=correction_id,action=request.form.get('action'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],sender_email=current_app.config['HR_MAILBOX_EMAIL'],subject=request.form.get('subject',''),body=request.form.get('body',''),checked=request.form.get('checked')=='yes')
+        audit('person_word_correction_action','word_correction',str(correction_id),action_taken=request.form.get('action'))
+        flash('Outlook-Entwurf erstellt; in Outlook prüfen und versenden.' if request.form.get('action')=='draft' else 'Outlook-Stand der Einzelausgabe dokumentiert.','success')
+    except (ValueError,OSError) as exc: flash(str(exc),'error')
+    return redirect(url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'])+'#correction-'+str(correction_id))

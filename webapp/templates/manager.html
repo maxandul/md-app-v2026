@@ -50,7 +50,7 @@
             <td>{{ case.position or '–' }}<br><span class="muted">{{ case.org_unit or '–' }}</span></td>
             <td><strong>{{ case.scope_label }}</strong><br><span class="muted">Vorschlag: {{ case.suggested_scope }} · {{ case.suggestion_reason }}</span></td>
             <td>
-              <form class="inline-action" action="{{ url_for('main.download_word_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><input type="hidden" name="case_id" value="{{ case.case_id }}"><button class="button button--small" type="submit">Word-Vorlagen erzeugen</button></form>
+              <a class="button button--small" href="{{ url_for('main.person_word_correction',cycle_id=cycle.id,case_id=case.case_id) }}">Einzelne Formulare erzeugen / versenden</a>
               {% if case.document_states %}
                 {% for document in case.document_states %}
                   <div class="document-state">

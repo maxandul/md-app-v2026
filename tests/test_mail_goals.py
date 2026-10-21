@@ -89,3 +89,42 @@ class MailGoalsTest(unittest.TestCase):
         self.assertEqual(self.scan(path)['moved'], 0)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM legacy_form_imports').fetchone()[0], 1)
         self.assertIn('Abweichende Zielquelle', mail_inbox_overview(self.db)['mail_messages'][0]['attachments'][0]['progress'])
+
+    def test_partial_import_preserves_warning_and_does_not_duplicate_on_rescan(self):
+        from zipfile import ZipFile
+        path = word(self.root/'Ausblick.docx')
+        with ZipFile(path) as archive:
+            xml = archive.read('word/document.xml').decode()
+        broken = '<w:tr><w:tc><w:p><w:r><w:t>Zusatz mit unklaren Spalten</w:t></w:r></w:p></w:tc></w:tr>'
+        xml = xml.replace('</w:tbl>', broken + '</w:tbl>', 1)
+        with ZipFile(path, 'w') as archive:
+            archive.writestr('word/document.xml', xml)
+        for _ in range(2):
+            self.assertEqual(self.scan(path)['moved'], 0)
+            self.assertEqual(self.db.execute('SELECT COUNT(*) FROM historical_goals').fetchone()[0], 2)
+            attachment = mail_inbox_overview(self.db)['mail_messages'][0]['attachments'][0]
+            self.assertIn('Teilweise übernommen:', attachment['progress'])
+            self.assertIn('Tabelle 1, Zeile 3', attachment['progress'])
+            self.assertIn('Zusatz mit unklaren Spalten', attachment['progress'])
+            self.assertNotIn('noch nicht übernommen', attachment['progress'])
+            self.assertIn('Lesbare Ziele stehen bereits', attachment['next_step'])
+        # A user can finish the remaining review without reimporting or moving mail.
+        from webapp.services.mail_intake import resolve_inbound_message
+        message = self.db.execute('SELECT id FROM inbound_mail_messages').fetchone()
+        resolve_inbound_message(self.db, message_id=message['id'], mailbox_name='Test', target_folder='MD', review_note='Zusatz geprüft und im Rückblick ergänzt.')
+        self.scan(path)
+        self.assertFalse(self.moves)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM historical_goals').fetchone()[0], 2)
+
+    def test_empty_optional_fields_do_not_block_import(self):
+        from zipfile import ZipFile
+        path = word(self.root/'Ausblick.docx')
+        with ZipFile(path) as archive:
+            xml = archive.read('word/document.xml').decode()
+        xml = xml.replace('Qualität bestätigt', '').replace('Erheben und umsetzen', '').replace('31.12.2025', '')
+        with ZipFile(path, 'w') as archive:
+            archive.writestr('word/document.xml', xml)
+        self.assertEqual(self.scan(path)['moved'], 1)
+        goals = prior_goals(self.db, employee_pn='111113', assignment='1', year=2025)
+        self.assertEqual(goals[0][0]['title'], 'Projekt abschliessen')
+        self.assertEqual(goals[0][0]['criteria'], '')

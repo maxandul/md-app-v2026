@@ -13,6 +13,7 @@
     <h1>{{ case.first_name }} {{ case.last_name }}</h1>
     <p class="lead">PN {{ case.employee_pn }} · Ans. {{ case.employment_assignment or '–' }} · {{ case.position or '–' }} · {{ case.org_unit or '–' }}</p>
     <span class="status">{{ case.status }}</span>
+    <p><a class="button" href="{{ url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case.case_id) }}">Einzelne Formulare erzeugen / versenden</a></p>
   </section>
 
   <section class="content-section" aria-labelledby="case-data-title">

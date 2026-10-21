@@ -49,17 +49,25 @@ def word_tables(path):
     root = ET.fromstring(xml)
     performance, development, issues = [], [], []
     recognized = False
-    for table in root.iter(W + 'tbl'):
+    for table_index, table in enumerate(root.iter(W + 'tbl'), 1):
         context = ''
         is_goal_table = False
-        for row in wrapped_children(table, 'tr'):
+        for row_index, row in enumerate(wrapped_children(table, 'tr'), 1):
             cells = list(wrapped_children(row, 'tc'))
             texts = [_clean_text(visible_text(cell)) for cell in cells]
+            location = f'Tabelle {table_index}, Zeile {row_index}'
+            excerpt = ' | '.join(texts)
+            if len(excerpt) > 500:
+                excerpt = excerpt[:500] + ' … (vollständig im Original)'
+            competency_heading = False
             if len(texts) == 1:
                 label = re.sub(r'[\s-]+', '', texts[0]).casefold()
                 for name in COMPETENCY_TAGS.values():
                     if label.startswith(re.sub(r'[\s-]+', '', name).casefold()):
                         context = name
+                        competency_heading = True
+                if competency_heading:
+                    continue
             compact = [re.sub(r'\s+', ' ', text).casefold() for text in texts]
             if len(compact) == 4 and compact[0] in ('ziel', 'leistungsziel', 'entwicklungsziel') and compact[1:] == ['messkriterien', 'weg zum ziel', 'termin']:
                 recognized = is_goal_table = True
@@ -69,11 +77,12 @@ def word_tables(path):
             if not is_goal_table or not any(texts):
                 continue
             if len(texts) != 4 or not context:
-                issues.append('Eine Zielzeile oder ihre Kompetenz ist nicht eindeutig lesbar.')
+                reason = f'{len(texts)} statt 4 Spalten' if len(texts) != 4 else 'Kompetenz nicht zuordenbar'
+                issues.append(f'{location}: nicht übernommen ({reason}). Lesbarer Inhalt: {excerpt}')
                 continue
             goal = dict(zip(KEYS, texts))
             if not goal['title']:
-                issues.append('Eine ausgefüllte Zielzeile hat keine Zielbeschreibung.')
+                issues.append(f'{location}: Zielbeschreibung leer; vorhandene Messkriterien, Schritte und Termin übernommen. Inhalt: {excerpt}')
             goal['source_tag_family'] = 'word_table'
             goal['competency'] = '' if context == 'performance' else context
             (performance if context == 'performance' else development).append(goal)

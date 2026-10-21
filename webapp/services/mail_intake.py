@@ -562,7 +562,9 @@ def attachment_progress(connection, attachment):
             else:
                 item.update(progress='Dublette; keine zusätzliche Ablage',next_step='Bereits vorhandene Verarbeitung prüfen; nicht erneut ablegen.')
     elif item['stored_path'] and Path(item['original_filename']).suffix.lower() in {'.docx', '.docm'}:
-        if item['status'] in ('imported','duplicate'):
+        if item['status']=='review_required' and item['error_message'].startswith('Teilweise übernommen:'):
+            item.update(progress=item['error_message'], next_step='Lesbare Ziele stehen bereits für den Rückblick bereit. Nur die genannten Stellen im Original prüfen und nötigenfalls im neu erzeugten Rückblick ergänzen. Ergebnis der Klärung festhalten und Mailprüfung abschliessen; diese Aktion verschiebt keine Mail.')
+        elif item['status'] in ('imported','duplicate'):
             item.update(progress=item['error_message'] or 'Word-Zielquelle bereits übernommen; keine Roboterübergabe.', next_step='Unter Versand → Änderungen prüfen die betroffenen Rückblicke einzeln neu erzeugen, prüfen und separat übermitteln. Der Scan verschickt keine Formulare.')
         else:
             item.update(progress='Word-Zielquelle noch nicht übernommen: '+item['error_message'], next_step='Zuordnung bzw. Quelle klären. Bei fehlendem Zieljahr über Stammdaten → Vorjahresziele importieren. Danach Postfach erneut prüfen; nicht bloss die Mailprüfung als erledigt markieren.')

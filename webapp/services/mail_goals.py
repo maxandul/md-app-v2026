@@ -38,10 +38,8 @@ def process_word_goals(connection, message_id):
             status, assignment = _match_assignment(connection, employee_pn=item['employee_pn'], assignment_number=item['assignment_number'])
             if status != 'matched':
                 raise ValueError(errors[status])
-            if item.get('issues'):
-                raise ValueError('Zielinhalt nicht eindeutig auslesbar: ' + ' '.join(item['issues']))
             if not item['performance_goals'] and not item['development_goals']:
-                raise ValueError(errors['no_goals'])
+                raise ValueError(errors['no_goals'] + ' ' + ' '.join(item.get('issues', [])))
             key = (item['employee_pn'], assignment, year)
             content = _goal_content_key(item['performance_goals'], item['development_goals'])
             candidates.append((row, item, key, content))
@@ -52,20 +50,27 @@ def process_word_goals(connection, message_id):
             if any(other_key == key and other_content != content for _, _, other_key, other_content in candidates):
                 raise ValueError('Mehrere unterschiedliche Ausblicke für dieselbe Person, Anstellung und dasselbe Zieljahr in dieser Mail. Quellen vergleichen; keine automatische Auswahl.')
             pn, assignment, year = key
+            warnings = item.get('issues', [])
+            partial_note = (f'Teilweise übernommen: Ziele {year}, PN {pn}, Ans. {assignment}: '
+                            f'{len(item["performance_goals"])} Leistungsziele, {len(item["development_goals"])} Entwicklungsziele. '
+                            'Offene Stellen: ' + ' '.join(warnings))
             selected = prior_goals(connection, employee_pn=pn, assignment=assignment, year=year)
             sources = [selected] if selected[0] or selected[1] else []
             if sources:
                 if not all(_goal_content_key(p, d) == content for p, d, _ in sources):
                     raise ValueError('Abweichende Zielquelle bereits vorhanden. Unter Stammdaten die Zielquellen vergleichen; keine automatische Ersetzung.')
-                save(row, 'duplicate', f'Ziele {year}, PN {pn}, Ans. {assignment} bereits vorhanden; keine doppelte Übernahme.')
+                save(row, 'review_required' if warnings else 'duplicate', partial_note if warnings else f'Ziele {year}, PN {pn}, Ans. {assignment} bereits vorhanden; keine doppelte Übernahme.')
                 continue
             with TemporaryDirectory(prefix='md-mail-goals-') as tmp:
                 target = Path(tmp) / Path(row['stored_path']).name
                 shutil.copyfile(row['stored_path'], target)
-                result = import_legacy_forms(connection, forms_root=Path(tmp), goal_year=year, selected_hashes={row['sha256']})
+                result = import_legacy_forms(connection, forms_root=Path(tmp), goal_year=year, selected_hashes={row['sha256']}, allow_partial_word=True)
             if result['imported'] != 1:
                 state = result['items'][0]['status'] if result['items'] else 'read_error'
                 raise ValueError(errors.get(state, 'Zielquelle nicht übernommen: ' + state))
+            if warnings:
+                save(row, 'review_required', partial_note)
+                continue
             save(row, 'imported', f'Ziele {year}, PN {pn}, Ans. {assignment} übernommen: {len(item["performance_goals"])} Leistungsziele, {len(item["development_goals"])} Entwicklungsziele. Original im Projekt; keine Roboterübergabe für Word-Zielquellen.')
         except Exception as exc:
             save(row, 'review_required', str(exc))

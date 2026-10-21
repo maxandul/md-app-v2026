@@ -138,7 +138,9 @@ def _date_text(value):
 
 
 def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str,
-                        template_paths: dict, output_dir: Path, case_id: str = "") -> tuple[Path, dict]:
+                        template_paths: dict, output_dir: Path, case_id: str = "", document_kinds: list[str] | None = None) -> tuple[Path, dict]:
+    if document_kinds is not None and (not case_id or not document_kinds or not set(document_kinds) <= {'review','probation','outlook'}):
+        raise ValueError('Bitte eine Person und mindestens einen gültigen Formulartyp auswählen.')
     cycle = connection.execute("SELECT * FROM cycles WHERE id = ?", (cycle_id,)).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
@@ -187,6 +189,10 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                 kinds = (["probation" if is_probation else "review"] if scope in {"full", "review_only"} else [])
                 if scope in {"full", "outlook_only"}:
                     kinds.append("outlook")
+                if document_kinds is not None:
+                    if not set(document_kinds) <= set(kinds):
+                        raise ValueError('Die Auswahl passt nicht zum aktuellen Pflichtumfang dieser Person.')
+                    kinds = [kind for kind in kinds if kind in document_kinds]
                 for kind in kinds:
                     template_path = template_paths.get(kind)
                     if not template_path or not Path(template_path).is_file():
@@ -229,7 +235,7 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                         "goal_source": source, "performance_goals": len(performance), "development_goals": len(development)})
             if manifest["documents"]:
                 manifest['attachments'] = []
-                for kind, template in preparation_templates(template_paths).items():
+                for kind, template in (preparation_templates(template_paths) if document_kinds is None else {}).items():
                     if not template.is_file():
                         raise ValueError(f'Die Beilage «{kind}» fehlt. Vorlage unter templates/preparation prüfen oder in instance/word_config.json konfigurieren.')
                     raw = template.read_bytes()

@@ -673,3 +673,18 @@ CREATE TABLE IF NOT EXISTS word_change_decisions (
  reason TEXT NOT NULL,
  created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS word_person_corrections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES dialog_cases(case_id),
+    stored_path TEXT NOT NULL,
+    manifest_json TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'prepared',
+    subject TEXT NOT NULL DEFAULT '',
+    body_text TEXT NOT NULL DEFAULT '',
+    outlook_entry_id TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);

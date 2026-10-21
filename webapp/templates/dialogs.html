@@ -118,12 +118,12 @@
 
   <details class="legacy-box" open>
     <summary>Unterjähriges oder nicht aus SAP ableitbares Ereignis erfassen</summary>
-    <p>Die Personalnummer und Ans. müssen zu einer importierten Anstellung gehören. Die Begründung macht die manuelle Zuordnung nachvollziehbar.</p>
+    <p>Wähle die Person anhand von Name, OE und Anstellung sowie die zuständige Führungskraft. Auch eine stellvertretende Führungskraft aus einer anderen OE ist möglich.</p>
     <form action="{{ url_for('main.add_dialog_event') }}" method="post">
       <div class="form-grid form-grid--three">
-        <div><label for="manual-employee">Personalnummer</label><input id="manual-employee" name="employee_pn" required></div>
-        <div><label for="manual-assignment">Ans.</label><input id="manual-assignment" name="assignment_number" required></div>
-        <div><label for="manual-manager">Personalnummer vorgesetzte Person</label><input id="manual-manager" name="manager_pn" required></div>
+        <div><label for="employee-search">Mitarbeitende suchen</label><input id="employee-search" type="search" data-filter-select="manual-employee" placeholder="Name, OE oder Funktion"><label for="manual-employee">Person und Anstellung</label><select id="manual-employee" name="employment_id" required><option value="">Bitte auswählen</option>{% for employee in employee_choices %}<option value="{{ employee.id }}" data-org="{{ employee.org_unit }}">{{ employee.last_name }} {{ employee.first_name }} · {{ employee.org_unit or 'OE fehlt' }} · {{ employee.position }} · Ans. {{ employee.assignment_number }} · PN {{ employee.person_number }}</option>{% endfor %}</select></div>
+        <div><label for="manager-search">Führungskraft suchen</label><input id="manager-search" type="search" data-filter-select="manual-manager" placeholder="Name oder OE"><label for="manual-manager">Verantwortliche Führungskraft</label><select id="manual-manager" name="manager_pn" required><option value="">Bitte auswählen</option>{% for manager in manager_choices %}<option value="{{ manager.pn }}" data-org="{{ manager.org_unit }}">{{ manager.last_name }} {{ manager.first_name }} · {{ manager.org_unit or 'OE fehlt' }} · PN {{ manager.pn }}</option>{% endfor %}</select></div>
+        <div><label for="form-org-source">OE im Formular</label><select id="form-org-source" name="form_org_source"><option value="employee">OE der gewählten Anstellung</option><option value="manager">OE der gewählten Führungskraft</option></select><p id="form-org-preview" aria-live="polite">Bitte Person und Führungskraft auswählen.</p><p>Bei Übertritt: Für den Rückblick der bisherigen Führungskraft deren OE wählen. Bei Stellvertretung wegen Vakanz: OE der mitarbeitenden Person beibehalten. Die gewählte OE wird für dieses Ereignis gespeichert; die Stammdaten werden nicht geändert.</p></div>
         <div><label for="manual-type">Dialogart</label><select id="manual-type" name="event_type" required>{% for key, label in event_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
         <div><label for="manual-scope">Pflichtumfang</label><select id="manual-scope" name="required_scope" required>{% for key, label in scopes.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
         <div><label for="manual-year">Rückblickjahr</label><input id="manual-year" name="review_year" type="number" min="2020" max="2100" value="{{ now_year }}" required></div>
@@ -139,3 +139,5 @@
     </form>
   </details>
 {% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static',filename='manual_event.js') }}" defer></script>{% endblock %}

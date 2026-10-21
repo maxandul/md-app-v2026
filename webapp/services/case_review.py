@@ -54,7 +54,7 @@ def case_review_detail(
     case = connection.execute(
         """
         SELECT dc.*, c.review_year, c.outlook_year,
-               e.first_name, e.last_name, e.position, e.org_unit,
+               e.first_name, e.last_name, e.position, COALESCE(fo.org_unit,e.org_unit) AS org_unit, fo.source AS form_org_source,
                e.entry_date, e.exit_date, e.probation_end,
                COALESCE(NULLIF(TRIM(m.first_name || ' ' || m.last_name), ''),
                         'VG ' || dc.manager_pn) AS manager_name
@@ -62,6 +62,8 @@ def case_review_detail(
         JOIN cycles c ON c.id = dc.cycle_id
         JOIN employees e ON e.pn = dc.employee_pn
         LEFT JOIN employees m ON m.pn = dc.manager_pn
+        LEFT JOIN dialog_events de ON de.legacy_case_id=dc.case_id
+        LEFT JOIN dialog_form_org_units fo ON fo.dialog_event_id=de.id
         WHERE dc.cycle_id = ? AND dc.case_id = ?
         """,
         (cycle_id, case_id),

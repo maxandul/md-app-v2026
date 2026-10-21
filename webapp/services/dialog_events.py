@@ -321,6 +321,7 @@ def create_manual_event(
     review_due_date: str = "",
     outlook_due_date: str = "",
     cycle_id: int | None = None,
+    form_org_source: str = "employee",
     created_at: datetime | None = None,
 ) -> str:
     if event_type not in EVENT_TYPE_LABELS:
@@ -345,7 +346,7 @@ def create_manual_event(
             raise ValueError("Das Gesprächsdatum muss ein gültiges Datum sein.") from exc
     employment = connection.execute(
         """
-        SELECT entry_date, exit_date FROM employment_assignments
+        SELECT entry_date, exit_date, org_unit FROM employment_assignments
         WHERE person_number = ? AND assignment_number = ?
         """,
         (employee_pn.strip(), assignment_number.strip()),
@@ -366,6 +367,12 @@ def create_manual_event(
             raise ValueError("Der gewählte Durchlauf existiert nicht.")
         if cycle["review_year"] != review_year:
             raise ValueError("Rückblickjahr und gewählter Durchlauf stimmen nicht überein.")
+    if form_org_source not in ('employee','manager'):
+        raise ValueError('Bitte die OE-Quelle für das Formular auswählen.')
+    manager = connection.execute('SELECT org_unit FROM employees WHERE pn=?',(manager_pn.strip(),)).fetchone()
+    if not manager:
+        raise ValueError('Die ausgewählte Führungskraft fehlt in den Stammdaten.')
+    form_org_unit = employment['org_unit'] if form_org_source=='employee' else manager['org_unit']
     timestamp = (created_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     employment_id, manager_assignment_id = ensure_manager_assignment(
         connection,
@@ -423,6 +430,7 @@ def create_manual_event(
             timestamp, timestamp,
         ),
     )
+    connection.execute('INSERT INTO dialog_form_org_units(dialog_event_id,source,org_unit) VALUES (?,?,?)', (cursor.lastrowid,form_org_source,form_org_unit))
     default_review_due, default_outlook_due = default_due_dates(review_year)
     _ensure_obligations(
         connection,

@@ -148,11 +148,12 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
     if not manager:
         raise ValueError("Die Stammdaten der Führungskraft fehlen.")
     cases = connection.execute(
-        """SELECT dc.*, e.first_name, e.last_name, e.position, e.org_unit,
+        """SELECT dc.*, e.first_name, e.last_name, e.position, COALESCE(fo.org_unit,e.org_unit) AS org_unit,
                   e.entry_date, e.exit_date, e.probation_end, e.secondary_employment,
                   COALESCE(de.event_type, 'annual') AS event_type
            FROM dialog_cases dc JOIN employees e ON e.pn = dc.employee_pn
            LEFT JOIN dialog_events de ON de.legacy_case_id = dc.case_id
+           LEFT JOIN dialog_form_org_units fo ON fo.dialog_event_id=de.id
            WHERE dc.cycle_id = ? AND dc.manager_pn = ? AND dc.active = 1
              AND (? = '' OR dc.case_id = ?) ORDER BY e.last_name, e.first_name, dc.id""",
         (cycle_id, manager_pn, case_id, case_id),

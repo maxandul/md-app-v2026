@@ -688,3 +688,9 @@ CREATE TABLE IF NOT EXISTS word_person_corrections (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS dialog_form_org_units (
+    dialog_event_id INTEGER PRIMARY KEY REFERENCES dialog_events(id),
+    source TEXT NOT NULL CHECK(source IN ('employee','manager')),
+    org_unit TEXT NOT NULL
+);

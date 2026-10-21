@@ -68,3 +68,33 @@ class PersonCorrectionsTest(unittest.TestCase):
         with self.assertRaises(ValueError):self.prepare(['bad'])
         self.db.execute("UPDATE dialog_cases SET official_scope='outlook_only' WHERE case_id=?",(self.case_id,));self.db.commit()
         with self.assertRaises(ValueError):self.prepare(['review'])
+
+    def test_manual_event_selects_employment_and_preserves_chosen_form_org(self):
+        from webapp.services.word_packages import create_word_package
+        from webapp.services.word_dispatch import source_snapshot
+        self.db.execute("UPDATE employment_assignments SET org_unit='Neue OE' WHERE person_number='111113'")
+        self.db.execute("UPDATE employees SET org_unit='Alte OE' WHERE pn='111118'")
+        self.db.commit()
+        employment=self.db.execute("SELECT id FROM employment_assignments WHERE person_number='111113' AND assignment_number='1'").fetchone()[0]
+        client=self.app.test_client()
+        self.assertIn('Person und Anstellung',client.get('/dialoge').text)
+        response=client.post('/dialog-events',data={'employment_id':employment,'manager_pn':'111118','event_type':'transfer_review','required_scope':'review_only','review_year':2025,'period_start':'2025-01-01','period_end':'2025-08-31','reason':'Übertritt zur neuen Organisation','cycle_id':self.cycle_id,'form_org_source':'manager'})
+        self.assertEqual(response.status_code,302)
+        event=self.db.execute("SELECT legacy_case_id,id FROM dialog_events WHERE source='manual' ORDER BY id DESC").fetchone()
+        self.assertIsNotNone(event)
+        self.assertEqual(self.db.execute('SELECT org_unit FROM dialog_form_org_units WHERE dialog_event_id=?',(event['id'],)).fetchone()[0],'Alte OE')
+        self.db.execute("UPDATE employees SET org_unit='Später geändert' WHERE pn='111118'");self.db.commit()
+        path,manifest=create_word_package(self.db,cycle_id=self.cycle_id,manager_pn='111118',case_id=event['legacy_case_id'],document_kinds=['review'],template_paths=self.paths,output_dir=self.root/'manual')
+        with ZipFile(path) as archive:
+            raw=archive.read(manifest['documents'][0]['filename'])
+        self.assertEqual(fixtures.controls(fixtures.xml_for(raw))['rb_oe'],'Alte OE')
+        snapshot=source_snapshot(self.db,cycle_id=self.cycle_id,manager_pn='111118',template_paths=self.paths)
+        self.assertEqual(next(c['org_unit'] for c in snapshot['cases'] if c['case_id']==event['legacy_case_id']),'Alte OE')
+
+        from webapp.services.dialog_events import create_manual_event
+        event_key=create_manual_event(self.db,employee_pn='111113',assignment_number='1',manager_pn='111118',event_type='interim',required_scope='review_only',review_year=2025,period_start='2025-01-01',period_end='2025-08-31',reason='Stellvertretung bei Vakanz',form_org_source='employee')
+        saved=self.db.execute('SELECT fo.org_unit FROM dialog_form_org_units fo JOIN dialog_events de ON de.id=fo.dialog_event_id WHERE de.event_id=?',(event_key,)).fetchone()
+        self.assertEqual(saved['org_unit'],'Neue OE')
+        page=client.get(f"/cycles/{self.cycle_id}/cases/{event['legacy_case_id']}")
+        self.assertIn('Gespeicherte Formular-OE',page.text)
+        self.assertIn('Alte OE',page.text)

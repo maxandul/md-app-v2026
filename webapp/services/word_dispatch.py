@@ -32,10 +32,11 @@ def source_snapshot(connection, *, cycle_id, manager_pn, template_paths):
         raise ValueError('Durchlauf oder Stammdaten der Führungskraft fehlen.')
     cases = connection.execute('''SELECT dc.case_id,dc.employee_pn,dc.employment_assignment,
         dc.official_scope,dc.suggested_scope,dc.period_start,dc.period_end,
-        e.first_name,e.last_name,e.position,e.org_unit,e.entry_date,e.exit_date,e.probation_end,e.secondary_employment,
+        e.first_name,e.last_name,e.position,COALESCE(fo.org_unit,e.org_unit) AS org_unit,e.entry_date,e.exit_date,e.probation_end,e.secondary_employment,
         COALESCE(de.event_type,'annual') AS event_type
         FROM dialog_cases dc JOIN employees e ON e.pn=dc.employee_pn
         LEFT JOIN dialog_events de ON de.legacy_case_id=dc.case_id
+        LEFT JOIN dialog_form_org_units fo ON fo.dialog_event_id=de.id
         WHERE dc.cycle_id=? AND dc.manager_pn=? AND dc.active=1 ORDER BY dc.case_id''', (cycle_id,manager_pn)).fetchall()
     snapshot = {'package_format': 2, 'cycle':dict(cycle),'manager':dict(manager),'cases':[],'templates':{}}
     needed = set()

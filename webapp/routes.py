@@ -258,6 +258,8 @@ def dialogs():
             )
             if selected_cycle_id else []
         ),
+        employee_choices=connection.execute("SELECT a.id,a.assignment_number,a.org_unit,a.position,e.first_name,e.last_name,a.person_number FROM employment_assignments a JOIN employees e ON e.pn=a.person_number WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number").fetchall(),
+        manager_choices=connection.execute("SELECT pn,first_name,last_name,org_unit FROM employees WHERE active=1 ORDER BY last_name,first_name,pn").fetchall(),
         event_types=EVENT_TYPE_LABELS,
         scopes=SCOPE_LABELS,
         **data,
@@ -348,10 +350,16 @@ def mark_reminder_sent(reminder_id: int):
 def add_dialog_event():
     cycle_id = request.form.get("cycle_id", type=int)
     try:
+        employee_pn=request.form.get('employee_pn','')
+        assignment_number=request.form.get('assignment_number','')
+        if 'employment_id' in request.form:
+            employment=get_db().execute('SELECT person_number,assignment_number FROM employment_assignments WHERE id=? AND active=1',(request.form.get('employment_id'),)).fetchone()
+            if not employment: raise ValueError('Bitte eine mitarbeitende Person mit Anstellung auswählen.')
+            employee_pn,assignment_number=employment['person_number'],employment['assignment_number']
         event_id = create_manual_event(
             get_db(),
-            employee_pn=request.form.get("employee_pn", ""),
-            assignment_number=request.form.get("assignment_number", ""),
+            employee_pn=employee_pn,
+            assignment_number=assignment_number,
             manager_pn=request.form.get("manager_pn", ""),
             event_type=request.form.get("event_type", ""),
             required_scope=request.form.get("required_scope", ""),
@@ -363,6 +371,7 @@ def add_dialog_event():
             review_due_date=request.form.get("review_due_date", ""),
             outlook_due_date=request.form.get("outlook_due_date", ""),
             cycle_id=cycle_id,
+            form_org_source=request.form.get("form_org_source","employee"),
         )
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")

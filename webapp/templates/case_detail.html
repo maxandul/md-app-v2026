@@ -12,6 +12,7 @@
     <p class="kicker">Einzelfallprüfung · {{ case.case_id }}</p>
     <h1>{{ case.first_name }} {{ case.last_name }}</h1>
     <p class="lead">PN {{ case.employee_pn }} · Ans. {{ case.employment_assignment or '–' }} · {{ case.position or '–' }} · {{ case.org_unit or '–' }}</p>
+    {% if case.form_org_source %}<p>Gespeicherte Formular-OE: <strong>{{ case.org_unit or 'nicht hinterlegt' }}</strong> · Quelle bei Erfassung: {{ 'Führungskraft' if case.form_org_source=='manager' else 'Anstellung der mitarbeitenden Person' }}.</p>{% endif %}
     <span class="status">{{ case.status }}</span>
     <p><a class="button" href="{{ url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case.case_id) }}">Einzelne Formulare erzeugen / versenden</a></p>
   </section>

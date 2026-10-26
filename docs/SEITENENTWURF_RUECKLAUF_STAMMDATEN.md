@@ -83,6 +83,18 @@ Beispiel: „Rückblick übernommen · Bereitstellung ausstehend“. Nach erfolg
 - Bereits verschobene Mail: gesichertes Dokument bleibt bearbeitbar.
 - Quellen- oder Zuständigkeitsänderung während der Prüfung: veraltete Entscheidung nicht ungeprüft übernehmen.
 
+### Mailablage und offene Folgearbeiten
+
+**Bestätigte Mailablage-Regel (26. Oktober 2026):**
+- Reine MD-Mails werden nach erfolgreicher Verarbeitung aller MD-Anhänge automatisch in den konfigurierten Outlook-Zielordner «12 Mitarbeitenden-Dialog» verschoben, sofern keine zusätzlichen ungeklärten Anliegen bestehen.
+- Ungeklärte Anhänge, zusätzliche Anliegen im Mailtext oder Fremdanlagen verhindern das automatische Verschieben; die Mail bleibt zunächst im Posteingang.
+- Nach manueller Klärung verschiebt HR die Mail bei Bedarf selbst in Outlook. „Prüfung erledigt“ in der App markiert nur die Klärung und verschiebt keine Mail. Ein späterer Scan darf diese manuell abgeschlossene Prüfung nicht als neuen automatischen Verschiebeauftrag behandeln.
+- Folgearbeiten wie Neuerstellung und Versand korrigierter Rückblicke bleiben in der App offen, auch wenn die ursprüngliche Mail bereits abgelegt wurde.
+- Eine bekannte Dublette zählt nur dann als verarbeitet, wenn der vorhandene Verarbeitungsstand dies belegt; ein identischer noch ungeklärter Eingang bleibt ungeklärt.
+- Bei einem Verschiebefehler bleiben erfolgreich verarbeitete Dokumente erhalten. Eine erneute Ablageklärung darf keine erneute fachliche Übernahme oder Dossierübergabe auslösen.
+
+**Technisch zu prüfen:** Wie zusätzliche Anliegen im Mailtext zuverlässig erkannt bzw. zur manuellen Klärung vorgelegt werden. Erfolgreiche Anhangsverarbeitung allein ist kein Nachweis, dass die Nachricht kein weiteres Anliegen enthält. Die Regel ist eine Sollanforderung, keine Behauptung über eine bereits vorhandene automatische Inhaltsprüfung.
+
 ## 3. SAP-Stammdaten: Vom Upload zur Folgeaufgabe
 
 ### Einstieg und Seitenkopf

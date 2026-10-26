@@ -172,7 +172,57 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 - Ein Eintritt kann P07 auslösen; die passende Dialogpflicht folgt den fachlichen Regeln und bereits vorhandenen Fällen.
 - Die Übernahme neuer Stammdaten ist abgeschlossen, wenn ihre Auswirkungen entschieden und Folgeaufgaben verknüpft sind; der Versand dieser Folgeaufgaben hat einen eigenen Status.
 
-**Offen:** Welche Änderungen dürfen nach der Vorschau gemeinsam übernommen werden, welche brauchen eine Einzelentscheidung? Die Prüfung soll nach fachlichen Auswirkungen priorisieren, nicht jede unveränderte Person erneut vorlegen.
+**Bestätigte Richtung (26. Oktober 2026):** Der Import führt zu einer konkreten Änderungsliste mit Auswirkungen und direkt erreichbaren Folgearbeiten. Unveränderte Personen werden nicht erneut zur Prüfung vorgelegt. Eindeutige Änderungen können gemeinsam übernommen werden. Manuelle MD-Zuständigkeiten bleiben erhalten; fehlende Personen gelten nicht automatisch als ausgetreten.
+
+#### P09.1 Änderungsliste nach dem Upload
+
+Die Vorschau zeigt bisherigen und neuen Datenstand sowie pro betroffenem Eintrag Person, Anstellung/OE, geänderte Angaben mit Alt-/Neuwert, betroffene Dialoge und Ausgaben sowie die vorgeschlagene Folgeaktion. Stammdatenübernahme und fachliche Entscheidung zu einem bestehenden Dialog sind getrennte Schritte.
+
+| Erkannte Änderung | Vorgeschlagene Folgearbeit | Behandlung im Sollentwurf |
+|---|---|---|
+| Neue Person oder zusätzliche Anstellung | Dialogbedarf nach Anlass und Zeitraum prüfen; vorhandene Dialoge anzeigen | Eindeutigen Stammdatensatz gemeinsam übernehmen; Dialogvorschläge prüfen und passende gemeinsam anlegen |
+| Explizites Austrittsdatum | Offene Dialoge und Pflichten prüfen | Stammdatum übernehmen; bestehende Pflichten nicht pauschal aufheben |
+| Andere OE oder SAP-Führungskraft | Zuständigkeit, Zeitraum und ausgegebene Formulare prüfen | Neue organisatorische Zuordnung speichern; Auswirkungen auf betroffene laufende Dialoge gezielt entscheiden |
+| Bestehende manuelle MD-Zuständigkeit | Abweichung und möglichen Konflikt anzeigen | Bewusste Zuordnung erhalten; Änderung nur nach ausdrücklicher Entscheidung |
+| Geänderte Angaben, die im Formular verwendet werden | Betroffene Ausgaben zur Aktualisierung anbieten | Eindeutige Stammdaten gemeinsam übernehmen; Korrekturbedarf über P03 bearbeiten |
+| Person/Anstellung fehlt im Export | Exportumfang, Identifikation oder Austritt klären | Keine automatische Aufhebung von Dialogen oder Versandaufträgen |
+| Widersprüchliche oder mehrdeutige Zuordnung | Konflikt anhand der Quelldaten klären | Betroffene Zuordnung nicht ungeprüft überschreiben |
+| Keine inhaltliche Änderung | Keine | Keine neue Aufgabe oder Korrekturausgabe |
+
+Die Einordnung „eindeutig“ setzt eine belastbare Zuordnung zur Person und Anstellung sowie gültige Daten voraus. Ein geänderter Anzeigename allein darf nicht zu einer neuen Person führen.
+
+#### P09.2 Aktionen und Wiederaufnahme – Sollentwurf
+
+1. **Export prüfen:** Struktur, erforderliche Angaben und auffällige Abweichungen im Umfang prüfen. Ein möglicherweise unvollständiger Export wird vor der Übernahme als solcher kenntlich gemacht.
+2. **Änderungen ansehen:** Nach neuen Personen, Austritten, Zuständigkeits-/OE-Wechseln, Formularänderungen und Konflikten filtern. Unveränderte Datensätze erscheinen nur bei Bedarf.
+3. **Eindeutige Änderungen übernehmen:** Eine gemeinsame Aktion übernimmt die zulässigen Änderungen und legt verknüpfte Folgeaufgaben an. Sie erzeugt oder versendet noch keine Formulare und ändert nicht stillschweigend die historische Verantwortung für einen Dialog.
+4. **Klärungsfälle bearbeiten:** Einzelentscheidung direkt am betroffenen Dialog treffen. Gleichartige Fälle dürfen gemeinsam entschieden werden, wenn Auswirkungen und Auswahl vorher sichtbar sind.
+5. **Ergebnis bearbeiten:** Direkt aus der Ergebnisliste neue Dialoge starten, Verantwortlichkeit klären oder Formulare gesammelt aktualisieren.
+
+**Beispiel einer Ergebnisliste (fiktive Zahlen):**
+- 3 neue Personen: Dialogbedarf prüfen;
+- 2 laufende Dialoge: MD-Zuständigkeit klären;
+- 4 ausgegebene Formulare: Aktualisierung prüfen;
+- 1 fehlende Anstellung: Ursache klären.
+
+Die Zahlen bezeichnen Aufgaben bzw. betroffene Ausgaben; eine Person kann mehrere Folgearbeiten auslösen. Der UI-Entwurf muss die Zähleinheit jeweils nennen.
+
+**Status unterscheiden:** „Daten übernommen“ beschreibt die Stammdatenaktualisierung. „Folgearbeiten offen“ zeigt noch ausstehende Dialogentscheidungen oder Korrekturen. „Abgleich geklärt“ bedeutet, dass die Auswirkungen entschieden und Folgearbeiten verknüpft sind; ein noch ausstehender Korrekturversand bleibt als eigene Aufgabe sichtbar.
+
+**Wiederaufnahme:** Ein erneuter Import derselben Daten erzeugt keine doppelten Dialoge oder Aufgaben. Ändern sich Daten während einer offenen Klärung erneut, werden Alt-/Neustand und Vorschlag aktualisiert und eine veraltete Entscheidung nicht ungeprüft angewendet.
+
+**Noch technisch zu entscheiden:** Ob ein Import mit ungelösten Datenkonflikten teilweise übernommen werden kann oder als vollständiger Datenstand warten muss. Vor Umsetzung sind Konsistenz und bisherige Synchronisierungslogik zu prüfen. Die gemeinsame Übernahme eindeutiger Änderungen ist das Bedienziel; sie darf nicht unbemerkt einen unvollständigen Export zum vollständigen SAP-Stand erklären.
+
+#### P09.3 Prüfkriterien
+
+- Ein Eintritt während der Jahreskampagne führt zu einem passenden Dialogvorschlag in derselben Arbeitsübersicht.
+- Ein Führungswechsel überschreibt keine manuelle MD-Zuständigkeit und keine historische Zuordnung.
+- Ein Austritt oder fehlender Datensatz löscht keine laufenden Rücklaufarbeiten.
+- Unveränderte Daten erzeugen keine neue Prüfpflicht.
+- Gemeinsame Übernahme zeigt nachvollziehbar, was übernommen und was zurückgehalten wurde.
+- Jede Folgeaufgabe öffnet den betroffenen Fall mit dem Grund der Änderung.
+- Alte Ausgaben bleiben erhalten; neue Stammdaten allein bestätigen weder Neuerstellung noch Versand.
+
 
 ### P10 – MD-Zuständigkeit festlegen oder ändern
 

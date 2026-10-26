@@ -17,9 +17,19 @@ Die Arbeitsübersicht ist der zentrale Einstieg. Dokumenteneingang, Importergebn
 
 ## 2. PDF-Rücklauf: Vom Eingang zur Bereitstellung
 
+**Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen und für die Dossierablage bereitgestellt. HR bearbeitet Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
+
+Voraussetzungen sind eine eindeutige Dokumentart/Verwendung, Person/Anstellung, Gesprächsteil und zeitliche Zuordnung, keine erkannten unklaren Textstellen oder fehlenden Pflichtangaben und kein Konflikt mit einer bestehenden Version. „Lesbar“ allein genügt nicht. Die konkreten Kriterien sind vor Implementierung je unterstütztem Formularformat zu definieren und mit repräsentativen Dokumenten zu prüfen; fehlende Warnungen sind kein garantierter Nachweis einer fehlerfreien Extraktion.
+
+Identische Dubletten verweisen auf die vorhandene Verarbeitung und werden nicht erneut bereitgestellt. Abweichende Versionen, ungeklärte Zuordnungen und Ausleseprobleme erzeugen konkrete HR-Aufgaben. Technische Ablagefehler lassen die fachliche Übernahme bestehen und führen zur gezielten Wiederholung der Übergabe.
+
+Automatisch erledigte Eingänge bleiben im Verlauf mit Original, übernommenen Angaben und Verarbeitungsergebnis auffindbar; sie erzeugen keine offene Prüfaufgabe. Der Verlauf nennt „automatisch übernommen“, nicht „von HR geprüft“. Die lokale Bereitstellung bestätigt keine tatsächliche externe Roboterverarbeitung. Unterschriften bleiben in der Verantwortung der Führungskräfte.
+
+Diese Entscheidung betrifft reguläre PDF-Rückläufe. Die ausdrücklich beschriebene Freigabe korrigierter Zielquellen und das manuelle Bündeln von Feedbacks werden dadurch nicht aufgehoben. Das genaue Verhalten nach manueller Klärung einer Ausnahme wird im UI ausdrücklich benannt; ein Entwurfsspeichern löst keine Bereitstellung aus.
+
 ### Einstieg und Seitenkopf
 
-Beispielaufgabe: „Rückblick von Person A: Angaben prüfen“.
+Beispielaufgabe: „Rückblick von Person A: Zeitraum nicht eindeutig erkannt“. Erfolgreich automatisch verarbeitete Rückläufe erscheinen im Verlauf, nicht als offene HR-Prüfaufgaben. Die folgende Prüfmaske dient den Ausnahmen.
 
 Nach dem Öffnen zeigt der Kopf Dokumentart, Person/Anstellung, Gesprächsanlass, Zeitraum, verantwortliche Führungskraft und Herkunft. Bei fehlender Zuordnung steht genau diese Klärung an erster Stelle. Ein Sprung zu einer allgemeinen Personenliste ist nicht nötig.
 
@@ -50,7 +60,7 @@ Die fachliche Übernahme ist eine eigene nachvollziehbare Aktion. Sind danach we
 | „Als Dublette abschliessen“ | Vorhandene Verarbeitung verlinken; keine zusätzliche Ablage |
 | „Begründet zurückstellen“ | Entscheidung nachvollziehbar speichern; benötigtes Dokument bleibt als fachlicher Bedarf erkennbar |
 
-Ob die Bereitstellung nach abschliessender Prüfung automatisch erfolgt oder eine eigene Aktion benötigt, bleibt fachlich zu entscheiden. Der Button beschreibt hier eine mögliche explizite Ausgestaltung; keine neue Ablageregel wird festgelegt.
+Im eindeutigen Standardfall erfolgen Übernahme und Bereitstellung automatisch. Die beschriebenen Prüfaktionen gelten für Ausnahmen; „Für Dossier bereitstellen“ ist dort eine ausdrückliche Abschluss- oder Wiederholungsaktion bei erfüllten Voraussetzungen. Entwurfsspeichern und Rückfrage lösen keine Übergabe aus.
 
 ### Status und Abschluss
 
@@ -158,8 +168,10 @@ Feedbacksammlungen bleiben als fachlich eigene Sammlung auffindbar; ihr sinnvoll
 
 **Konzeptionelles Ergebnis:** Regulärer Rücklauf und SAP-Abgleich passen in dasselbe Bedienmuster. Eine gemeinsame Arbeitsübersicht lässt sich mit unterschiedlichen Detailprüfungen verbinden.
 
-**Vor Umsetzung offen:** Ob eine gesonderte Scan-Datei in bestimmten Fällen unabhängig von der Unterschriftenkontrolle erforderlich ist, Auslöser der Dossierbereitstellung, Korrektur nach externer Verarbeitung, Teilimportstrategie und verbindliche Fachregeln für Dialogbedarf/Zeiträume.
+**Vor Umsetzung offen:** Ob eine gesonderte Scan-Datei in bestimmten Fällen unabhängig von der Unterschriftenkontrolle erforderlich ist, technische Validierungskriterien für automatische Übernahme/Bereitstellung, Korrektur nach externer Verarbeitung, Teilimportstrategie und verbindliche Fachregeln für Dialogbedarf/Zeiträume.
 
 **Prüfung:** Dokumentarischer Abgleich mit den bisherigen Anforderungen und S01/S03/S04/S05; kein Browser- oder Integrationstest. Die produktive App ist unverändert.
 
 **Abnahmekriterium zur Unterschriftenverantwortung:** Ein zugeordneter und fachlich geprüfter Rückblick kann ohne HR-Unterschriftenbestätigung bereitgestellt werden, sofern keine andere erforderliche Voraussetzung fehlt. Weder Aufgabenliste noch Erinnerungen verlangen eine HR-Unterschriftenfreigabe. Formularhinweise zur Verantwortung der Führungskräfte bleiben erhalten; der Verlauf behauptet keine erfolgte Unterschriftenkontrolle.
+
+**Abnahmekriterien zur Automatik:** Ein eindeutig zugeordnetes und erfolgreich validiertes reguläres PDF wird ohne HR-Aktion übernommen und einmalig bereitgestellt. Ein unklarer Zeitraum, nicht lesbarer Inhalt oder abweichende bereits vorhandene Version erzeugt eine konkrete Ausnahmeaufgabe. Eine Dublette bewirkt keine erneute Übergabe. Bei Ablagefehler bleibt die erfolgreiche Datenübernahme nachvollziehbar. Erledigte automatische Eingänge sind weiterhin auffindbar.

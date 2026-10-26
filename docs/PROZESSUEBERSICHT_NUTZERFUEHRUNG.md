@@ -19,18 +19,24 @@ Grundlage sind Quellcode, Seitenvorlagen und Projektdokumentation. Produktive Da
 
 ## 2. Gesamtübersicht
 
-Die Prozesse laufen teilweise gleichzeitig. Eine späte Zielnachreichung kann beispielsweise während des regulären Rücklaufs einen neuen Korrekturvorgang auslösen.
+Die Prozesse laufen ganzjährig und parallel. Während Jahresdialoge bearbeitet werden, können Neueintritte einen unterjährigen Dialog auslösen, Stammdatenänderungen bestehende Fälle betreffen und Zielnachreichungen Korrekturausgaben erfordern.
+
+**Anforderungen aus der Abstimmung vom 26. Oktober 2026:** Regelmässiger SAP-Stammdatenabgleich ist ein eigenständiger häufiger Prozess. Die MD-verantwortliche Führungskraft kann von SAP abweichen. Mehrere nachgereichte Ausblicke sollen gemeinsam zu neuen Rückblicken verarbeitet werden können. Die strikte Trennung nach Durchläufen soll die tägliche Bearbeitung nicht bestimmen.
+
+**Sollvorschlag zum Grundmodell:** Der einzelne Dialog mit Anlass, Anstellung, Zeitraum und MD-Zuständigkeit ist die fachliche Arbeitseinheit. Die gemeinsame Arbeitsübersicht zeigt alle offenen Aufgaben; Dialogart, Jahr, Führungskraft und OE dienen als Filter. Eine Jahreskampagne bündelt Planung, Sammelversand und Auswertung. Sie ist keine Voraussetzung dafür, einen unterjährigen Dialog zu starten. Die bestehende technische Durchlaufbindung muss dafür gesondert geprüft und gegebenenfalls angepasst werden.
 
 | ID | Teilprozess und Auslöser | Ergebnis / Abschluss | Anschluss |
 |---|---|---|---|
-| P01 | Durchlauf vorbereiten: Jahresstart oder neuer SAP-Stand | Datenstand, Zuordnungen, Gesprächsumfang und Fristen sind geprüft | P02; Sonderfälle an P07 |
+| P01 | Jahreskampagne vorbereiten | Umfang, Fristen und Auswahl der Jahresdialoge sind geprüft | P02; Datenabgleich über P09; weitere Dialoge über P07 |
 | P02 | Formulare erstellen und erstmals versenden | Vorgesehene Unterlagen wurden an die richtige Führungskraft übermittelt; Versand ist dokumentiert | P04, P05, P06 |
 | P03 | Ziele nachreichen oder ausgegebene Formulare korrigieren | Aktualisierung wurde übermittelt oder begründet als nicht nötig entschieden | P04; bei neuer Änderung erneut P03 |
 | P04 | MD-Dokumente empfangen, prüfen und bereitstellen | Gültiger Rücklauf ist zugeordnet und erforderliche Prüfungen/Übergaben sind erledigt | P08; fehlende Unterlagen an P06 |
 | P05 | Feedbacks empfangen und zusammenführen | Geprüfte Sammlung bzw. Nachtrag wurde bereitgestellt | Externe Dossierverarbeitung |
 | P06 | Fehlende Unterlagen nachverfolgen | Unterlage eingegangen, Pflicht begründet aufgehoben oder weiterer Klärungsbedarf dokumentiert | P04 bzw. P07 |
 | P07 | Unterjähriges Ereignis oder Ausnahme bearbeiten | Richtiger Dialog mit Person, Anstellung, Führungskraft, Umfang, Zeitraum und Formular-OE ist festgelegt | P02/P03, danach P04 |
-| P08 | Auswerten, SAP bereitstellen und Durchlauf abschliessen | Exporte und Restfälle sind nachvollziehbar; Durchlauf geschlossen | Folgejahr P01; Nachzügler über Wiederöffnung |
+| P08 | Auswerten, SAP bereitstellen und Jahreskampagne abschliessen | Exporte und Restfälle sind nachvollziehbar; Kampagnenabschluss ist dokumentiert | Folgejahr P01; offene und neue Dialoge bleiben bearbeitbar (Soll) |
+| P09 | SAP-Stammdaten regelmässig aktualisieren | Änderungen sind geprüft; nötige Folgeaufgaben sind verknüpft | P07 bei neuen Dialogen; P03 bei Korrekturen; P10 bei Zuständigkeitsfragen |
+| P10 | MD-Zuständigkeit festlegen oder ändern | Verantwortliche Führungskraft und Geltungsbereich sind nachvollziehbar festgelegt | P02/P03; bestehende Rückläufe und Historie berücksichtigen |
 
 Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstützende Betriebsprozesse. Sie sollen fachliche Aufgaben bei Bedarf konkret blockieren und einen Lösungsweg anbieten, aber nicht die normale Arbeitsübersicht dominieren.
 
@@ -38,8 +44,9 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 | Einheit | Bedeutung für die Nutzerführung |
 |---|---|
-| Durchlauf | Jahreskontext; globale ungeklärte Eingänge dürfen beim Wechsel des Jahres nicht verschwinden |
-| Dialogfall | Person, Anstellung, zuständige Führungskraft und Gesprächsanlass; nur der Name genügt bei Mehrfachanstellungen nicht |
+| Durchlauf / Jahreskampagne | Ist: technischer Jahreskontext. Soll: organisatorische Bündelung und Filter; keine Zugangshürde für unterjährige Dialoge oder globale Eingänge |
+| Dialogfall | Person, Anstellung, Anlass, Zeitraum und MD-Zuständigkeit; mehrere fachlich unterschiedliche Dialoge pro Jahr möglich; Zuständigkeitswechsel allein erzeugt nicht automatisch einen neuen Dialog |
+| SAP-Führungslinie / MD-Zuständigkeit | Aktuelle organisatorische Zuordnung und für diesen Dialog verantwortliche Führungskraft getrennt halten; begründete Abweichungen bei neuen SAP-Importen sichtbar erhalten |
 | Eingang | E-Mail oder manuell hochgeladene Datei; eine Mail kann mehrere unabhängige Anliegen enthalten |
 | Dokument / Zielquelle | Inhalt, Zuordnung, Jahr, Prüfung und gültige Version |
 | Formularausgabe | Konkrete erzeugte Fassung mit den dafür verwendeten Grundlagen |
@@ -50,11 +57,11 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 ## 4. Teilprozesse: Ist und benötigte Führung
 
-### P01 – Durchlauf vorbereiten
+### P01 – Jahreskampagne vorbereiten
 
 **Ist:** SAP-Import und Konflikte unter Stammdaten; Durchlauf und Dialogpflichten unter Dialoge. Historische Zielquellen haben ebenfalls einen Einstieg unter Stammdaten. Änderungen können bestehende Ausgaben veralten lassen.
 
-**HR-Arbeit:** Datenstand und Konflikte prüfen; Jahr, Führungslinien, Umfang, Fristen und Sonderfälle klären; verfügbare Ziele kontrollieren.
+**HR-Arbeit:** Auf dem geprüften Datenstand aus P09 aufbauen; Jahr, Auswahl der Jahresdialoge, MD-Zuständigkeiten, Umfang, Fristen und Sonderfälle klären; verfügbare Ziele kontrollieren. Neue Stammdaten werden laufend über P09 bearbeitet, unabhängig von der Kampagnenphase.
 
 **Varianten:** Mehrfachanstellung, widersprüchliche Zuordnung, fehlende Führungskraft, Ein-/Austritt, Übertritt, fehlende Vorjahresziele, erneuter SAP-Import.
 
@@ -80,7 +87,7 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Varianten:** Siehe ausführlichen Ablauf in Abschnitt 5. Weitere Auslöser sind korrigierte Stammdaten, Gesprächsumfang, Zeitraum, Formular-OE oder Vorlagen.
 
-**Sollvorschlag:** Vom Anlass aus direkt zu betroffenen Formularen und deren Versand führen. Gültige Quelle, verwendete Ausgabe und Versand bleiben verknüpft.
+**Sollvorschlag:** Vom Anlass aus direkt zu betroffenen Formularen und deren Versand führen. Gültige Quelle, verwendete Ausgabe und Versand bleiben verknüpft. Mehrere nachgereichte Ausblicke gemeinsam prüfen und alle ausgewählten freigegebenen Rückblicke in einem Arbeitsschritt erstellen. Bündelung und Versand nach tatsächlicher MD-Zuständigkeit; Einzelstatus und Wiederaufnahme bleiben möglich (Abschnitt 5.5).
 
 **Abschluss:** Alle betroffenen Ausgaben wurden bearbeitet; eine unterlassene Neuerstellung/Übermittlung ist begründet.
 
@@ -126,7 +133,7 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Varianten:** Probezeit, Austritt, Übertritt, Führungswechsel, Vakanz/Stellvertretung, mehrere Gespräche im selben Jahr, kein MD bzw. entfallender Gesprächsteil.
 
-**Sollvorschlag:** Vom Anlass zur passenden Konstellation führen; zeigen, ob ein bestehender Fall geändert oder ein zusätzlicher Dialog benötigt wird. Änderungen an Stammdaten von der historischen Formularzuordnung unterscheiden.
+**Sollvorschlag:** Unterjährige Dialoge jederzeit aus der gemeinsamen Arbeitsübersicht oder aus einer Stammdatenänderung starten, auch während einer laufenden Jahreskampagne. Vom Anlass zur passenden Konstellation führen; zeigen, ob ein bestehender Fall geändert oder ein zusätzlicher Dialog benötigt wird. Änderungen an Stammdaten von der historischen Formularzuordnung unterscheiden. Verantwortlichkeit über P10 festlegen. Bereits vorhandene Probezeit-, Jahres- oder Übertrittsdialoge anzeigen, damit kein unbeabsichtigter Doppelauftrag entsteht.
 
 **Abschluss:** Fallkonstellation ist geklärt und nötige Ausgabe/Rücklaufaufgabe verknüpft.
 
@@ -138,9 +145,50 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Varianten:** Mehrere Rückblicke pro Jahr; noch ausstehender Ausblick; Korrektur nach Export/Ablage; verspäteter Eingang; Restfälle; Folgejahr.
 
-**Sollvorschlag:** Auswertungen können während des Durchlaufs genutzt werden und zeigen ihren Datenstand. Abschluss unterscheidet fachlich offene Arbeiten, Übergaben und extern zu kontrollierende Ergebnisse.
+**Sollvorschlag:** Auswertungen sind jederzeit nach Jahr, Zeitraum, Dialogart, OE und Zuständigkeit nutzbar und zeigen ihren Datenstand. Der Abschluss einer Jahreskampagne unterscheidet fachlich offene Arbeiten, Übergaben und extern zu kontrollierende Ergebnisse. Er blockiert keine neuen unterjährigen Dialoge. Offene Restfälle bleiben in der gemeinsamen Arbeitsübersicht sichtbar; abgeschlossene Einzelfälle benötigen für nachträgliche Änderungen einen nachvollziehbaren Korrekturweg.
 
 **Offen:** Wie werden externe Verarbeitung und Korrekturen bestätigt? Aktuelle SAP-Exportvoraussetzungen einschliesslich gegebenenfalls erforderlichem Ausblick fachlich bestätigen.
+
+### P09 – SAP-Stammdaten laufend aktualisieren
+
+**Anforderung:** Häufige neue Exporte mit Eintritten, Austritten, Übertritten und weiteren Änderungen einlesen – auch bei bereits versendeten Formularen und laufenden Rückläufen.
+
+**Ist:** SAP-Import und Synchronisierung sind vorhanden. Die genaue Wirkung jeder Änderung auf offene und historische Dialoge muss vor der Umsetzung geprüft werden; die nachfolgende Vorschau ist ein Sollvorschlag.
+
+| Schritt | Sollablauf / HR-Entscheidung | Ergebnis |
+|---|---|---|
+| Neuen Export laden | Datenstand und Vollständigkeit prüfen; alten Stand zum Vergleich verwenden | Auswertbare Änderungsliste |
+| Änderungen prüfen | Neue Personen, Austritte, Wechsel von OE/Führungskraft sowie Konflikte getrennt zeigen | Bedeutung und Zuordnung geklärt |
+| Auswirkungen klären | Betroffene offene Dialoge und ausgegebene Formulare zeigen; bei Eintritt Dialogbedarf prüfen | Bestehenden Fall beibehalten/ändern oder zusätzlichen Dialog anlegen |
+| Änderungen übernehmen | Bestätigte Aktualisierungen nachvollziehbar speichern; manuelle MD-Zuständigkeiten erhalten bzw. zur Entscheidung vorlegen | Aktueller Stammdatenstand mit dokumentierten Ausnahmen |
+| Folgearbeit bearbeiten | Direkt zu Dialogstart, Zuständigkeitsklärung oder Korrekturausgabe führen | Verknüpfte Aufgaben statt erneuter Personensuche |
+
+**Varianten:** Vollständiger Export, unbeabsichtigte Teilliste, unveränderter erneuter Import, Mehrfachanstellung, rückwirkende Änderung, fehlende Person, Führungskraft vakant, bestehende manuelle Zuständigkeit.
+
+**Leitregeln für den Sollablauf:**
+- Eine im Export fehlende Person nicht ohne Klärung als Austritt behandeln.
+- Neue SAP-Führungskraft nicht automatisch zur verantwortlichen Person für einen bereits begonnenen historischen Dialog machen.
+- Frühere Formulare, Zeiträume und abgeschlossene Dialoge bleiben nachvollziehbar.
+- Ein Eintritt kann P07 auslösen; die passende Dialogpflicht folgt den fachlichen Regeln und bereits vorhandenen Fällen.
+- Die Übernahme neuer Stammdaten ist abgeschlossen, wenn ihre Auswirkungen entschieden und Folgeaufgaben verknüpft sind; der Versand dieser Folgeaufgaben hat einen eigenen Status.
+
+**Offen:** Welche Änderungen dürfen nach der Vorschau gemeinsam übernommen werden, welche brauchen eine Einzelentscheidung? Die Prüfung soll nach fachlichen Auswirkungen priorisieren, nicht jede unveränderte Person erneut vorlegen.
+
+### P10 – MD-Zuständigkeit festlegen oder ändern
+
+**Anforderung:** Eine andere Führungskraft kann den MD verantworten, beispielsweise bei Vakanz. Das kann bei Neuanlage oder einem bereits laufenden Dialog vorkommen.
+
+**Ist:** Für manuelle Ereignisse sind Führungskraft und Formular-OE auswählbar. Eine umfassende Änderung der Zuständigkeit bestehender Dialoge einschliesslich Folgeaktionen wird hier noch nicht als vorhanden vorausgesetzt.
+
+**Sollablauf:** Dialog bzw. betroffene Personen auswählen → SAP-Führungskraft und bisherige MD-Zuständigkeit anzeigen → verantwortliche Führungskraft auswählen → Grund, Geltungsbereich und Formular-OE bestätigen → Auswirkungen auf Formulare, offene Versandvorgänge, Rückläufe und Erinnerungen prüfen.
+
+**Sollvorschlag:** Standardmässig gilt die Abweichung für den ausgewählten Dialog. Eine gemeinsame Zuweisung für mehrere ausgewählte Dialoge ist möglich. SAP-Zuordnung und manuelle MD-Zuständigkeit bleiben getrennt gespeichert. Ein neuer SAP-Import hebt die bewusste Abweichung nicht stillschweigend auf.
+
+**Varianten:** Vakanz, Stellvertretung, Übertritt mit Rückblick durch alte Führungskraft, Zuständigkeitswechsel vor/nach Versand, bereits eingegangener Rücklauf, unterschiedliche Zuständigkeiten für verschiedene Gesprächsanlässe.
+
+**Abschluss:** MD-Zuständigkeit ist gespeichert und nötige Korrekturen/Benachrichtigungen sind als Folgearbeit sichtbar. Ein Wechsel allein bestätigt keinen Versand. Feedback an eine bestimmte Führungskraft darf nicht pauschal auf die neue MD-verantwortliche Person umgebucht werden.
+
+**Offen:** Brauchen wir zusätzlich zeitlich befristete Vertretungen für eine ganze Organisationseinheit oder genügt zunächst die gemeinsame Auswahl konkreter Dialoge? Können Rückblick und Ausblick desselben Anlasses unterschiedliche Verantwortliche benötigen?
 
 ## 5. Detailablauf P03: Alter Ausblick geht nachträglich ein
 
@@ -195,6 +243,22 @@ Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhan
 
 **Offen:** Soll HR erkannte Ziele direkt in der App korrigieren können? Empfehlung: ja, mit Originalbezug und protokollierter korrigierter Fassung. Die Alternative „nur im erzeugten Word ergänzen“ lässt gespeicherte Quelle und spätere Neuerzeugungen auseinanderlaufen.
 
+### 5.5 Mehrere nachgereichte Ausblicke gemeinsam bearbeiten
+
+**Anforderung:** Reicht eine Führungskraft mehrere Ausblicke nach, soll HR die neuen Rückblicke für alle betroffenen Mitarbeitenden in einem Zug erstellen können.
+
+**Sollablauf:**
+1. Gemeinsamen Eingang oder ausgewählte Nachreichungen öffnen; pro Person Anstellung, Zieljahr, Quelle und Prüfstatus anzeigen.
+2. Freigegebene Fälle gemeinsam auswählen; unklare Fälle mit konkretem Grund zurückhalten.
+3. „Ausgewählte Rückblicke erstellen“ erzeugt nur die benötigten Rückblicke; ein vollständiges neues Führungskräftepaket ist dafür nicht nötig.
+4. Ergebnisse pro Person anzeigen. Erfolgreiche Ausgaben bleiben erhalten; fehlgeschlagene können gezielt wiederholt werden.
+5. Geprüfte Rückblicke pro tatsächlicher MD-verantwortlicher Führungskraft für einen gemeinsamen Versand bündeln. Der Absender der Nachreichung ist nicht automatisch der richtige Empfänger.
+6. Versandstatus sowohl für das Bündel als auch die enthaltenen Ausgaben nachvollziehen. Offene Personen bleiben sichtbar und können später als Nachtrag folgen.
+
+**Beispiel:** Fünf Ausblicke kommen gemeinsam an. Vier Quellen sind freigegeben, eine braucht Klärung. HR kann vier Rückblicke gemeinsam erstellen und übermitteln; die fünfte Aufgabe bleibt mit Grund offen. Ein Teilerfolg darf nicht den gesamten Eingang als fachlich abgeschlossen darstellen.
+
+**Abgrenzung:** Die Sammelaktion spart wiederholte Bedienung; Prüfung, Zuordnung und Verlauf bleiben pro Person/Anstellung und Dokument erhalten. Die bestehende Unterstützung für personenspezifische Korrekturen ist noch kein Nachweis, dass dieser Sammelablauf bereits implementiert ist.
+
 ## 6. Übergreifende Regeln für die spätere Nutzerführung
 
 1. Jede Aufgabe zeigt Anlass, betroffene Person/Anstellung, Jahr, offenen Punkt und nächste Aktion.
@@ -206,12 +270,15 @@ Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhan
 7. Wiederaufnahme und erneute Eingänge erzeugen keine unbemerkten Doppelarbeiten.
 8. Alte Ausgaben bleiben nachvollziehbar; Änderungen zeigen die tatsächlich betroffenen Personen und Formulare.
 9. Erfolgsmeldungen benennen Wirkung und nächsten Schritt konkret.
-10. Auch der alternative Abschluss „nicht erforderlich“, „Dublette“ oder „begründet verworfen“ ist nachvollziehbar.
+10. Offene Arbeiten sind unabhängig von Kampagne und Dialogart gemeinsam auffindbar; Filter schränken die Anzeige bewusst ein.
+11. SAP-Führungslinie und MD-Zuständigkeit werden getrennt geführt und bei Änderungen miteinander abgeglichen.
+12. Sammelaktionen bündeln passende Aufgaben, ohne Einzelstatus, Fehler oder abweichende Empfänger zu verdecken.
+13. Auch der alternative Abschluss „nicht erforderlich“, „Dublette“ oder „begründet verworfen“ ist nachvollziehbar.
 
 ## 7. Gemeinsame Ausarbeitung und Prüfung
 
 Nächste Reihenfolge:
-1. Prozessumfang und fehlende Varianten gemeinsam ergänzen.
+1. Prozessumfang und fehlende Varianten gemeinsam ergänzen; P09/P10 sowie parallele Jahres- und unterjährige Dialoge sind aufgenommen.
 2. Entscheidungen aus P03 fachlich festlegen.
 3. P03 als Seitenfolge entwerfen.
 4. Muster auf P04 und danach weitere Prozesse übertragen.
@@ -224,7 +291,15 @@ Prüfszenarien für P03:
 - konkurrierende Quelle und identischer erneuter Eingang;
 - bereits bearbeiteter Rückblick;
 - gemischte Mail;
-- unterbrochener Korrekturversand.
+- unterbrochener Korrekturversand;
+- mehrere Nachreichungen mit teils unklaren Quellen und unterschiedlichen MD-Verantwortlichen.
+
+Zusätzliche Prüfszenarien für das Grundmodell:
+- SAP-Neuimport während der Jahreskampagne mit gleichzeitigem Eintritt, Austritt und Übertritt;
+- Eintritt führt zu einem unterjährigen Dialog, während für andere Personen Jahresrückläufe offen sind;
+- manuelle Zuständigkeit wegen Vakanz bleibt beim nächsten Import sichtbar erhalten;
+- Übertritt nach Versand verändert den historischen Rückblick nicht unbemerkt;
+- Kampagnenabschluss lässt offene Restfälle und neue unterjährige Aufgaben zugänglich.
 
 Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was bereits geschehen ist, was konkret fehlt und wie sie bis zum fachlichen Abschluss gelangt.
 

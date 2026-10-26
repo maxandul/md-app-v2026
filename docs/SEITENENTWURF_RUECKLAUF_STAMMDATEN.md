@@ -32,8 +32,10 @@ Bei mehreren Dokumenten im Eingang bleibt links eine kompakte Liste mit Einzelst
 | Zuordnung | Person, Anstellung, Gesprächsteil, Anlass, Zeitraum, MD-Verantwortlichkeit | Vorschlag bestätigen oder korrigieren |
 | Original und erkannte Angaben | PDF neben übernommenen Feldern; Fundstellen/Unsicherheiten | Angaben am Original prüfen und korrigieren |
 | Vorhandene Versionen | Früherer Eingang, aktuelle gültige Fassung, bisherige Übergaben | Dublette bestätigen oder Korrekturweg wählen |
-| Erforderliche Folgeprüfung | Konkrete Unterschriften-/Scananforderung für diesen Dokumenttyp | Prüfung durchführen oder fehlende Unterlage vermerken |
+| Bereitstellungsvoraussetzungen | Angaben-/Zuordnungsprüfung abgeschlossen; gegebenenfalls unabhängig erforderliche Dokumente vorhanden | Offenen fachlichen Punkt klären oder bereitstellen; keine HR-Unterschriftenkontrolle |
 | Ergebnis | Fachlich übernommen, weitere Prüfung offen oder bereitgestellt | Nächste zulässige Aktion direkt ausführen |
+
+**Bestätigte Fachregel:** Führungskräfte verantworten die verlangten Unterschriften. HR kontrolliert sie nicht. Die Prüfmaske enthält daher weder einen Unterschriften-Prüfschritt noch eine entsprechende Freigabe; die Dossierbereitstellung darf keine solche Bestätigung verlangen.
 
 Die fachliche Übernahme ist eine eigene nachvollziehbare Aktion. Sind danach weitere Prüfungen nötig, erscheinen sie auf derselben Bearbeitungsseite. Der bisherige Wechsel zwischen PDF-Prüfung und separat gesuchtem Fall soll entfallen.
 
@@ -43,7 +45,7 @@ Die fachliche Übernahme ist eine eigene nachvollziehbare Aktion. Sind danach we
 |---|---|
 | „Prüfentwurf speichern“ | Änderungen sichern; keine fachliche Übernahme oder Ablage |
 | „Rückfrage vermerken“ | Konkreten offenen Punkt festhalten; kein automatischer Versand |
-| „Angaben übernehmen“ | Bestätigte Daten dem Gesprächsteil zuordnen; nötige Folgeprüfung anzeigen |
+| „Angaben übernehmen“ | Bestätigte Daten dem Gesprächsteil zuordnen; Bereitstellung bzw. noch offene fachliche Voraussetzung anzeigen |
 | „Für Dossier bereitstellen“ | Nur bei erfüllten Voraussetzungen die Übergabe auslösen und Ergebnis anzeigen |
 | „Als Dublette abschliessen“ | Vorhandene Verarbeitung verlinken; keine zusätzliche Ablage |
 | „Begründet zurückstellen“ | Entscheidung nachvollziehbar speichern; benötigtes Dokument bleibt als fachlicher Bedarf erkennbar |
@@ -56,11 +58,11 @@ Ob die Bereitstellung nach abschliessender Prüfung automatisch erfolgt oder ein
 
 Die Anzeige trennt:
 - fachliche Übernahme;
-- erforderliche Unterschriften-/Scanprüfung;
+- gegebenenfalls eigenständige, noch zu bestätigende Dokumentpflichten; keine Unterschriftenkontrolle durch HR;
 - lokale Bereitstellung;
 - tatsächliche externe Verarbeitung, soweit ein Nachweis vorhanden ist.
 
-Beispiel: „Rückblick übernommen · Unterschriftenprüfung offen“. Nach erledigter Prüfung: „Für Dossier bereitgestellt · Ausblick noch ausstehend“. Ohne Rückmeldung des externen Systems wird keine erfolgte Personaldossier-Ablage behauptet.
+Beispiel: „Rückblick übernommen · Bereitstellung ausstehend“. Nach erfolgreicher Übergabe: „Für Dossier bereitgestellt · Ausblick noch ausstehend“. Es gibt keinen Zwischenstatus „Unterschriftenprüfung offen“. Ohne Rückmeldung des externen Systems wird keine erfolgte Personaldossier-Ablage behauptet.
 
 ### Fehler und Wiederaufnahme
 
@@ -134,7 +136,7 @@ Eine bekannte manuelle Abweichung erzeugt keine neue Prüfpflicht, solange keine
 | Entscheidung | Zielversion bestätigen | Angaben und erforderliche Prüfungen bestätigen | Änderung und ihre fachlichen Auswirkungen klären |
 | Gemeinsame Folgearbeit | Rückblicke erstellen und versenden | Zulässige nächste Bearbeitung bzw. Bereitstellung | Änderungen übernehmen, Dialoge oder Korrekturen vorbereiten |
 | Abschluss des Schritts | Quelle bestätigt | Prüfung erledigt | Daten übernommen / Auswirkungen geklärt |
-| Mögliche Restarbeit | Korrekturversand | Scan, Rückfrage, Bereitstellung, externer Nachweis | Dialoganlage, Zuständigkeitsklärung, Korrekturversand |
+| Mögliche Restarbeit | Korrekturversand | Rückfrage, gegebenenfalls separate Dokumentpflicht, Bereitstellung, externer Nachweis | Dialoganlage, Zuständigkeitsklärung, Korrekturversand |
 
 Damit genügt ein wiederkehrender Aufbau aus Kopf, Liste, Detailprüfung und nächster Aktion. Es braucht keine identischen Fachformulare für alle Abläufe.
 
@@ -156,6 +158,8 @@ Feedbacksammlungen bleiben als fachlich eigene Sammlung auffindbar; ihr sinnvoll
 
 **Konzeptionelles Ergebnis:** Regulärer Rücklauf und SAP-Abgleich passen in dasselbe Bedienmuster. Eine gemeinsame Arbeitsübersicht lässt sich mit unterschiedlichen Detailprüfungen verbinden.
 
-**Vor Umsetzung offen:** Dokumenttypabhängige Unterschriften-/Scanregeln, Auslöser der Dossierbereitstellung, Korrektur nach externer Verarbeitung, Teilimportstrategie und verbindliche Fachregeln für Dialogbedarf/Zeiträume.
+**Vor Umsetzung offen:** Ob eine gesonderte Scan-Datei in bestimmten Fällen unabhängig von der Unterschriftenkontrolle erforderlich ist, Auslöser der Dossierbereitstellung, Korrektur nach externer Verarbeitung, Teilimportstrategie und verbindliche Fachregeln für Dialogbedarf/Zeiträume.
 
 **Prüfung:** Dokumentarischer Abgleich mit den bisherigen Anforderungen und S01/S03/S04/S05; kein Browser- oder Integrationstest. Die produktive App ist unverändert.
+
+**Abnahmekriterium zur Unterschriftenverantwortung:** Ein zugeordneter und fachlich geprüfter Rückblick kann ohne HR-Unterschriftenbestätigung bereitgestellt werden, sofern keine andere erforderliche Voraussetzung fehlt. Weder Aufgabenliste noch Erinnerungen verlangen eine HR-Unterschriftenfreigabe. Formularhinweise zur Verantwortung der Führungskräfte bleiben erhalten; der Verlauf behauptet keine erfolgte Unterschriftenkontrolle.

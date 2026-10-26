@@ -1,0 +1,243 @@
+# Prozessübersicht und Nutzerführung – Arbeitsstand
+
+Stand: 26. Oktober 2026  
+Codebasis: main, Commit 9d7ca779afc18e9bd9c6607a5b3dbe8465537a18  
+Status: Diskussionsgrundlage; Sollabläufe und offene Entscheidungen sind noch keine implementierten Funktionen.
+
+## 1. Ziel und Umfang
+
+HR soll einen fachlichen Vorgang vom Anlass bis zum Ergebnis bearbeiten können, ohne die Verbindung zwischen Postfach, Import, Fall, Formularerstellung und Versand selbst herstellen zu müssen.
+
+Diese Übersicht beschreibt den Word-/PDF-Standardablauf aus HR-Sicht. Handlungen von Mitarbeitenden, Führungskräften sowie Outlook, Dossier-Roboter und SAP werden an den Übergängen sichtbar gemacht. Die frühere HTML-Arbeitsmappe ist ein gesonderter Übergangsweg.
+
+Grundlage sind Quellcode, Seitenvorlagen und Projektdokumentation. Produktive Daten, konkrete problematische Eingänge und die Bedienung im Windows-/Outlook-Betrieb wurden nicht geprüft. Fachliche Spezialfallregeln werden hier nicht neu festgelegt.
+
+**Kennzeichnung:**
+- **Ist:** im untersuchten Stand erkennbares Verhalten.
+- **Sollvorschlag:** Grundlage für die gemeinsame Ausarbeitung.
+- **Offen:** fachlich oder technisch noch zu entscheiden bzw. genauer zu prüfen.
+
+## 2. Gesamtübersicht
+
+Die Prozesse laufen teilweise gleichzeitig. Eine späte Zielnachreichung kann beispielsweise während des regulären Rücklaufs einen neuen Korrekturvorgang auslösen.
+
+| ID | Teilprozess und Auslöser | Ergebnis / Abschluss | Anschluss |
+|---|---|---|---|
+| P01 | Durchlauf vorbereiten: Jahresstart oder neuer SAP-Stand | Datenstand, Zuordnungen, Gesprächsumfang und Fristen sind geprüft | P02; Sonderfälle an P07 |
+| P02 | Formulare erstellen und erstmals versenden | Vorgesehene Unterlagen wurden an die richtige Führungskraft übermittelt; Versand ist dokumentiert | P04, P05, P06 |
+| P03 | Ziele nachreichen oder ausgegebene Formulare korrigieren | Aktualisierung wurde übermittelt oder begründet als nicht nötig entschieden | P04; bei neuer Änderung erneut P03 |
+| P04 | MD-Dokumente empfangen, prüfen und bereitstellen | Gültiger Rücklauf ist zugeordnet und erforderliche Prüfungen/Übergaben sind erledigt | P08; fehlende Unterlagen an P06 |
+| P05 | Feedbacks empfangen und zusammenführen | Geprüfte Sammlung bzw. Nachtrag wurde bereitgestellt | Externe Dossierverarbeitung |
+| P06 | Fehlende Unterlagen nachverfolgen | Unterlage eingegangen, Pflicht begründet aufgehoben oder weiterer Klärungsbedarf dokumentiert | P04 bzw. P07 |
+| P07 | Unterjähriges Ereignis oder Ausnahme bearbeiten | Richtiger Dialog mit Person, Anstellung, Führungskraft, Umfang, Zeitraum und Formular-OE ist festgelegt | P02/P03, danach P04 |
+| P08 | Auswerten, SAP bereitstellen und Durchlauf abschliessen | Exporte und Restfälle sind nachvollziehbar; Durchlauf geschlossen | Folgejahr P01; Nachzügler über Wiederöffnung |
+
+Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstützende Betriebsprozesse. Sie sollen fachliche Aufgaben bei Bedarf konkret blockieren und einen Lösungsweg anbieten, aber nicht die normale Arbeitsübersicht dominieren.
+
+## 3. Welche Einheiten zusammengehören
+
+| Einheit | Bedeutung für die Nutzerführung |
+|---|---|
+| Durchlauf | Jahreskontext; globale ungeklärte Eingänge dürfen beim Wechsel des Jahres nicht verschwinden |
+| Dialogfall | Person, Anstellung, zuständige Führungskraft und Gesprächsanlass; nur der Name genügt bei Mehrfachanstellungen nicht |
+| Eingang | E-Mail oder manuell hochgeladene Datei; eine Mail kann mehrere unabhängige Anliegen enthalten |
+| Dokument / Zielquelle | Inhalt, Zuordnung, Jahr, Prüfung und gültige Version |
+| Formularausgabe | Konkrete erzeugte Fassung mit den dafür verwendeten Grundlagen |
+| Versand / Übergabe | Nachweis, was an wen bzw. an welches externe System übergeben wurde |
+| Vorgang (Sollvorschlag) | Verbindet Anlass, Dokumente, betroffene Fälle, Entscheidungen und Folgearbeiten bis zum fachlichen Ergebnis |
+
+**Leitregel:** Eine erledigte Mail ist kein Nachweis für einen versendeten Rückblick. Eine übernommene Zielquelle ist noch keine aktualisierte Formularausgabe. Eine bereitgestellte PDF-Datei ist kein Nachweis der tatsächlichen Roboterverarbeitung.
+
+## 4. Teilprozesse: Ist und benötigte Führung
+
+### P01 – Durchlauf vorbereiten
+
+**Ist:** SAP-Import und Konflikte unter Stammdaten; Durchlauf und Dialogpflichten unter Dialoge. Historische Zielquellen haben ebenfalls einen Einstieg unter Stammdaten. Änderungen können bestehende Ausgaben veralten lassen.
+
+**HR-Arbeit:** Datenstand und Konflikte prüfen; Jahr, Führungslinien, Umfang, Fristen und Sonderfälle klären; verfügbare Ziele kontrollieren.
+
+**Varianten:** Mehrfachanstellung, widersprüchliche Zuordnung, fehlende Führungskraft, Ein-/Austritt, Übertritt, fehlende Vorjahresziele, erneuter SAP-Import.
+
+**Sollvorschlag:** Vorbereitung zeigt prüfbare Punkte und deren Auswirkungen. Fehlende optionale Ziele werden von blockierenden Zuordnungsfehlern unterschieden. Änderungen nach Versand führen gezielt zu P03.
+
+**Offen:** Welche Punkte müssen zwingend geklärt sein, bevor einzelne Personen bzw. eine ganze Führungslinie versendet werden dürfen?
+
+### P02 – Formulare erstellen und erstmals versenden
+
+**Ist:** Personalisierte Word-Ausgaben und Führungskräftepakete; Reflexion und Feedbackvorlage als Beilagen. Erzeugung, Outlook-Übergabe und Versand sind getrennte Schritte.
+
+**HR-Arbeit:** Personen/Formulare auswählen, Ausgabe prüfen, Versand vorbereiten und tatsächlichen Versand nachvollziehen.
+
+**Varianten:** Einzelperson, Führungslinie, Sammelauswahl; fehlende E-Mail; geänderte Grundlagen; erneute Erzeugung; Outlook-Unterbrechung; Abbruch.
+
+**Sollvorschlag:** Sichtbare Schritte „Unterlagen prüfen“, „Versand vorbereiten“, „Versand bestätigen“. Bei Wiederholung erkennen, welche Fassung bereits übermittelt wurde. Offene Outlook-Vorgänge zuerst klären.
+
+**Abschluss:** Versand der vorgesehenen gültigen Ausgabe ist dokumentiert oder die Ausgabe wurde begründet verworfen.
+
+### P03 – Ziele nachreichen und Formulare korrigieren
+
+**Ist:** Word-Zielimport über Postfach oder manuellen Import; PDF-Ausblick auch als historische Zielquelle. Quellenvergleich, Änderungsprüfung und personenspezifische Korrekturausgabe sind vorhanden, aber über mehrere Seiten verteilt.
+
+**Varianten:** Siehe ausführlichen Ablauf in Abschnitt 5. Weitere Auslöser sind korrigierte Stammdaten, Gesprächsumfang, Zeitraum, Formular-OE oder Vorlagen.
+
+**Sollvorschlag:** Vom Anlass aus direkt zu betroffenen Formularen und deren Versand führen. Gültige Quelle, verwendete Ausgabe und Versand bleiben verknüpft.
+
+**Abschluss:** Alle betroffenen Ausgaben wurden bearbeitet; eine unterlassene Neuerstellung/Übermittlung ist begründet.
+
+### P04 – MD-Rückläufe prüfen und bereitstellen
+
+**Ist:** Postfachscan oder PDF-Upload; Word-PDF-Prüfwarteschlange; Originalvergleich, Fallzuordnung und fachliche Übernahme; anschliessende Fall-/Unterschriften- bzw. Scanprüfung und Dossierbereitstellung.
+
+**HR-Arbeit:** Dokumentart, Person/Anstellung, Jahr/Zeitraum und Angaben prüfen; benötigte Unterschriften/Scans kontrollieren; fehlende oder falsche Unterlagen klären.
+
+**Varianten:** Rückblick, Ausblick, Probezeit; historischer Ausblick als Zielquelle; alter Formularstand; Dublette/neue Version; unlesbares PDF/Scan; unklare Zuordnung; inaktiver Fall; geschlossener Durchlauf; Nichtdurchführung; gemischte E-Mail.
+
+**Sollvorschlag:** Ein Eingang bietet unmittelbar die passende Bearbeitung. Nach fachlicher Übernahme direkt zur noch nötigen Prüfung führen. Fehlende Unterschrift, unlesbare Angaben und technische Ablagefehler erhalten unterschiedliche Aufgaben.
+
+**Abschluss:** Dokument ist geprüft und erforderliche Übergabe ist erfolgt, oder es ist nachvollziehbar zurückgewiesen/zurückgestellt. Ein benötigter, ungeklärter Rücklauf bleibt offen.
+
+**Offen:** Die fachliche Unterschriften-/Scanregel je Dokumenttyp wird im Detail separat gegen den aktuellen Word-Standard geprüft; ältere HTML-Regeln nicht ungeprüft übernehmen.
+
+### P05 – Feedbacks bearbeiten
+
+**Ist:** Feedbacks werden geprüft, Führungskraft und Jahr zugeordnet und gesammelt. HR löst die Zusammenführung und Bereitstellung aus; spätere Eingänge können Nachträge bilden. Erwartete Anzahl dient der Orientierung, nicht automatischem Mahnen.
+
+**Varianten:** Einzel-/Sammeleingang, unbekannte Führungskraft, falsches Jahr, Dublette, Nachtrag nach Bündelung.
+
+**Sollvorschlag:** Sammlung zeigt „ungeprüft“, „bereit zum Zusammenführen“ und „bereits bereitgestellt“. Der konkrete Eingang führt direkt zur passenden Sammlung.
+
+**Abschluss:** Ausgewählte geprüfte Feedbacks wurden gebündelt und bereitgestellt. Eine fehlende rechnerische Sollzahl erzeugt keine automatische Mahnpflicht.
+
+### P06 – Fehlende Unterlagen nachverfolgen
+
+**Ist:** Fristen und Erinnerungsentwürfe beziehen sich auf offene, zurückgewiesene oder scanpflichtige Unterlagen. Offene PDF-Eingänge blockieren aktuell Erinnerungsentwürfe durchlaufübergreifend.
+
+**HR-Arbeit:** Prüfen, ob etwas wirklich fehlt; Eingangsklärung, Rückfrage, Friständerung oder Erinnerung wählen; Versand dokumentieren.
+
+**Varianten:** Bereits eingegangen, aber ungeprüft; Korrektur angefordert; Scan fehlt; Frist verlängert; Pflicht entfällt; Erinnerung bereits als Entwurf vorhanden.
+
+**Sollvorschlag:** „Warten auf HR“ und „Warten auf Führungskraft“ klar unterscheiden. Jede Erinnerung nennt das konkrete fehlende Dokument.
+
+**Offen:** Globale Erinnerungssperre beibehalten oder bei belastbarer Zuordnung auf tatsächlich betroffene Fälle beschränken?
+
+### P07 – Unterjährige Ereignisse und Ausnahmen
+
+**Ist:** Manuelle Ereignisse mit Auswahl von Person/Anstellung und Führungskraft; Formular-OE wählbar; Zeitraum, Umfang, Fristen und Durchlaufzuordnung. Ereignisse ohne Durchlauf und begründete Aufhebung von Fehlanlagen sind vorgesehen.
+
+**Varianten:** Probezeit, Austritt, Übertritt, Führungswechsel, Vakanz/Stellvertretung, mehrere Gespräche im selben Jahr, kein MD bzw. entfallender Gesprächsteil.
+
+**Sollvorschlag:** Vom Anlass zur passenden Konstellation führen; zeigen, ob ein bestehender Fall geändert oder ein zusätzlicher Dialog benötigt wird. Änderungen an Stammdaten von der historischen Formularzuordnung unterscheiden.
+
+**Abschluss:** Fallkonstellation ist geklärt und nötige Ausgabe/Rücklaufaufgabe verknüpft.
+
+**Offen:** Fachliche Spezialfallmatrix gemeinsam bestätigen, insbesondere Austritt. Technische Begrenzung bei mehreren Fällen derselben Person/Anstellung/Führungslinie im selben Durchlauf berücksichtigen.
+
+### P08 – Auswertung, SAP und Abschluss
+
+**Ist:** Auswertungen, Auswahl des SAP-massgeblichen Rückblicks, SAP-Batches, Abschlussprüfung, begründete Restfälle und Wiederöffnung. Externe SAP-/Roboterverarbeitung ist nicht mit lokaler Bereitstellung gleichzusetzen.
+
+**Varianten:** Mehrere Rückblicke pro Jahr; noch ausstehender Ausblick; Korrektur nach Export/Ablage; verspäteter Eingang; Restfälle; Folgejahr.
+
+**Sollvorschlag:** Auswertungen können während des Durchlaufs genutzt werden und zeigen ihren Datenstand. Abschluss unterscheidet fachlich offene Arbeiten, Übergaben und extern zu kontrollierende Ergebnisse.
+
+**Offen:** Wie werden externe Verarbeitung und Korrekturen bestätigt? Aktuelle SAP-Exportvoraussetzungen einschliesslich gegebenenfalls erforderlichem Ausblick fachlich bestätigen.
+
+## 5. Detailablauf P03: Alter Ausblick geht nachträglich ein
+
+### 5.1 Heutiger Weg und Bruchstellen
+
+1. Postfachscan sichert den Word-Anhang und versucht den Zielimport.
+2. Eindeutige Ziele werden übernommen. Bei Teilübernahme bleibt eine Prüfung offen; bei unklarem Jahr, Zuordnung oder abweichender Quelle ist manuelle Klärung nötig.
+3. Für manche Fehler verweist die App auf Stammdaten/Vorjahresimport. Bereits gespeicherte Dokumente können dadurch einen Download und erneuten Upload erfordern.
+4. Der manuelle Import zeigt eine Vorschau; nach Übernahme folgt die Meldung „Bitte die Word-Dossiers neu erzeugen.“ Die Seite bleibt die Importvorschau.
+5. Betroffene Ausgaben müssen über Führungslinie bzw. Versand/Änderungsprüfung gefunden werden. Personenspezifische Korrekturen besitzen einen eigenen Versandablauf.
+6. Mailprüfung und Korrekturversand sind keine durchgängige Aufgabenfolge.
+
+Besonderheit: Der Postfachimport erlaubt partielle Word-Übernahme. Die manuelle Vorschau behandelt unklare Erkennung restriktiver. Diese Unterschiede müssen beim Zusammenführen der Wege ausdrücklich aufgelöst werden.
+
+### 5.2 Sollvorschlag: Durchgehender Vorgang
+
+| Schritt | Automatik / Anzeige | Aktion HR | Ergebnis und nächster Schritt |
+|---|---|---|---|
+| 1 Eingang erkennen | Original sichern; Herkunft, Dokumentart und mögliche Zuordnung anzeigen | Nur unklare Zuordnung klären | Zugeordnet zu Person, Anstellung, Zieljahr |
+| 2 Ziele prüfen | Erkannte Ziele, bestehende Quellen und genaue offene Stellen zeigen | Original vergleichen; unklare Inhalte ergänzen/bestätigen oder Rückfrage vermerken | Freigegebene Quelle oder begründeter Wartezustand |
+| 3 Auswirkungen bestimmen | Passende Rückblicke und bereits erzeugte/versendete Fassungen ermitteln | Aktualisierung je betroffenem Fall bestätigen oder begründet verneinen | Konkrete Liste nötiger Ausgaben |
+| 4 Rückblick erstellen | Nur gewählte Formulare mit der freigegebenen Quelle erzeugen | Ergebnis prüfen | Geprüfte Korrekturausgabe |
+| 5 Übermittlung | Richtige Führungskraft und konkrete Ausgabe vorauswählen | Versand vorbereiten und tatsächlichen Versand bestätigen | Übermittlung dokumentiert |
+| 6 Vorgang abschliessen | Prüfen, ob offene Klärungen und Folgearbeiten verbleiben | Nur nötige Restentscheidung treffen | Vorgang erledigt; Mailablage separat erkennbar |
+
+Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhandene Funktion. Bereits gespeicherte Anhänge werden innerhalb des Vorgangs weiterverwendet.
+
+### 5.3 Verzweigungen und Abschlussbedingungen
+
+| Variante | Vorgeschlagener Weg | Wann erledigt? |
+|---|---|---|
+| Alles eindeutig, noch keine Ausgabe vorhanden | Quelle speichern und für Erstausgabe bereitstellen | Zielquelle freigegeben; verbundene Erstausgabe bleibt in P02 sichtbar |
+| Alles eindeutig, Rückblick bereits versendet | Korrekturbedarf zeigen; gezielte Neuerstellung und Versand | Korrektur übermittelt oder begründeter Verzicht |
+| Ziele nur teilweise erkannt | Offene Stellen am Original prüfen; Rückfrage oder Ergänzung | Keine ungeklärten Stellen mehr bzw. ausdrückliche Entscheidung zum Umgang damit |
+| Person, Anstellung oder Jahr unklar | Im selben Vorgang auswählen/bestätigen | Eindeutige bestätigte Zuordnung |
+| Mehrere abweichende Quellen | Inhalt und Herkunft vergleichen; gültige Quelle wählen | Quelle gewählt und Folgen für Ausgaben geklärt |
+| Identische Datei / identische Ziele | Bestehende Verarbeitung verlinken | Keine zusätzliche Arbeit; vorhandene offene Folgearbeit bleibt bestehen |
+| Kein passender aktiver Rückblick | Historischen Bezug, Gesprächsumfang und Zeitraum prüfen | Quelle gespeichert und „keine aktuelle Ausgabe nötig“ begründet oder richtiger Fall verknüpft |
+| Rückblick schon bearbeitet oder zurückgegeben | Abstimmung zur nötigen Korrektur statt blindem Ersatz | Vereinbarter Korrekturweg erledigt; bestehender Inhalt bleibt nachvollziehbar |
+| Rückfrage an Führungskraft nötig | Grund, Adressat und nächsten Prüftermin festhalten | Antwort verarbeitet; nicht schon mit Erstellen der Rückfrage |
+| Mehrere Anhänge / gemischte Mail | Anhänge einzeln bearbeiten; Mail als gemeinsame Herkunft | Alle relevanten Anliegen geklärt; Mailablage getrennt dokumentiert |
+| Unterbrechung bei Erzeugung/Outlook | Letzten bestätigten Schritt anzeigen und dort fortsetzen | Tatsächlicher Ausgang geklärt; keine doppelte Ausgabe/Übermittlung |
+
+### 5.4 Fachliche Entscheidungen für diesen Ablauf
+
+**Empfehlungen zur Bestätigung:**
+1. Mail und manueller Upload führen in denselben fachlichen Prüfablauf.
+2. Unsichere Stellen bleiben sichtbar, auch wenn lesbare Ziele schon gespeichert wurden.
+3. Für automatisch als unklar erkannte Teilübernahmen erfolgt die Freigabe zur Korrekturausgabe erst nach einer ausdrücklichen Entscheidung zu den offenen Stellen.
+4. HR kann eine Neuerstellung begründet als nicht nötig entscheiden; die Aufgabe verschwindet nicht allein durch Übernahme der Quelle.
+5. Änderungen nach bereits bearbeitetem/retourniertem Rückblick benötigen einen gesonderten Korrekturentscheid.
+
+**Offen:** Soll HR erkannte Ziele direkt in der App korrigieren können? Empfehlung: ja, mit Originalbezug und protokollierter korrigierter Fassung. Die Alternative „nur im erzeugten Word ergänzen“ lässt gespeicherte Quelle und spätere Neuerzeugungen auseinanderlaufen.
+
+## 6. Übergreifende Regeln für die spätere Nutzerführung
+
+1. Jede Aufgabe zeigt Anlass, betroffene Person/Anstellung, Jahr, offenen Punkt und nächste Aktion.
+2. Aufgaben verlinken direkt zur konkreten Bearbeitung; Jahres- und Personenkontext bleiben erhalten.
+3. „Warten auf HR“, „Warten auf Rückmeldung“ und „Technisch blockiert“ sind unterscheidbar.
+4. Ein Ergebnis löst die passende Folgeaufgabe aus oder schliesst den Vorgang nachvollziehbar ab.
+5. Verschiedene Ansichten zeigen denselben Bearbeitungsstand; keine unabhängigen Erledigt-Markierungen für dieselbe Facharbeit.
+6. Mail, Anhang und Fall dürfen unterschiedliche Status haben; ihre Bedeutung wird sichtbar erklärt.
+7. Wiederaufnahme und erneute Eingänge erzeugen keine unbemerkten Doppelarbeiten.
+8. Alte Ausgaben bleiben nachvollziehbar; Änderungen zeigen die tatsächlich betroffenen Personen und Formulare.
+9. Erfolgsmeldungen benennen Wirkung und nächsten Schritt konkret.
+10. Auch der alternative Abschluss „nicht erforderlich“, „Dublette“ oder „begründet verworfen“ ist nachvollziehbar.
+
+## 7. Gemeinsame Ausarbeitung und Prüfung
+
+Nächste Reihenfolge:
+1. Prozessumfang und fehlende Varianten gemeinsam ergänzen.
+2. Entscheidungen aus P03 fachlich festlegen.
+3. P03 als Seitenfolge entwerfen.
+4. Muster auf P04 und danach weitere Prozesse übertragen.
+5. Erst dann Menüstruktur und technische Umsetzung ableiten.
+
+Prüfszenarien für P03:
+- eindeutiger Word-Ausblick nach bereits erfolgtem Erstversand;
+- teilweise auslesbare Ziele;
+- Mehrfachanstellung und fehlendes Zieljahr;
+- konkurrierende Quelle und identischer erneuter Eingang;
+- bereits bearbeiteter Rückblick;
+- gemischte Mail;
+- unterbrochener Korrekturversand.
+
+Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was bereits geschehen ist, was konkret fehlt und wie sie bis zum fachlichen Abschluss gelangt.
+
+## 8. Quellen des Iststands
+
+- [HR-Betreuung](HR_BETREUUNG.md) – Orientierung; ältere Datumsstände gegen Code abgleichen.
+- [Postfach und Fortschrittsanzeige](../webapp/services/mail_intake.py)
+- [Word-Zielimport aus Mails](../webapp/services/mail_goals.py)
+- [Importansicht](../webapp/templates/legacy_goal_preview.html) und [Routen](../webapp/routes.py)
+- [Arbeitsliste](../webapp/templates/worklist.html) und [Cockpit](../webapp/services/cockpit.py)
+- [Änderungsprüfung](../webapp/services/dispatch_changes.py)
+- [Personenspezifische Korrekturausgaben](../webapp/services/person_corrections.py)
+- [Rücklaufansicht](../webapp/templates/returns.html) und [Fallprüfung](../webapp/services/case_review.py)
+- [Dialoge und Ereignisse](../webapp/templates/dialogs.html)
+- [Erinnerungen](../webapp/services/reminders.py)
+- [Abschluss und Prüfwarteschlange](../webapp/services/hr_workflow.py)

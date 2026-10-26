@@ -504,12 +504,12 @@ Dieser Entwurf konkretisiert die bestätigte direkte Zielkorrektur. Die genaue G
 
 ## 7. Gemeinsame Ausarbeitung und Prüfung
 
-Nächste Reihenfolge:
-1. Prozessumfang und fehlende Varianten gemeinsam ergänzen; P09/P10 sowie parallele Jahres- und unterjährige Dialoge sind aufgenommen.
-2. Entscheidungen aus P03 fachlich festlegen.
-3. P03 als Seitenfolge entwerfen.
-4. Muster auf P04 und danach weitere Prozesse übertragen.
-5. Erst dann Menüstruktur und technische Umsetzung ableiten.
+Stand der gemeinsamen Ausarbeitung:
+1. Prozessumfang mit laufendem Stammdatenabgleich, Zuständigkeit je Gesprächsteil und parallelen Dialogarten ergänzt.
+2. Direkte HR-Korrektur erkannter Ziele und gemeinsamer Dokumenteneingang festgehalten.
+3. Fünf vollständige Beispieldurchläufe konzeptionell geprüft (Abschnitt 8); verbleibende Fachfragen markiert.
+4. Nächster Schritt: Arbeitsübersicht und konkrete Bearbeitung am Beispiel der Zielnachreichung als Seitenentwurf ausarbeiten.
+5. Danach weitere Abläufe einordnen und Menüstruktur sowie technische Umsetzung ableiten.
 
 Prüfszenarien für P03:
 - eindeutiger Word-Ausblick nach bereits erfolgtem Erstversand;
@@ -530,7 +530,142 @@ Zusätzliche Prüfszenarien für das Grundmodell:
 
 Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was bereits geschehen ist, was konkret fehlt und wie sie bis zum fachlichen Abschluss gelangt.
 
-## 8. Quellen des Iststands
+## 8. Fünf vollständige Beispieldurchläufe
+
+**Art der Prüfung:** Konzeptioneller Durchgang durch die vereinbarten Sollabläufe, keine Ausführung oder Abnahme der App. Personenbezeichnungen, Mengen und Situationen sind fiktive Beispiele. Noch offene Fachregeln sind als solche markiert.
+
+### S01 – Regulärer Jahresdialog mit getrennten Rückläufen
+
+**Ausgangslage:** Person A hat eine eindeutige Anstellung; Rückblick und Ausblick sind erforderlich und derselben Führungskraft zugeordnet. Stammdaten und verwendete Zielquellen sind geprüft.
+
+| Schritt / Was HR sieht | Entscheidung oder Aktion HR | Systemaktion im Soll | Danach offen |
+|---|---|---|---|
+| Person A: Rückblick und Ausblick zur Ausgabe bereit | Gewählte Formulare erstellen und prüfen | Ausgabe mit verwendeten Grundlagen speichern | Versand vorbereiten |
+| Geprüfte Ausgabe und Empfänger | Versand vorbereiten, tatsächlichen Versand bestätigen | Ausgabe und Versandnachweis verknüpfen | Rückblick und Ausblick ausstehend, jeweils mit Frist |
+| Rückblick trifft vor dem Ausblick ein | Dokument direkt aus Eingang öffnen | Original sichern, Gesprächsteil und Fall vorschlagen | HR-Prüfung Rückblick; Ausblick weiterhin ausstehend |
+| Angaben und Original nebeneinander | Angaben/Zuordnung bestätigen oder korrigieren | Fachliche Übernahme; erforderliche Folgeprüfung bestimmen | Gegebenenfalls Unterschriften-/Scanprüfung bzw. Bereitstellung |
+| Rückblick fachlich geprüft | Nötige Folgeprüfung abschliessen | Bereitstellung des freigegebenen Dokuments protokollieren | Ausblick ausstehend; externe Verarbeitung separat |
+| Ausblick trifft später ein | Prüfen und übernehmen | Dem Ausblickteil zuordnen; erforderliche Bereitstellung und spätere Zielnutzung verknüpfen | Gegebenenfalls Übergabe-/Exportaufgaben |
+| Beide Teile erledigt | Gesamtstand prüfen | Keine unerledigte Dokumentpflicht anzeigen; Export-/Übergabestatus separat halten | Nur tatsächlich verbleibende externe oder administrative Arbeiten |
+
+**Unterbrechung:** Benötigt der Rückblick eine Rückfrage, bleibt diese am Rückblick offen. Der separat eintreffende Ausblick kann trotzdem bearbeitet werden.
+
+**Erkenntnis:** Ein einzelner Gesamtstatus „MD offen“ ist zu grob. Rückblick und Ausblick benötigen getrennte Fristen, Eingangs-, Prüf- und Erledigungsstände. „Noch nicht eingegangen“ darf nicht mit „bereits eingegangen, HR-Prüfung offen“ verwechselt werden.
+
+**Offen:** Unterschriften-/Scanregeln je Dokumenttyp, Auslöser der Dossierbereitstellung sowie SAP-Exportvoraussetzungen abschliessend festlegen. Das Beispiel bestätigt keine neue Fachregel dazu.
+
+### S02 – Fünf Ausblicke nachgereicht, vier zunächst verwendbar
+
+**Ausgangslage:** Eine Führungskraft reicht fünf alte Ausblicke nach. Vier sind nach Prüfung verwendbar; beim fünften fehlt eine eindeutig lesbare Zielpassage. Rückblicke wurden bereits erstmals versendet.
+
+| Schritt / Was HR sieht | Entscheidung oder Aktion HR | Systemaktion im Soll | Danach offen |
+|---|---|---|---|
+| Gemeinsamer Eingang mit fünf Dokumenten | Nachreichung öffnen | Pro Dokument Person, Anstellung, Zieljahr, Verwendung und Prüfbedarf anzeigen | Fünf Quellen prüfen |
+| Vier Quellen vollständig, fünfte mit markierter Lücke | Vier bestätigen; fünfte anhand Original korrigieren oder Rückfrage vermerken | Bestätigte Fassungen speichern; unbestätigte getrennt halten | Vier Korrekturausgaben möglich; eine Klärung offen |
+| Betroffene Rückblicke mit bisherigem Versandstand | Vier Rückblicke gemeinsam auswählen | Verantwortlichkeit und verwendbare Zielversion pro Ausgabe prüfen | Erstellung |
+| Ergebnisse der Sammelerstellung | Vier Ausgaben prüfen | Pro Person konkrete Fassung und Erfolg/Fehler speichern | Versand der geprüften Ausgaben |
+| Versandgruppe nach Rückblick-Verantwortlichkeit | Gemeinsamen Versand vorbereiten und bestätigen | Versand mit den enthaltenen vier Ausgaben verknüpfen | Fünfte Person weiterhin offen |
+| Antwort zur fünften Quelle trifft ein | Gesicherten Vorgang fortsetzen, ergänzen und bestätigen | Neue bestätigte Fassung; einzelnen Rückblick anbieten | Nachtrag erstellen und versenden |
+| Nachtrag übermittelt | Ergebnis kontrollieren | Alle fünf Folgearbeiten erledigt; Verlauf bleibt erhalten | Mailablage gegebenenfalls separat |
+
+**Unterbrechung:** Schlägt eine von vier Erstellungen fehl, bleiben die drei erfolgreichen Ausgaben erhalten. Nur die fehlgeschlagene Erstellung wird wiederholt. Bereits versendete Fassungen werden nicht ungeprüft nochmals verschickt.
+
+**Erkenntnis:** Die Sammelansicht braucht Einzelstatus. Die Eingangsgruppe und die Versandgruppe sind nicht zwingend identisch: Bei abweichender Verantwortung muss nach tatsächlichem Empfänger aufgeteilt werden.
+
+**Offen:** Umgang mit inzwischen bearbeiteten oder retournierten Rückblicken; Zeitpunkt der Mailverschiebung. Word-Vorschau technisch prüfen.
+
+### S03 – Übertritt im zweiten Halbjahr
+
+**Ausgangslage:** Person B ist per bekanntem Ereignisdatum im zweiten Halbjahr von OE Alt zu OE Neu übergetreten. Die bisherige Führungskraft übernimmt den Rückblick, die neue den Ausblick. Der aktuelle SAP-Stand enthält OE Neu.
+
+| Schritt / Was HR sieht | Entscheidung oder Aktion HR | Systemaktion im Soll | Danach offen |
+|---|---|---|---|
+| SAP-Vergleich zeigt Wechsel; alternativ manuell erfasster Übertritt | Anlass und verlässliches Ereignisdatum bestätigen | Herkunft der Angaben speichern; bestehende Dialoge anzeigen | Zuständigkeiten und Zeiträume prüfen |
+| Zwei Gesprächsteile derselben Person | Rückblick alte, Ausblick neue Führungskraft zuordnen | Je Teil Verantwortung speichern; keine doppelten Pflichten erzeugen | Formular-OE und Zeitraum je Teil |
+| Aktuelle Mitarbeiter-OE sowie gewählte Führungskräfte | Für Rückblick passende bisherige OE wählen, für Ausblick neue Konstellation bestätigen | Formular-OE je Teil festhalten | Ausgaben erstellen bzw. korrigieren |
+| Betroffene Ausgaben und bisherige Versandstände | Nur nötige Formulare auswählen | Rückblick und Ausblick nach jeweiligem Empfänger bündeln | Versand an alte bzw. neue Führungskraft |
+| Rückläufe treffen getrennt ein | Jeweils richtigen Teil prüfen | Historische Zuständigkeit berücksichtigen; nicht allein nach aktueller SAP-Linie zuordnen | Folgeprüfungen pro Teil |
+| Fehlende Unterlage wird fällig | Konkreten Ausstand prüfen | Erinnerung an für diesen Teil verantwortliche Person anbieten | Fehlender Teil bleibt offen |
+
+**Alternative ohne Historie:** Die frühere Zuordnung wird manuell erfasst. Dafür muss die bisherige Führungskraft auch auswählbar sein, wenn sie nicht mehr in der aktuellen Führungskräfteauswahl enthalten ist; Identität und Versandadresse werden gesondert geprüft.
+
+**Erkenntnis:** Aktuelle Stammdaten, Verantwortung für den Gesprächsteil und verwendete Formular-OE sind drei getrennte Angaben. Die bestätigte historische Konstellation muss auch spätere Importe überstehen.
+
+**Offen:** Der Übertrittstermin legt nicht automatisch den Beurteilungszeitraum fest. Die fachlichen Regeln für Zeiträume, zusätzliche Gespräche und die SAP-massgebliche Beurteilung bleiben zu bestätigen.
+
+### S04 – Eintritt während laufender Jahresdialoge
+
+**Ausgangslage:** Für bestehende Mitarbeitende laufen Rücklaufarbeiten. Ein neuer vollständiger SAP-Export enthält Person C, deren Eintritt einen unterjährigen Dialogbedarf auslöst.
+
+| Schritt / Was HR sieht | Entscheidung oder Aktion HR | Systemaktion im Soll | Danach offen |
+|---|---|---|---|
+| Importvorschau: neue Person/Anstellung | Daten prüfen und übernehmen | Neue Anstellung speichern; vorhandene Dialoge auf mögliche Doppelanlage prüfen | Dialogbedarf klären |
+| Aufgabe „Neue Person: Dialogbedarf prüfen“ | Passenden Anlass, erforderliche Teile, Zeitraum, Zuständigkeit und Fristen bestätigen | Vorschlag anhand verfügbarer Daten und bestätigter Fachregeln bilden | Dialog zur Ausgabe bereit |
+| Unterjähriger Dialog in derselben Arbeitsübersicht wie Jahresdialoge | Unterlagen erstellen und prüfen | Eigene Pflichten und Ausgabe für diesen Anlass speichern | Versand |
+| Geprüfte Unterlagen | Versand vorbereiten und bestätigen | Versand dokumentieren | Rücklauf zum unterjährigen Dialog |
+| Dokument im gemeinsamen Eingang | Anlass/Zeitraum und Gesprächsteil prüfen | Richtigen Dialog zuordnen; Jahresdialoge anderer Personen unberührt lassen | Erforderliche Folgeprüfungen |
+| Jahreskampagne wird abgeschlossen | Restfälle prüfen | Unterjährigen Dialog und seine offenen Aufgaben weiterhin zugänglich halten | Noch offene Aufgaben dieses Dialogs |
+
+**Unterbrechung:** Fehlende Probezeit- oder Ereignisangaben führen zu einer konkreten Klärungsaufgabe. Sie rechtfertigen weder eine geratene Frist noch eine automatische Anlage aller denkbaren Dialogarten.
+
+**Erkenntnis:** Neue Dialoge müssen aus dem Stammdatenabgleich direkt gestartet werden können. Eine vorherige Wahl oder Wiederöffnung eines Jahresdurchlaufs darf im Soll kein notwendiger Umweg sein.
+
+**Offen:** Präzise Regeln für Eintritt/Probezeit und Verhältnis zum anschliessenden Jahresdialog sowie Anpassung der bestehenden technischen Durchlaufbindung.
+
+### S05 – Vertretung für einen Teil und späterer SAP-Import
+
+**Ausgangslage:** Die reguläre Führungskraft von Person D ist länger abwesend. Eine Ersatzperson übernimmt nur den Rückblick. Der Ausblick bleibt bei der regulären Führungskraft. Die Ersatzperson gehört einer anderen OE an.
+
+| Schritt / Was HR sieht | Entscheidung oder Aktion HR | Systemaktion im Soll | Danach offen |
+|---|---|---|---|
+| Rückblick und Ausblick mit bisheriger Verantwortung | „Rückblick“ auswählen, Ersatzperson und Grund erfassen | Manuelle Entscheidung nur für diesen Teil speichern | Auswirkungen prüfen |
+| Formular-OE und vorhandene Ausgaben | Mitarbeiter-OE beibehalten; nötige Korrektur bestimmen | OE-Auswahl unabhängig von Ersatzperson speichern | Gegebenenfalls Rückblick neu erstellen/versenden |
+| Neuer SAP-Export nennt weiterhin reguläre Führungskraft | Daten übernehmen; nur neue relevante Konflikte prüfen | Bestätigte Abweichung erhalten; unveränderte Abweichung nicht als neuen Konflikt erzeugen | Vorher offene Aufgaben bleiben bestehen |
+| Späterer Export enthält tatsächlich neue organisatorische Zuordnung | Auswirkungen auf die Vertretung prüfen | Alten, neuen und manuell festgelegten Stand nebeneinander zeigen | Nur betroffene Entscheidung offen |
+| Rückblick fehlt, Ausblick hat anderen Stand | Nötige Erinnerung prüfen | Rückblick-Erinnerung an Ersatzperson richten | Rückblick ausstehend |
+| Vertretung endet | Falls erforderlich betroffene Teile ausdrücklich neu zuordnen | Wirkung auf offene Ausgaben/Versand prüfen; abgeschlossene Rückblicke unverändert lassen | Nötige Folgearbeiten |
+
+**Erkenntnis:** Eine bekannte begründete Abweichung darf nicht bei jedem Import erneut eine Aufgabe erzeugen. Erst eine inhaltlich neue relevante Änderung verlangt eine neue Prüfung. Ebenso darf das Ende einer Vertretung nicht rückwirkend die Verantwortung für erledigte Teile umschreiben.
+
+**Offen:** Zeitlich befristete Vertretungsregeln auf OE-Ebene gegenüber gemeinsamer manueller Auswahl konkreter Teile. Feedbackzuordnung bleibt unabhängig vom Vertretungswechsel.
+
+### 8.6 Ergebnis des konzeptionellen Durchgangs
+
+Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Nachweis, dass der aktuelle Code sie bereits unterstützt. Der Durchgang schärft insbesondere folgende Anforderungen:
+
+| Befund | Konsequenz für Konzept und spätere Oberfläche |
+|---|---|
+| Ein Gesamtstatus pro Person reicht nicht | Rückblick/Ausblick und ihre konkreten Pflichten getrennt zeigen |
+| Fachlich erledigt und extern verarbeitet sind verschieden | Prüfung, Bereitstellung, Versand und externe Bestätigung unterscheiden |
+| Eingang, Personengruppe und Versandgruppe können auseinanderfallen | Herkunft gemeinsam anzeigen; fachlich nach Teil und Empfänger gruppieren |
+| Importe treffen auf manuelle Entscheidungen | Bekannte Abweichungen erhalten; nur neue relevante Änderungen zur Prüfung vorlegen |
+| Zuständigkeit hat zeitlichen und fachlichen Kontext | Historische Zuordnung und Formularwerte nicht aus aktuellen Stammdaten überschreiben |
+| Ein Vorgang kann teilweise erledigt sein | Einzelstatus, Wiederaufnahme und Nachträge in Sammelansichten erhalten |
+| Unterjährige Dialoge laufen ganzjährig | Gemeinsame Arbeitsübersicht; Kampagne/Jahr als Filter und organisatorische Bündelung |
+| Ableitung aus Daten hat Grenzen | Unbekannte Ereignis- und Wirksamkeitsdaten sichtbar klären statt erraten |
+
+**Noch vor verbindlicher Umsetzung zu klären:**
+- Unterschriften-/Scan- und Bereitstellungsregeln je Dokumentart;
+- Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
+- SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
+- Korrektur bereits bearbeiteter/retournierter oder extern verarbeiteter Unterlagen;
+- automatische Mailverschiebung und Umfang zeitlicher Vertretungen.
+
+Diese Punkte verhindern einen ersten Seitenentwurf nicht; der Entwurf muss sie als offene Regeln berücksichtigen.
+
+### 8.7 Aus den Szenarien abgeleitete Arbeitsansichten – Vorschlag
+
+| Arbeitsansicht | Leitfrage und Inhalt |
+|---|---|
+| Arbeitsübersicht | Was ist jetzt zu tun, was wartet auf Rückmeldung und was ist technisch blockiert? Alle Dialogarten, mit Filtern |
+| Konkrete Bearbeitung | Welche Angaben fehlen für diese Aufgabe? Original, Zuordnung, Prüfung, Entscheidung und nächste Aktion im Kontext |
+| Person und Dialoge | Welche Anlässe und Gesprächsteile gibt es für diese Anstellung? Verantwortung, Zeitraum, Formular-OE, Pflichten und Verlauf |
+| Gemeinsame Erstellung / Versand | Welche freigegebenen Ausgaben kann ich zusammen erstellen und an wen übermitteln? Einzelstatus trotz Sammelaktion |
+| Stammdatenabgleich | Was hat sich geändert und welche offenen Dialoge oder Ausgaben betrifft das? |
+
+Dies sind benötigte Arbeitsansichten, noch keine beschlossene Menüstruktur. Eingangsliste, Quellenprüfung und Fallprüfung sollen sich in diese Wege einfügen, ohne neue konkurrierende Aufgabenlisten aufzubauen.
+
+## 9. Quellen des Iststands
 
 - [HR-Betreuung](HR_BETREUUNG.md) – Orientierung; ältere Datumsstände gegen Code abgleichen.
 - [Postfach und Fortschrittsanzeige](../webapp/services/mail_intake.py)

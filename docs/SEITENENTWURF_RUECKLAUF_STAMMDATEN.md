@@ -95,6 +95,29 @@ Beispiel: „Rückblick übernommen · Bereitstellung ausstehend“. Nach erfolg
 
 **Technisch zu prüfen:** Wie zusätzliche Anliegen im Mailtext zuverlässig erkannt bzw. zur manuellen Klärung vorgelegt werden. Erfolgreiche Anhangsverarbeitung allein ist kein Nachweis, dass die Nachricht kein weiteres Anliegen enthält. Die Regel ist eine Sollanforderung, keine Behauptung über eine bereits vorhandene automatische Inhaltsprüfung.
 
+### Korrekturweg bei später nachgereichten Zielen
+
+**Bestätigte Regel (26. Oktober 2026):** Der Bearbeitungsstand des Rückblicks bestimmt die Folgeaktion. Die bestätigte Zielquelle wird gespeichert, ersetzt aber keinen bereits eingegangenen Rückblick.
+
+| Stand des Rückblicks | Folgeaktion | Voraussetzung für Abschluss |
+|---|---|---|
+| Noch ausstehend | Aktualisierte Rückblickvorlage zur Erstellung und Übermittlung anbieten | Ausgabe übermittelt oder begründeter Verzicht |
+| Bereits eingegangen, auch wenn noch ungeprüft | Aufgabe „Korrekturbedarf klären“; keine automatische Neuerstellung einer Vorlage | HR hat entschieden, dass keine Korrektur nötig ist, oder ein erforderlicher korrigierter Rücklauf ist bearbeitet |
+| Bereits für Dossier bereitgestellt | Korrekturbedarf klären und erfolgte Übergabe deutlich anzeigen; keine automatische Ersetzung | Gegebenenfalls korrigierten Rücklauf bearbeiten und externe Korrektur mit zuständiger Stelle klären |
+
+**Entscheidungen in der Klärung:**
+- „Keine Korrektur nötig“ mit kurzer Begründung: Rückblick bleibt bestehen, Zielquelle und Entscheidung bleiben nachvollziehbar.
+- „Korrigierten Rücklauf anfordern“: benötigte Änderung festhalten; verantwortliche Führungskraft und vorhandenen Rückblick verknüpfen. Die Anforderung bzw. ein Mailentwurf ist noch kein Eingang des korrigierten Dokuments.
+- „Rückfrage offen“: fehlende Klärung konkret vermerken und Aufgabe offen halten.
+
+Ein bereits eingegangener Rückblick wird nicht durch eine neu erzeugte leere Vorlage ersetzt. Der korrigierte Rücklauf wird als neue Version geprüft; Original und bisherige Verarbeitung bleiben erhalten. Er ist wegen des Versionskonflikts kein Fall für ungeprüfte automatische Ersetzung.
+
+**Folgen für Sammelaktionen:** Personen mit bereits eingegangenem Rückblick werden nicht in die gemeinsame Vorlagenerstellung aufgenommen. Die Auswahl zeigt stattdessen „Korrekturbedarf klären“. Freigegebene noch ausstehende Rückblicke anderer Personen können parallel erstellt werden.
+
+**Erneute Prüfung vor Erstellung:** Trifft ein Rückblick ein, nachdem die Auswahl vorbereitet wurde, muss der betreffende Eintrag in die Klärung wechseln. Ein veralteter Listenstand darf keine neue Vorlage für einen inzwischen eingegangenen Rückblick erzeugen.
+
+**Grenze:** „Noch ausstehend“ beweist nicht, dass die Führungskraft die bisherige Vorlage noch nicht bearbeitet hat. Der Hinweis zum Abgleichen bereits bearbeiteter Inhalte bleibt erhalten. Wie eine notwendige Korrektur nach erfolgter externer Dossier- oder SAP-Verarbeitung praktisch bestätigt wird, ist noch mit dem entsprechenden Ablauf zu konkretisieren.
+
 ## 3. SAP-Stammdaten: Vom Upload zur Folgeaufgabe
 
 ### Einstieg und Seitenkopf

@@ -712,6 +712,10 @@ Der ergänzende [Seitenentwurf für Rücklauf und Stammdatenabgleich](SEITENENTW
 
 Dies sind benötigte Arbeitsansichten, noch keine beschlossene Menüstruktur. Eingangsliste, Quellenprüfung und Fallprüfung sollen sich in diese Wege einfügen, ohne neue konkurrierende Aufgabenlisten aufzubauen.
 
+## 8.8 Codeabgleich und Umsetzung
+
+Der [Umsetzungsplan](UMSETZUNGSPLAN_NUTZERFUEHRUNG.md) hält den Abgleich mit main, wiederverwendbare Funktionen, Datenmodelländerungen, Einführungsreihenfolge und Prüfplan fest. Erstes nutzbares Ergebnis ist der vollständige Zielnachreichungsablauf; gemeinsame Vorgangsverknüpfungen, Zielversionen und die Auflösung der Gesprächsteil-Zuständigkeit werden dafür zuerst vorbereitet.
+
 ## 9. Quellen des Iststands
 
 - [HR-Betreuung](HR_BETREUUNG.md) – Orientierung; ältere Datumsstände gegen Code abgleichen.

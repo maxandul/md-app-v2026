@@ -105,6 +105,85 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Offen:** Die fachliche Unterschriften-/Scanregel je Dokumenttyp wird im Detail separat gegen den aktuellen Word-Standard geprüft; ältere HTML-Regeln nicht ungeprüft übernehmen.
 
+#### P04.1 Gemeinsamer Dokumenteneingang
+
+**Bestätigte Richtung (26. Oktober 2026):** Alle MD-bezogenen Dokumente aus Postfachscan und manuellem Upload erscheinen in einer gemeinsamen Eingangsliste. Die fachliche Aufgabe hängt am Dokument und führt direkt zur passenden Bearbeitung. Die E-Mail bleibt als Herkunft und gemeinsame Klammer ihrer Anhänge sichtbar.
+
+Dies betrifft auch die Eingänge für P03 und P05. Ein gemeinsamer Eingang bedeutet nicht, dass alle Dokumentarten dieselben fachlichen Prüfungen oder dieselbe Ablage benötigen.
+
+| Verwendungszweck | Bearbeitung | Anschluss |
+|---|---|---|
+| Nachgereichter Ausblick als Zielquelle | Ziele und Zuordnung prüfen, gegebenenfalls korrigieren | P03: betroffene Rückblicke aktualisieren |
+| Regulärer Rückblick oder Ausblick | Angaben, Gesprächsteil, Person/Anstellung, Zeitraum und Zuständigkeit prüfen | Erforderliche Folgeprüfung und Dossierbereitstellung |
+| Feedback | Führungskraft, Jahr und Inhalt prüfen | P05: passende Sammlung |
+| Unklarer Eingang | Dokumentart, Verwendung, Person/Anstellung oder Jahr klären | Passenden Ablauf im selben Vorgang fortsetzen |
+| Bereits verarbeitetes Dokument | Vorhandene Verarbeitung anzeigen; bei abweichendem Inhalt Versionen vergleichen | Dublette abschliessen oder Korrektur prüfen |
+
+**Dokumentart und Verwendungszweck trennen:** „Ausblick“ beschreibt die Art des Dokuments. Ob er als regulärer Rücklauf oder als nachgereichte Zielquelle bearbeitet wird, ergibt sich aus Jahr, Fallkontext und bestätigter Verwendung. Ein regulär übernommener Ausblick kann später auch Ziele für einen Rückblick liefern. Diese spätere Nutzung erzeugt weder einen zweiten Eingang noch eine zweite Dossierübergabe. Die Herkunft der Ziele bleibt mit dem übernommenen Dokument verbunden.
+
+#### P04.2 Anzeige und direkte Bearbeitung – Sollentwurf
+
+Jeder Eintrag zeigt:
+- Person und Anstellung/OE, soweit bekannt; andernfalls konkret fehlende Zuordnung;
+- Dokumentart, Jahr/Zeitraum und vorgesehene Verwendung;
+- Quelle: Mail mit Absender/Betreff oder manueller Upload;
+- was bereits gesichert, übernommen oder bereitgestellt wurde;
+- den konkreten offenen Punkt und eine direkt passende Aktion.
+
+Beispiele für Aufgaben:
+- „Ausblick von Person X: Anstellung zuordnen“;
+- „Rückblick von Person Y: Angaben am Original prüfen“;
+- „Ziele von Person Z: unvollständig erkannte Stelle ergänzen“;
+- „Feedback: Führungskraft zuordnen“;
+- „Geprüftes PDF: Bereitstellung nach Ablagefehler erneut versuchen“.
+
+Die Aktion öffnet das betreffende Dokument mit erhaltenem Kontext, nicht den Anfang einer allgemeinen Übersichtsseite. Bereits gespeicherte Anhänge müssen nicht heruntergeladen und erneut hochgeladen werden, um in einen anderen fachlichen Bearbeitungsweg zu wechseln.
+
+#### P04.3 Sammelaktionen und Teilergebnisse – Sollentwurf
+
+Mehrere geklärte Dokumente können gemeinsam weiterverarbeitet werden, soweit die jeweilige Aktion fachlich passt. Die Auswahl zeigt pro Dokument, welche Voraussetzungen erfüllt sind und welche noch fehlen.
+
+- Zielquellen: freigegebene Rückblicke gemeinsam erstellen, wie in P03 beschrieben.
+- Reguläre Rückläufe: nur Dokumente mit erfüllten Voraussetzungen gemeinsam zum passenden nächsten Schritt weiterführen.
+- Feedbacks: nach Führungskraft und Jahr in die passende Sammlung führen.
+- Ungeklärte Dokumente: mit konkretem Grund offen lassen; nicht durch die Sammelaktion als geprüft behandeln.
+- Technische Teilerfolge: erfolgreiche Ergebnisse erhalten und fehlerhafte Dokumente gezielt wiederholen können.
+
+Ein gemischter Eingang wird nicht pauschal als eine einzige fachliche Aufgabe behandelt. Ein Sammelbutton muss seine Wirkung auf die ausgewählten Dokumente vor der Ausführung benennen; die Herkunft aus derselben Mail allein ist keine fachliche Freigabe.
+
+#### P04.4 Dokumentstatus, Folgearbeit und Mailablage – Sollentwurf
+
+Drei Ebenen sind zu unterscheiden:
+
+| Ebene | Beispiel | Aussage |
+|---|---|---|
+| Dokumentbearbeitung | „Als Zielquelle übernommen“ | Inhalt und Verwendung dieses Dokuments sind bestätigt |
+| Fachliche Folgearbeit | „Aktualisierter Rückblick noch zu versenden“ | Das Anliegen ist noch nicht vollständig erledigt |
+| Mailablage | „Mail in Outlook verschoben“ | Nur der Ablageort der Nachricht hat sich geändert |
+
+Die Mailansicht fasst die Bearbeitungsstände ihrer MD-Dokumente zusammen und zeigt noch offene Anliegen ohne verarbeitbares Dokument, beispielsweise eine Rückfrage im Nachrichtentext. Fremdanlagen bleiben gemäss bestehender Abgrenzung ausserhalb der MD-Dateiablage.
+
+**Regeln:**
+- „Mailprüfung erledigt“ darf offene Dokumentaufgaben oder Folgearbeiten nicht verdecken oder automatisch schliessen.
+- Erledigte Dokumentprüfungen sollen nicht zusätzlich unabhängig als dieselbe Prüfaufgabe an der Mail offen bleiben. Separate Anliegen der Mail benötigen dagegen einen eigenen Klärungsgrund.
+- Ein Verschieben in Outlook ist weder fachliche Übernahme noch Bestätigung eines Korrekturversands.
+- Nach einem Teilerfolg bleiben ungeklärte Anhänge und Folgearbeiten sichtbar, auch wenn andere Dokumente bereits übernommen wurden.
+- Erneuter Scan oder manueller Upload derselben Datei verweist auf die vorhandene Verarbeitung; abweichende Inhalte werden als mögliche neue Version geprüft.
+- Wiederaufnahme setzt beim letzten bestätigten Schritt an.
+
+**Noch offen:** Der genaue Zeitpunkt des automatischen Verschiebens einer Mail wird separat festgelegt. Dabei dürfen „Dokument bearbeitet“, „Anliegen samt Folgearbeiten erledigt“ und „Mail abgelegt“ nicht gleichgesetzt werden. Diese Konzeption ändert die bestehende Verschieberegel noch nicht.
+
+#### P04.5 Prüfkriterien
+
+- Dasselbe Dokument gelangt über Mail und Upload in denselben fachlichen Prüfablauf.
+- Eine unklare Zuordnung lässt sich direkt am Eingang klären.
+- Ein Ausblick kann passend zum Kontext als regulärer Rücklauf oder Zielquelle verwendet werden; spätere Zielnutzung bleibt nachvollziehbar.
+- Eine Mail mit Zielquelle, Rücklauf und Feedback führt zu den jeweils passenden Bearbeitungen.
+- Gemeinsame Weiterverarbeitung erledigt keine ungeklärten Anhänge.
+- Eine erledigte Dokumentprüfung verschwindet als Prüfaufgabe; nötige Folgearbeit bleibt sichtbar.
+- Ein technischer Fehler kann ohne erneute fachliche Übernahme erfolgreicher Dokumente wiederholt werden.
+- Eine bereits verschobene Mail blockiert nicht die weitere Bearbeitung gesicherter Dokumente.
+
 ### P05 – Feedbacks bearbeiten
 
 **Ist:** Feedbacks werden geprüft, Führungskraft und Jahr zugeordnet und gesammelt. HR löst die Zusammenführung und Bereitstellung aus; spätere Eingänge können Nachträge bilden. Erwartete Anzahl dient der Orientierung, nicht automatischem Mahnen.

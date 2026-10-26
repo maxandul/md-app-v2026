@@ -665,6 +665,8 @@ Diese Punkte verhindern einen ersten Seitenentwurf nicht; der Entwurf muss sie a
 
 Der erste konkrete [Seitenentwurf für die Zielnachreichung](SEITENENTWURF_ZIELNACHREICHUNG.md) beschreibt Arbeitsübersicht, Dokumentprüfung und gemeinsame Erstellung mit Versand.
 
+Der ergänzende [Seitenentwurf für Rücklauf und Stammdatenabgleich](SEITENENTWURF_RUECKLAUF_STAMMDATEN.md) überträgt diese Bedienlogik auf P04/P09 und enthält einen ersten Navigationsvorschlag.
+
 Dies sind benötigte Arbeitsansichten, noch keine beschlossene Menüstruktur. Eingangsliste, Quellenprüfung und Fallprüfung sollen sich in diese Wege einfügen, ohne neue konkurrierende Aufgabenlisten aufzubauen.
 
 ## 9. Quellen des Iststands

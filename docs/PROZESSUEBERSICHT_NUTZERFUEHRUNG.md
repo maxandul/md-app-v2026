@@ -95,15 +95,17 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Ist:** Postfachscan oder PDF-Upload; Word-PDF-Prüfwarteschlange; Originalvergleich, Fallzuordnung und fachliche Übernahme; anschliessende Fall-/Unterschriften- bzw. Scanprüfung und Dossierbereitstellung.
 
-**HR-Arbeit:** Dokumentart, Person/Anstellung, Jahr/Zeitraum und Angaben prüfen; benötigte Unterschriften/Scans kontrollieren; fehlende oder falsche Unterlagen klären.
+**HR-Arbeit:** Dokumentart, Person/Anstellung, Jahr/Zeitraum und Angaben prüfen; fehlende oder falsche Unterlagen klären. HR kontrolliert keine Unterschriften.
 
 **Varianten:** Rückblick, Ausblick, Probezeit; historischer Ausblick als Zielquelle; alter Formularstand; Dublette/neue Version; unlesbares PDF/Scan; unklare Zuordnung; inaktiver Fall; geschlossener Durchlauf; Nichtdurchführung; gemischte E-Mail.
 
-**Sollvorschlag:** Ein Eingang bietet unmittelbar die passende Bearbeitung. Nach fachlicher Übernahme direkt zur noch nötigen Prüfung führen. Fehlende Unterschrift, unlesbare Angaben und technische Ablagefehler erhalten unterschiedliche Aufgaben.
+**Sollvorschlag:** Ein Eingang bietet unmittelbar die passende Bearbeitung. Nach abgeschlossener Angaben-/Zuordnungsprüfung folgt die Dossierbereitstellung ohne zusätzliche HR-Unterschriftenfreigabe. Unlesbare Angaben und technische Ablagefehler erhalten konkrete Aufgaben.
 
 **Abschluss:** Dokument ist geprüft und erforderliche Übergabe ist erfolgt, oder es ist nachvollziehbar zurückgewiesen/zurückgestellt. Ein benötigter, ungeklärter Rücklauf bleibt offen.
 
-**Offen:** Die fachliche Unterschriften-/Scanregel je Dokumenttyp wird im Detail separat gegen den aktuellen Word-Standard geprüft; ältere HTML-Regeln nicht ungeprüft übernehmen.
+**Bestätigte Fachregel (26. Oktober 2026):** Unterschriften werden verlangt; ihre korrekte Einholung liegt in der Verantwortung der Führungskräfte. HR führt keine Unterschriftenkontrolle durch. Im Soll entfallen daher Unterschriften-Prüfaufgaben, eine HR-Bestätigung der Unterschriften und eine daran gebundene Ablagesperre. Die App darf daraus weder automatisch noch manuell einen Nachweis „Unterschriften geprüft“ erzeugen.
+
+Die Unterschriftenanforderungen in Formularen und Hinweisen bleiben bestehen. Ob unabhängig davon für bestimmte Fälle eine gesonderte einzureichende Scan-Datei vorgeschrieben ist, wurde damit nicht entschieden. Eine solche bestehende Regel ist vor Umsetzung gezielt zu klären; aus der fehlenden HR-Unterschriftenkontrolle folgt weder ihre Abschaffung noch eine neue Scanpflicht. Die als Ist beschriebenen technischen Prüfungen im bestehenden Code sind noch nicht geändert.
 
 #### P04.1 Gemeinsamer Dokumenteneingang
 
@@ -543,8 +545,8 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 | Person A: Rückblick und Ausblick zur Ausgabe bereit | Gewählte Formulare erstellen und prüfen | Ausgabe mit verwendeten Grundlagen speichern | Versand vorbereiten |
 | Geprüfte Ausgabe und Empfänger | Versand vorbereiten, tatsächlichen Versand bestätigen | Ausgabe und Versandnachweis verknüpfen | Rückblick und Ausblick ausstehend, jeweils mit Frist |
 | Rückblick trifft vor dem Ausblick ein | Dokument direkt aus Eingang öffnen | Original sichern, Gesprächsteil und Fall vorschlagen | HR-Prüfung Rückblick; Ausblick weiterhin ausstehend |
-| Angaben und Original nebeneinander | Angaben/Zuordnung bestätigen oder korrigieren | Fachliche Übernahme; erforderliche Folgeprüfung bestimmen | Gegebenenfalls Unterschriften-/Scanprüfung bzw. Bereitstellung |
-| Rückblick fachlich geprüft | Nötige Folgeprüfung abschliessen | Bereitstellung des freigegebenen Dokuments protokollieren | Ausblick ausstehend; externe Verarbeitung separat |
+| Angaben und Original nebeneinander | Angaben/Zuordnung bestätigen oder korrigieren | Fachliche Übernahme ohne Unterschriftenkontrolle durch HR | Dossierbereitstellung; allfällige separate Dokumentpflicht gemäss bestätigter Regel |
+| Rückblick fachlich geprüft | Ergebnis prüfen bzw. Bereitstellung auslösen, je nach noch festzulegender Automatik | Bereitstellung ohne zusätzliche HR-Unterschriftenfreigabe protokollieren | Ausblick ausstehend; externe Verarbeitung separat |
 | Ausblick trifft später ein | Prüfen und übernehmen | Dem Ausblickteil zuordnen; erforderliche Bereitstellung und spätere Zielnutzung verknüpfen | Gegebenenfalls Übergabe-/Exportaufgaben |
 | Beide Teile erledigt | Gesamtstand prüfen | Keine unerledigte Dokumentpflicht anzeigen; Export-/Übergabestatus separat halten | Nur tatsächlich verbleibende externe oder administrative Arbeiten |
 
@@ -552,7 +554,7 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 
 **Erkenntnis:** Ein einzelner Gesamtstatus „MD offen“ ist zu grob. Rückblick und Ausblick benötigen getrennte Fristen, Eingangs-, Prüf- und Erledigungsstände. „Noch nicht eingegangen“ darf nicht mit „bereits eingegangen, HR-Prüfung offen“ verwechselt werden.
 
-**Offen:** Unterschriften-/Scanregeln je Dokumenttyp, Auslöser der Dossierbereitstellung sowie SAP-Exportvoraussetzungen abschliessend festlegen. Das Beispiel bestätigt keine neue Fachregel dazu.
+**Offen:** Allfällige separate Scan-Dokumentpflicht, Auslöser der Dossierbereitstellung sowie SAP-Exportvoraussetzungen abschliessend festlegen. Die Verantwortung für Unterschriften liegt bestätigt bei den Führungskräften; HR kontrolliert sie nicht.
 
 ### S02 – Fünf Ausblicke nachgereicht, vier zunächst verwendbar
 
@@ -645,7 +647,7 @@ Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Na
 | Ableitung aus Daten hat Grenzen | Unbekannte Ereignis- und Wirksamkeitsdaten sichtbar klären statt erraten |
 
 **Noch vor verbindlicher Umsetzung zu klären:**
-- Unterschriften-/Scan- und Bereitstellungsregeln je Dokumentart;
+- allfällige separate Scan-Dokumentpflicht und Auslöser der Bereitstellung; die HR-Unterschriftenkontrolle entfällt gemäss bestätigter Fachregel;
 - Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
 - SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
 - Korrektur bereits bearbeiteter/retournierter oder extern verarbeiteter Unterlagen;

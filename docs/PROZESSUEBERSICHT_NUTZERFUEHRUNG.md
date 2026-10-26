@@ -663,6 +663,8 @@ Diese Punkte verhindern einen ersten Seitenentwurf nicht; der Entwurf muss sie a
 | Gemeinsame Erstellung / Versand | Welche freigegebenen Ausgaben kann ich zusammen erstellen und an wen übermitteln? Einzelstatus trotz Sammelaktion |
 | Stammdatenabgleich | Was hat sich geändert und welche offenen Dialoge oder Ausgaben betrifft das? |
 
+Der erste konkrete [Seitenentwurf für die Zielnachreichung](SEITENENTWURF_ZIELNACHREICHUNG.md) beschreibt Arbeitsübersicht, Dokumentprüfung und gemeinsame Erstellung mit Versand.
+
 Dies sind benötigte Arbeitsansichten, noch keine beschlossene Menüstruktur. Eingangsliste, Quellenprüfung und Fallprüfung sollen sich in diese Wege einfügen, ohne neue konkurrierende Aufgabenlisten aufzubauen.
 
 ## 9. Quellen des Iststands

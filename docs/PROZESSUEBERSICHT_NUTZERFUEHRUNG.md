@@ -36,7 +36,7 @@ Die Prozesse laufen ganzjährig und parallel. Während Jahresdialoge bearbeitet 
 | P07 | Unterjähriges Ereignis oder Ausnahme bearbeiten | Richtiger Dialog mit Person, Anstellung, Führungskraft, Umfang, Zeitraum und Formular-OE ist festgelegt | P02/P03, danach P04 |
 | P08 | Auswerten, SAP bereitstellen und Jahreskampagne abschliessen | Exporte und Restfälle sind nachvollziehbar; Kampagnenabschluss ist dokumentiert | Folgejahr P01; offene und neue Dialoge bleiben bearbeitbar (Soll) |
 | P09 | SAP-Stammdaten regelmässig aktualisieren | Änderungen sind geprüft; nötige Folgeaufgaben sind verknüpft | P07 bei neuen Dialogen; P03 bei Korrekturen; P10 bei Zuständigkeitsfragen |
-| P10 | MD-Zuständigkeit festlegen oder ändern | Verantwortliche Führungskraft und Geltungsbereich sind nachvollziehbar festgelegt | P02/P03; bestehende Rückläufe und Historie berücksichtigen |
+| P10 | Zuständigkeit und Formular-OE je Gesprächsteil festlegen oder ändern | Verantwortung für Rückblick und Ausblick ist getrennt nachvollziehbar festgelegt | P02/P03; bestehende Rückläufe und Historie berücksichtigen |
 
 Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstützende Betriebsprozesse. Sie sollen fachliche Aufgaben bei Bedarf konkret blockieren und einen Lösungsweg anbieten, aber nicht die normale Arbeitsübersicht dominieren.
 
@@ -45,7 +45,7 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 | Einheit | Bedeutung für die Nutzerführung |
 |---|---|
 | Durchlauf / Jahreskampagne | Ist: technischer Jahreskontext. Soll: organisatorische Bündelung und Filter; keine Zugangshürde für unterjährige Dialoge oder globale Eingänge |
-| Dialogfall | Person, Anstellung, Anlass, Zeitraum und MD-Zuständigkeit; mehrere fachlich unterschiedliche Dialoge pro Jahr möglich; Zuständigkeitswechsel allein erzeugt nicht automatisch einen neuen Dialog |
+| Dialogfall / Gesprächsteile | Person und Anstellung mit Anlass; Rückblick und Ausblick besitzen jeweils Zeitraum, MD-Zuständigkeit und Formular-OE. Mehrere fachlich unterschiedliche Dialoge pro Jahr bleiben möglich; ein Zuständigkeitswechsel allein erzeugt keine doppelten Pflichten |
 | SAP-Führungslinie / MD-Zuständigkeit | Aktuelle organisatorische Zuordnung und für diesen Dialog verantwortliche Führungskraft getrennt halten; begründete Abweichungen bei neuen SAP-Importen sichtbar erhalten |
 | Eingang | E-Mail oder manuell hochgeladene Datei; eine Mail kann mehrere unabhängige Anliegen enthalten |
 | Dokument / Zielquelle | Inhalt, Zuordnung, Jahr, Prüfung und gültige Version |
@@ -87,7 +87,7 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Varianten:** Siehe ausführlichen Ablauf in Abschnitt 5. Weitere Auslöser sind korrigierte Stammdaten, Gesprächsumfang, Zeitraum, Formular-OE oder Vorlagen.
 
-**Sollvorschlag:** Vom Anlass aus direkt zu betroffenen Formularen und deren Versand führen. Gültige Quelle, verwendete Ausgabe und Versand bleiben verknüpft. Mehrere nachgereichte Ausblicke gemeinsam prüfen und alle ausgewählten freigegebenen Rückblicke in einem Arbeitsschritt erstellen. Bündelung und Versand nach tatsächlicher MD-Zuständigkeit; Einzelstatus und Wiederaufnahme bleiben möglich (Abschnitt 5.5).
+**Sollvorschlag:** Vom Anlass aus direkt zu betroffenen Formularen und deren Versand führen. Gültige Quelle, verwendete Ausgabe und Versand bleiben verknüpft. Mehrere nachgereichte Ausblicke gemeinsam prüfen und alle ausgewählten freigegebenen Rückblicke in einem Arbeitsschritt erstellen. Bündelung und Versand nach tatsächlicher MD-Zuständigkeit des jeweiligen Gesprächsteils; Einzelstatus und Wiederaufnahme bleiben möglich (Abschnitt 5.5).
 
 **Abschluss:** Alle betroffenen Ausgaben wurden bearbeitet; eine unterlassene Neuerstellung/Übermittlung ist begründet.
 
@@ -224,21 +224,82 @@ Die Zahlen bezeichnen Aufgaben bzw. betroffene Ausgaben; eine Person kann mehrer
 - Alte Ausgaben bleiben erhalten; neue Stammdaten allein bestätigen weder Neuerstellung noch Versand.
 
 
-### P10 – MD-Zuständigkeit festlegen oder ändern
+### P10 – Zuständigkeit und Formular-OE je Gesprächsteil
 
-**Anforderung:** Eine andere Führungskraft kann den MD verantworten, beispielsweise bei Vakanz. Das kann bei Neuanlage oder einem bereits laufenden Dialog vorkommen.
+**Bestätigte Anforderungen (26. Oktober 2026):**
+- Rückblick und Ausblick einer Person können unterschiedliche verantwortliche Führungskräfte haben.
+- Beispiel Übertritt im zweiten Halbjahr: Die bisherige Führungskraft übernimmt den Rückblick, die neue den Ausblick.
+- Auch aus anderen Gründen, etwa Langzeitabwesenheit oder Vakanz, kann eine andere Führungskraft einen oder beide Gesprächsteile übernehmen.
+- Die Formular-OE muss zur konkreten Gesprächskonstellation passen. Die aktuelle OE der mitarbeitenden Person ist für einen historischen Rückblick nicht immer richtig. Die bereits vorhandene Auswahl der OE der zugewiesenen Führungskraft bleibt fachlich erforderlich.
+- Für die Zeit vor Einführung fehlen SAP-Vergleichsstände; historische Konstellationen müssen manuell erfasst werden. Mit laufenden Importen sollen Änderungen künftig aus den verfügbaren Stammdatenständen erkannt und als Zuordnungsvorschlag genutzt werden.
 
-**Ist:** Für manuelle Ereignisse sind Führungskraft und Formular-OE auswählbar. Eine umfassende Änderung der Zuständigkeit bestehender Dialoge einschliesslich Folgeaktionen wird hier noch nicht als vorhanden vorausgesetzt.
+**Ist:** Für manuelle Ereignisse sind Führungskraft und Formular-OE auswählbar. Die vorhandene Auswahl zwischen Mitarbeiter-OE und Führungskraft-OE ist bestätigt. Eine durchgängige Zuständigkeit je Gesprächsteil, historische Ableitung und entsprechende Folgeaktionen werden hier noch nicht als implementiert vorausgesetzt.
 
-**Sollablauf:** Dialog bzw. betroffene Personen auswählen → SAP-Führungskraft und bisherige MD-Zuständigkeit anzeigen → verantwortliche Führungskraft auswählen → Grund, Geltungsbereich und Formular-OE bestätigen → Auswirkungen auf Formulare, offene Versandvorgänge, Rückläufe und Erinnerungen prüfen.
+#### P10.1 Fachliches Modell
 
-**Sollvorschlag:** Standardmässig gilt die Abweichung für den ausgewählten Dialog. Eine gemeinsame Zuweisung für mehrere ausgewählte Dialoge ist möglich. SAP-Zuordnung und manuelle MD-Zuständigkeit bleiben getrennt gespeichert. Ein neuer SAP-Import hebt die bewusste Abweichung nicht stillschweigend auf.
+| Angabe | Bedeutung / Geltungsbereich |
+|---|---|
+| Aktuelle SAP-Führungskraft und OE | Aktueller organisatorischer Stand der Anstellung |
+| Frühere organisatorische Zuordnung | Aus früheren Importständen bekannte Führungskraft/OE; Herkunft und zeitliche Aussagekraft bleiben sichtbar |
+| Verantwortliche Führungskraft Rückblick | Konkrete Verantwortung für diesen Rückblick |
+| Verantwortliche Führungskraft Ausblick | Konkrete Verantwortung für diesen Ausblick |
+| Formular-OE je Gesprächsteil | Auswahl Mitarbeiter-OE oder OE der zugewiesenen Führungskraft; verwendete OE wird für den Gesprächsteil nachvollziehbar festgehalten |
+| Zeitraum je Gesprächsteil | Fachlicher Zeitraum des Rückblicks bzw. Ausblicks, unabhängig vom Datum des Stammdatenimports |
+| Herkunft der Zuständigkeit | Aus SAP vorgeschlagen, aus Historie vorgeschlagen oder manuell festgelegt; Entscheidung mit Grund nachvollziehbar |
 
-**Varianten:** Vakanz, Stellvertretung, Übertritt mit Rückblick durch alte Führungskraft, Zuständigkeitswechsel vor/nach Versand, bereits eingegangener Rücklauf, unterschiedliche Zuständigkeiten für verschiedene Gesprächsanlässe.
+Die Oberfläche kann beide Teile gemeinsam zeigen. Sie muss nicht für eine abweichende Führungskraft einen zweiten vollständigen MD mit doppelten Pflichten erzeugen. Wie dies auf bestehende Fälle und Ereignisse abgebildet wird, ist eine technische Entwurfsfrage.
 
-**Abschluss:** MD-Zuständigkeit ist gespeichert und nötige Korrekturen/Benachrichtigungen sind als Folgearbeit sichtbar. Ein Wechsel allein bestätigt keinen Versand. Feedback an eine bestimmte Führungskraft darf nicht pauschal auf die neue MD-verantwortliche Person umgebucht werden.
+#### P10.2 Beispiele
 
-**Offen:** Brauchen wir zusätzlich zeitlich befristete Vertretungen für eine ganze Organisationseinheit oder genügt zunächst die gemeinsame Auswahl konkreter Dialoge? Können Rückblick und Ausblick desselben Anlasses unterschiedliche Verantwortliche benötigen?
+| Anlass | Rückblick | Ausblick | Formular-OE |
+|---|---|---|---|
+| Regulärer MD ohne Wechsel | Regulär zuständige Führungskraft | Regulär zuständige Führungskraft | Üblicherweise OE der mitarbeitenden Person |
+| Übertritt im zweiten Halbjahr | Bisherige Führungskraft | Neue Führungskraft | Für Rückblick bisherige Konstellation, z. B. OE der zugewiesenen bisherigen Führungskraft; für Ausblick neue Konstellation |
+| Langzeitabwesenheit der Führungskraft | Ersatzperson, falls dieser Teil übernommen wird | Ersatzperson oder reguläre Führungskraft entsprechend Entscheidung | Eigenständig prüfen; Ersatzperson aus anderer OE bedeutet nicht automatisch andere Mitarbeiter-OE |
+| Vakanz | Festgelegte Vertretung | Festgelegte Vertretung oder neue Führungskraft | Mitarbeiter-OE kann trotz anderer Führungskraft bestehen bleiben |
+| Übertritt vor erstem verfügbaren Import | Bisherige Führungskraft manuell auswählen | Neue Führungskraft auswählen/bestätigen | Je Teil explizit festlegen |
+
+Das Übertrittsbeispiel beschreibt die vom Nutzer bestätigte Aufteilung der Verantwortung. Daraus werden keine zusätzlichen Regeln zu Beurteilungszeiträumen, weiteren Gesprächen oder zur SAP-massgeblichen Beurteilung abgeleitet; diese bleiben gesondert festzulegen.
+
+#### P10.3 Ableitung aus Stammdatenhistorie
+
+**Sollvorschlag:** P09 vergleicht die Zuordnung derselben Person und Anstellung über die Importstände. Ein Wechsel von Führungskraft oder OE erzeugt einen prüfbaren Änderungsvorschlag für die betroffenen Gesprächsteile. HR bestätigt, ob ein Übertritt, eine organisatorische Änderung oder eine andere Konstellation vorliegt.
+
+- Frühere und aktuelle Zuordnung mit Herkunft und Datum des Datenstands anzeigen.
+- Ein Importdatum ist kein sicherer Übertrittstermin. Wenn SAP kein verlässliches Wirksamkeitsdatum liefert, zeigt die App nur den erkannten Wechsel zwischen den Datenständen und verlangt bei fachlicher Relevanz die Ergänzung des Ereignisdatums.
+- Ohne hinreichende Historie keine bisherige Führungskraft oder historische OE erfinden; manuelle Erfassung anbieten.
+- Eine bereits bewusst festgelegte MD-Zuständigkeit bleibt erhalten. Eine neu erkannte Abweichung führt zur Prüfung, nicht zu einer stillen Ersetzung.
+- Historische Formularwerte dürfen nicht bei jeder Neuerzeugung aus den aktuellen Stammdaten neu berechnet werden. Auch wenn sich die OE der früheren Führungskraft später ändert, muss die bestätigte Konstellation nachvollziehbar bleiben.
+- Bereits ausgeschiedene oder inzwischen nicht mehr als Führungskraft geführte Personen müssen für historische Zuordnungen berücksichtigt werden können; Versandfähigkeit separat prüfen.
+
+#### P10.4 Bearbeitungsablauf – Sollvorschlag
+
+1. Person/Anstellung und Anlass öffnen; bestehende Dialoge und beide Gesprächsteile anzeigen.
+2. Für Rückblick und Ausblick jeweils verantwortliche Führungskraft, Zeitraum und Formular-OE prüfen.
+3. Bei manueller Abweichung „Rückblick“, „Ausblick“ oder „beide Teile“ auswählen; Ersatzperson und Grund erfassen. Dieselbe Entscheidung kann für mehrere ausgewählte Personen angewendet werden, wenn die betroffenen Teile und Auswirkungen sichtbar sind.
+4. Vorschlag aus SAP/Historie bestätigen oder manuell korrigieren. Bewusste Entscheidungen je Gesprächsteil speichern.
+5. Auswirkungen anzeigen: Welche Formulare müssen erstellt/korrigiert werden, welche offenen Versandvorgänge sind überholt und wer erhält künftige Erinnerungen?
+6. Folgearbeiten direkt öffnen; unveränderte Gesprächsteile bleiben unverändert.
+
+**Abschluss:** Zuständigkeit und Formular-OE sind je betroffenem Teil festgelegt und Folgearbeiten verknüpft. Ein Wechsel allein bestätigt keinen Versand.
+
+**Folgen für andere Prozesse:**
+- P02/P03 bündeln Formulare nach der für den jeweiligen Gesprächsteil zuständigen Person. Bei getrennter Verantwortung erhält nicht automatisch jede Führungskraft beide Teile.
+- P04 ordnet Rückläufe dem richtigen Gesprächsteil und historischen Kontext zu; aktuelle SAP-Zuordnung allein reicht nicht.
+- P06 richtet Erinnerungen für fehlende Rückblicke/Ausblicke an die jeweils verantwortliche Führungskraft.
+- Feedback an eine bestimmte Führungskraft wird nicht pauschal der Ersatzperson oder neuen MD-Verantwortlichen zugeordnet.
+- Bereits übermittelte oder zurückgegebene Dokumente behalten ihren Verlauf; notwendige Korrekturen werden ausdrücklich entschieden.
+
+**Noch offen:** Brauchen wir zusätzlich zeitlich befristete Vertretungen für eine ganze OE oder genügt zunächst die gemeinsame Auswahl konkreter Gesprächsteile? Welche Wirksamkeitsdaten und historischen Angaben liefert der tatsächliche SAP-Export? Fachliche Regeln für andere Übertrittszeitpunkte und die SAP-massgebliche Beurteilung sind separat zu bestätigen.
+
+**Prüfkriterien:**
+- Übertritt im zweiten Halbjahr führt zu Rückblick bei alter und Ausblick bei neuer Führungskraft, ohne doppelte Pflichten.
+- Die Konstellation lässt sich auch ohne Importhistorie manuell erfassen.
+- Langzeitabwesenheit erlaubt Ersatz für nur einen oder beide Teile.
+- Formular-OE ist je Teil unabhängig von aktueller Mitarbeiter-OE festgelegt.
+- Ein neuer SAP-Import erhält bestätigte manuelle Zuständigkeiten.
+- Ein aus Vergleichsständen erkannter Wechsel erhält kein erfundenes Wirksamkeitsdatum.
+- Sammelerstellung, Versand und Erinnerungen respektieren die Zuständigkeit je Teil.
 
 ## 5. Detailablauf P03: Alter Ausblick geht nachträglich ein
 
@@ -358,7 +419,7 @@ Dieser Entwurf konkretisiert die bestätigte direkte Zielkorrektur. Die genaue G
 8. Alte Ausgaben bleiben nachvollziehbar; Änderungen zeigen die tatsächlich betroffenen Personen und Formulare.
 9. Erfolgsmeldungen benennen Wirkung und nächsten Schritt konkret.
 10. Offene Arbeiten sind unabhängig von Kampagne und Dialogart gemeinsam auffindbar; Filter schränken die Anzeige bewusst ein.
-11. SAP-Führungslinie und MD-Zuständigkeit werden getrennt geführt und bei Änderungen miteinander abgeglichen.
+11. SAP-Führungslinie und MD-Zuständigkeit je Gesprächsteil werden getrennt geführt und bei Änderungen miteinander abgeglichen. Rückblick und Ausblick können unterschiedliche Führungskräfte und Formular-OE haben.
 12. Sammelaktionen bündeln passende Aufgaben, ohne Einzelstatus, Fehler oder abweichende Empfänger zu verdecken.
 13. Auch der alternative Abschluss „nicht erforderlich“, „Dublette“ oder „begründet verworfen“ ist nachvollziehbar.
 

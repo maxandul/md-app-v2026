@@ -241,7 +241,7 @@ Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhan
 4. HR kann eine Neuerstellung begründet als nicht nötig entscheiden; die Aufgabe verschwindet nicht allein durch Übernahme der Quelle.
 5. Änderungen nach bereits bearbeitetem/retourniertem Rückblick benötigen einen gesonderten Korrekturentscheid.
 
-**Offen:** Soll HR erkannte Ziele direkt in der App korrigieren können? Empfehlung: ja, mit Originalbezug und protokollierter korrigierter Fassung. Die Alternative „nur im erzeugten Word ergänzen“ lässt gespeicherte Quelle und spätere Neuerzeugungen auseinanderlaufen.
+**Bestätigte Entscheidung (26. Oktober 2026):** HR soll unvollständig erkannte Ziele direkt in der App ergänzen und korrigieren können. Original und erkannte Ziele werden nebeneinander zugänglich gemacht. Änderungen werden nachvollziehbar gespeichert; die bestätigte Fassung bildet die Grundlage für Rückblicke und spätere Neuerstellungen. Dies ist eine beschlossene Anforderung, noch keine implementierte Funktion.
 
 ### 5.5 Mehrere nachgereichte Ausblicke gemeinsam bearbeiten
 
@@ -258,6 +258,43 @@ Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhan
 **Beispiel:** Fünf Ausblicke kommen gemeinsam an. Vier Quellen sind freigegeben, eine braucht Klärung. HR kann vier Rückblicke gemeinsam erstellen und übermitteln; die fünfte Aufgabe bleibt mit Grund offen. Ein Teilerfolg darf nicht den gesamten Eingang als fachlich abgeschlossen darstellen.
 
 **Abgrenzung:** Die Sammelaktion spart wiederholte Bedienung; Prüfung, Zuordnung und Verlauf bleiben pro Person/Anstellung und Dokument erhalten. Die bestehende Unterstützung für personenspezifische Korrekturen ist noch kein Nachweis, dass dieser Sammelablauf bereits implementiert ist.
+
+### 5.6 Prüfmaske und Übergang zur Sammelerstellung – Sollentwurf
+
+Dieser Entwurf konkretisiert die bestätigte direkte Zielkorrektur. Die genaue Gestaltung und technische Umsetzung stehen noch aus.
+
+**Einstieg:** Eine Nachreichung oder Sammelauswahl öffnet eine Personenliste mit Name, Anstellung/OE, Zieljahr, MD-Verantwortlichkeit und Prüfstatus. Bei mehreren Personen zeigt sie, wie viele Quellen noch ungeklärt und wie viele bereits freigegeben sind.
+
+**Bearbeitung einer Quelle:**
+- Kopfbereich: Person, Anstellung, Zieljahr und Herkunft; unklare Zuordnungen direkt bearbeiten.
+- Originalbereich: unveränderte eingegangene Datei zugänglich machen; erkannte Fundstellen soweit verfügbar anzeigen.
+- Zielbereich: Leistungs- und Entwicklungsziele mit Zieltext, Kompetenz, Messkriterien, Weg zum Ziel und Termin bearbeiten.
+- Fehlende Ziele ergänzen, irrtümlich erkannte Zeilen entfernen und falsch aufgeteilte Inhalte korrigieren können.
+- Unsichere Stellen konkret markieren. Ein vom Import leer gelassenes Feld ist nicht automatisch eine fachliche Lücke; HR gleicht es mit dem Original ab.
+- Original, automatische Erkennung und von HR bestätigte Fassung getrennt nachvollziehbar halten. Bearbeiter und Änderungszeitpunkt dokumentieren.
+
+**Aktionen und ihre Wirkung:**
+
+| Aktion | Wirkung | Folge |
+|---|---|---|
+| Entwurf speichern | Zuordnung und bearbeitete Ziele sichern; noch keine Freigabe | Später an derselben Stelle weiterarbeiten |
+| Rückfrage vermerken | Offenen Punkt und benötigte Klärung festhalten; kein automatischer Mailversand | Quelle bleibt ungeklärt |
+| Ziele bestätigen | Aktuelle Zuordnung und korrigierte Fassung fachlich freigeben | Betroffene Rückblicke für die Erstellung anbieten |
+| Nächste Person prüfen | Zur nächsten Quelle derselben Auswahl wechseln | Kontext und bisherige Ergebnisse bleiben erhalten |
+
+**Nach Bestätigung:** Die Übersicht zeigt beispielsweise „4 Quellen freigegeben, 1 Rückfrage offen“. HR wählt die passenden Rückblicke aus und startet „Ausgewählte Rückblicke erstellen“. Anschliessend folgen Ergebnisprüfung und gebündelte Versandvorbereitung nach MD-Verantwortlichkeit. Die Freigabe einer Quelle erstellt oder versendet für sich allein noch kein Formular.
+
+**Änderung nach Freigabe:** Wird eine bestätigte Quelle erneut korrigiert, muss die neue Fassung wieder bestätigt werden. Bereits erstellte oder versendete Rückblicke bleiben als historische Fassungen erhalten; die App zeigt den daraus entstandenen Korrekturbedarf.
+
+**Technisch zu klären:** Word-Dateien lassen sich nicht ohne Weiteres im Browser originalgetreu anzeigen. Für die Gegenüberstellung ist eine geeignete Vorschau bzw. lokale Konvertierung zu prüfen; die Originaldatei bleibt zusätzlich zugänglich. Eine reine Textextraktion darf nicht als originalgetreue Darstellung bezeichnet werden.
+
+**Prüfkriterien für die spätere Umsetzung:**
+- Korrigierte Ziele werden beim Erstellen und erneuten Erstellen tatsächlich verwendet.
+- Ein gespeicherter Entwurf ist von einer bestätigten Quelle unterscheidbar.
+- Abbruch und Wiederaufnahme erhalten Änderungen und Gruppenkontext.
+- Erneuter Eingang desselben Originals überschreibt keine bestätigte HR-Korrektur.
+- Eine Änderung nach Freigabe macht betroffene Ausgaben erkennbar.
+- Ungeklärte Quellen bleiben bei einer erfolgreichen Sammelerstellung offen.
 
 ## 6. Übergreifende Regeln für die spätere Nutzerführung
 

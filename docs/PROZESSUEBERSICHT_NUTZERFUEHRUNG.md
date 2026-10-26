@@ -453,6 +453,29 @@ Die direkte Bearbeitung erkannter Word-Ziele ist ein Sollvorschlag, keine vorhan
 
 **Bestätigte Entscheidung (26. Oktober 2026):** HR soll unvollständig erkannte Ziele direkt in der App ergänzen und korrigieren können. Original und erkannte Ziele werden nebeneinander zugänglich gemacht. Änderungen werden nachvollziehbar gespeichert; die bestätigte Fassung bildet die Grundlage für Rückblicke und spätere Neuerstellungen. Dies ist eine beschlossene Anforderung, noch keine implementierte Funktion.
 
+### Korrekturweg bei später nachgereichten Zielen
+
+**Bestätigte Regel (26. Oktober 2026):** Der Bearbeitungsstand des Rückblicks bestimmt die Folgeaktion. Die bestätigte Zielquelle wird gespeichert, ersetzt aber keinen bereits eingegangenen Rückblick.
+
+| Stand des Rückblicks | Folgeaktion | Voraussetzung für Abschluss |
+|---|---|---|
+| Noch ausstehend | Aktualisierte Rückblickvorlage zur Erstellung und Übermittlung anbieten | Ausgabe übermittelt oder begründeter Verzicht |
+| Bereits eingegangen, auch wenn noch ungeprüft | Aufgabe „Korrekturbedarf klären“; keine automatische Neuerstellung einer Vorlage | HR hat entschieden, dass keine Korrektur nötig ist, oder ein erforderlicher korrigierter Rücklauf ist bearbeitet |
+| Bereits für Dossier bereitgestellt | Korrekturbedarf klären und erfolgte Übergabe deutlich anzeigen; keine automatische Ersetzung | Gegebenenfalls korrigierten Rücklauf bearbeiten und externe Korrektur mit zuständiger Stelle klären |
+
+**Entscheidungen in der Klärung:**
+- „Keine Korrektur nötig“ mit kurzer Begründung: Rückblick bleibt bestehen, Zielquelle und Entscheidung bleiben nachvollziehbar.
+- „Korrigierten Rücklauf anfordern“: benötigte Änderung festhalten; verantwortliche Führungskraft und vorhandenen Rückblick verknüpfen. Die Anforderung bzw. ein Mailentwurf ist noch kein Eingang des korrigierten Dokuments.
+- „Rückfrage offen“: fehlende Klärung konkret vermerken und Aufgabe offen halten.
+
+Ein bereits eingegangener Rückblick wird nicht durch eine neu erzeugte leere Vorlage ersetzt. Der korrigierte Rücklauf wird als neue Version geprüft; Original und bisherige Verarbeitung bleiben erhalten. Er ist wegen des Versionskonflikts kein Fall für ungeprüfte automatische Ersetzung.
+
+**Folgen für Sammelaktionen:** Personen mit bereits eingegangenem Rückblick werden nicht in die gemeinsame Vorlagenerstellung aufgenommen. Die Auswahl zeigt stattdessen „Korrekturbedarf klären“. Freigegebene noch ausstehende Rückblicke anderer Personen können parallel erstellt werden.
+
+**Erneute Prüfung vor Erstellung:** Trifft ein Rückblick ein, nachdem die Auswahl vorbereitet wurde, muss der betreffende Eintrag in die Klärung wechseln. Ein veralteter Listenstand darf keine neue Vorlage für einen inzwischen eingegangenen Rückblick erzeugen.
+
+**Grenze:** „Noch ausstehend“ beweist nicht, dass die Führungskraft die bisherige Vorlage noch nicht bearbeitet hat. Der Hinweis zum Abgleichen bereits bearbeiteter Inhalte bleibt erhalten. Wie eine notwendige Korrektur nach erfolgter externer Dossier- oder SAP-Verarbeitung praktisch bestätigt wird, ist noch mit dem entsprechenden Ablauf zu konkretisieren.
+
 ### 5.5 Mehrere nachgereichte Ausblicke gemeinsam bearbeiten
 
 **Anforderung:** Reicht eine Führungskraft mehrere Ausblicke nach, soll HR die neuen Rückblicke für alle betroffenen Mitarbeitenden in einem Zug erstellen können.
@@ -592,7 +615,7 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 
 **Erkenntnis:** Die Sammelansicht braucht Einzelstatus. Die Eingangsgruppe und die Versandgruppe sind nicht zwingend identisch: Bei abweichender Verantwortung muss nach tatsächlichem Empfänger aufgeteilt werden.
 
-**Offen:** Umgang mit inzwischen bearbeiteten oder retournierten Rückblicken. Word-Vorschau und Erkennung zusätzlicher Mailanliegen technisch prüfen. Die Mailablage-Regel ist in P04.4 bestätigt.
+**Festgelegt:** Bereits eingegangene Rückblicke führen zur Korrekturklärung statt zur Vorlagenerstellung (Abschnitt 5.4, Korrekturweg). **Noch zu prüfen:** Word-Vorschau, Erkennung zusätzlicher Mailanliegen und konkreter externer Korrekturablauf. Die Mailablage-Regel ist in P04.4 bestätigt.
 
 ### S03 – Übertritt im zweiten Halbjahr
 
@@ -668,7 +691,7 @@ Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Na
 - allfällige separate Scan-Dokumentpflicht und technische Validierungskriterien für die automatische Bereitstellung; die HR-Unterschriftenkontrolle entfällt gemäss bestätigter Fachregel;
 - Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
 - SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
-- Korrektur bereits bearbeiteter/retournierter oder extern verarbeiteter Unterlagen;
+- konkrete Durchführung und Bestätigung einer nötigen Korrektur nach externer Verarbeitung; der Entscheidungsweg bei bereits eingegangenem Rückblick ist bestätigt;
 - zuverlässige Erkennung zusätzlicher Mailanliegen gemäss bestätigter Ablageregel und Umfang zeitlicher Vertretungen.
 
 Diese Punkte verhindern einen ersten Seitenentwurf nicht; der Entwurf muss sie als offene Regeln berücksichtigen.

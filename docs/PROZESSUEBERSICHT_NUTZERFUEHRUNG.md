@@ -183,7 +183,15 @@ Die Mailansicht fasst die Bearbeitungsstände ihrer MD-Dokumente zusammen und ze
 - Erneuter Scan oder manueller Upload derselben Datei verweist auf die vorhandene Verarbeitung; abweichende Inhalte werden als mögliche neue Version geprüft.
 - Wiederaufnahme setzt beim letzten bestätigten Schritt an.
 
-**Noch offen:** Der genaue Zeitpunkt des automatischen Verschiebens einer Mail wird separat festgelegt. Dabei dürfen „Dokument bearbeitet“, „Anliegen samt Folgearbeiten erledigt“ und „Mail abgelegt“ nicht gleichgesetzt werden. Diese Konzeption ändert die bestehende Verschieberegel noch nicht.
+**Bestätigte Mailablage-Regel (26. Oktober 2026):**
+- Reine MD-Mails werden nach erfolgreicher Verarbeitung aller MD-Anhänge automatisch in den konfigurierten Outlook-Zielordner «12 Mitarbeitenden-Dialog» verschoben, sofern keine zusätzlichen ungeklärten Anliegen bestehen.
+- Ungeklärte Anhänge, zusätzliche Anliegen im Mailtext oder Fremdanlagen verhindern das automatische Verschieben; die Mail bleibt zunächst im Posteingang.
+- Nach manueller Klärung verschiebt HR die Mail bei Bedarf selbst in Outlook. „Prüfung erledigt“ in der App markiert nur die Klärung und verschiebt keine Mail. Ein späterer Scan darf diese manuell abgeschlossene Prüfung nicht als neuen automatischen Verschiebeauftrag behandeln.
+- Folgearbeiten wie Neuerstellung und Versand korrigierter Rückblicke bleiben in der App offen, auch wenn die ursprüngliche Mail bereits abgelegt wurde.
+- Eine bekannte Dublette zählt nur dann als verarbeitet, wenn der vorhandene Verarbeitungsstand dies belegt; ein identischer noch ungeklärter Eingang bleibt ungeklärt.
+- Bei einem Verschiebefehler bleiben erfolgreich verarbeitete Dokumente erhalten. Eine erneute Ablageklärung darf keine erneute fachliche Übernahme oder Dossierübergabe auslösen.
+
+**Technisch zu prüfen:** Wie zusätzliche Anliegen im Mailtext zuverlässig erkannt bzw. zur manuellen Klärung vorgelegt werden. Erfolgreiche Anhangsverarbeitung allein ist kein Nachweis, dass die Nachricht kein weiteres Anliegen enthält. Die Regel ist eine Sollanforderung, keine Behauptung über eine bereits vorhandene automatische Inhaltsprüfung.
 
 #### P04.5 Prüfkriterien
 
@@ -584,7 +592,7 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 
 **Erkenntnis:** Die Sammelansicht braucht Einzelstatus. Die Eingangsgruppe und die Versandgruppe sind nicht zwingend identisch: Bei abweichender Verantwortung muss nach tatsächlichem Empfänger aufgeteilt werden.
 
-**Offen:** Umgang mit inzwischen bearbeiteten oder retournierten Rückblicken; Zeitpunkt der Mailverschiebung. Word-Vorschau technisch prüfen.
+**Offen:** Umgang mit inzwischen bearbeiteten oder retournierten Rückblicken. Word-Vorschau und Erkennung zusätzlicher Mailanliegen technisch prüfen. Die Mailablage-Regel ist in P04.4 bestätigt.
 
 ### S03 – Übertritt im zweiten Halbjahr
 
@@ -661,7 +669,7 @@ Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Na
 - Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
 - SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
 - Korrektur bereits bearbeiteter/retournierter oder extern verarbeiteter Unterlagen;
-- automatische Mailverschiebung und Umfang zeitlicher Vertretungen.
+- zuverlässige Erkennung zusätzlicher Mailanliegen gemäss bestätigter Ablageregel und Umfang zeitlicher Vertretungen.
 
 Diese Punkte verhindern einen ersten Seitenentwurf nicht; der Entwurf muss sie als offene Regeln berücksichtigen.
 

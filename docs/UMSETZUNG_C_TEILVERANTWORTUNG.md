@@ -69,28 +69,34 @@ setzt keine gespeicherte Verantwortung zurück.
 
 ## Prüfungen
 
-- Vollständiger Regressionstest vor den letzten Ergänzungen: **269 bestanden**.
+- Abschliessender vollständiger Regressionstest am 27. Oktober 2026:
+  **269 bestanden in 163,02 Sekunden**, Exitcode 0. Geprüfter Codestand:
+  `4875699e3a2553fcef6a22a3008e1a57574a818d`; danach nur dieser Testnachweis ergänzt.
 - Ergänzende Ablauf-, Start- und Mengenprüfung: **18 bestanden**. Darin enthalten
   sind getrennte Empfänger, Teilfehler, alte offene Entwürfe, Fristen,
   Rücklaufzuordnung, SAP-Synchronisierung, Migration und gesperrte reale Aktionen.
-- Anschliessend ergänzt, noch nicht vollständig nachgetestet: Jahresfilter für
+- Im Abschlusslauf ebenfalls geprüft: Jahresfilter für
   bestehende manuelle Fallzeiträume, Vorrang gespeicherter Teilzeiträume bei
   später abweichenden Anstellungsdaten, Seitenumfang/Verlaufshinweise und
-  verständliche Beschriftungen der Versandänderungen. Entsprechende fachliche
-  Assertions sind in `tests/test_part_consumers.py` ergänzt.
+  verständliche Beschriftungen der Versandänderungen. Die fachlichen
+  Assertions stehen in `tests/test_part_consumers.py`; eine visuelle
+  Bedienprüfung der Beschriftungen wird damit nicht behauptet.
 - Mengenbestand: 1000 Personen, fünf Jahre, 10’500 Teile und 10’000
   Zielquellenversionen. Gemessen vor der letzten Ergänzung: Gesprächsteilliste
   0,039 s, gezielte Suche 0,034 s. Das ist eine lokale Messung, kein
   Leistungsversprechen für das produktive Gerät.
 
-**Offener Abschlusscheck:** Die automatische Freigabeprüfung stoppte den
-abschliessenden Lauf wegen einer gemeldeten externen Visual-Studio-
-Telemetrieverbindung mit unbekanntem Inhalt. Auch ein erneuter Versuch mit
-gesperrten Python-Netzwerkzugriffen und Unterprozessen sowie deaktiviertem
-pytest-Plugin-Autoload wurde wegen derselben Verbindung abgelehnt. Beide Läufe
-werden nicht als bestanden gezählt; die Herkunft der Verbindung ist nicht
-geklärt. Es wurden keine weiteren Testversuche gestartet. Der Entwurf bleibt
-bis zum vollständigen Nachtest ausdrücklich in Prüfung.
+**Abschlusscheck erledigt:** Nach ausdrücklicher Anwenderfreigabe wurde der
+vollständige Lauf erfolgreich wiederholt. Der lokale Prüfstarter rief pytest
+mit `-q --disable-warnings --maxfail=1` auf; Python-Netzwerkzugriffe und
+Unterprozesse blieben gesperrt, zusätzliches pytest-Plugin-Autoload deaktiviert.
+Der Lauf meldete sechs Warnungen und beim Interpreterende SWIG-/pyreadline3-
+Meldungen, aber keine fehlgeschlagenen Tests und Exitcode 0.
+
+Die zwei zuvor durch die automatische Freigabeprüfung wegen einer gemeldeten
+Visual-Studio-Telemetrieverbindung gestoppten Läufe zählen weiterhin nicht als
+bestanden. Der erfolgreiche Nachtest ersetzt sie als Abschlussnachweis; die
+Herkunft der gemeldeten Verbindung wurde damit nicht ermittelt.
 
 Echte Word-Vorlagen, S/MIME/Outlook und die Darstellung im HR-Browser wurden für
 C noch nicht manuell geprüft. Tests verwenden synthetische Vorlagen, isolierte

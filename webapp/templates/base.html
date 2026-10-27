@@ -44,6 +44,7 @@
 
   <div class="app-shell page-layout">
   <main id="main-content">
+    {% if config.get('HR_REVIEW_SANDBOX') %}<div class="message message--error" role="status"><strong>HR-TEST · ausschliesslich erfundene Personen und Testvorlagen.</strong> Eigene Testdatenbank. Outlook, Postfachzugriff und externe Übergaben sind gesperrt. Bitte keine echten Personaldokumente hochladen.</div>{% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="messages" aria-live="polite">

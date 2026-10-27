@@ -104,7 +104,8 @@ def decision_effective(decision,evidence):
     if not decision or decision['outcome']=='resume':
         return False
     if decision['outcome']=='corrected':
-        return any(e.get('document_id')==decision['corrected_document_id'] for e in evidence)
+        return (decision['evidence_json']==review.dump(evidence)
+                and any(e.get('document_id')==decision['corrected_document_id'] for e in evidence))
     return decision['evidence_json']==review.dump(evidence)
 
 

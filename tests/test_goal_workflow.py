@@ -359,6 +359,9 @@ class GoalWorkflowTest(unittest.TestCase):
         decision('corrected',corrected_document_id=new)
         self.assertEqual(goal_queries.source_state(self.db,source),'done')
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents').fetchone()[0],2)
+        # A later, still unreviewed return must reopen a previously completed correction.
+        self.pending_return()
+        self.assertEqual(goal_queries.source_state(self.db,source),'followup')
         # A subsequent correction of an externally provided version cannot silently finish.
         with self.db:self.db.execute("UPDATE official_documents SET handoff_at='2026-10-27' WHERE id=?",(new,))
         decision('request_correction',recipient_email='person-111116@example.invalid',requested_at='2026-10-27')

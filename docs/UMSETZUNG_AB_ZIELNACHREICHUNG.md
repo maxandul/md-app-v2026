@@ -200,10 +200,16 @@ Responsive-Darstellung, Tastaturführung und HR-UX-Abnahme bleiben offen.
 
 ### Letzter vollständiger Prüflauf
 
-`python -m pytest -q --disable-warnings --maxfail=1`: **236 bestanden**,
-6 Warnungen, **116,00 Sekunden**. Darin enthalten: 25 neue A/B-Ablauftests und
-eine neue Mengenprüfung. Die Warnungen betreffen bestehende Bibliotheken
+`python -m pytest -q --disable-warnings --maxfail=1`: **237 bestanden**,
+6 Warnungen, **115,49 Sekunden**. Darin enthalten: 25 neue A/B-Ablauftests,
+eine neue Mengenprüfung und ein Test des isolierten Übungsstarters. Die Warnungen betreffen bestehende Bibliotheken
 (insbesondere PyMuPDF/SWIG), keine fehlgeschlagenen Prüfungen.
 
 Zusätzlich: JavaScript-Syntaxprüfung für `goal_workflow.js` und
 `table_controls.js` erfolgreich; `git diff --check` ohne Befund.
+
+Review-Nachtrag: Ein späterer ungeprüfter Rücklauf öffnet eine zuvor
+abgeschlossene Korrektur erneut. Der isolierte Starter `HR_TEST_AB.bat`
+bereitet fünf synthetische Quellen vor; Outlook und externe Übergaben bleiben
+gesperrt. Siehe [geführte Abnahme](ABNAHME_AB_GEFUEHRT.md). Noch keine
+visuelle oder fachliche Abnahme durchgeführt.

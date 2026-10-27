@@ -1,0 +1,115 @@
+"""Start an isolated, synthetic A/B walkthrough. Never opens Outlook or real data.
+
+Run: python review_hr_ab.py
+Each start uses a new directory under instance. No production settings are read.
+The generated originals/templates demonstrate behaviour, not the final HR layout.
+"""
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import secrets
+from unittest.mock import patch
+import uuid
+from zipfile import ZipFile, ZIP_DEFLATED
+
+import pandas as pd
+from flask import abort, redirect, request, url_for
+
+from webapp import create_app
+from webapp.db import get_db
+from webapp.organisation import DEFAULTS
+from webapp.services.cycles import create_cycle
+from webapp.services.sap_import import import_sap_workbook
+from webapp.services import goal_review
+from tests.test_goal_import import word
+from tests.test_word_packages import synthetic_template
+
+
+PEOPLE = [
+    ('900001','Lena','Meier','900101'),
+    ('900002','Noah','Keller','900101'),
+    ('900003','Mira','Steiner','900102'),
+    ('900004','Jonas','Weber','900102'),
+    ('900005','Alex','Huber','900102'),
+    ('900101','Eva','Sommer','000000'),
+    ('900102','Luca','Winter','000000'),
+]
+
+
+def complete_word_package(target: Path, xml: bytes) -> None:
+    """Wrap synthetic Word XML in a valid repository-owned OOXML container."""
+    container = Path(__file__).parent/'templates'/'preparation'/'MD_Reflexion.docx'
+    with ZipFile(container) as source, ZipFile(target,'w',ZIP_DEFLATED) as output:
+        for item in source.infolist():
+            output.writestr(item, xml if item.filename=='word/document.xml' else source.read(item.filename))
+
+
+def create_review_app(directory: Path):
+    directory=directory.resolve()
+    # Refuse existing directories rather than risk opening an existing database.
+    directory.mkdir(parents=True,exist_ok=False)
+    templates=directory/'templates';templates.mkdir()
+    paths={}
+    for kind,prefix in (('review','rb'),('outlook','ab'),('probation','pz')):
+        target=templates/(kind+'.docx')
+        synthetic_template(target,prefix)
+        with ZipFile(target) as archive:xml=archive.read('word/document.xml')
+        complete_word_package(target,xml)
+        paths[kind]=str(target)
+    settings={**DEFAULTS,'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':secrets.token_hex(32),
+        'SESSION_COOKIE_SECURE':False,'HR_GOAL_WORKFLOW':True,'HR_REVIEW_SANDBOX':True,
+        'DATABASE':str(directory/'review.sqlite3'),'STORAGE_ROOT':str(directory/'data'),
+        'BACKUP_ROOT':str(directory/'backups'),'DOSSIER_HANDOFF_ROOT':str(directory/'handoff'),
+        'WORD_TEMPLATE_PATHS':paths,'HR_MAILBOX_EMAIL':'hr@example.invalid'}
+    with patch('webapp.organisation.load_organisation',return_value=dict(DEFAULTS)):
+        app=create_app(settings,instance_path=str(directory))
+
+    @app.before_request
+    def walkthrough_boundary():
+        if request.remote_addr not in ('127.0.0.1','::1'):
+            abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
+        allowed_read={'main.case_detail','main.returns_overview','main.worklist','static'}
+        goal_endpoint=(request.endpoint or '').startswith('goal_work.')
+        if request.method=='POST':
+            if not goal_endpoint or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
+                abort(403,'HR-Test: Outlook, Postfachzugriff und externe Übergaben sind gesperrt.')
+        elif not goal_endpoint and request.endpoint not in allowed_read:
+            return redirect(url_for('goal_work.index'))
+
+    with app.app_context():
+        db=get_db()
+        rows=[{'ID_NO_ZERO':pn,'Rufname':first,'Nachname':last,'Austritt':None,'BsGrd':100,
+               'Eintritt':'2020-01-01','Ende Probezeit':'2020-04-01','OE Bez.':'Testbereich',
+               'Dir. Vorgesetzter (PN)':manager,'Ans.':'1','Plans. Bez.':'Testfunktion',
+               'lange ID/Nummer':pn+'@example.invalid','Bewilligung für':None}
+              for pn,first,last,manager in PEOPLE]
+        sap=directory/'synthetic-sap.xlsx';pd.DataFrame(rows).to_excel(sap,index=False)
+        imported=import_sap_workbook(db,sap,original_filename=sap.name,stored_filename=sap.name)
+        create_cycle(db,review_year=2025,sap_import_id=imported.import_id)
+        batch=goal_review.batch(db,'guided-review','Übungsfall 1 · fünf nachgereichte Ausblicke')
+        originals=directory/'data'/'goal_workflow'/'originals';originals.mkdir(parents=True)
+        for index,(pn,first,last,_) in enumerate(PEOPLE[:5]):
+            target=originals/f'Ausblick_2025_{first}_{last}.docx'
+            word(target,title='Projekt abschliessen' if index==0 else f'Testziel von {first}')
+            with ZipFile(target) as archive:
+                xml=archive.read('word/document.xml').replace(b'111113',pn.encode() if index<4 else b'')
+            complete_word_package(target,xml)
+            goal_review.stage(db,target,filename=target.name,batch_id=batch,origin_key='guided:'+pn)
+    return app
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--port',type=int,default=5056)
+    args=parser.parse_args()
+    directory=Path(__file__).parent/'instance'/('hr-ab-review-'+uuid.uuid4().hex[:10])
+    app=create_review_app(directory)
+    print(f'HR-TEST: http://127.0.0.1:{args.port}/arbeit/ziele',flush=True)
+    print(f'Nur synthetische Daten: {directory}',flush=True)
+    print('Outlook, Postfachzugriff und externe Übergaben sind gesperrt.',flush=True)
+    app.run(host='127.0.0.1',port=args.port,debug=False,use_reloader=False)
+
+
+if __name__=='__main__':
+    main()

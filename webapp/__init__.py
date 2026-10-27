@@ -30,10 +30,10 @@ def _secret_key(instance_path: str) -> str:
     return generated
 
 
-def create_app(test_config: dict | None = None) -> Flask:
-    app = Flask(__name__, instance_relative_config=True)
+def create_app(test_config: dict | None = None, *, instance_path: str | None = None) -> Flask:
+    app = Flask(__name__, instance_relative_config=True, instance_path=instance_path)
     app.config.from_mapping(
-        SECRET_KEY=_secret_key(app.instance_path),
+        SECRET_KEY=test_config['SECRET_KEY'] if test_config and 'SECRET_KEY' in test_config else _secret_key(app.instance_path),
         DATABASE=str(Path(app.instance_path) / "md.sqlite3"),
         STORAGE_ROOT=str(Path(app.instance_path) / "data"),
         BACKUP_ROOT=str(Path(app.instance_path) / "backups"),

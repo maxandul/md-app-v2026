@@ -142,6 +142,12 @@ def _backup_root() -> Path:
 
 def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[str]:
     """Löst eine OE in alle darunterliegenden Führungskräfte des Durchlaufs auf."""
+    from webapp.migrations import available as parts_available
+    part_managers=set()
+    if parts_available(connection):
+        part_managers={r['manager_pn'] for r in connection.execute('''SELECT DISTINCT o.manager_pn FROM hr_resolved_obligations o
+            JOIN employees m ON m.pn=o.manager_pn WHERE o.cycle_id=? AND o.active=1 AND o.required=1
+            AND o.event_status<>'cancelled' AND (o.form_org_unit=? OR m.org_unit=?) ORDER BY o.manager_pn''',(cycle_id,org_unit,org_unit))}
     available = {
         row["manager_pn"]
         for row in connection.execute(
@@ -173,7 +179,7 @@ def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[
         next_frontier = reports.intersection(available).difference(selected)
         selected.update(next_frontier)
         frontier = next_frontier
-    return sorted(selected)
+    return sorted(selected|part_managers)
 
 
 @bp.get("/")
@@ -221,7 +227,7 @@ def dialogs():
             if needle in " ".join(
                 str(item.get(key, "")) for key in (
                     "first_name", "last_name", "employee_pn", "assignment_number",
-                    "manager_name", "manager_pn",
+                    "manager_name", "manager_pn", "part_search_text",
                 )
             ).casefold()
         ]
@@ -2045,10 +2051,11 @@ def person_word_correction(cycle_id, case_id):
         abort(404)
     if request.method == 'POST':
         try:
-            correction_id = corrections.prepare(db,case=case,kinds=request.form.getlist('kind'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_corrections'))
-            audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
-            flash('Einzelausgabe erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
-            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+'#correction-'+str(correction_id))
+            correction_ids,errors = corrections.prepare_groups(db,case=case,kinds=request.form.getlist('kind'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_corrections'))
+            for correction_id in correction_ids:audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
+            for error in errors:flash(error,'error')
+            if correction_ids:flash(f'{len(correction_ids)} Ausgabe(n) nach zuständiger Führungskraft erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
+            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
         except (ValueError,LookupError,OSError) as exc:
             flash(str(exc),'error')
     rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]

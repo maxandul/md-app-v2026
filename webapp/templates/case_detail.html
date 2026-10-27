@@ -17,6 +17,7 @@
     <p><a class="button" href="{{ url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case.case_id) }}">Einzelne Formulare erzeugen / versenden</a></p>
   </section>
 
+  {% include 'parts/_summary.html' %}
   <section class="content-section" aria-labelledby="case-data-title">
     <div class="section-heading"><div><p class="kicker">Übernommene Angaben</p><h2 id="case-data-title">Fachdaten prüfen</h2></div></div>
     {% if correction_locked %}<div class="info-box"><p>Mindestens ein aktuelles Dokument wurde bereits freigegeben. Direkte Datenkorrekturen sind deshalb gesperrt; Bereits zur Ablage bereitgestellte Dokumente lassen sich auch durch eine neue PDF-Version nicht automatisch ersetzen. Kläre solche Korrekturen zuerst mit der zuständigen Dossier- und SAP-Verarbeitung.</p></div>{% endif %}

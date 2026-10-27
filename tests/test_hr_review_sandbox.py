@@ -45,6 +45,19 @@ class HRReviewSandboxTest(unittest.TestCase):
                 response=client.post(f'/arbeit/ziele/versand/{groups[0]}',data={'csrf_token':csrf,'action':'draft','checked':'yes'})
                 self.assertEqual(response.status_code,403);outlook.assert_not_called()
             self.assertEqual(client.post('/ruecklaeufe').status_code,403)
+            self.assertEqual(client.get('/arbeit/dialogteile').status_code,200)
+            response=client.post(f'/arbeit/dialogteile/{case}/outlook',data={'csrf_token':csrf,'revision':'0',
+                'manager_pn':'900102','period_start':'2026-01-01','period_end':'2026-12-31','form_org_source':'manager','reason':'Test der Ausblick-Vertretung'},follow_redirects=True)
+            self.assertEqual(response.status_code,200);self.assertIn('Luca Winter',response.text)
+            with app.app_context():cycle=get_db().execute('SELECT cycle_id FROM dialog_cases WHERE case_id=?',(case,)).fetchone()[0]
+            response=client.post(f'/cycles/{cycle}/cases/{case}/word-correction',data={'kind':['review','outlook']},follow_redirects=True)
+            self.assertEqual(response.status_code,200)
+            with app.app_context():
+                ids=[r[0] for r in get_db().execute('SELECT id FROM word_person_corrections WHERE case_id=?',(case,))]
+                self.assertEqual(len(ids),2)
+            with patch('webapp.services.person_corrections.OutlookDraftAdapter') as outlook:
+                self.assertEqual(client.post(f'/word-corrections/{ids[0]}/action',data={'action':'draft'}).status_code,403)
+                outlook.assert_not_called()
             self.assertEqual(client.get('/arbeit/ziele',environ_overrides={'REMOTE_ADDR':'192.0.2.1'}).status_code,403)
             marker=root/'preserve.txt';marker.write_text('preserve',encoding='utf-8')
             with self.assertRaises(FileExistsError):create_review_app(root)

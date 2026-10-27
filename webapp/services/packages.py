@@ -279,6 +279,8 @@ def build_manager_payload(
     created_at: datetime | None = None,
     allow_empty: bool = False,
 ) -> dict[str, Any]:
+    from .part_responsibilities import require_legacy_compatible
+    require_legacy_compatible(connection,cycle_id=cycle_id,manager_pn=manager_pn)
     cycle = connection.execute("SELECT * FROM cycles WHERE id = ?", (cycle_id,)).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
@@ -421,6 +423,10 @@ def manager_package_state(
     connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str
 ) -> dict[str, Any]:
     """Liefert START-/Update-Status ohne eine Datei zu erzeugen."""
+    from .part_responsibilities import has_assignments
+    if has_assignments(connection,cycle_id=cycle_id,manager_pn=manager_pn):
+        return {'state':'unsupported_parts','label':'Word-Ausgabe für getrennte Gesprächsteile verwenden',
+                'blocking':True,'current':{},'issues':[{'severity':'blocking','message':'HTML-Arbeitsmappen unterstützen keine Zuständigkeit je Gesprächsteil. Bitte die Word-Ausgabe verwenden.'}]}
     current = build_manager_payload(
         connection, cycle_id=cycle_id, manager_pn=manager_pn, allow_empty=True
     )
@@ -728,6 +734,8 @@ def import_returned_package(
         raise ValueError("Die Paket-ID ist in dieser Datenbank nicht als Versand registriert.")
     if sent["manager_pn"] != str(package["manager_pn"]):
         raise ValueError("Die VG-Personalnummer stimmt nicht mit dem Versandpaket überein.")
+    from .part_responsibilities import require_legacy_compatible
+    require_legacy_compatible(connection,cycle_id=sent['cycle_id'],manager_pn=sent['manager_pn'])
     latest_start = _latest_start_event(
         connection, cycle_id=sent["cycle_id"], manager_pn=sent["manager_pn"]
     )

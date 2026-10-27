@@ -20,21 +20,29 @@ def serialized_goal_delivery(function):
     return guarded
 
 
-def check_goal_workflow(connection, case_ids):
-    """Legacy routes must respect an active supplementary dispatch or override."""
+def check_goal_workflow(connection, case_ids, *, documents=None, exclude=None):
+    """All Word routes respect open Outlook work for the selected parts."""
     from webapp.migrations import available
     if not available(connection):
         return
+    selected={(d['case_id'],'review' if d['kind']=='probation' else d['kind']) for d in documents} if documents else None
     for case_id in case_ids:
+        if selected is not None and (case_id,'review') not in selected:continue
         if connection.execute('''SELECT 1 FROM hr_goal_dispatches d
             JOIN hr_goal_dispatch_outputs m ON m.dispatch_id=d.id
             JOIN hr_goal_outputs o ON o.id=m.output_id
             WHERE o.case_id=? AND d.status IN ('processing','draft_created','failed')''',(case_id,)).fetchone():
             raise ValueError('Für diese Person ist ein Zielnachreichungs-Versand in Outlook offen. Diesen zuerst klären.')
-        if connection.execute('''SELECT 1 FROM hr_part_responsibilities r
-            JOIN document_obligations o ON o.id=r.obligation_id
-            JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.legacy_case_id=?''',(case_id,)).fetchone():
-            raise ValueError('Abweichende Rückblick-Verantwortung: bitte den Versand unter Zielnachreichungen verwenden.')
+    import json
+    for kind,query in (
+        ('person',"SELECT id,manifest_json FROM word_person_corrections WHERE status IN ('processing','draft_created','failed')"),
+        ('package',"SELECT p.id,p.manifest_json FROM word_dispatch_packages p JOIN word_mail_deliveries d ON d.package_id=p.id WHERE d.status IN ('processing','draft_created','failed')")):
+        for row in connection.execute(query):
+            if exclude==(kind,row['id']):continue
+            for doc in json.loads(row['manifest_json'])['documents']:
+                part=(doc['case_id'],'review' if doc['kind']=='probation' else doc['kind'])
+                if (selected is not None and part in selected) or (selected is None and doc['case_id'] in case_ids):
+                    raise ValueError('Für diesen Gesprächsteil ist ein anderer Outlook-Vorgang offen. Diesen zuerst klären.')
 
 @contextmanager
 def package_lock(path):

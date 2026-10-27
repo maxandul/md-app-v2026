@@ -55,6 +55,14 @@ def matching_cases(connection, data):
     if not pn or not year.isdigit() or kind not in ('review','outlook'):
         return []
     year_column='outlook_year' if kind=='outlook' else 'review_year'
+    from webapp.migrations import available
+    if available(connection):
+        from .part_responsibilities import resolve
+        matches=[]
+        for row in connection.execute('SELECT case_id FROM dialog_cases WHERE employee_pn=? ORDER BY id',(pn,)):
+            part=resolve(connection,row['case_id'],kind)
+            if part['period_end'][:4]==year:matches.append(part)
+        return matches
     return [dict(row) for row in connection.execute(f'''SELECT dc.*,c.review_year,c.outlook_year,e.first_name,e.last_name
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id JOIN employees e ON e.pn=dc.employee_pn
         WHERE dc.employee_pn=? AND c.{year_column}=? ORDER BY dc.id''',(pn,int(year)))]
@@ -135,6 +143,17 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
     else:
         case=_case_row(connection,case_id)
         expected=case['outlook_year'] if kind=='outlook' else case['review_year']
+        from webapp.migrations import available
+        part=None
+        if available(connection):
+            from .part_responsibilities import resolve,case_parts
+            part=resolve(connection,case_id,kind)
+            expected=int(part['period_end'][:4])
+            case={**dict(case),'manager_pn':part['manager_pn']}
+            if part['responsibility_revision'] and (part['period_start'],part['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
+                raise ValueError('Der Zeitraum weicht vom zugewiesenen Gesprächsteil ab. Bitte die Zuordnung am Original prüfen und begründen.')
+            if len({p['manager_pn'] for p in case_parts(connection,case_id) if p['required']})>1 and reviewed.get('scope')!=(case['official_scope'] or case['suggested_scope']):
+                raise ValueError('Bei getrennter Zuständigkeit bleibt der gesamte MD-Umfang erhalten. Eine Umfangsänderung separat im Fall klären.')
         if case['employee_pn']!=pn or case['employment_assignment']!=assignment or expected!=year:
             raise ValueError('Personalnummer, Anstellung oder Zielzeitraum passen nicht zum gewählten Fall.')
         event_status=connection.execute('SELECT status FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
@@ -145,10 +164,12 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
         if case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Dieser Durchlauf ist abgeschlossen. Öffne ihn für die Nachbearbeitung zuerst wieder in der Durchlaufübersicht.')
         # Abweichende unterjährige Ereignisse nicht aufgrund des Jahres allein übernehmen.
-        if case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
+        if not (part and part['responsibility_revision']) and case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
             raise ValueError('Der Zeitraum weicht vom Fall ab. Bitte die Zuordnung begründen.')
         if data.get('manager_pn')!=case['manager_pn'] and not reason.strip():
             raise ValueError('Die Führungskraft weicht vom Fall ab. Bitte die Zuordnung begründen.')
+        if part:
+            case['_document_manager']=data.get('manager_pn') or part['manager_pn']
     if case and kind=='review':
         event=connection.execute('SELECT event_type FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
         if event and (event['event_type']=='probation_review') != (data.get('probation')=='ja'):

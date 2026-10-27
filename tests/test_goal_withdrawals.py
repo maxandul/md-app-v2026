@@ -218,7 +218,7 @@ class GoalWithdrawalsTest(unittest.TestCase):
             migrations.migrate(old.db);migrations.migrate(old.db)
             for table,rows in before.items():self.assertEqual(rows,[tuple(r) for r in old.db.execute('SELECT * FROM '+table)])
             self.assertEqual(hashlib.sha256(original.read_bytes()).hexdigest(),checksum)
-            self.assertEqual(old.db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0],2)
+            self.assertEqual(old.db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0],3)
             self.assertEqual(review.get(old.db,source)['status'],'draft')
         finally:old.tearDown()
 

@@ -10,6 +10,7 @@
     <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
     <h1>{{ manager.manager_name }}</h1>
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Der vorgeschlagene Umfang ergibt sich aus den SAP-Daten; bestätigte Abweichungen werden berücksichtigt.</p>
+    {% if config.HR_GOAL_WORKFLOW %}<p>{{ manager.part_count }} zugewiesene Gesprächsteile · <a href="{{ url_for('parts.index',manager=manager.manager_pn) }}">Offene Teile über alle Jahre anzeigen</a></p>{% endif %}
     <h2>Word-Vorlagen</h2>
     <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
     {% include '_word_setup.html' %}

@@ -474,11 +474,21 @@ def dialog_event_rows(connection: sqlite3.Connection, cycle_id: int | None = Non
         """,
         params,
     ).fetchall()
+    from webapp.migrations import available
+    part_groups={}
+    if available(connection):
+        for part in connection.execute('''SELECT o.dialog_event_id,o.document_kind,o.manager_pn,
+            COALESCE(m.first_name||' '||m.last_name,o.manager_pn) AS manager_name
+            FROM hr_resolved_obligations o LEFT JOIN employees m ON m.pn=o.manager_pn
+            WHERE o.required=1 AND o.document_kind IN ('review','outlook') AND (? IS NULL OR o.cycle_id=?)''',(cycle_id,cycle_id)):
+            part_groups.setdefault(part['dialog_event_id'],[]).append(dict(part))
     result = []
     for row in rows:
         item = dict(row)
         item["event_type_label"] = EVENT_TYPE_LABELS.get(item["event_type"], item["event_type"])
         item["scope_label"] = SCOPE_LABELS.get(item["required_scope"], item["required_scope"])
+        item['parts']=part_groups.get(item['id'],[])
+        item['part_search_text']=' '.join(p['manager_pn']+' '+p['manager_name'] for p in item['parts'])
         result.append(item)
     return result
 

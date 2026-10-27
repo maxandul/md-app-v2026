@@ -78,6 +78,8 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.register_blueprint(bp)
     from .goal_routes import bp as goal_bp
     app.register_blueprint(goal_bp)
+    from .part_routes import bp as part_bp
+    app.register_blueprint(part_bp)
 
     @app.after_request
     def retain_action_filters(response):

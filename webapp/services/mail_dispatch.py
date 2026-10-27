@@ -126,10 +126,18 @@ def dispatch_candidates(
             item["stored_path"] and Path(item["stored_path"]).is_file()
         )
         item["ready"] = bool(item["recipient_email"] and item["file_available"])
+        from .part_responsibilities import has_assignments
+        if has_assignments(connection,cycle_id=cycle_id,manager_pn=item['manager_pn']):
+            item['ready']=False
+            item['error_message']='Zuständigkeit je Gesprächsteil geändert. Bitte aktuelle Word-Ausgaben verwenden.'
         result.append(item)
     return result
 
 
+from .outlook_lock import serialized_goal_delivery
+
+
+@serialized_goal_delivery
 def create_outlook_drafts(
     connection: sqlite3.Connection,
     *,
@@ -158,6 +166,9 @@ def create_outlook_drafts(
     missing_ids = selected.difference(candidates)
     if missing_ids:
         raise ValueError("Mindestens eine gewählte Versanddatei ist nicht mehr aktuell.")
+    from .part_responsibilities import require_legacy_compatible
+    for candidate in candidates.values():
+        require_legacy_compatible(connection,cycle_id=cycle_id,manager_pn=candidate['manager_pn'])
     for candidate in candidates.values():
         subject, body_html = _message_text(
             candidate,

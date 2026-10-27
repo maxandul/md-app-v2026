@@ -2,6 +2,10 @@
 
 Stand: 27. Oktober 2026. Implementierungsbranch: `feat/hr-zielnachreichung-ab`.
 
+Fortsetzung nach bestätigter Bedienprüfung: [Lieferung C – Verantwortung je
+Gesprächsteil](UMSETZUNG_C_TEILVERANTWORTUNG.md) auf einem separaten Branch. Die
+folgenden Angaben beschreiben weiterhin den Lieferstand A/B.
+
 ## Ausgangspunkt und Umfang
 
 Grundlage ist `docs/prozessuebersicht-nutzerfuehrung` bei

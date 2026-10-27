@@ -99,11 +99,11 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
                     WHERE o.case_id=? AND d.id<>? AND d.status IN ('processing','draft_created','failed')''',
                     (output['case_id'],dispatch_id)).fetchone():
                     raise ValueError('Für diese Person ist ein anderer Outlook-Vorgang offen.')
-                if connection.execute("SELECT 1 FROM word_person_corrections WHERE case_id=? AND status IN ('processing','draft_created','failed')",(output['case_id'],)).fetchone():
+                if connection.execute("SELECT 1 FROM word_person_corrections p,json_each(p.manifest_json,'$.documents') j WHERE p.case_id=? AND p.status IN ('processing','draft_created','failed') AND json_extract(j.value,'$.kind') IN ('review','probation')",(output['case_id'],)).fetchone():
                     raise ValueError('Für diese Person ist eine bisherige Einzelkorrektur in Outlook offen.')
                 if connection.execute('''SELECT 1 FROM word_mail_deliveries d JOIN word_dispatch_packages p ON p.id=d.package_id,
                     json_each(p.manifest_json,'$.documents') j WHERE json_extract(j.value,'$.case_id')=?
-                    AND d.status IN ('processing','draft_created','failed')''',(output['case_id'],)).fetchone():
+                    AND json_extract(j.value,'$.kind') IN ('review','probation') AND d.status IN ('processing','draft_created','failed')''',(output['case_id'],)).fetchone():
                     raise ValueError('Für diese Person ist ein bisheriges Führungskräftepaket in Outlook offen.')
             connection.execute("UPDATE hr_goal_dispatches SET status='processing',subject=?,body_text=?,sender_email=?,updated_at=? WHERE id=?",
                                (subject.strip(),body.strip(),sender_email,stamp(),dispatch_id))

@@ -69,12 +69,14 @@ def create_review_app(directory: Path):
     def walkthrough_boundary():
         if request.remote_addr not in ('127.0.0.1','::1'):
             abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
-        allowed_read={'main.case_detail','main.returns_overview','main.worklist','static'}
+        allowed_read={'main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','static'}
         goal_endpoint=(request.endpoint or '').startswith('goal_work.')
+        part_endpoint=(request.endpoint or '').startswith('parts.')
+        allowed_prepare={'main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines'}
         if request.method=='POST':
-            if not goal_endpoint or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
+            if not (goal_endpoint or part_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
                 abort(403,'HR-Test: Outlook, Postfachzugriff und externe Übergaben sind gesperrt.')
-        elif not goal_endpoint and request.endpoint not in allowed_read:
+        elif not goal_endpoint and not part_endpoint and request.endpoint not in allowed_read:
             return redirect(url_for('goal_work.index'))
 
     with app.app_context():

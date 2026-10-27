@@ -176,6 +176,13 @@ def cockpit_overview(
             """,
             (cycle_id, date.today().isoformat()),
         ).fetchall()
+        from webapp.migrations import available
+        if available(connection):
+            overdue_managers=connection.execute('''SELECT o.manager_pn,COALESCE(e.first_name||' '||e.last_name,o.manager_pn) AS manager_name,
+                COUNT(*) AS obligation_count,MIN(o.due_date) AS oldest_due FROM hr_resolved_obligations o
+                LEFT JOIN employees e ON e.pn=o.manager_pn WHERE o.cycle_id=? AND o.active=1 AND o.required=1
+                AND o.event_status<>'cancelled' AND o.status IN ('open','rejected','scan_pending')
+                AND o.due_date<>'' AND o.due_date<? GROUP BY o.manager_pn ORDER BY oldest_due,manager_name''',(cycle_id,date.today().isoformat())).fetchall()
         for manager in overdue_managers:
             tasks.append(
                 {
@@ -215,6 +222,14 @@ def cockpit_overview(
             """,
             (cycle_id,),
         ).fetchall()
+        if available(connection):
+            missing_workbooks=connection.execute('''SELECT o.manager_pn,COALESCE(e.first_name||' '||e.last_name,o.manager_pn) AS manager_name,
+                COUNT(DISTINCT o.employee_pn) AS case_count FROM hr_resolved_obligations o LEFT JOIN employees e ON e.pn=o.manager_pn
+                WHERE o.cycle_id=? AND o.active=1 AND o.required=1 AND o.status NOT IN ('complete','waived')
+                AND o.event_status NOT IN ('cancelled','no_md')
+                AND NOT EXISTS(SELECT 1 FROM word_dispatch_packages p WHERE p.cycle_id=o.cycle_id AND p.manager_pn=o.manager_pn AND p.discarded_at='')
+                AND NOT EXISTS(SELECT 1 FROM package_events p WHERE p.cycle_id=o.cycle_id AND p.manager_pn=o.manager_pn AND p.direction='versand')
+                GROUP BY o.manager_pn ORDER BY manager_name''',(cycle_id,)).fetchall()
         metrics["workbooks_missing"] = len(missing_workbooks)
         for manager in missing_workbooks:
             tasks.append(

@@ -49,6 +49,13 @@ class GoalWorkflowVolumeTest(unittest.TestCase):
         self.assertFalse({r['id'] for r in first['rows']}&{r['id'] for r in second['rows']})
         self.assertEqual(db.execute("SELECT COUNT(*) FROM document_obligations WHERE obligation_id LIKE 'volume-%'").fetchone()[0],10500)
         print(f'\nVOLUME: 1000 people / 5 years / 10500 parts / 10000 source revisions; open={elapsed:.3f}s search={search:.3f}s')
+        from webapp.services import part_queries
+        start=time.perf_counter();parts=part_queries.listing(db);part_elapsed=time.perf_counter()-start
+        start=time.perf_counter();person=part_queries.listing(db,q='700123',state='all');part_search=time.perf_counter()-start
+        self.assertEqual(person['total'],10);self.assertEqual(len(parts['rows']),25)
+        next_page=part_queries.listing(db,page=2)
+        self.assertFalse({r['id'] for r in parts['rows']}&{r['id'] for r in next_page['rows']})
+        print(f'PARTS: open={part_elapsed:.3f}s search={part_search:.3f}s')
 
 
 if __name__=='__main__':unittest.main()

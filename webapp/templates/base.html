@@ -29,6 +29,7 @@
           <a href="{{ url_for('main.dashboard') }}"{% if active_nav == 'overview' %} class="is-active" aria-current="page"{% endif %}>Übersicht</a>
           <a href="{{ url_for('main.worklist') }}">Arbeitsliste</a>
           {% if config.HR_GOAL_WORKFLOW %}<a href="{{ url_for('goal_work.index') }}"{% if active_nav == 'goal_work' %} class="is-active" aria-current="page"{% endif %}>Zielnachreichungen</a>{% endif %}
+          {% if config.HR_GOAL_WORKFLOW %}<a href="{{ url_for('parts.index') }}"{% if active_nav=='parts' %} class="is-active" aria-current="page"{% endif %}>Gesprächsteile</a>{% endif %}
           <a href="{{ url_for('main.help_page') }}">Hilfe</a>
           <a href="{{ url_for('main.master_data') }}"{% if active_nav == 'master_data' %} class="is-active" aria-current="page"{% endif %}>Stammdaten</a>
           <a href="{{ url_for('main.dialogs') }}"{% if active_nav == 'dialogs' %} class="is-active" aria-current="page"{% endif %}>Dialoge</a>

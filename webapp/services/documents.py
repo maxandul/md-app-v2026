@@ -194,6 +194,11 @@ def _store_current_document(
     handoff_at: str = "",
     replacement_reason: str = "",
 ) -> int:
+    case=dict(case)
+    from webapp.migrations import available
+    if available(connection) and document_kind in ('review','outlook'):
+        from .part_responsibilities import resolve
+        case['manager_pn']=case.get('_document_manager') or resolve(connection,case['case_id'],document_kind)['manager_pn']
     duplicate = connection.execute(
         "SELECT id FROM official_documents WHERE sha256 = ?", (digest,)
     ).fetchone()
@@ -480,6 +485,7 @@ def import_official_pdf(
     ).fetchone()
     if not sent:
         raise ValueError("Die Paket-ID ist für diesen Fall nicht als Versand registriert.")
+    case={**dict(case),'_document_manager':case['manager_pn']}
 
     document_kind = _document_kind(_required(data, "document"))
     expected_year = case["outlook_year"] if document_kind == "outlook" else case["review_year"]
@@ -491,6 +497,9 @@ def import_official_pdf(
         scope = "none"
     if scope and scope not in {"full", "review_only", "outlook_only", "none"}:
         raise ValueError("Der MD-Umfang im PDF ist unbekannt.")
+    from .part_responsibilities import has_assignments
+    if has_assignments(connection,case_id=case['case_id']) and (document_kind=='no_md' or (scope and scope!=(case['official_scope'] or case['suggested_scope']))):
+        raise ValueError('Der Umfang dieses früheren PDFs betrifft getrennt zugewiesene Teile. Bitte den gesamten MD-Umfang im Fall gesondert klären.')
     if document_kind == "no_md" and not data.get("no_md_reason"):
         raise ValueError("In der Kein-MD-Bestätigung fehlt der Grund.")
 
@@ -684,6 +693,7 @@ def import_handwritten_scan(
     digital = documents.get((document_kind, "digital"))
     if not digital:
         raise ValueError("Zuerst muss das elektronische PDF importiert werden.")
+    case={**dict(case),'_document_manager':digital['manager_pn']}
     if not digital["scan_required"]:
         raise ValueError("Für dieses Dokument ist kein handschriftlicher Scan erforderlich.")
     existing = documents.get((document_kind, 'scan'))
@@ -764,6 +774,11 @@ def case_document_overview(
         """,
         (cycle_id, manager_pn),
     ).fetchall()
+    from webapp.migrations import available
+    modern=available(connection)
+    if modern:
+        from .part_responsibilities import case_rows
+        rows=case_rows(connection,cycle_id,manager_pn,active_only=False)
     result: list[dict[str, Any]] = []
     for row in rows:
         item = dict(row)
@@ -788,6 +803,9 @@ def case_document_overview(
                 "review_only": ["review"],
                 "outlook_only": ["outlook"],
             }.get(scope, [])
+            if modern:
+                expected=[r['document_kind'] for r in connection.execute('''SELECT document_kind FROM hr_resolved_obligations
+                    WHERE case_id=? AND manager_pn=? AND required=1 AND document_kind IN ('review','outlook')''',(row['case_id'],manager_pn))]
             for kind in expected:
                 state = _document_state(
                     documents.get((kind, "digital")), documents.get((kind, "scan"))
@@ -798,6 +816,8 @@ def case_document_overview(
                 state.update({"kind": kind, "name": DOCUMENT_NAMES[kind]})
                 states.append(state)
         item["scope_label"] = SCOPE_NAMES.get(scope, scope or SCOPE_NAMES[""])
+        if modern:
+            item['scope_label']='Zugewiesen: '+', '.join(d['name'] for d in states)
         item["document_states"] = states
         result.append(item)
     return result

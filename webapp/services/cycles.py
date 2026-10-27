@@ -390,6 +390,10 @@ def cycle_overview(connection: sqlite3.Connection, cycle_id: int) -> tuple[sqlit
     ).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
+    from webapp.migrations import available
+    if available(connection):
+        from .part_queries import managers
+        return cycle,managers(connection,cycle_id)
     managers = connection.execute(
         """
         WITH case_summary AS (

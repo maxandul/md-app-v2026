@@ -86,7 +86,19 @@ Offen bleiben der vorbereitete Rücklauffall (Schritt 6), reale Vorlagen,
 Windows/S/MIME/Outlook (Schritt 8), Darstellung bei anderen Bildschirmgrössen,
 Tastaturführung und die neue Rücknahmefunktion.
 
-## Nächste Bedienprüfung: falsche Freigabe zurücknehmen
+## Ergänzende Rückmeldung vom 27. Oktober 2026
+
+Der Anwender bestätigt anschliessend ausdrücklich «bedienprüfung i.o.» und
+beauftragt die Fortsetzung mit den weiteren Etappen. Die Bedienprüfung A/B wird
+damit als akzeptiert geführt. Eine weitergehende Einzelbestätigung realer
+Outlook-Zustellung oder aller nachstehenden Sonderfälle wird daraus nicht
+abgeleitet. Es ist keine erneute allgemeine Bedienfreigabe für A/B erforderlich.
+
+Die folgende Prüfanleitung bleibt für spätere Wiederholungen erhalten.
+Die neue [Lieferung C](UMSETZUNG_C_TEILVERANTWORTUNG.md) dokumentiert ihren eigenen
+Umfang, die technischen Nachweise und die noch ausstehende C-Bedienprüfung.
+
+## Prüfanleitung: falsche Freigabe zurücknehmen
 
 Den neuen Code bereitstellen und den isolierten Starter neu starten. Er erzeugt
 einen frischen Übungsbestand; bisherige Übungsdateien bleiben erhalten.

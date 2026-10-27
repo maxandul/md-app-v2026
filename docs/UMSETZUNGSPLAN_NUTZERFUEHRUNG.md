@@ -58,9 +58,17 @@ Die vorhandenen Fachfunktionen sind eine brauchbare Grundlage. Die wesentlichen 
 
 `confirm_import()` erzeugt reguläre Dokumente derzeit mit `signature_checked=False` und `needs_signature_check`; `refresh_case_status()` berücksichtigt das Flag. Auch `closure_summary()` zählt offene Übergaben anhand dieses Flags. Die Initialisierung passt alte Zustände erneut an.
 
-**Aktualisierte Fachregel vom 27. Oktober 2026:** Bei ausdrücklich unterschriftspflichtigen Fällen bestätigt HR die vorhandenen Unterschriften am konkreten PDF. Prüfpflicht und Prüfentscheid an die Dokumentversion binden; offene Prüfung, fehlende Unterschrift und tatsächlich erfolgte Nachforderung unterscheiden. Neue Version erneut prüfen, identische Dublette nicht. Welche Fallarten und Unterschriften erforderlich sind, ist noch zu bestätigen; die bestehende D/E-Regel nicht ungeprüft übernehmen.
+**Aktualisierte Fachregel vom 27. Oktober 2026:** Bei ausdrücklich unterschriftspflichtigen Fällen bestätigt HR die vorhandenen Unterschriften am konkreten PDF. Prüfpflicht und Prüfentscheid an die Dokumentversion binden; offene Prüfung, fehlende Unterschrift und tatsächlich erfolgte Nachforderung unterscheiden. Neue Version erneut prüfen, identische Dublette nicht. **Konkretisierte Fachregel (27. Oktober 2026):** Bei Gesamtbeurteilung des Rückblicks „genügend“ oder „ungenügend“ sind sowohl Rückblick als auch zugehöriger Ausblick auszudrucken, von Führungskraft und mitarbeitender Person zu unterzeichnen und einzuscannen. Je Gesprächsteil sind das digitale, maschinenlesbare PDF und der unterschriebene Scan zurückzusenden. HR prüft am jeweiligen Scan das Vorhandensein beider Unterschriften. Ein Scan ersetzt das maschinenlesbare PDF nicht; beide Dateien werden demselben Gesprächsteil zugeordnet und bleiben erhalten.
 
-**Vorschlag:** Fachliche Validierung, Unterschriftenprüfung und technische Bereitstellung getrennt modellieren. Bestehende Unterschriftenhistorie erhalten, aber keine neuen Datensätze durch pauschales Setzen von `signature_checked=1` als geprüft ausweisen. Alte Prüfblockaden gezielt in nachvollziehbare neue Zustände überführen. Eine noch ungeklärte separate Scan-Dokumentpflicht nicht stillschweigend entfernen.
+Die Beurteilung des Rückblicks löst die Pflicht für **beide** Teile aus. Der Ausblick braucht dafür keine eigene negative Beurteilung. Getrennte Eingänge sind möglich; die App zeigt je Teil getrennt „Digitales PDF fehlt“, „Unterschriebener Scan fehlt“, „Unterschriftenprüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ bzw. „Unterschriften vorhanden“. Ein vorhandener Scan ist erst nach HR-Sichtprüfung bestätigt. Bei getrennten Verantwortlichkeiten bleibt je Teil die dafür zuständige Führungskraft massgeblich. Bereits eingegangene oder bereitgestellte Ausblicke werden bei später erkannter Pflicht im selben MD erneut auf den erforderlichen Nachweis geprüft; externe Ablagen werden nicht stillschweigend ersetzt.
+
+Auch bei Uneinigkeit zwischen Führungskraft und mitarbeitender Person gilt fachlich dieselbe Druck-, Unterschriften- und Rücksendepflicht. Dafür fehlt im Formular ein eindeutiger Marker: HR prüft diesen Auslöser nicht systematisch, und die App erzeugt daraus keine automatische Prüf- oder Nachforderungsaufgabe. Fehlender Marker darf weder als bestätigte Einigkeit noch als Anlass für eine pauschale Klärungsaufgabe bei allen Fällen interpretiert werden.
+
+**Zweck laut HR:** Dokumentation, dass Leistung beziehungsweise Verhalten besprochen und Erwartungen geklärt wurden, sowie angestrebte Verbindlichkeit und Absicherung für mögliche personalrechtliche Folgeschritte. Dies beschreibt die organisatorische Zielsetzung, keine geprüfte Aussage zur rechtlichen Beweiswirkung. Unterschriftenprüfung bestätigt das Vorhandensein der Unterschriften, nicht Einigkeit mit der Beurteilung.
+
+**Technische Umsetzung:** Zuordnung der vorhandenen Beurteilungscodes zu „genügend“/„ungenügend“ anhand der Formulare prüfen. Maschinenlesbares PDF und Scan sind unterschiedliche Dokumentrollen, keine konkurrierenden Versionen oder Dubletten. Die Prüfung bindet den konkreten Scan an den zugehörigen digitalen Dokumentstand; eine inhaltlich neue Fassung darf die alte Unterschriftenbestätigung nicht erben.
+
+**Vorschlag:** Fachliche Validierung, Unterschriftenprüfung und technische Bereitstellung getrennt modellieren. Bestehende Unterschriftenhistorie erhalten, aber keine neuen Datensätze durch pauschales Setzen von `signature_checked=1` als geprüft ausweisen. Alte Prüfblockaden gezielt in nachvollziehbare neue Zustände überführen. Die bestätigte Pflicht zu digitalem PDF und unterschriebenem Scan je Rückblick und Ausblick abbilden; beide Dokumentrollen erhalten.
 
 ## 3. Gemeinsame technische Grundlage – Vorschlag
 
@@ -173,7 +181,7 @@ Vorhandene Tests dienen als Ausgangspunkt, nicht als Nachweis für die neue Logi
 | Zuständigkeiten | Alte Führungskraft Rückblick, neue Ausblick; Ersatz nur für einen Teil; Formular-OE bleibt historisch korrekt |
 | SAP-Abgleich | Vollständiger/auffällig unvollständiger Export, fehlende Anstellung, neue Person, bekannter manueller Override, Wechsel ohne Ereignisdatum |
 | PDF-Automatik | Bekannte gültige Formate, Erkennungswarnungen, unklare Zuordnung, abweichende Version, Dublette, Ablagefehler |
-| Unterschriften | Prüfpflicht ja/nein/unbekannt, fehlende Unterschrift, dokumentierte Nachforderung, neue Version, Dublette, keine pauschale Scheinbestätigung |
+| Unterschriften | Genügend/ungenügend aktiviert Pflicht für Rückblick UND Ausblick; je Teil digitales PDF plus Scan mit beiden Unterschriften; getrennte Eingänge; bereits bereitgestellter Ausblick; fehlender Scan/Unterschrift; Nachforderung; neue Version; Uneinigkeit ohne Marker erzeugt keine automatische Prüfung |
 | Gesamtoberfläche und Menge | 1000 Mitarbeitende über mehrere Jahre, serverseitige Filter/Paginierung, offene Altjahresfälle, Führungskraft mit vielen Personen, Mehrfachanstellung, Feedback und Probezeit |
 | Migration | Altbestand vollständig, teilweise importierte Ziele, offene Entwürfe, bereitgestellte Dokumente, wiederholter Start |
 | Bedienung | S01–S05 aus Prozessübersicht; Direktlinks, Wiederaufnahme, Gruppenkontext und konkrete nächste Aktion |
@@ -183,8 +191,6 @@ Vorhandene Testdateien: `test_goal_import.py`, `test_mail_goals.py`, `test_perso
 
 ## 8. Noch gezielt zu klären
 
-- Welche wenigen Fallarten verlangen welche Unterschriften und damit eine HR-Sichtprüfung?
-- Gibt es unabhängig von der HR-Unterschriftenkontrolle eine separate Scan-Dateipflicht?
 - Welche tatsächlichen Exportfelder liefern ein verlässliches Übertritts-/Wirksamkeitsdatum?
 - Exakte Regeln für Eintritt/Probezeit/Übertrittszeiträume und SAP-massgeblichen Rückblick.
 - Wie bestätigt HR eine nötige Korrektur nach externer Dossier-/SAP-Verarbeitung?

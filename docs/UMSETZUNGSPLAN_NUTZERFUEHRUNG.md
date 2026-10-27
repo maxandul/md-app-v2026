@@ -4,6 +4,8 @@ Stand: 27. Oktober 2026
 Geprüfte Codebasis: main, Commit `9d7ca779afc18e9bd9c6607a5b3dbe8465537a18`.  
 Status: Codeabgleich und Umsetzungsvorschlag; keine Implementierung oder Migration durchgeführt.
 
+**Einstieg für den umsetzenden Agenten:** [Konsolidierter Übergabeauftrag mit bestätigten Regeln und Abnahmekriterien](UEBERGABE_UMSETZUNG_HR_NUTZERFUEHRUNG.md).
+
 Grundlagen:
 - [Prozessübersicht und bestätigte Fachentscheidungen](PROZESSUEBERSICHT_NUTZERFUEHRUNG.md)
 - [Seitenentwurf Zielnachreichung](SEITENENTWURF_ZIELNACHREICHUNG.md)

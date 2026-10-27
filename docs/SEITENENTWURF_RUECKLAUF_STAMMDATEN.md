@@ -1,6 +1,6 @@
 # Gemeinsame Nutzerführung: Rücklauf und Stammdatenabgleich
 
-Stand: 26. Oktober 2026  
+Stand: 27. Oktober 2026  
 Status: Fachlicher Seitenentwurf; keine Änderung der produktiven App.  
 Grundlage: [Prozessübersicht](PROZESSUEBERSICHT_NUTZERFUEHRUNG.md) und [Zielnachreichung](SEITENENTWURF_ZIELNACHREICHUNG.md).
 
@@ -17,13 +17,13 @@ Die Arbeitsübersicht ist der zentrale Einstieg. Dokumenteneingang, Importergebn
 
 ## 2. PDF-Rücklauf: Vom Eingang zur Bereitstellung
 
-**Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen und für die Dossierablage bereitgestellt. HR bearbeitet Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
+**Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen und – sofern keine ausdrückliche Unterschriftenprüfung erforderlich ist – für die Dossierablage bereitgestellt. HR bearbeitet Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
 
 Voraussetzungen sind eine eindeutige Dokumentart/Verwendung, Person/Anstellung, Gesprächsteil und zeitliche Zuordnung, keine erkannten unklaren Textstellen oder fehlenden Pflichtangaben und kein Konflikt mit einer bestehenden Version. „Lesbar“ allein genügt nicht. Die konkreten Kriterien sind vor Implementierung je unterstütztem Formularformat zu definieren und mit repräsentativen Dokumenten zu prüfen; fehlende Warnungen sind kein garantierter Nachweis einer fehlerfreien Extraktion.
 
 Identische Dubletten verweisen auf die vorhandene Verarbeitung und werden nicht erneut bereitgestellt. Abweichende Versionen, ungeklärte Zuordnungen und Ausleseprobleme erzeugen konkrete HR-Aufgaben. Technische Ablagefehler lassen die fachliche Übernahme bestehen und führen zur gezielten Wiederholung der Übergabe.
 
-Automatisch erledigte Eingänge bleiben im Verlauf mit Original, übernommenen Angaben und Verarbeitungsergebnis auffindbar; sie erzeugen keine offene Prüfaufgabe. Der Verlauf nennt „automatisch übernommen“, nicht „von HR geprüft“. Die lokale Bereitstellung bestätigt keine tatsächliche externe Roboterverarbeitung. Unterschriften bleiben in der Verantwortung der Führungskräfte.
+Automatisch erledigte Eingänge bleiben im Verlauf mit Original, übernommenen Angaben und Verarbeitungsergebnis auffindbar; sie erzeugen keine offene Prüfaufgabe. Der Verlauf nennt „automatisch übernommen“, nicht „von HR geprüft“. Die lokale Bereitstellung bestätigt keine tatsächliche externe Roboterverarbeitung. Die Einholung der Unterschriften bleibt in der Verantwortung der Führungskräfte; HR prüft deren Vorhandensein bei den ausdrücklich dafür vorgesehenen Fällen.
 
 Diese Entscheidung betrifft reguläre PDF-Rückläufe. Die ausdrücklich beschriebene Freigabe korrigierter Zielquellen und das manuelle Bündeln von Feedbacks werden dadurch nicht aufgehoben. Das genaue Verhalten nach manueller Klärung einer Ausnahme wird im UI ausdrücklich benannt; ein Entwurfsspeichern löst keine Bereitstellung aus.
 
@@ -42,10 +42,14 @@ Bei mehreren Dokumenten im Eingang bleibt links eine kompakte Liste mit Einzelst
 | Zuordnung | Person, Anstellung, Gesprächsteil, Anlass, Zeitraum, MD-Verantwortlichkeit | Vorschlag bestätigen oder korrigieren |
 | Original und erkannte Angaben | PDF neben übernommenen Feldern; Fundstellen/Unsicherheiten | Angaben am Original prüfen und korrigieren |
 | Vorhandene Versionen | Früherer Eingang, aktuelle gültige Fassung, bisherige Übergaben | Dublette bestätigen oder Korrekturweg wählen |
-| Bereitstellungsvoraussetzungen | Angaben-/Zuordnungsprüfung abgeschlossen; gegebenenfalls unabhängig erforderliche Dokumente vorhanden | Offenen fachlichen Punkt klären oder bereitstellen; keine HR-Unterschriftenkontrolle |
+| Bereitstellungsvoraussetzungen | Angaben-/Zuordnungsprüfung abgeschlossen; gegebenenfalls unabhängig erforderliche Dokumente vorhanden | Offenen fachlichen Punkt klären; bei Prüfpflicht Unterschriften am PDF bestätigen |
 | Ergebnis | Fachlich übernommen, weitere Prüfung offen oder bereitgestellt | Nächste zulässige Aktion direkt ausführen |
 
-**Bestätigte Fachregel:** Führungskräfte verantworten die verlangten Unterschriften. HR kontrolliert sie nicht. Die Prüfmaske enthält daher weder einen Unterschriften-Prüfschritt noch eine entsprechende Freigabe; die Dossierbereitstellung darf keine solche Bestätigung verlangen.
+**Aktuelle Fachregel (27. Oktober 2026; ersetzt den generellen Verzicht auf HR-Unterschriftenkontrolle vom 26. Oktober):** Bei den wenigen ausdrücklich unterschriftspflichtigen Fällen öffnet HR das konkrete PDF und bestätigt, dass die erforderlichen Unterschriften vorhanden sind. Mögliche Zustände: „Prüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ und „Unterschriften vorhanden“. Nur diese Fälle warten vor der Dossierbereitstellung auf die Bestätigung. Andere eindeutig zugeordnete und erfolgreich validierte Rückläufe werden weiterhin automatisch verarbeitet.
+
+Die Prüfung ist an die konkrete Dokumentversion gebunden, mit Bearbeiter und Zeitpunkt. Eine neue Version ist erneut zu prüfen. „Unterschrift fehlt“ bezeichnet den Befund; „Nachgefordert“ dokumentiert eine tatsächlich erfolgte Anforderung mit Datum und Adressat, nicht bloss einen erzeugten Entwurf. Die Aufgabe wechselt dann zu „Warten auf Führungskraft“. Eine nachgereichte Datei öffnet die Prüfung erneut. Identische Dubletten erzeugen keine neue Prüfung. Unbekannte Prüfpflicht wird zur Klärung vorgelegt, nicht als „nicht erforderlich“ behandelt. Die Einholung der Unterschriften bleibt Aufgabe der Führungskräfte.
+
+**Noch zu bestätigen:** Welche Dokumentarten/Konstellationen genau unterschriftspflichtig sind und welche Unterschriften jeweils erforderlich sind. Die bisher im Code verwendete D/E- bzw. Scanregel wird nicht automatisch als aktuelle fachliche Vorgabe übernommen. Eine eigenständige Scan-Dateipflicht ist ebenfalls separat zu klären.
 
 Die fachliche Übernahme ist eine eigene nachvollziehbare Aktion. Sind danach weitere Prüfungen nötig, erscheinen sie auf derselben Bearbeitungsseite. Der bisherige Wechsel zwischen PDF-Prüfung und separat gesuchtem Fall soll entfallen.
 
@@ -56,11 +60,14 @@ Die fachliche Übernahme ist eine eigene nachvollziehbare Aktion. Sind danach we
 | „Prüfentwurf speichern“ | Änderungen sichern; keine fachliche Übernahme oder Ablage |
 | „Rückfrage vermerken“ | Konkreten offenen Punkt festhalten; kein automatischer Versand |
 | „Angaben übernehmen“ | Bestätigte Daten dem Gesprächsteil zuordnen; Bereitstellung bzw. noch offene fachliche Voraussetzung anzeigen |
+| „Unterschriften vorhanden“ | Prüfung der konkreten PDF-Version mit Bearbeiter und Zeitpunkt bestätigen; anschliessend Bereitstellung bei erfüllten übrigen Voraussetzungen |
+| „Unterschrift fehlt“ | Fehlende Unterschrift festhalten; Bereitstellung bleibt offen |
+| „Nachforderung dokumentieren“ | Tatsächlich erfolgte Anforderung mit Datum und Adressat erfassen; auf Führungskraft warten, kein Versand durch diesen Statuswechsel |
 | „Für Dossier bereitstellen“ | Nur bei erfüllten Voraussetzungen die Übergabe auslösen und Ergebnis anzeigen |
 | „Als Dublette abschliessen“ | Vorhandene Verarbeitung verlinken; keine zusätzliche Ablage |
 | „Begründet zurückstellen“ | Entscheidung nachvollziehbar speichern; benötigtes Dokument bleibt als fachlicher Bedarf erkennbar |
 
-Im eindeutigen Standardfall erfolgen Übernahme und Bereitstellung automatisch. Die beschriebenen Prüfaktionen gelten für Ausnahmen; „Für Dossier bereitstellen“ ist dort eine ausdrückliche Abschluss- oder Wiederholungsaktion bei erfüllten Voraussetzungen. Entwurfsspeichern und Rückfrage lösen keine Übergabe aus.
+Im eindeutigen Standardfall ohne Unterschriftenprüfpflicht erfolgen Übernahme und Bereitstellung automatisch. Die beschriebenen Prüfaktionen gelten für Ausnahmen; „Für Dossier bereitstellen“ ist dort eine ausdrückliche Abschluss- oder Wiederholungsaktion bei erfüllten Voraussetzungen. Entwurfsspeichern und Rückfrage lösen keine Übergabe aus.
 
 ### Status und Abschluss
 
@@ -68,11 +75,11 @@ Im eindeutigen Standardfall erfolgen Übernahme und Bereitstellung automatisch. 
 
 Die Anzeige trennt:
 - fachliche Übernahme;
-- gegebenenfalls eigenständige, noch zu bestätigende Dokumentpflichten; keine Unterschriftenkontrolle durch HR;
+- gegebenenfalls eigenständige Dokumentpflichten und die erforderliche Unterschriftenprüfung;
 - lokale Bereitstellung;
 - tatsächliche externe Verarbeitung, soweit ein Nachweis vorhanden ist.
 
-Beispiel: „Rückblick übernommen · Bereitstellung ausstehend“. Nach erfolgreicher Übergabe: „Für Dossier bereitgestellt · Ausblick noch ausstehend“. Es gibt keinen Zwischenstatus „Unterschriftenprüfung offen“. Ohne Rückmeldung des externen Systems wird keine erfolgte Personaldossier-Ablage behauptet.
+Beispiel: „Rückblick übernommen · Bereitstellung ausstehend“. Nach erfolgreicher Übergabe: „Für Dossier bereitgestellt · Ausblick noch ausstehend“. Bei prüfpflichtigen Fällen erscheint zusätzlich „Unterschriftenprüfung offen“, „Unterschrift fehlt“ oder „Nachgefordert“. Ohne Rückmeldung des externen Systems wird keine erfolgte Personaldossier-Ablage behauptet.
 
 ### Fehler und Wiederaufnahme
 

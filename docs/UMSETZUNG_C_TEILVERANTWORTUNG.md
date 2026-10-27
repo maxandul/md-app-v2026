@@ -124,6 +124,8 @@ gesperrt. Diese Bedienfolge ist eine Anleitung, kein bereits bestätigtes Ergebn
 ## Danach
 
 Als nächste Lieferung folgt **D: SAP-Vorschau und fortlaufende unterjährige MDs**.
+Der separate [Review-Entwurf D](UMSETZUNG_D_SAP_ABGLEICH.md) dokumentiert die
+Fortsetzung und ihren noch offenen Testabschluss.
 Die bisherige automatische Deaktivierung/Synchronisierung und Kampagnenbarrieren
 sind damit noch nicht ersetzt. E (Rücklaufautomatik und Scan-/Unterschriftenregeln)
 und F (gesamte Oberfläche, Feedback, Auswertung und Übergaben) bleiben offen.

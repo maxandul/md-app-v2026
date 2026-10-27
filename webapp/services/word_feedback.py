@@ -90,7 +90,8 @@ def confirm_feedback(connection, import_id, *, cycle_id, manager_pn, fields, rea
         raise ValueError('Zuerst als Feedback zur Prüfung zuordnen.')
     if not connection.execute('SELECT 1 FROM dialog_cases WHERE cycle_id=? AND manager_pn=?', (cycle_id,manager_pn)).fetchone():
         raise ValueError('Die Führungskraft gehört nicht zum gewählten Jahresprozess.')
-    if connection.execute('SELECT status FROM cycles WHERE id=?',(cycle_id,)).fetchone()[0]=='abgeschlossen':
+    from .sap_staging import available as staged
+    if not staged(connection) and connection.execute('SELECT status FROM cycles WHERE id=?',(cycle_id,)).fetchone()[0]=='abgeschlossen':
         raise ValueError('Den Jahresprozess für einen Nachtrag zuerst wieder öffnen.')
     if any(key not in FIELDS or not isinstance(value,str) for key,value in fields.items()):
         raise ValueError('Ungültige Feedbackfelder.')
@@ -133,7 +134,8 @@ def bundle_feedback(connection, *, cycle_id, manager_pn, expected_ids, handoff_d
     pending = None
     try:
         cycle = connection.execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
-        if not cycle or cycle['status']=='abgeschlossen':
+        from .sap_staging import available as staged
+        if not cycle or (not staged(connection) and cycle['status']=='abgeschlossen'):
             raise ValueError('Jahresprozess nicht vorhanden oder abgeschlossen; für Nachträge zuerst wieder öffnen.')
         rows = connection.execute('''SELECT w.* FROM word_feedback_submissions s JOIN word_pdf_imports w ON w.id=s.import_id
             WHERE s.cycle_id=? AND s.manager_pn=? AND s.bundle_id IS NULL ORDER BY w.id''',(cycle_id,manager_pn)).fetchall()

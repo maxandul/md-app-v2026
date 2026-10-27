@@ -198,6 +198,9 @@ def _sync_active_flags(connection: sqlite3.Connection, person_numbers: set[str])
 
 
 def import_sap_workbook(connection: sqlite3.Connection, path: Path, *, original_filename: str, stored_filename: str, imported_at: datetime | None = None) -> ImportResult:
+    from .sap_staging import available
+    if available(connection):
+        raise ValueError('SAP-Daten zuerst als Vorschau prüfen und ausgewählte Personen übernehmen.')
     imported_at = imported_at or datetime.now().astimezone()
     digest = file_sha256(path)
     duplicate = connection.execute("SELECT id, imported_at FROM sap_imports WHERE sha256 = ? ORDER BY id DESC LIMIT 1", (digest,)).fetchone()

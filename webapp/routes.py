@@ -195,6 +195,7 @@ def dashboard():
 
 @bp.get("/stammdaten")
 def master_data():
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.args.get('history')!='yes':return redirect(url_for('sap_work.index'))
     return render_template(
         "master_data.html",
         active_nav="master_data",
@@ -210,7 +211,7 @@ def dialogs():
     unassigned = request.args.get('unassigned') == 'yes'
     if unassigned:
         selected_cycle_id = None
-    if selected_cycle_id is None and data["cycles"] and not unassigned:
+    if selected_cycle_id is None and data["cycles"] and not unassigned and not current_app.config.get('HR_GOAL_WORKFLOW'):
         selected_cycle_id = data["cycles"][0]["id"]
     query = request.args.get("q", "").strip()
     event_type = request.args.get("event_type", "").strip()
@@ -675,6 +676,9 @@ def export_analytics():
 
 @bp.post("/imports")
 def upload_sap_import():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .sap_routes import upload
+        return upload()
     upload = request.files.get("sap_file")
     if not upload or not upload.filename:
         flash("Bitte wähle einen SAP-Excel-Export aus.", "error")
@@ -2027,7 +2031,8 @@ def reopen_feedback(import_id):
         row=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
         if not row or row['bundle_id'] or str(state['revision'])!=request.form.get('revision'):
             raise ValueError('Bereits gebündelt oder inzwischen geändert. Bitte die Seite neu laden.')
-        if connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+        from .services.sap_staging import available as staged
+        if not staged(connection) and connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Den Jahresprozess für die Korrektur zuerst wieder öffnen.')
         previous=dict(row)
         connection.execute('DELETE FROM word_feedback_submissions WHERE import_id=?',(import_id,))

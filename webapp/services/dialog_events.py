@@ -78,6 +78,8 @@ def ensure_manager_assignment(
     if existing:
         return int(employment["id"]), int(existing["id"])
 
+    from .sap_staging import available as staged
+    valid_from,valid_to=('', '') if staged(connection) else (employment['entry_date'],employment['exit_date'])
     cursor = connection.execute(
         """
         INSERT INTO manager_assignments (
@@ -87,7 +89,7 @@ def ensure_manager_assignment(
         """,
         (
             employment["id"], manager_pn, source, sap_import_id,
-            employment["entry_date"], employment["exit_date"], reason,
+            valid_from, valid_to, reason,
             created_at, created_at,
         ),
     )
@@ -159,6 +161,9 @@ def sync_cycle_events(connection: sqlite3.Connection, cycle_id: int) -> int:
     )
     created = 0
     for row in rows:
+        from .sap_staging import available as staged
+        if staged(connection) and connection.execute('SELECT 1 FROM dialog_events WHERE legacy_case_id=?',(row['case_id'],)).fetchone():
+            continue
         timestamp = row["updated_at"] or cycle["created_at"]
         employment_id, manager_assignment_id = ensure_manager_assignment(
             connection,
@@ -305,7 +310,20 @@ def backfill_dialog_model(connection: sqlite3.Connection) -> None:
     connection.commit()
 
 
-def create_manual_event(
+def create_manual_event(connection, **values):
+    from .sap_staging import available as staged
+    if not staged(connection):return _create_manual_event(connection,**values)
+    connection.execute('BEGIN IMMEDIATE')
+    try:
+        result=_create_manual_event(connection,**values)
+        connection.commit()
+        return result
+    except Exception:
+        connection.rollback()
+        raise
+
+
+def _create_manual_event(
     connection: sqlite3.Connection,
     *,
     employee_pn: str,
@@ -332,6 +350,8 @@ def create_manual_event(
         raise ValueError("Personalnummer, Ans. und vorgesetzte Person sind erforderlich.")
     if not reason.strip():
         raise ValueError("Für eine manuelle Zuordnung ist eine Begründung erforderlich.")
+    if not 2020 <= review_year <= 2100:
+        raise ValueError('Das Rückblickjahr liegt ausserhalb des unterstützten Bereichs.')
     try:
         start = date.fromisoformat(period_start)
         end = date.fromisoformat(period_end)
@@ -339,6 +359,10 @@ def create_manual_event(
         raise ValueError("Beurteilungsbeginn und -ende müssen gültige Daten sein.") from exc
     if start > end:
         raise ValueError("Der Beurteilungsbeginn liegt nach dem Beurteilungsende.")
+    for due in (review_due_date,outlook_due_date):
+        if due:
+            try:date.fromisoformat(due)
+            except ValueError:raise ValueError('Bitte gültige Fristen angeben.') from None
     if dialog_date:
         try:
             date.fromisoformat(dialog_date)
@@ -372,6 +396,25 @@ def create_manual_event(
     manager = connection.execute('SELECT org_unit FROM employees WHERE pn=?',(manager_pn.strip(),)).fetchone()
     if not manager:
         raise ValueError('Die ausgewählte Führungskraft fehlt in den Stammdaten.')
+    from .sap_staging import available as staged
+    modern=staged(connection)
+    if modern:
+        duplicate=connection.execute('''SELECT de.event_id FROM dialog_events de
+            JOIN employment_assignments ea ON ea.id=de.employment_id JOIN manager_assignments ma ON ma.id=de.manager_assignment_id
+            WHERE ea.person_number=? AND ea.assignment_number=? AND ma.manager_person_number=?
+              AND de.event_type=? AND de.required_scope=? AND de.period_start=? AND de.period_end=?
+              AND de.review_year=? AND de.status<>'cancelled' ''',
+            (employee_pn.strip(),assignment_number.strip(),manager_pn.strip(),event_type,required_scope,period_start,period_end,review_year)).fetchone()
+        if duplicate:return duplicate['event_id']
+        if cycle_id is None:
+            cycle=connection.execute('SELECT id FROM cycles WHERE review_year=? AND outlook_year=?',(review_year,review_year+1)).fetchone()
+            if cycle:cycle_id=cycle[0]
+            else:
+                imported=connection.execute('SELECT MAX(id) FROM sap_imports').fetchone()[0]
+                if not imported:raise ValueError('Zuerst den SAP-Ausgangsstand prüfen und übernehmen.')
+                dues=default_due_dates(review_year)
+                cycle_id=connection.execute('''INSERT INTO cycles(review_year,outlook_year,sap_import_id,review_due_date,outlook_due_date,status,created_at)
+                    VALUES (?,?,?,?,?,'vorbereitung',?)''',(review_year,review_year+1,imported,*dues,datetime.now().astimezone().isoformat())).lastrowid
     form_org_unit = employment['org_unit'] if form_org_source=='employee' else manager['org_unit']
     timestamp = (created_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     employment_id, manager_assignment_id = ensure_manager_assignment(
@@ -408,7 +451,7 @@ def create_manual_event(
                 "Für diese Person, Anstellung und Führungskraft besteht im Durchlauf "
                 "bereits ein Arbeitsmappenfall."
             ) from exc
-    if required_scope in {"full", "review_only"}:
+    if not modern and required_scope in {"full", "review_only"}:
         connection.execute(
             """
             UPDATE dialog_events SET sap_leading = 0, updated_at = ?

@@ -217,8 +217,9 @@ class PartConsumersTest(unittest.TestCase):
                 obligation=parts.resolve(old.db,old.case_id)['obligation_id']
                 old.db.execute('INSERT INTO reminder_obligations VALUES (?,?,?)',(reminder,obligation,'2026-01-31'))
             before={t:[tuple(r) for r in old.db.execute('SELECT * FROM '+t)] for t in ('hr_part_responsibilities','reminders','reminder_obligations','dialog_cases','document_obligations')}
+            columns={t:','.join(r[1] for r in old.db.execute('PRAGMA table_info('+t+')')) for t in before}
             migrations.migrate(old.db);init_db(old.db)
-            for table,rows in before.items():self.assertEqual(rows,[tuple(r) for r in old.db.execute('SELECT * FROM '+table)])
+            for table,rows in before.items():self.assertEqual(rows,[tuple(r) for r in old.db.execute('SELECT '+columns[table]+' FROM '+table)])
             self.assertEqual(old.db.execute('SELECT manager_pn FROM hr_resolved_obligations WHERE id=?',(obligation,)).fetchone()[0],'111114')
         finally:old.tearDown()
 

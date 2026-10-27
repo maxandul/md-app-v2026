@@ -75,6 +75,8 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
 
 def repair_probation_boundary(connection: sqlite3.Connection) -> int:
     """Korrigiert unbestätigte Jahresfälle am 30. Juni, ohne Rückläufe zu verändern."""
+    from .sap_staging import available
+    if available(connection):return 0
     rows = connection.execute("""SELECT dc.case_id,c.review_year,e.exit_date,e.probation_end,de.id AS event_id
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id
         JOIN employees e ON e.pn=dc.employee_pn
@@ -194,6 +196,10 @@ def synchronize_cycle_with_import(
     updated_at: datetime | None = None,
 ) -> dict[str, int]:
     """Gleicht einen offenen Durchlauf mit einem neueren vollständigen SAP-Import ab."""
+    from .sap_staging import available as staged
+    if staged(connection):
+        # Applied master data and MD decisions have separate lifecycles.
+        return {"added":0,"reactivated":0,"deactivated":0}
     cycle = connection.execute(
         "SELECT * FROM cycles WHERE id = ?", (cycle_id,)
     ).fetchone()
@@ -376,6 +382,10 @@ def dashboard_data(connection: sqlite3.Connection) -> dict:
         ORDER BY c.review_year DESC
         """
     ).fetchall()
+    from .sap_staging import available as staged
+    if staged(connection):
+        selections={r['applied_import_id']:r['batch_id'] for r in connection.execute('SELECT applied_import_id,batch_id FROM hr_sap_changes WHERE applied_import_id IS NOT NULL')}
+        imports=[{**dict(r),'selection_batch_id':selections.get(r['id'])} for r in imports]
     return {"imports": imports, "cycles": cycles}
 
 

@@ -69,14 +69,15 @@ def create_review_app(directory: Path):
     def walkthrough_boundary():
         if request.remote_addr not in ('127.0.0.1','::1'):
             abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
-        allowed_read={'main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','static'}
+        allowed_read={'main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','main.dialogs','main.master_data','main.import_detail','main.cycle_detail','static'}
         goal_endpoint=(request.endpoint or '').startswith('goal_work.')
         part_endpoint=(request.endpoint or '').startswith('parts.')
-        allowed_prepare={'main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines'}
+        sap_endpoint=(request.endpoint or '').startswith('sap_work.')
+        allowed_prepare={'main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines','main.add_dialog_event','main.attach_dialog_event','main.cancel_dialog_event','main.add_cycle'}
         if request.method=='POST':
-            if not (goal_endpoint or part_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
+            if not (goal_endpoint or part_endpoint or sap_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
                 abort(403,'HR-Test: Outlook, Postfachzugriff und externe Übergaben sind gesperrt.')
-        elif not goal_endpoint and not part_endpoint and request.endpoint not in allowed_read:
+        elif not goal_endpoint and not part_endpoint and not sap_endpoint and request.endpoint not in allowed_read:
             return redirect(url_for('goal_work.index'))
 
     with app.app_context():
@@ -87,8 +88,11 @@ def create_review_app(directory: Path):
                'lange ID/Nummer':pn+'@example.invalid','Bewilligung für':None}
               for pn,first,last,manager in PEOPLE]
         sap=directory/'synthetic-sap.xlsx';pd.DataFrame(rows).to_excel(sap,index=False)
-        imported=import_sap_workbook(db,sap,original_filename=sap.name,stored_filename=sap.name)
-        create_cycle(db,review_year=2025,sap_import_id=imported.import_id)
+        from webapp.services import sap_staging
+        staged=sap_staging.stage(db,sap,original_filename=sap.name)
+        selection={r['id']:r['revision'] for r in db.execute("SELECT * FROM hr_sap_changes WHERE batch_id=? AND category='new'",(staged,))}
+        imported=sap_staging.apply(db,selection,reason='Synthetischen Ausgangsstand für die isolierte Übung übernommen')
+        create_cycle(db,review_year=2025,sap_import_id=imported)
         batch=goal_review.batch(db,'guided-review','Übungsfall 1 · fünf nachgereichte Ausblicke')
         originals=directory/'data'/'goal_workflow'/'originals';originals.mkdir(parents=True)
         for index,(pn,first,last,_) in enumerate(PEOPLE[:5]):
@@ -98,6 +102,13 @@ def create_review_app(directory: Path):
                 xml=archive.read('word/document.xml').replace(b'111113',pn.encode() if index<4 else b'')
             complete_word_package(target,xml)
             goal_review.stage(db,target,filename=target.name,batch_id=batch,origin_key='guided:'+pn)
+        changed=[dict(row) for row in rows if row['ID_NO_ZERO']!=PEOPLE[1][0]]
+        changed[0]['OE Bez.']='Neue Test-OE'
+        changed[0]['Dir. Vorgesetzter (PN)']=next(pn for pn,first,_,_ in PEOPLE if first=='Luca')
+        changed.append({**rows[0],'ID_NO_ZERO':'900199','Rufname':'Nina','Nachname':'Neu',
+            'lange ID/Nummer':'900199@example.invalid','Eintritt':'2026-09-01','Ende Probezeit':'2026-11-30'})
+        changed_path=directory/'synthetic-sap-changes.xlsx';pd.DataFrame(changed).to_excel(changed_path,index=False)
+        sap_staging.stage(db,changed_path,original_filename='Übung D – Wechsel, Eintritt und fehlender Datensatz.xlsx')
     return app
 
 

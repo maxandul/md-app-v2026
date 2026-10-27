@@ -232,7 +232,9 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                     if not template_path or not Path(template_path).is_file():
                         raise ValueError(f"Die Word-Vorlage «{kind}» ist noch nicht lokal konfiguriert.")
                     year = cycle["outlook_year"] if kind == "outlook" else cycle["review_year"]
-                    if case["period_start"] and case["period_end"] and (kind != "outlook" or case["event_type"] != "annual"):
+                    if part:
+                        start,end=part['period_start'],part['period_end']
+                    elif case["period_start"] and case["period_end"] and (kind != "outlook" or case["event_type"] != "annual"):
                         start, end = case["period_start"], case["period_end"]
                     elif kind == "probation":
                         start, end = case["entry_date"], case["probation_end"]
@@ -265,8 +267,8 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                     document = render_word_form(Path(template_path), kind=kind, fields=fields, performance_goals=performance, development_goals=development)
                     label = {"review": "Rückblick", "outlook": "Ausblick", "probation": "Rückblick_Probezeit"}[kind]
                     document_name = f"{label}_{year}_{_filename_part(case['last_name'])}_{_filename_part(case['first_name'])}_{_filename_part(case['employee_pn'])}.docx"
-                    if resolved_review:
-                        document_name = document_name[:-5] + f"_Ans_{_filename_part(assignment)}_{hashlib.sha256(case_id.encode()).hexdigest()[:8]}.docx"
+                    if resolved_review or modern:
+                        document_name = document_name[:-5] + f"_Ans_{_filename_part(assignment)}_{hashlib.sha256(case['case_id'].encode()).hexdigest()[:8]}.docx"
                     person_cases = [c for c in cases if c['employee_pn'] == case['employee_pn'] and (c['official_scope'] or c['suggested_scope']) != 'none']
                     if len(person_cases) > 1:
                         case_number = next(i for i, c in enumerate(person_cases, 1) if c['case_id'] == case['case_id'])

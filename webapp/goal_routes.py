@@ -18,7 +18,7 @@ bp=Blueprint('goal_work',__name__,url_prefix='/arbeit/ziele')
 
 @bp.before_app_request
 def protect_legacy_goal_aliases():
-    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview'}
+    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event'}
     if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and request.endpoint in aliases:
         token=request.form.get('csrf_token','') or request.headers.get('X-CSRF-Token','')
         expected=session.get('goal_csrf','')

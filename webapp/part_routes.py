@@ -12,7 +12,7 @@ bp.before_request(protect)
 
 def back_link():
     value=request.values.get('back','');parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and parsed.path.startswith(('/arbeit/dialogteile','/cycles/','/arbeit/ziele')) else url_for('parts.index')
+    return value if not parsed.netloc and not parsed.scheme and parsed.path.startswith(('/arbeit/dialogteile','/cycles/','/arbeit/ziele','/stammdaten/abgleich')) else url_for('parts.index')
 
 
 def render(template,**values):

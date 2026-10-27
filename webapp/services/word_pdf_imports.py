@@ -60,6 +60,8 @@ def matching_cases(connection, data):
         from .part_responsibilities import resolve
         matches=[]
         for row in connection.execute('SELECT case_id FROM dialog_cases WHERE employee_pn=? ORDER BY id',(pn,)):
+            if not connection.execute('''SELECT 1 FROM document_obligations o JOIN dialog_events de ON de.id=o.dialog_event_id
+                WHERE de.legacy_case_id=? AND o.document_kind=?''',(row['case_id'],kind)).fetchone():continue
             part=resolve(connection,row['case_id'],kind)
             if part['period_end'][:4]==year:matches.append(part)
         return matches
@@ -161,7 +163,8 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
             raise ValueError('Dieses Ereignis wurde aufgehoben. Bitte die Fallzuordnung fachlich klären.')
         if not case['active'] and len(reason.strip())<10:
             raise ValueError('Nachzügler zu einem inaktiven Fall: Bitte die historische Zuordnung mit mindestens 10 Zeichen begründen. Der Fall wird dadurch nicht erneut für den Versand aktiviert.')
-        if case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+        from .sap_staging import available as staged
+        if not staged(connection) and case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Dieser Durchlauf ist abgeschlossen. Öffne ihn für die Nachbearbeitung zuerst wieder in der Durchlaufübersicht.')
         # Abweichende unterjährige Ereignisse nicht aufgrund des Jahres allein übernehmen.
         if not (part and part['responsibility_revision']) and case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():

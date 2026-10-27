@@ -323,6 +323,19 @@ def cockpit_overview(
     for item in connection.execute("SELECT * FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'"):
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Zuordnung',title='Ereignis einem Durchlauf zuordnen',subject=item['event_id'],context='Ohne Zuordnung sind Word-Erzeugung und Fallprüfung noch nicht möglich',date=item['created_at'],target='unassigned'))
 
+    from .sap_staging import available as staged
+    if staged(connection):
+        for row in connection.execute('''SELECT b.id,b.original_filename,b.created_at,COUNT(*) AS count
+            FROM hr_sap_batches b JOIN hr_sap_changes c ON c.batch_id=b.id WHERE c.superseded_by IS NULL
+            AND ((c.data_status='pending' AND c.category<>'unchanged') OR c.followup_status='open') GROUP BY b.id'''):
+            tasks.append(dict(priority='mittel',priority_rank=3,kind='Stammdaten',title='SAP-Abgleich und Dialogfolgen prüfen',
+                subject=row['original_filename'],context=f"{row['count']} Personeneinträge offen",date=row['created_at'],target='sap_preview',batch_id=row['id']))
+        for row in connection.execute('''SELECT cycle_id,COUNT(*) AS count FROM hr_resolved_obligations
+            WHERE active=1 AND event_status<>'cancelled' AND required=1 AND status NOT IN ('complete','waived')
+              AND document_kind IN ('review','outlook') AND (? IS NULL OR cycle_id<>?) GROUP BY cycle_id''',
+            (selected_cycle['id'] if selected_cycle else None,selected_cycle['id'] if selected_cycle else None)):
+            tasks.append(dict(priority='mittel',priority_rank=4,kind='Weitere Jahre',title='Offene Gesprächsteile aus anderen Jahren',
+                subject=f"{row['count']} Gesprächsteile",context=f"Durchlauf {row['cycle_id']}; auch nach Kampagnenabschluss bearbeitbar",date='',target='dialogs',cycle_id=row['cycle_id']))
     tasks.sort(key=lambda item: (item["priority_rank"], item["date"] or ""))
     for cycle in cycles:
         cycle["status_label"] = CYCLE_STATUS_LABELS.get(cycle["status"], cycle["status"])

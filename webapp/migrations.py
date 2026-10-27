@@ -11,6 +11,12 @@ def migrate(connection):
     for path in sorted(Path(__file__).with_suffix('').glob('*.sql')):
         sql = path.read_text(encoding='utf-8')
         digest = hashlib.sha256(sql.encode()).hexdigest()
+        foreign_keys = connection.execute('PRAGMA foreign_keys').fetchone()[0]
+        rebuild = path.stem == '004_sap_staging'
+        if rebuild:
+            # SQLite requires this outside the transaction for a table rebuild.
+            # References are checked before committing, then enforcement restored.
+            connection.execute('PRAGMA foreign_keys=OFF')
         try:
             connection.execute('BEGIN IMMEDIATE')
             previous = connection.execute('SELECT sha256 FROM schema_migrations WHERE version=?', (path.stem,)).fetchone()
@@ -24,10 +30,15 @@ def migrate(connection):
                         connection.execute(statement)
                 connection.execute('INSERT INTO schema_migrations VALUES (?,?,?)',
                                    (path.stem, digest, datetime.now(timezone.utc).isoformat()))
+                if rebuild and connection.execute('PRAGMA foreign_key_check').fetchone():
+                    raise ValueError('Die Migration würde ungültige Datenverknüpfungen hinterlassen.')
             connection.commit()
         except Exception:
             connection.rollback()
             raise
+        finally:
+            if rebuild:
+                connection.execute(f'PRAGMA foreign_keys={int(foreign_keys)}')
 
 
 def available(connection):

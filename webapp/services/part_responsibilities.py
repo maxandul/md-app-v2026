@@ -75,12 +75,16 @@ def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_sta
         if not manager:
             raise ValueError('Bitte eine Führungskraft aus der Liste wählen.')
         org=part['employee_org_unit'] if form_org_source=='employee' else manager['org_unit']
-        connection.execute('''INSERT INTO hr_part_responsibilities VALUES (?,?,?,?,?,?,?,?,?,?)
+        connection.execute('''INSERT INTO hr_part_responsibilities
+            (obligation_id,manager_pn,form_org_source,form_org_unit,period_start,period_end,revision,reason,user_id,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(obligation_id) DO UPDATE SET manager_pn=excluded.manager_pn,
             form_org_source=excluded.form_org_source,form_org_unit=excluded.form_org_unit,
             period_start=excluded.period_start,period_end=excluded.period_end,revision=excluded.revision,
             reason=excluded.reason,user_id=excluded.user_id,updated_at=excluded.updated_at''',
             (part['obligation_id'],manager_pn,form_org_source,org,period_start,period_end,expected_revision+1,reason.strip(),user_id,stamp()))
+        from .sap_staging import available as staged
+        if staged(connection):connection.execute("UPDATE hr_part_responsibilities SET origin='manual' WHERE obligation_id=?",(part['obligation_id'],))
         connection.execute('''INSERT INTO hr_goal_events(case_id,action,details_json,user_id,created_at)
             VALUES (?,'responsibility_changed',?,?,?)''',(case_id,json.dumps({'kind':kind,'before':part,'manager_pn':manager_pn,'org_unit':org,'period_start':period_start,'period_end':period_end,'reason':reason},ensure_ascii=False),user_id,stamp()))
         connection.commit()

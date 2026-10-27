@@ -1,6 +1,6 @@
 # Umsetzungsplan: Durchgängige HR-Nutzerführung
 
-Stand: 26. Oktober 2026  
+Stand: 27. Oktober 2026  
 Geprüfte Codebasis: main, Commit `9d7ca779afc18e9bd9c6607a5b3dbe8465537a18`.  
 Status: Codeabgleich und Umsetzungsvorschlag; keine Implementierung oder Migration durchgeführt.
 
@@ -54,11 +54,13 @@ Die vorhandenen Fachfunktionen sind eine brauchbare Grundlage. Die wesentlichen 
 
 **Vorschlag:** Ergänzende Gesprächsteil-Konfiguration mit stabiler Referenz auf Ereignis und Dokumentart. Sie enthält Verantwortung, Zeitraum, Formular-OE samt Herkunft, Entscheidungsgrund und Revision. Vor endgültigem Schema prüfen, ob diese Angaben direkt an bestehende Pflichten oder an eine eigene Teil-Tabelle gehören. Keine unabhängige zweite Pflichtenliste schaffen.
 
-### 2.4 Automatik darf keine Unterschriftenkontrolle vortäuschen
+### 2.4 Selektive Unterschriftenprüfung und Automatik
 
 `confirm_import()` erzeugt reguläre Dokumente derzeit mit `signature_checked=False` und `needs_signature_check`; `refresh_case_status()` berücksichtigt das Flag. Auch `closure_summary()` zählt offene Übergaben anhand dieses Flags. Die Initialisierung passt alte Zustände erneut an.
 
-**Vorschlag:** Fachliche Validierung und technische Bereitstellung getrennt modellieren. Bestehende Unterschriftenhistorie erhalten, aber keine neuen Datensätze durch pauschales Setzen von `signature_checked=1` als geprüft ausweisen. Alte Prüfblockaden gezielt in nachvollziehbare neue Zustände überführen. Eine noch ungeklärte separate Scan-Dokumentpflicht nicht stillschweigend entfernen.
+**Aktualisierte Fachregel vom 27. Oktober 2026:** Bei ausdrücklich unterschriftspflichtigen Fällen bestätigt HR die vorhandenen Unterschriften am konkreten PDF. Prüfpflicht und Prüfentscheid an die Dokumentversion binden; offene Prüfung, fehlende Unterschrift und tatsächlich erfolgte Nachforderung unterscheiden. Neue Version erneut prüfen, identische Dublette nicht. Welche Fallarten und Unterschriften erforderlich sind, ist noch zu bestätigen; die bestehende D/E-Regel nicht ungeprüft übernehmen.
+
+**Vorschlag:** Fachliche Validierung, Unterschriftenprüfung und technische Bereitstellung getrennt modellieren. Bestehende Unterschriftenhistorie erhalten, aber keine neuen Datensätze durch pauschales Setzen von `signature_checked=1` als geprüft ausweisen. Alte Prüfblockaden gezielt in nachvollziehbare neue Zustände überführen. Eine noch ungeklärte separate Scan-Dokumentpflicht nicht stillschweigend entfernen.
 
 ## 3. Gemeinsame technische Grundlage – Vorschlag
 
@@ -97,13 +99,16 @@ Datenbankspeicherung, Dateierzeugung und Outlook sind nicht eine gemeinsame Tran
 
 ## 4. Reihenfolge der Umsetzung
 
+Die übergreifende Nutzerführung wird **vor** der Implementierung anhand des [Gesamtkonzepts](GESAMTKONZEPT_HR_UEBERSICHT.md) entworfen. Feedback, Probezeit, Personenhistorie, Führungskräfteübersicht und grosse Listen gehören bereits in diesen Entwurf; Etappe F ist keine Verschiebung dieser Grundsatzarbeit.
+
 | Etappe | Lieferumfang | Abhängigkeit / Abnahme |
 |---|---|---|
+| 0 – Gesamte Oberfläche prüfen | Zusammenhängender Entwurf für Arbeitsvorrat, Führungskraft, Mitarbeitende, Fall und Feedback; Navigation, kurze Texte, Filter und Sammelaktionen | HR-Szenarien mit wiederkehrenden MDs, Altjahresresten, Probezeit und 1000 Mitarbeitenden durchspielen; keine bereits nachgewiesene Skalierbarkeit behaupten |
 | A – Grundlage vorbereiten | Versionierte Migrationen; verknüpfte Vorgänge; zentrale Auflösung von Gesprächsteil-Verantwortung; Referenzen auf bestehende Daten | Alte Fälle, Dokumente und Versandnachweise bleiben unverändert auffindbar |
 | B – Erster vollständiger Ablauf | Gemeinsamer Zieleingang, direkte HR-Korrektur, Quellenfreigabe, Korrekturklärung, ausgewählte Rückblicke gesammelt erstellen, gruppierter Outlook-Entwurf und Versandbestätigung | A; fünf Nachreichungen mit Teilfehlern und abweichender Rückblick-Verantwortung vollständig bearbeitbar |
 | C – Getrennte Zuständigkeiten vollständig nutzen | Rückblick/Ausblick getrennt zuweisen; Formular-OE und Zeiträume; regulärer Versand, Rücklaufzuordnung und Erinnerungen umstellen | Zentrale Auflösung aus A; kein Verbraucher darf unbemerkt die alte gemeinsame Führungskraft verwenden |
 | D – SAP-Abgleich und fortlaufende Dialoge | Staging/Vorschau, Snapshots, Änderungsvorgänge, Schutz manueller Entscheidungen; produktive Bearbeitung unterjähriger Dialoge unabhängig vom Kampagnenabschluss | C; bestehende automatische Deaktivierung gezielt ersetzen; bestehende Fälle vollständig berücksichtigen |
-| E – Rücklaufautomatik | Gemeinsame Validierung, automatische Übernahme geeigneter PDFs, Ausnahmen; neue Übergabestatus ohne HR-Unterschriftenfreigabe | Belastbare Zuordnung aus C/D; automatisierte Prüfungen mit repräsentativen Formularvarianten |
+| E – Rücklaufautomatik | Gemeinsame Validierung, automatische Übernahme geeigneter PDFs, Ausnahmen; selektive Unterschriftenprüfung und getrennte Übergabestatus | Belastbare Zuordnung aus C/D; automatisierte Prüfungen mit repräsentativen Formularvarianten |
 | F – Konsolidieren | Neue Arbeitsübersicht als Standard; redundante Einstiege entfernen; Feedback, Auswertung und Abschluss auf neue Verknüpfungen abstimmen | Vorhandene Spezialfälle und Verläufe weiterhin erreichbar |
 
 **Warum A vor B?** Ohne stabile Zielversionen, Verknüpfungen und Verantwortungsauflösung würde der erste UI-Umbau später nochmals grundlegend geändert werden müssen.
@@ -168,6 +173,8 @@ Vorhandene Tests dienen als Ausgangspunkt, nicht als Nachweis für die neue Logi
 | Zuständigkeiten | Alte Führungskraft Rückblick, neue Ausblick; Ersatz nur für einen Teil; Formular-OE bleibt historisch korrekt |
 | SAP-Abgleich | Vollständiger/auffällig unvollständiger Export, fehlende Anstellung, neue Person, bekannter manueller Override, Wechsel ohne Ereignisdatum |
 | PDF-Automatik | Bekannte gültige Formate, Erkennungswarnungen, unklare Zuordnung, abweichende Version, Dublette, Ablagefehler |
+| Unterschriften | Prüfpflicht ja/nein/unbekannt, fehlende Unterschrift, dokumentierte Nachforderung, neue Version, Dublette, keine pauschale Scheinbestätigung |
+| Gesamtoberfläche und Menge | 1000 Mitarbeitende über mehrere Jahre, serverseitige Filter/Paginierung, offene Altjahresfälle, Führungskraft mit vielen Personen, Mehrfachanstellung, Feedback und Probezeit |
 | Migration | Altbestand vollständig, teilweise importierte Ziele, offene Entwürfe, bereitgestellte Dokumente, wiederholter Start |
 | Bedienung | S01–S05 aus Prozessübersicht; Direktlinks, Wiederaufnahme, Gruppenkontext und konkrete nächste Aktion |
 | Externe Integration | Echter Windows-/Outlook-Entwurf, Versandbestätigung, Verschieben und tatsächliche Dossierbereitstellung |
@@ -176,6 +183,7 @@ Vorhandene Testdateien: `test_goal_import.py`, `test_mail_goals.py`, `test_perso
 
 ## 8. Noch gezielt zu klären
 
+- Welche wenigen Fallarten verlangen welche Unterschriften und damit eine HR-Sichtprüfung?
 - Gibt es unabhängig von der HR-Unterschriftenkontrolle eine separate Scan-Dateipflicht?
 - Welche tatsächlichen Exportfelder liefern ein verlässliches Übertritts-/Wirksamkeitsdatum?
 - Exakte Regeln für Eintritt/Probezeit/Übertrittszeiträume und SAP-massgeblichen Rückblick.

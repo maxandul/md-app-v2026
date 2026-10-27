@@ -95,19 +95,21 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Ist:** Postfachscan oder PDF-Upload; Word-PDF-Prüfwarteschlange; Originalvergleich, Fallzuordnung und fachliche Übernahme; anschliessende Fall-/Unterschriften- bzw. Scanprüfung und Dossierbereitstellung.
 
-**HR-Arbeit:** Ausnahmen klären: uneindeutige Dokumentart/Zuordnung, unvollständige oder widersprüchliche Angaben, Versionskonflikte sowie Verarbeitungsfehler. Eindeutige, erfolgreich validierte reguläre PDFs werden automatisch verarbeitet. HR kontrolliert keine Unterschriften.
+**HR-Arbeit:** Ausnahmen klären: uneindeutige Dokumentart/Zuordnung, unvollständige oder widersprüchliche Angaben, Versionskonflikte sowie Verarbeitungsfehler. Eindeutige, erfolgreich validierte reguläre PDFs werden automatisch verarbeitet. HR kontrolliert die Unterschriften nur bei ausdrücklich unterschriftspflichtigen Fällen.
 
 **Varianten:** Rückblick, Ausblick, Probezeit; historischer Ausblick als Zielquelle; alter Formularstand; Dublette/neue Version; unlesbares PDF/Scan; unklare Zuordnung; inaktiver Fall; geschlossener Durchlauf; Nichtdurchführung; gemischte E-Mail.
 
-**Sollvorschlag:** Ein Eingang bietet unmittelbar die passende Bearbeitung. Nach abgeschlossener Angaben-/Zuordnungsprüfung folgt die Dossierbereitstellung ohne zusätzliche HR-Unterschriftenfreigabe. Unlesbare Angaben und technische Ablagefehler erhalten konkrete Aufgaben.
+**Sollvorschlag:** Ein Eingang bietet unmittelbar die passende Bearbeitung. Nach abgeschlossener Angaben-/Zuordnungsprüfung folgt bei nicht unterschriftspflichtigen Fällen die automatische Bereitstellung; unterschriftspflichtige Fälle warten auf die visuelle Bestätigung durch HR. Unlesbare Angaben und technische Ablagefehler erhalten konkrete Aufgaben.
 
 **Abschluss:** Dokument ist geprüft und erforderliche Übergabe ist erfolgt, oder es ist nachvollziehbar zurückgewiesen/zurückgestellt. Ein benötigter, ungeklärter Rücklauf bleibt offen.
 
-**Bestätigte Fachregel (26. Oktober 2026):** Unterschriften werden verlangt; ihre korrekte Einholung liegt in der Verantwortung der Führungskräfte. HR führt keine Unterschriftenkontrolle durch. Im Soll entfallen daher Unterschriften-Prüfaufgaben, eine HR-Bestätigung der Unterschriften und eine daran gebundene Ablagesperre. Die App darf daraus weder automatisch noch manuell einen Nachweis „Unterschriften geprüft“ erzeugen.
+**Aktuelle Fachregel (27. Oktober 2026; ersetzt den generellen Verzicht auf HR-Unterschriftenkontrolle vom 26. Oktober):** Bei den wenigen ausdrücklich unterschriftspflichtigen Fällen öffnet HR das konkrete PDF und bestätigt, dass die erforderlichen Unterschriften vorhanden sind. Mögliche Zustände: „Prüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ und „Unterschriften vorhanden“. Nur diese Fälle warten vor der Dossierbereitstellung auf die Bestätigung. Andere eindeutig zugeordnete und erfolgreich validierte Rückläufe werden weiterhin automatisch verarbeitet.
 
-Die Unterschriftenanforderungen in Formularen und Hinweisen bleiben bestehen. Ob unabhängig davon für bestimmte Fälle eine gesonderte einzureichende Scan-Datei vorgeschrieben ist, wurde damit nicht entschieden. Eine solche bestehende Regel ist vor Umsetzung gezielt zu klären; aus der fehlenden HR-Unterschriftenkontrolle folgt weder ihre Abschaffung noch eine neue Scanpflicht. Die als Ist beschriebenen technischen Prüfungen im bestehenden Code sind noch nicht geändert.
+Die Prüfung ist an die konkrete Dokumentversion gebunden, mit Bearbeiter und Zeitpunkt. Eine neue Version ist erneut zu prüfen. „Unterschrift fehlt“ bezeichnet den Befund; „Nachgefordert“ dokumentiert eine tatsächlich erfolgte Anforderung mit Datum und Adressat, nicht bloss einen erzeugten Entwurf. Die Aufgabe wechselt dann zu „Warten auf Führungskraft“. Eine nachgereichte Datei öffnet die Prüfung erneut. Identische Dubletten erzeugen keine neue Prüfung. Unbekannte Prüfpflicht wird zur Klärung vorgelegt, nicht als „nicht erforderlich“ behandelt. Die Einholung der Unterschriften bleibt Aufgabe der Führungskräfte.
 
-**Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen und für die Dossierablage bereitgestellt. HR bearbeitet Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
+**Noch zu bestätigen:** Welche Dokumentarten/Konstellationen genau unterschriftspflichtig sind und welche Unterschriften jeweils erforderlich sind. Die bisher im Code verwendete D/E- bzw. Scanregel wird nicht automatisch als aktuelle fachliche Vorgabe übernommen. Eine eigenständige Scan-Dateipflicht ist ebenfalls separat zu klären.
+
+**Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen; die Dossierbereitstellung erfolgt automatisch, soweit keine fallbezogene Unterschriftenkontrolle oder andere erforderliche Klärung offen ist. HR bearbeitet diese Prüfungen und Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
 
 Voraussetzungen sind eine eindeutige Dokumentart/Verwendung, Person/Anstellung, Gesprächsteil und zeitliche Zuordnung, keine erkannten unklaren Textstellen oder fehlenden Pflichtangaben und kein Konflikt mit einer bestehenden Version. „Lesbar“ allein genügt nicht. Die konkreten Kriterien sind vor Implementierung je unterstütztem Formularformat zu definieren und mit repräsentativen Dokumenten zu prüfen; fehlende Warnungen sind kein garantierter Nachweis einer fehlerfreien Extraktion.
 
@@ -587,15 +589,15 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 | Geprüfte Ausgabe und Empfänger | Versand vorbereiten, tatsächlichen Versand bestätigen | Ausgabe und Versandnachweis verknüpfen | Rückblick und Ausblick ausstehend, jeweils mit Frist |
 | Rückblick trifft vor dem Ausblick ein | Bei erfolgreicher Automatik keine Handlung | Original sichern, eindeutig zuordnen, Angaben validieren, übernehmen und bereitstellen | Ausblick weiterhin ausstehend; nur bei Ausnahme HR-Aufgabe |
 | Nur bei Ausnahme: Angaben und Original nebeneinander | Offene Zuordnung/Angaben klären | Entscheidung speichern und Voraussetzungen erneut prüfen; Wirkung der Abschlussaktion anzeigen | Gegebenenfalls verbleibende Ausnahme oder Bereitstellung |
-| Rückblick automatisch übernommen und bereitgestellt | Verlauf bei Bedarf ansehen | Ergebnis ohne zusätzliche HR-Unterschriftenfreigabe protokollieren | Ausblick ausstehend; externe Verarbeitung separat |
-| Ausblick trifft später ein | Nur bei Ausnahme klären | Bei eindeutiger Zuordnung und bestandenen Prüfungen automatisch übernehmen und bereitstellen; spätere Zielnutzung verknüpfen | Gegebenenfalls Übergabe-/Exportaufgaben |
+| Rückblick automatisch übernommen und bereitgestellt | Verlauf bei Bedarf ansehen | Ergebnis protokollieren; bei erforderlicher Unterschriftenprüfung erst nach HR-Bestätigung bereitstellen | Ausblick ausstehend; externe Verarbeitung separat |
+| Ausblick trifft später ein | Nur bei Ausnahme klären | Bei eindeutiger Zuordnung und bestandenen Prüfungen automatisch übernehmen; allfällige Unterschriftenpflicht beachten; spätere Zielnutzung verknüpfen | Gegebenenfalls Übergabe-/Exportaufgaben |
 | Beide Teile erledigt | Gesamtstand prüfen | Keine unerledigte Dokumentpflicht anzeigen; Export-/Übergabestatus separat halten | Nur tatsächlich verbleibende externe oder administrative Arbeiten |
 
 **Unterbrechung:** Benötigt der Rückblick eine Rückfrage, bleibt diese am Rückblick offen. Der separat eintreffende Ausblick kann trotzdem bearbeitet werden.
 
 **Erkenntnis:** Ein einzelner Gesamtstatus „MD offen“ ist zu grob. Rückblick und Ausblick benötigen getrennte Fristen, Eingangs-, Prüf- und Erledigungsstände. „Noch nicht eingegangen“ darf nicht mit „bereits eingegangen, HR-Prüfung offen“ verwechselt werden.
 
-**Offen:** Allfällige separate Scan-Dokumentpflicht sowie SAP-Exportvoraussetzungen abschliessend festlegen. Die Verantwortung für Unterschriften liegt bestätigt bei den Führungskräften; HR kontrolliert sie nicht.
+**Offen:** Allfällige separate Scan-Dokumentpflicht sowie SAP-Exportvoraussetzungen abschliessend festlegen. Die Verantwortung für Unterschriften liegt bestätigt bei den Führungskräften; HR kontrolliert sie bei den ausdrücklich dafür vorgesehenen Fällen.
 
 ### S02 – Fünf Ausblicke nachgereicht, vier zunächst verwendbar
 
@@ -688,7 +690,7 @@ Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Na
 | Ableitung aus Daten hat Grenzen | Unbekannte Ereignis- und Wirksamkeitsdaten sichtbar klären statt erraten |
 
 **Noch vor verbindlicher Umsetzung zu klären:**
-- allfällige separate Scan-Dokumentpflicht und technische Validierungskriterien für die automatische Bereitstellung; die HR-Unterschriftenkontrolle entfällt gemäss bestätigter Fachregel;
+- allfällige separate Scan-Dokumentpflicht und technische Validierungskriterien für die automatische Bereitstellung; die HR-Unterschriftenkontrolle gilt gemäss Fachregel vom 27. Oktober nur für die dafür vorgesehenen Fälle;
 - Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
 - SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
 - konkrete Durchführung und Bestätigung einer nötigen Korrektur nach externer Verarbeitung; der Entscheidungsweg bei bereits eingegangenem Rückblick ist bestätigt;
@@ -715,6 +717,10 @@ Dies sind benötigte Arbeitsansichten, noch keine beschlossene Menüstruktur. Ei
 ## 8.8 Codeabgleich und Umsetzung
 
 Der [Umsetzungsplan](UMSETZUNGSPLAN_NUTZERFUEHRUNG.md) hält den Abgleich mit main, wiederverwendbare Funktionen, Datenmodelländerungen, Einführungsreihenfolge und Prüfplan fest. Erstes nutzbares Ergebnis ist der vollständige Zielnachreichungsablauf; gemeinsame Vorgangsverknüpfungen, Zielversionen und die Auflösung der Gesprächsteil-Zuständigkeit werden dafür zuerst vorbereitet.
+
+## 8.9 Gesamtübersicht für den dauerhaften Betrieb
+
+Die [Gesamtkonzeption für Übersicht, Listen und Orientierung](GESAMTKONZEPT_HR_UEBERSICHT.md) ergänzt die Einzelprozesse. Vor dem fachlichen Umbau sind Führungskräfte- und Personenansichten, wiederkehrende Dialoge, Feedback, Probezeit und grosse Listen gemeinsam zu entwerfen und mit realistischem Mengengerüst zu prüfen. Der bisherige Nachreichungsprototyp ist noch keine Abnahme der gesamten Nutzerführung.
 
 ## 9. Quellen des Iststands
 

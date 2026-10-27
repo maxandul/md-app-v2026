@@ -103,11 +103,19 @@ Einrichtung, Benutzerverwaltung, Backup und technische Störungen sind unterstü
 
 **Abschluss:** Dokument ist geprüft und erforderliche Übergabe ist erfolgt, oder es ist nachvollziehbar zurückgewiesen/zurückgestellt. Ein benötigter, ungeklärter Rücklauf bleibt offen.
 
-**Aktuelle Fachregel (27. Oktober 2026; ersetzt den generellen Verzicht auf HR-Unterschriftenkontrolle vom 26. Oktober):** Bei den wenigen ausdrücklich unterschriftspflichtigen Fällen öffnet HR das konkrete PDF und bestätigt, dass die erforderlichen Unterschriften vorhanden sind. Mögliche Zustände: „Prüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ und „Unterschriften vorhanden“. Nur diese Fälle warten vor der Dossierbereitstellung auf die Bestätigung. Andere eindeutig zugeordnete und erfolgreich validierte Rückläufe werden weiterhin automatisch verarbeitet.
+**Aktuelle Fachregel (27. Oktober 2026; ersetzt den generellen Verzicht auf HR-Unterschriftenkontrolle vom 26. Oktober):** Bei den durch „genügend“ oder „ungenügend“ ausgelösten Prüffällen öffnet HR den konkreten Scan und bestätigt, dass die erforderlichen Unterschriften vorhanden sind. Mögliche Zustände: „Prüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ und „Unterschriften vorhanden“. Nur diese Fälle warten vor der Dossierbereitstellung auf die Bestätigung. Andere eindeutig zugeordnete und erfolgreich validierte Rückläufe werden weiterhin automatisch verarbeitet.
 
-Die Prüfung ist an die konkrete Dokumentversion gebunden, mit Bearbeiter und Zeitpunkt. Eine neue Version ist erneut zu prüfen. „Unterschrift fehlt“ bezeichnet den Befund; „Nachgefordert“ dokumentiert eine tatsächlich erfolgte Anforderung mit Datum und Adressat, nicht bloss einen erzeugten Entwurf. Die Aufgabe wechselt dann zu „Warten auf Führungskraft“. Eine nachgereichte Datei öffnet die Prüfung erneut. Identische Dubletten erzeugen keine neue Prüfung. Unbekannte Prüfpflicht wird zur Klärung vorgelegt, nicht als „nicht erforderlich“ behandelt. Die Einholung der Unterschriften bleibt Aufgabe der Führungskräfte.
+Die Prüfung ist an die konkrete Dokumentversion gebunden, mit Bearbeiter und Zeitpunkt. Eine neue Version ist erneut zu prüfen. „Unterschrift fehlt“ bezeichnet den Befund; „Nachgefordert“ dokumentiert eine tatsächlich erfolgte Anforderung mit Datum und Adressat, nicht bloss einen erzeugten Entwurf. Die Aufgabe wechselt dann zu „Warten auf Führungskraft“. Eine nachgereichte Datei öffnet die Prüfung erneut. Identische Dubletten erzeugen keine neue Prüfung. Eine unlesbare oder nicht eindeutig zugeordnete Gesamtbeurteilung wird als fachliche Ausnahme geklärt. Der fehlende Uneinigkeitsmarker erzeugt dagegen keine Prüfpflicht. Die Einholung der Unterschriften bleibt Aufgabe der Führungskräfte.
 
-**Noch zu bestätigen:** Welche Dokumentarten/Konstellationen genau unterschriftspflichtig sind und welche Unterschriften jeweils erforderlich sind. Die bisher im Code verwendete D/E- bzw. Scanregel wird nicht automatisch als aktuelle fachliche Vorgabe übernommen. Eine eigenständige Scan-Dateipflicht ist ebenfalls separat zu klären.
+**Konkretisierte Fachregel (27. Oktober 2026):** Bei Gesamtbeurteilung des Rückblicks „genügend“ oder „ungenügend“ sind sowohl Rückblick als auch zugehöriger Ausblick auszudrucken, von Führungskraft und mitarbeitender Person zu unterzeichnen und einzuscannen. Je Gesprächsteil sind das digitale, maschinenlesbare PDF und der unterschriebene Scan zurückzusenden. HR prüft am jeweiligen Scan das Vorhandensein beider Unterschriften. Ein Scan ersetzt das maschinenlesbare PDF nicht; beide Dateien werden demselben Gesprächsteil zugeordnet und bleiben erhalten.
+
+Die Beurteilung des Rückblicks löst die Pflicht für **beide** Teile aus. Der Ausblick braucht dafür keine eigene negative Beurteilung. Getrennte Eingänge sind möglich; die App zeigt je Teil getrennt „Digitales PDF fehlt“, „Unterschriebener Scan fehlt“, „Unterschriftenprüfung offen“, „Unterschrift fehlt“, „Nachgefordert“ bzw. „Unterschriften vorhanden“. Ein vorhandener Scan ist erst nach HR-Sichtprüfung bestätigt. Bei getrennten Verantwortlichkeiten bleibt je Teil die dafür zuständige Führungskraft massgeblich. Bereits eingegangene oder bereitgestellte Ausblicke werden bei später erkannter Pflicht im selben MD erneut auf den erforderlichen Nachweis geprüft; externe Ablagen werden nicht stillschweigend ersetzt.
+
+Auch bei Uneinigkeit zwischen Führungskraft und mitarbeitender Person gilt fachlich dieselbe Druck-, Unterschriften- und Rücksendepflicht. Dafür fehlt im Formular ein eindeutiger Marker: HR prüft diesen Auslöser nicht systematisch, und die App erzeugt daraus keine automatische Prüf- oder Nachforderungsaufgabe. Fehlender Marker darf weder als bestätigte Einigkeit noch als Anlass für eine pauschale Klärungsaufgabe bei allen Fällen interpretiert werden.
+
+**Zweck laut HR:** Dokumentation, dass Leistung beziehungsweise Verhalten besprochen und Erwartungen geklärt wurden, sowie angestrebte Verbindlichkeit und Absicherung für mögliche personalrechtliche Folgeschritte. Dies beschreibt die organisatorische Zielsetzung, keine geprüfte Aussage zur rechtlichen Beweiswirkung. Unterschriftenprüfung bestätigt das Vorhandensein der Unterschriften, nicht Einigkeit mit der Beurteilung.
+
+**Technische Umsetzung:** Zuordnung der vorhandenen Beurteilungscodes zu „genügend“/„ungenügend“ anhand der Formulare prüfen. Maschinenlesbares PDF und Scan sind unterschiedliche Dokumentrollen, keine konkurrierenden Versionen oder Dubletten. Die Prüfung bindet den konkreten Scan an den zugehörigen digitalen Dokumentstand; eine inhaltlich neue Fassung darf die alte Unterschriftenbestätigung nicht erben.
 
 **Bestätigte Automatik (26. Oktober 2026):** Reguläre PDF-Rückläufe, die eindeutig zugeordnet werden können und die definierten Auslese-, Vollständigkeits- und Plausibilitätsprüfungen bestehen, werden automatisch übernommen; die Dossierbereitstellung erfolgt automatisch, soweit keine fallbezogene Unterschriftenkontrolle oder andere erforderliche Klärung offen ist. HR bearbeitet diese Prüfungen und Ausnahmen; eine routinemässige Bestätigung jedes PDFs entfällt.
 
@@ -597,7 +605,7 @@ Erfolgskriterium: Eine HR-Person ohne Projektwissen kann jeweils erkennen, was b
 
 **Erkenntnis:** Ein einzelner Gesamtstatus „MD offen“ ist zu grob. Rückblick und Ausblick benötigen getrennte Fristen, Eingangs-, Prüf- und Erledigungsstände. „Noch nicht eingegangen“ darf nicht mit „bereits eingegangen, HR-Prüfung offen“ verwechselt werden.
 
-**Offen:** Allfällige separate Scan-Dokumentpflicht sowie SAP-Exportvoraussetzungen abschliessend festlegen. Die Verantwortung für Unterschriften liegt bestätigt bei den Führungskräften; HR kontrolliert sie bei den ausdrücklich dafür vorgesehenen Fällen.
+**Offen:** SAP-Exportvoraussetzungen abschliessend festlegen. Die Verantwortung für Unterschriften liegt bestätigt bei den Führungskräften; HR kontrolliert sie bei den ausdrücklich dafür vorgesehenen Fällen.
 
 ### S02 – Fünf Ausblicke nachgereicht, vier zunächst verwendbar
 
@@ -690,7 +698,7 @@ Die Szenarien passen grundsätzlich zum vorgeschlagenen Modell. Sie sind kein Na
 | Ableitung aus Daten hat Grenzen | Unbekannte Ereignis- und Wirksamkeitsdaten sichtbar klären statt erraten |
 
 **Noch vor verbindlicher Umsetzung zu klären:**
-- allfällige separate Scan-Dokumentpflicht und technische Validierungskriterien für die automatische Bereitstellung; die HR-Unterschriftenkontrolle gilt gemäss Fachregel vom 27. Oktober nur für die dafür vorgesehenen Fälle;
+- technische Validierungskriterien für die automatische Bereitstellung; die HR-Unterschriftenkontrolle gilt gemäss Fachregel vom 27. Oktober nur für die dafür vorgesehenen Fälle;
 - Eintritts-/Probezeit- und Übertrittsregeln einschliesslich Zeiträumen und zusätzlichen Dialogen;
 - SAP-Exportvoraussetzungen und Auswahl der massgeblichen Beurteilung;
 - konkrete Durchführung und Bestätigung einer nötigen Korrektur nach externer Verarbeitung; der Entscheidungsweg bei bereits eingegangenem Rückblick ist bestätigt;

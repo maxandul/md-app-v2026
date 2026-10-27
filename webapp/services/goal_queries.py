@@ -7,6 +7,9 @@ from . import goal_followups as followups
 # the browser. Register per request/connection; the synthetic volume test times it.
 def source_state(connection, source_id):
     source=review.get(connection,source_id)
+    from .goal_withdrawals import unresolved
+    if unresolved(connection,source_id):
+        return 'withdrawal'
     if source['status']=='discarded':
         return 'done'
     if source['status'] in ('draft','waiting'):
@@ -50,7 +53,7 @@ def source_state(connection, source_id):
 
 
 LABELS={'review':'Ziele prüfen','waiting':'Warten auf Rückmeldung','followup':'Folgeaktion prüfen',
-        'dispatch':'Versand fortsetzen','blocked':'Outlook-Ausgang klären','done':'Abgeschlossen'}
+        'dispatch':'Versand fortsetzen','blocked':'Outlook-Ausgang klären','done':'Abgeschlossen','withdrawal':'Folgen der Rücknahme klären'}
 
 
 def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None,page=1,page_size=25):
@@ -62,12 +65,18 @@ def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None
     connection.create_function('hr_goal_state',1,status)
     conditions=[];params=[]
     if q:
-        conditions.append("(COALESCE(p.first_name,'')||' '||COALESCE(p.last_name,'')||' '||COALESCE(ea.person_number,'')||' '||s.original_filename LIKE ?)")
-        params.append('%'+q+'%')
+        conditions.append("""(COALESCE(p.first_name,'')||' '||COALESCE(p.last_name,'')||' '||COALESCE(ea.person_number,'')||' '||s.original_filename LIKE ?
+            OR EXISTS(SELECT 1 FROM hr_goal_withdrawals w JOIN hr_goal_revisions old ON old.id=w.confirmed_revision_id
+                JOIN employment_assignments oe ON oe.id=old.employment_id JOIN persons op ON op.person_number=oe.person_number
+                WHERE w.source_id=s.id AND op.first_name||' '||op.last_name||' '||oe.person_number LIKE ?))""")
+        params.extend(['%'+q+'%']*2)
     if year:
-        conditions.append('r.goal_year=?');params.append(year)
+        conditions.append('''(r.goal_year=? OR EXISTS(SELECT 1 FROM hr_goal_withdrawals w
+            JOIN hr_goal_revisions old ON old.id=w.confirmed_revision_id WHERE w.source_id=s.id AND old.goal_year=?))''');params.extend([year,year])
     if org_unit:
-        conditions.append('ea.org_unit=?');params.append(org_unit)
+        conditions.append('''(ea.org_unit=? OR EXISTS(SELECT 1 FROM hr_goal_withdrawals w
+            JOIN hr_goal_revisions old ON old.id=w.confirmed_revision_id JOIN employment_assignments oe ON oe.id=old.employment_id
+            WHERE w.source_id=s.id AND oe.org_unit=?))''');params.extend([org_unit,org_unit])
     if batch_id:
         conditions.append('EXISTS(SELECT 1 FROM hr_goal_batch_sources b WHERE b.source_id=s.id AND b.batch_id=?)');params.append(batch_id)
     base='''FROM hr_goal_sources s JOIN hr_goal_revisions r ON r.source_id=s.id AND r.revision=s.revision

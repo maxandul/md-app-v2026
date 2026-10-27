@@ -8,10 +8,14 @@ from .word_packages import prior_goals, create_word_package
 from .packages import _secondary_employment_text
 
 
-def revision(connection, revision_id):
+def revision(connection, revision_id, *, allow_withdrawn=False):
     row=connection.execute("SELECT * FROM hr_goal_revisions WHERE id=? AND status='confirmed'",(revision_id,)).fetchone()
     if not row:
         raise ValueError('Eine bestätigte Zielversion ist erforderlich.')
+    if review.withdrawn(connection,revision_id):
+        if allow_withdrawn:
+            return dict(row)
+        raise ValueError('Diese Zielfreigabe wurde zurückgenommen. Alte Ausgaben bleiben erhalten und dürfen nicht erneut verwendet werden.')
     latest=connection.execute("SELECT MAX(id) FROM hr_goal_revisions WHERE source_id=? AND status='confirmed'",(row['source_id'],)).fetchone()[0]
     if latest!=row['id']:
         raise ValueError('Die Zielversion wurde inzwischen ersetzt. Bitte neu laden.')
@@ -85,8 +89,8 @@ def inputs(connection, revision_id, case_id, template_paths, *, allow_return=Fal
     return data,review.digest(data),evidence
 
 
-def targets(connection, revision_id):
-    rev=revision(connection,revision_id)
+def targets(connection, revision_id, *, allow_withdrawn=False):
+    rev=revision(connection,revision_id,allow_withdrawn=allow_withdrawn)
     return [dict(r) for r in connection.execute('''SELECT dc.case_id,dc.cycle_id,c.review_year,dc.active,
         dc.employee_pn,dc.employment_assignment FROM dialog_cases dc
         JOIN cycles c ON c.id=dc.cycle_id JOIN employment_assignments ea
@@ -95,8 +99,8 @@ def targets(connection, revision_id):
         (rev['employment_id'],rev['goal_year'],str(rev['goal_year'])))]
 
 
-def latest_decision(connection, revision_id, case_id):
-    row=connection.execute('SELECT * FROM hr_goal_decisions WHERE revision_id=? AND case_id IS ? ORDER BY id DESC LIMIT 1',(revision_id,case_id)).fetchone()
+def latest_decision(connection, revision_id, case_id, *, withdrawal_id=None):
+    row=connection.execute('SELECT * FROM hr_goal_decisions WHERE revision_id=? AND case_id IS ? AND withdrawal_id IS ? ORDER BY id DESC LIMIT 1',(revision_id,case_id,withdrawal_id)).fetchone()
     return dict(row) if row else None
 
 
@@ -110,19 +114,31 @@ def decision_effective(decision,evidence):
 
 
 def decide(connection, revision_id, case_id, *, outcome, reason, expected_evidence,
-           recipient_email='', requested_at='', corrected_document_id=None, user_id=None):
+           recipient_email='', requested_at='', corrected_document_id=None, user_id=None,
+           withdrawal_id=None,effects_checked=False):
     if outcome not in ('no_change','waiting','request_correction','corrected','no_output','resume') or not reason.strip():
         raise ValueError('Bitte Entscheidung und Begründung angeben.')
     connection.execute('BEGIN IMMEDIATE')
     try:
-        rev=revision(connection,revision_id)
+        rev=revision(connection,revision_id,allow_withdrawn=withdrawal_id is not None)
+        if withdrawal_id is not None:
+            from . import goal_withdrawals
+            withdrawal=goal_withdrawals.get(connection,withdrawal_id)
+            if withdrawal['confirmed_revision_id']!=revision_id:
+                raise ValueError('Die Entscheidung gehört nicht zu dieser Rücknahme.')
+            if outcome in ('no_change','no_output','corrected'):
+                if not effects_checked:
+                    raise ValueError('Bitte auch bereits heruntergeladene oder manuell weitergegebene Dateien und deren Folgen prüfen.')
+                if goal_withdrawals.open_outlook(connection,withdrawal_id):
+                    raise ValueError('Den tatsächlichen Stand der offenen Outlook-Vorgänge zuerst klären.')
+        affected_cases=withdrawal['impact']['cases'] if withdrawal_id is not None else targets(connection,revision_id)
         if case_id:
-            if case_id not in {r['case_id'] for r in targets(connection,revision_id)}:
+            if case_id not in {r['case_id'] for r in affected_cases}:
                 raise ValueError('Dieser Rückblick gehört nicht zur Zielquelle.')
             part=resolve(connection,case_id)
             evidence=return_evidence(connection,part)
         else:
-            if targets(connection,revision_id):
+            if affected_cases:
                 raise ValueError('Bitte die vorhandenen Rückblicke einzeln entscheiden.')
             evidence=[]
         if review.digest(evidence)!=expected_evidence:
@@ -136,7 +152,7 @@ def decide(connection, revision_id, case_id, *, outcome, reason, expected_eviden
             except (ValueError,TypeError):
                 raise ValueError('Bitte das Datum der tatsächlich erfolgten Anforderung angeben.') from None
         if outcome=='corrected':
-            prior=latest_decision(connection,revision_id,case_id)
+            prior=latest_decision(connection,revision_id,case_id,withdrawal_id=withdrawal_id)
             doc=connection.execute("SELECT * FROM official_documents WHERE id=? AND case_id=? AND document_kind='review' AND is_current=1",(corrected_document_id,case_id)).fetchone()
             old_ids={e.get('document_id') for e in json.loads(prior['evidence_json'])} if prior else set()
             old_hashes={e.get('sha256') for e in json.loads(prior['evidence_json'])} if prior else set()
@@ -146,12 +162,19 @@ def decide(connection, revision_id, case_id, *, outcome, reason, expected_eviden
                 raise ValueError('Der neue Rücklauf muss die bisherige Fassung nachvollziehbar ersetzen.')
             if doc['handoff_status']!='staged':
                 raise ValueError('Die Prüfung und Bereitstellung des korrigierten Rücklaufs ist noch offen.')
-            if any(e.get('handoff_at') for e in json.loads(prior['evidence_json'])):
+            external=connection.execute('''WITH RECURSIVE versions(id,replaces_document_id,handoff_at) AS (
+                SELECT id,replaces_document_id,handoff_at FROM official_documents WHERE id=?
+                UNION SELECT d.id,d.replaces_document_id,d.handoff_at FROM official_documents d
+                JOIN versions v ON d.id=v.replaces_document_id)
+                SELECT 1 FROM versions WHERE COALESCE(handoff_at,'')<>'' LIMIT 1''',(doc['id'],)).fetchone()
+            if external or any(e.get('handoff_at') for e in json.loads(prior['evidence_json'])):
                 raise ValueError('Die externe Korrektur einer bereits bereitgestellten Fassung muss zuerst mit der zuständigen Stelle geklärt werden. Der Abschlussweg ist noch offen.')
         connection.execute('''INSERT INTO hr_goal_decisions(revision_id,case_id,outcome,reason,evidence_json,
-            recipient_email,requested_at,corrected_document_id,user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)''',
-            (revision_id,case_id,outcome,reason.strip(),review.dump(evidence),recipient_email,requested_at,corrected_document_id,user_id,stamp()))
+            recipient_email,requested_at,corrected_document_id,user_id,created_at,withdrawal_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
+            (revision_id,case_id,outcome,reason.strip(),review.dump(evidence),recipient_email,requested_at,corrected_document_id,user_id,stamp(),withdrawal_id))
         review.event(connection,'followup_decided',source_id=rev['source_id'],case_id=case_id,user_id=user_id,outcome=outcome,reason=reason)
+        if withdrawal_id is not None:
+            goal_withdrawals.release_empty_choice(connection,withdrawal_id,user_id=user_id)
         connection.commit()
     except Exception:
         connection.rollback()

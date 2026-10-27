@@ -60,12 +60,59 @@ keine Postfach-Hintergrundprüfung und kein Öffnen bestehender Datenverzeichnis
 
 Die Agentenumgebung verweigert lokale Socket-Verbindungen (Windows-Fehler
 10013). Deshalb wird der Browserstart durch den Anwender auf dem eigenen Gerät
-ausgeführt; eine erfolgreiche Live-Browserprüfung wird noch nicht behauptet.
+ausgeführt. Die unten festgehaltenen Ergebnisse beruhen auf seinen Rückmeldungen,
+nicht auf einer visuellen Prüfung durch den Agenten.
 
 ## Abnahmeprotokoll
 
-Noch keine fachliche oder visuelle Abnahme behauptet. Zu jedem gemeinsam
-durchgeführten Schritt festhalten: Datum, getesteter Commit, Ergebnis,
-Unklarheiten, notwendige Änderung und erneute Prüfung.
+Am 27. Oktober 2026 wurde der synthetische Ablauf gemeinsam durchgegangen.
+Bereitgestellter Stand war `08df2c48df4a3700455fc7806ad732c09540248f`;
+die Commit-ID des tatsächlich laufenden Browser-Servers wurde nicht unabhängig
+ausgelesen. Der Anwender meldete die folgenden Schritte positiv zurück und
+schloss mit «ja ich glaub ist alles gut». Das ist eine informelle Bedienprüfung,
+keine vollständige fachliche Freigabe oder Bestätigung realer Zustellung.
+
+| Prüfung | Rückgemeldetes Ergebnis |
+|---|---|
+| Einstieg und Original | Fünf Quellen sichtbar; Angaben und Original bei Lena Meier auffindbar |
+| Entwurf und Wiederaufnahme | Zieltext «Projekt abschliessen und Ergebnisse dokumentieren» nach erneutem Öffnen erhalten; Original unverändert |
+| Quellenfreigabe | Lena, Noah, Mira und Jonas bestätigt; Alex blieb unzugeordnet |
+| Selektive Erstellung | Vier ZIP-Ausgaben erstellt und geprüft, einschliesslich Lenas geändertem Text |
+| Vorbereitung | Vier Ausgaben freigegeben und zwei Gruppen vorbereitet: Eva Sommer mit Lena/Noah, Luca Winter mit Mira/Jonas; kein Outlook-Entwurf |
+| Erneuter Upload | Dieselbe Lena-Datei führte weiterhin zu fünf Quellen; Bearbeitung und Freigabe blieben erhalten |
+| Verantwortung | Änderung bei Lena von Eva auf Luca mit Begründung durchgegangen; positiv, zuletzt vorsichtig bestätigt. Erneute Dateierstellung mit neuer Verantwortung nicht separat bestätigt |
+
+Offen bleiben der vorbereitete Rücklauffall (Schritt 6), reale Vorlagen,
+Windows/S/MIME/Outlook (Schritt 8), Darstellung bei anderen Bildschirmgrössen,
+Tastaturführung und die neue Rücknahmefunktion.
+
+## Nächste Bedienprüfung: falsche Freigabe zurücknehmen
+
+Den neuen Code bereitstellen und den isolierten Starter neu starten. Er erzeugt
+einen frischen Übungsbestand; bisherige Übungsdateien bleiben erhalten.
+Ein bereits laufender Server übernimmt die Änderungen nicht automatisch.
+
+1. Lena bestätigen, eine Ausgabe erstellen, prüfen und eine Versandgruppe
+   vorbereiten. Noch keinen Outlook-Vorgang erzeugen.
+2. Bei der Zielquelle **Falsche Freigabe zurücknehmen** öffnen. Bisherige Fälle,
+   Ausgaben und Versandgruppe vergleichen. Begründung, beispielsweise
+   «Test: falsche Person bei der Freigabe ausgewählt», erfassen und bestätigen.
+3. Die vorbereitete Gruppe muss als abgebrochen erhalten bleiben; ihre Dateien
+   und die ursprüngliche Freigabe bleiben im Verlauf sichtbar.
+4. **Quelle neu zuordnen und Ziele prüfen** öffnen. Für diese reine Übung eine
+   andere Person oder ein anderes Jahr wählen und wieder bestätigen. Die
+   Folgen der alten Zuordnung müssen weiterhin offen sichtbar bleiben.
+5. **Folgen der Rücknahme klären** öffnen und für die alte Person entscheiden.
+   Nur wenn im Test tatsächlich nichts weitergegeben wurde: «Keine Korrektur
+   bisheriger Unterlagen nötig», Begründung erfassen und Prüfung manueller
+   Weitergaben bestätigen. Danach muss die alte Folgeaufgabe geschlossen sein.
+6. Dieselbe Originaldatei erneut hochladen. Es darf keine zweite Quelle und
+   keine Wiederbelebung der zurückgenommenen Freigabe entstehen.
+
+Automatisierte Prüfungen ergänzen diese Bedienprüfung um bereits erstellte
+Outlook-Entwürfe, bestätigten Versand, gemischte Gruppen, konkurrierende Quellen,
+veraltete Browserstände, Korrekturrückläufe und spätere neue Eingänge.
+Nach externer Dossierbereitstellung bleibt der Korrekturabschluss gesperrt,
+bis Verantwortlichkeit und Nachweis der externen Übernahme fachlich geklärt sind.
 
 Kein Merge nach `main` und keine produktive Migration durch diesen Probelauf.

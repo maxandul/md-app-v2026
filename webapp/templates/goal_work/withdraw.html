@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Zielfreigabe zurücknehmen · MD{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{{ url_for('goal_work.source',source_id=item.id,back=back) }}">Zielquelle</a> / Freigabe zurücknehmen</nav>
+<h1>Falsche Zielfreigabe zurücknehmen</h1>
+<p><strong>{{ item.first_name }} {{ item.last_name }}</strong> · Ans. {{ item.assignment_number }} · Zieljahr {{ item.goal_year }} · {{ item.original_filename }}</p>
+<p>Danach kannst du Person, Anstellung und Zieljahr im neuen Prüfentwurf korrigieren. Original, frühere Zuordnungen, Ausgaben und Versandnachweise bleiben erhalten. Die zurückgenommenen Zielversionen sind für neue Ausgaben gesperrt.</p>
+<div class="notice">Bereits vorbereitete Ziel-Versandgruppen werden abgebrochen. Enthaltene gültige Ausgaben anderer Personen kannst du danach erneut auswählen. Bestehende Outlook-Entwürfe oder tatsächlich versandte Nachrichten werden dadurch nicht zurückgerufen.</div>
+<h2>Betroffene Unterlagen und Vorgänge</h2>
+<p>{{ impact.cases|length }} bisherige Fälle · {{ impact.outputs|length }} bekannte Ausgaben · {{ impact.deliveries|length }} Versandvorgänge</p>
+<ul>{% for case in impact.cases %}<li><a href="{{ url_for('main.case_detail',cycle_id=case.cycle_id,case_id=case.case_id) }}">Bisheriger Fall {{ case.case_id }}</a> · PN {{ case.employee_pn }} · Anstellung {{ case.employment_assignment }}</li>{% endfor %}</ul>
+<ul>{% for output in impact.outputs %}<li>{% if output.kind=='goal' %}<a href="{{ url_for('goal_work.download_output',output_id=output.id) }}">Bisherige Rückblick-Ausgabe {{ output.id }} öffnen</a>{% else %}Bisherige {{ 'Einzelausgabe' if output.kind=='person' else 'Führungskräfteausgabe' }} {{ output.id }}{% endif %} · {{ output.case_id }}</li>{% endfor %}</ul>
+<ul>{% for row in impact.deliveries %}<li>{{ row.recipient }} · {{ state_labels.get(row.status,row.status) }} · Vorgang {{ row.id }}{% if row.kind=='goal' %} · <a href="{{ url_for('goal_work.dispatch',dispatch_id=row.id,back=request.full_path) }}">Versand öffnen</a>{% endif %}</li>{% endfor %}</ul>
+{% for case,evidence in impact.returns.items() %}{% if evidence %}<p><strong>{{ case }}: Ein Rücklauf liegt vor oder ist noch unklar. Die Folgen müssen separat geprüft werden.</strong></p>{% endif %}{% endfor %}
+<p>Auch heruntergeladene oder manuell weitergegebene Dateien können betroffen sein. Die App kann eine Weitergabe ausserhalb ihrer Versandwege nicht feststellen.</p>
+<form method="post" class="goal-panel">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="impact" value="{{ impact_token }}"><input type="hidden" name="back" value="{{ back }}">
+<label>Was war falsch, und was soll korrigiert werden?<textarea name="reason" required minlength="10"></textarea></label>
+<label class="check-label"><input type="checkbox" name="checked" value="yes" required>Ich habe die betroffene Freigabe und die angezeigten Auswirkungen geprüft. Bereits erfolgte Weitergaben kläre ich separat.</label>
+<button class="button">Freigabe zurücknehmen und Folgen klären</button>
+</form>
+{% endblock %}

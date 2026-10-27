@@ -98,7 +98,8 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sou
     for source_id in dict.fromkeys(row["legacy_form_import_id"] for row in historical):
         rows = [dict(row) for row in historical if row["legacy_form_import_id"] == source_id]
         sources.append(([g for g in rows if g["goal_kind"] == "performance"], [g for g in rows if g["goal_kind"] == "development"], {"legacy_form_import_id": source_id}))
-    from .goal_review import confirmed_sources
+    from .goal_review import confirmed_sources, retired_original
+    sources=[source for source in sources if not retired_original(connection,source[2])]
     corrected_sources = confirmed_sources(connection, employee_pn, assignment, year)
     sources.extend(corrected_sources)
     if sources_only:

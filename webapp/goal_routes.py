@@ -8,6 +8,7 @@ from flask import Blueprint,abort,current_app,flash,g,redirect,render_template,r
 from .auth import login_required
 from .db import get_db
 from .services import goal_review as review, goal_followups as followups, goal_delivery as delivery, goal_queries
+from .services import goal_withdrawals as withdrawals
 from .services.part_responsibilities import assign_review
 from .services.word_packages import goal_sources_fingerprint
 from .services.goal_batches import save_upload
@@ -155,7 +156,11 @@ def source(source_id):
             item.update(goals=form_goals(),note=request.form.get('note',''),employment_id=request.form.get('employment_id',type=int),
                         goal_year=request.form.get('goal_year',type=int),revision=request.form.get('revision',type=int))
     known=review.sources(db,item['employment_id'],item['goal_year'])
-    history=db.execute('SELECT * FROM hr_goal_revisions WHERE source_id=? ORDER BY revision DESC',(source_id,)).fetchall()
+    history=db.execute('''SELECT r.*,ea.person_number,ea.assignment_number,
+        EXISTS(SELECT 1 FROM hr_goal_withdrawals w WHERE w.source_id=r.source_id AND w.through_revision>=r.revision) AS withdrawn
+        FROM hr_goal_revisions r LEFT JOIN employment_assignments ea ON ea.id=r.employment_id WHERE source_id=? ORDER BY revision DESC''',(source_id,)).fetchall()
+    withdrawn=[dict(r) for r in db.execute('SELECT * FROM hr_goal_withdrawals WHERE source_id=? ORDER BY id DESC',(source_id,))]
+    can_withdraw=any(r['status']=='confirmed' and not r['withdrawn'] for r in history)
     origins=db.execute('''SELECT b.* FROM hr_goal_batches b JOIN hr_goal_batch_sources bs ON bs.batch_id=b.id WHERE bs.source_id=? ORDER BY b.id''',(source_id,)).fetchall()
     group=parse_qs(urlsplit(back_link()).query).get('batch_id',[None])[0] or (origins[-1]['id'] if origins else None)
     context=goal_queries.listing(db,batch_id=group,state='all',page_size=100) if group else {'rows':[],'total':0}
@@ -164,7 +169,44 @@ def source(source_id):
         FROM employment_assignments ea JOIN persons p ON p.person_number=ea.person_number WHERE ea.id=?''',(item['employment_id'],)).fetchone()
     return render('goal_work/source.html',item=item,known_sources=known,fingerprint=goal_sources_fingerprint(known),
                   history=history,origins=origins,selected=selected,competencies=review.COMPETENCY_TAGS.values(),
-                  context=context,confirmed_ids=confirmed_ids,context_group=group)
+                  context=context,confirmed_ids=confirmed_ids,context_group=group,withdrawals=withdrawn,can_withdraw=can_withdraw)
+
+
+@bp.route('/<int:source_id>/ruecknahme',methods=['GET','POST'])
+def withdraw(source_id):
+    try:
+        item=review.get(get_db(),source_id)
+        if request.method=='POST':
+            withdrawal_id=withdrawals.withdraw(get_db(),source_id,expected_revision=request.form.get('revision',type=int),
+                expected_impact=request.form.get('impact',''),reason=request.form.get('reason',''),
+                checked=request.form.get('checked')=='yes',user_id=actor())
+            flash('Freigabe zurückgenommen. Quelle neu zuordnen und Auswirkungen auf bisherige Unterlagen klären.','success')
+            return redirect(url_for('goal_work.withdrawal',withdrawal_id=withdrawal_id,back=back_link()))
+        impact=withdrawals.impact(get_db(),source_id)
+    except ValueError as exc:
+        flash(str(exc),'error')
+        return redirect(url_for('goal_work.source',source_id=source_id,back=back_link()))
+    return render('goal_work/withdraw.html',item=item,impact=impact,impact_token=review.digest(impact))
+
+
+@bp.route('/ruecknahmen/<int:withdrawal_id>',methods=['GET','POST'])
+def withdrawal(withdrawal_id):
+    db=get_db()
+    try:item=withdrawals.get(db,withdrawal_id)
+    except ValueError:abort(404)
+    if request.method=='POST':
+        try:
+            followups.decide(db,item['confirmed_revision_id'],request.form.get('case_id') or None,
+                outcome=request.form.get('outcome'),reason=request.form.get('reason',''),expected_evidence=request.form.get('evidence',''),
+                recipient_email=request.form.get('recipient_email',''),requested_at=request.form.get('requested_at',''),
+                corrected_document_id=request.form.get('corrected_document_id',type=int),withdrawal_id=withdrawal_id,
+                effects_checked=request.form.get('checked')=='yes',user_id=actor())
+            flash('Folgeentscheidung zur zurückgenommenen Freigabe gespeichert.','success')
+        except ValueError as exc:flash(str(exc),'error')
+        return redirect(url_for('goal_work.withdrawal',withdrawal_id=withdrawal_id,back=back_link()))
+    return render('goal_work/withdrawal.html',withdrawal=item,checks=withdrawals.checks(db,item),
+                  deliveries=withdrawals.deliveries(db,item),open_outlook=withdrawals.open_outlook(db,withdrawal_id),
+                  pending_choice=withdrawals.pending_choice(db,item),current=review.get(db,item['source_id']))
 
 
 @bp.get('/<int:source_id>/original')

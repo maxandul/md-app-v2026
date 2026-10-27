@@ -137,9 +137,11 @@ def save(connection, source_id, *, expected_revision, status, employment_id, goa
             raise ValueError('Anstellung nicht gefunden.')
         if goal_year is not None and not 2020<=goal_year<=2100:
             raise ValueError('Bitte ein Zieljahr zwischen 2020 und 2100 wählen.')
-        earlier=connection.execute("SELECT * FROM hr_goal_revisions WHERE source_id=? AND status='confirmed' ORDER BY revision DESC LIMIT 1",(source_id,)).fetchone()
+        earlier=connection.execute("""SELECT r.* FROM hr_goal_revisions r WHERE source_id=? AND status='confirmed'
+            AND NOT EXISTS(SELECT 1 FROM hr_goal_withdrawals w WHERE w.source_id=r.source_id AND w.through_revision>=r.revision)
+            ORDER BY revision DESC LIMIT 1""",(source_id,)).fetchone()
         if earlier and (earlier['employment_id']!=employment_id or earlier['goal_year']!=goal_year or status=='discarded'):
-            raise ValueError('Die bereits verwendete Zuordnung bleibt erhalten. Eine falsche freigegebene Zuordnung muss gesondert geklärt werden.')
+            raise ValueError('Für eine andere Person, Anstellung oder ein anderes Zieljahr zuerst die Freigabe begründet zurücknehmen.')
         if confirmed:
             if not checked or not employment_id or not goal_year:
                 raise ValueError('Zuordnung, Zieljahr und sämtliche Angaben am Original prüfen und ausdrücklich bestätigen.')
@@ -180,10 +182,39 @@ def confirmed_sources(connection, employee_pn, assignment, year):
     rows=connection.execute('''SELECT r.* FROM hr_goal_revisions r
         JOIN employment_assignments ea ON ea.id=r.employment_id
         WHERE ea.person_number=? AND ea.assignment_number=? AND r.goal_year=? AND r.status='confirmed'
+        AND NOT EXISTS(SELECT 1 FROM hr_goal_withdrawals w WHERE w.source_id=r.source_id AND w.through_revision>=r.revision)
         AND r.revision=(SELECT MAX(r2.revision) FROM hr_goal_revisions r2 WHERE r2.source_id=r.source_id AND r2.status='confirmed')
         ORDER BY r.source_id''',(employee_pn,assignment,year)).fetchall()
     return [(json.loads(r['goals_json'])['performance_goals'],json.loads(r['goals_json'])['development_goals'],
              {'hr_goal_revision_id':r['id'],'hr_goal_source_id':r['source_id']}) for r in rows]
+
+
+def withdrawn(connection,revision_id):
+    return bool(connection.execute('''SELECT 1 FROM hr_goal_revisions r JOIN hr_goal_withdrawals w
+        ON w.source_id=r.source_id AND w.through_revision>=r.revision WHERE r.id=?''',(revision_id,)).fetchone())
+
+
+def retired_original(connection,metadata):
+    """Do not revive an old raw import after its reviewed assignment was withdrawn."""
+    if not available(connection):
+        return False
+    if metadata.get('legacy_form_import_id'):
+        return bool(connection.execute('''SELECT 1 FROM legacy_form_imports l JOIN hr_goal_sources s ON s.sha256=l.sha256
+            JOIN hr_goal_withdrawals w ON w.source_id=s.id WHERE l.id=?''',(metadata['legacy_form_import_id'],)).fetchone())
+    if metadata.get('word_pdf_import_id'):
+        return bool(connection.execute('''SELECT 1 FROM word_pdf_imports p JOIN hr_goal_sources s ON s.sha256=p.sha256
+            JOIN hr_goal_withdrawals w ON w.source_id=s.id WHERE p.id=?''',(metadata['word_pdf_import_id'],)).fetchone())
+    return False
+
+
+def assignment_withdrawn(connection,pn,assignment,year):
+    if not available(connection):return False
+    return bool(connection.execute('''SELECT 1 FROM hr_goal_withdrawals w JOIN hr_goal_revisions r ON r.source_id=w.source_id
+        JOIN employment_assignments ea ON ea.id=r.employment_id
+        WHERE ea.person_number=? AND ea.assignment_number=? AND r.goal_year=?
+        UNION ALL SELECT 1 FROM hr_goal_withdrawals w JOIN hr_goal_sources s ON s.id=w.source_id
+        JOIN legacy_form_imports l ON l.sha256=s.sha256 WHERE l.employee_pn=? AND l.assignment_number=? AND l.goal_year=?''',
+        (pn,assignment,year,pn,assignment,year)).fetchone())
 
 
 def stage_mail(connection,message_id):

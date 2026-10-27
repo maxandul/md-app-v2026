@@ -57,6 +57,9 @@ Eingangs und bietet gemeinsames Weiterbearbeiten bestätigter Quellen.
   mit Prüfsumme, transaktionalem Ledger und Indizes. Bestehende IDs, Originale,
   Versanddaten und Dokumentversionen werden nicht umgeschrieben. Sobald das
   neue Schema existiert, unterbleiben die alten fachlichen Startup-Backfills.
+- `migrations/002_goal_withdrawals.sql`: zusätzliche Rücknahmehistorie und
+  getrennte Folgeentscheidungen je Rücknahme. Migration 001 bleibt unverändert.
+  Der Übergang von 001 auf 002 und wiederholter Neustart sind isoliert geprüft.
 - `goal_review`: gleiche Originalbytes führen unabhängig von Mail/Upload zum
   gleichen Vorgang. Original/Extraktion bleiben erhalten; jede Speicherung
   erstellt eine Revision. Bestätigung verlangt Originalprüfung, eindeutige
@@ -66,6 +69,19 @@ Eingangs und bietet gemeinsames Weiterbearbeiten bestätigter Quellen.
   reproduzierbare Quellen mit Fingerprint in den bestehenden Resolver
   aufgenommen. Ein neu bestätigter Konkurrent macht alte Auswahlgrundlagen
   ungültig. Bereits ausgegebene Dateien bleiben unverändert.
+- `goal_withdrawals`: Eine falsch freigegebene Person, Anstellung oder ein
+  falsches Zieljahr kann nach Prüfung der Auswirkungen begründet zurückgenommen
+  werden. Ein neuer Prüfentwurf erlaubt die richtige Zuordnung; alte Revisionen,
+  Originale, Dateien und Versandnachweise bleiben erhalten. Alte Rohimporte
+  derselben Datei werden nicht wieder als Ersatzquelle verwendet, auch nicht im
+  bisherigen HTML-Ausgabeweg. Andere Quellen werden nicht automatisch ausgewählt.
+- Noch ausschliesslich lokal vorbereitete Ziel-Versandgruppen werden bei einer
+  Rücknahme abgebrochen. Gültige Ausgaben anderer Gruppenmitglieder bleiben
+  erneut auswählbar. Bestehende Outlook-Vorgänge bleiben als tatsächliche
+  Historie erhalten und müssen vor Abschluss der Folgen geklärt sein.
+  Die bisherigen Fälle bleiben als eigene Folgeaufgaben auffindbar, auch nach
+  neuer Person/Jahr-Zuordnung oder geändertem Rückblickzeitraum. Ein Abschluss
+  verlangt zusätzlich die Prüfung manueller Downloads und Weitergaben.
 - `part_responsibilities`: zentraler Resolver für Teile; in A/B werden
   Rückblick-Verantwortung, Zeitraum und Formular-OE für diese Nachreichung
   gepflegt. Die OE wird als historischer Wert gespeichert. SAP-Reimporte
@@ -77,7 +93,9 @@ Eingangs und bietet gemeinsames Weiterbearbeiten bestätigter Quellen.
   Begründeter Verzicht, Rückfrage, tatsächliche Anforderung, bearbeiteter
   korrigierter Rücklauf und Wiederaufnahme sind unterschiedliche Entscheidungen.
   Ein Korrekturabschluss braucht einen neuen, geprüften, verknüpften Rücklauf;
-  eine unveränderte Dublette genügt nicht.
+  eine unveränderte Dublette genügt nicht. Die Prüfung externer Dossierwirkungen
+  folgt auch der Kette ersetzter Dokumente; eine erneute Anforderung umgeht sie
+  nicht.
 - Erstellung erfolgt pro ausgewähltem Rückblick, nur mit bestätigten Quellen.
   Ein Fehler lässt andere Ergebnisse bestehen. Wiederholung verwendet die
   vorhandene Ausgabe derselben Grundlagen. Dateinamen unterscheiden Anstellung
@@ -122,6 +140,10 @@ Eingangs und bietet gemeinsames Weiterbearbeiten bestätigter Quellen.
 6. Unterbrechung, erneuten Upload, einen bereits eingegangenen Rückblick und
    eine geänderte Rückblick-Verantwortung ausprobieren. Für Outlook nur einen
    freigegebenen Testpostfach-/Windows-Aufbau verwenden.
+7. Eine absichtlich falsche Freigabe über **Falsche Freigabe zurücknehmen**
+   zurücknehmen. Bisherige Unterlagen und Versandfolgen prüfen, im neuen Entwurf
+   Person/Anstellung/Jahr korrigieren und erneut bestätigen. Folgen der alten
+   Freigabe separat entscheiden; die neue Freigabe schliesst sie nicht.
 
 Ein Ausschalten des Flags ist **kein Datenrollback**: bestätigte Quellen und
 Schutzregeln bleiben erhalten; die neue Oberfläche ist dann nicht erreichbar.
@@ -154,21 +176,26 @@ git diff --check
 | A12: Wiederaufnahme | Gleiche Mail/Upload-Bytes, alte Browserrevision, zweiter DB-Zugriff, Teilfehler, Outlook-Fehler, gemeinsame Sperre | Tatsächlicher Windows-/Outlook-Abbruch während COM-Aufruf |
 | Eingangsverknüpfung | PDF wechselt ohne Kopieren in Zielprüfung; bisherige Queue zeigt keine zweite Prüfung; Mail/Upload teilen Revision | Repräsentative produktive Dateiformate |
 | Versandgrundlagen | Geänderte Ziele, Zuordnung, Empfänger, Dateimanipulation, neuer Rücklauf und spätere Folgeentscheidung sperren Ausgabe/Entwurf | S/MIME-Konfiguration und reale Zustellwirkung |
+| Falsche Freigabe | Rücknahme, neue Person/Jahr-Zuordnung, alte Rohimporte, gemischte Gruppen, offene/versandte Outlook-Vorgänge, manuelle Weitergaben, spätere Rückläufe und geänderte Zeiträume | HR-Bedienprüfung des neuen Rücknahmeablaufs |
 | Daten und Neustart | Wiederholte Initialisierung erhält Datensätze; Migrationsprüfsumme; DDL-Fehler rollt vollständig zurück | Sicherungswiederherstellung des vollständigen Zielsystems vor Produktivmigration |
 | Sicherung | Originale, neue Tabellen, Revisionen, Ausgaben und Versandhistorie über bestehenden Backup-/Restoredienst wiederhergestellt und verglichen | Externe Konfiguration/Secrets/Vorlagen mit Betriebsverantwortlichen prüfen |
 | Listen | 1'000 Personen × fünf Jahre, 10'500 Teile inklusive Probezeit, 10'000 Quellrevisionen; stabile Seiten und PN-Filter | Messung auf vorgesehenem HR-System |
 
 Mengenmessung in dieser Testumgebung nach gezielter Indexierung und vorgezogener
-Filterung: offene Liste **0,677 s**, PN-Suche **0,075 s**. Vor der Optimierung
+Filterung und mit den Rücknahmeabfragen: offene Liste **0,690 s**, PN-Suche
+**0,027 s**. Vor der Optimierung
 waren es 17,227 s bzw. 13,049 s. Das ist eine Messung, kein Leistungsversprechen
 für das Zielsystem. Die funktionale Mengenprüfung enthält bewusst keine
 zeitabhängige Bestehensschwelle.
 
 Browserprüfung: Der integrierte Browser konnte den lokalen Testserver nicht
-erreichen (`ERR_CONNECTION_TIMED_OUT`). Deshalb keine behauptete visuelle
-Browserabnahme. Flask-Routen, HTML-Rendering, Originalabruf, CSRF, Suche und
-fachliche Aktionen sind automatisiert geprüft. JavaScript-Bedienung,
-Responsive-Darstellung, Tastaturführung und HR-UX-Abnahme bleiben offen.
+erreichen (`ERR_CONNECTION_TIMED_OUT`). Der Anwender hat anschliessend im eigenen
+Browser die synthetische Grundstrecke bis zur Gruppenvorbereitung und den
+erneuten Upload positiv rückgemeldet. Einzelheiten und Grenzen stehen im
+[geführten Abnahmeprotokoll](ABNAHME_AB_GEFUEHRT.md). Flask-Routen,
+HTML-Rendering, Originalabruf, CSRF, Suche und fachliche Aktionen sind
+automatisiert geprüft. Eine vollständige HR-Abnahme, Responsive-Darstellung,
+Tastaturführung und die Bedienprüfung der neuen Rücknahme bleiben offen.
 
 ## Bewusste Grenzen / offene Fachregeln
 
@@ -179,14 +206,20 @@ Responsive-Darstellung, Tastaturführung und HR-UX-Abnahme bleiben offen.
   Word-Versandwegen vorsorglich gesperrt statt an falsche Empfänger versandt.
 - Nach bereits erfolgter externer Dossierbereitstellung ist der fachliche
   Korrekturabschluss gesperrt und sichtbar. Der tatsächliche externe
-  Korrektur-/Bestätigungsweg muss für diesen Fall mit HR geklärt werden.
+  Korrektur-/Bestätigungsweg muss für diesen Fall mit HR geklärt werden:
+  Wer bestätigt die Übernahme im Dossier, und welcher Nachweis wird erfasst?
+  Die angebotene Entscheidung zwischen Rückmeldung der zuständigen Stelle,
+  eigener Dossierprüfung durch HR und weiterhin offenem Ablauf wurde noch nicht
+  beantwortet. Es wurde deshalb keine Abschlussregel erfunden. Ein begründeter
+  Entscheid, dass keine Korrektur nötig ist, bleibt vom Korrekturabschluss getrennt.
 - Eine tatsächliche Korrekturanforderung wird mit Empfänger, Datum und Inhalt
   dokumentiert. Diese Erfassung verschickt keine Mail und bestätigt keinen
   Eingang. Die Nachricht wird ausserhalb dieses Schritts tatsächlich versandt.
-- Bereits bestätigte Personen-/Jahreszuordnung kann nicht nachträglich auf eine
-  andere Person oder ein anderes Zieljahr umgehängt/verworfen werden. Falsche
-  freigegebene Zuordnungen benötigen einen eigenen, noch offenen
-  Rücknahme-/Korrekturprozess. Texte können versioniert korrigiert werden.
+- Bereits bestätigte Personen-/Jahreszuordnung wird nicht überschrieben.
+  Die Rücknahme öffnet einen neuen Prüfentwurf und eigene Folgeaufgaben für die
+  alte Zuordnung. Nicht erfasste manuelle Weitergaben kann die App nicht erkennen;
+  HR muss deren Prüfung ausdrücklich bestätigen. Die Rücknahme ruft keine
+  bereits versandte Nachricht zurück und ändert keine externen Dossierdateien.
 - Word wird als Original zum Öffnen angeboten; die daneben verfügbare
   Extraktion ist ausdrücklich keine originalgetreue Vorschau. Kein neuer
   OCR-/Scan-Qualitätsnachweis wird behauptet.
@@ -200,10 +233,15 @@ Responsive-Darstellung, Tastaturführung und HR-UX-Abnahme bleiben offen.
 
 ### Letzter vollständiger Prüflauf
 
-`python -m pytest -q --disable-warnings --maxfail=1`: **237 bestanden**,
-6 Warnungen, **115,49 Sekunden**. Darin enthalten: 25 neue A/B-Ablauftests,
-eine neue Mengenprüfung und ein Test des isolierten Übungsstarters. Die Warnungen betreffen bestehende Bibliotheken
-(insbesondere PyMuPDF/SWIG), keine fehlgeschlagenen Prüfungen.
+`python -m pytest -q --disable-warnings --maxfail=1`: **253 bestanden**,
+6 Warnungen, **126,25 Sekunden**. Darin enthalten: 25 A/B-Ablauftests,
+16 zusätzliche Rücknahmeprüfungen, eine Mengenprüfung und ein Test des
+isolierten Übungsstarters. Die Warnungen betreffen bestehende Bibliotheken
+(insbesondere PyMuPDF/SWIG). Beim Beenden meldete zusätzlich `pyreadline3` ein
+ungültiges Windows-Konsolenhandle; der Testprozess endete mit Code 0.
+
+Nach Ergänzung direkter Links zum bisherigen Versand: Rücknahme- und Mengenprüfung
+erneut ausgeführt, **17 bestanden**, 1 Warnung, **13,99 Sekunden**.
 
 Zusätzlich: JavaScript-Syntaxprüfung für `goal_workflow.js` und
 `table_controls.js` erfolgreich; `git diff --check` ohne Befund.
@@ -211,5 +249,5 @@ Zusätzlich: JavaScript-Syntaxprüfung für `goal_workflow.js` und
 Review-Nachtrag: Ein späterer ungeprüfter Rücklauf öffnet eine zuvor
 abgeschlossene Korrektur erneut. Der isolierte Starter `HR_TEST_AB.bat`
 bereitet fünf synthetische Quellen vor; Outlook und externe Übergaben bleiben
-gesperrt. Siehe [geführte Abnahme](ABNAHME_AB_GEFUEHRT.md). Noch keine
-visuelle oder fachliche Abnahme durchgeführt.
+gesperrt. Siehe [geführte Abnahme](ABNAHME_AB_GEFUEHRT.md) für die bereits
+positiv rückgemeldeten Bedienprüfungen und die noch offenen Prüfschritte.

@@ -108,6 +108,11 @@ def _prior_goals(
     connection: sqlite3.Connection, *, employee_pn: str,
     employment_assignment: str, review_year: int,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    from .goal_review import assignment_withdrawn
+    if assignment_withdrawn(connection,employee_pn,employment_assignment,review_year):
+        from .word_packages import prior_goals
+        performance,development,_=prior_goals(connection,employee_pn=employee_pn,assignment=employment_assignment,year=review_year)
+        return performance,development
     previous = connection.execute(
         """
         SELECT dc.data_json

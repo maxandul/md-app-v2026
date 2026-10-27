@@ -160,7 +160,7 @@ class GoalWorkflowTest(unittest.TestCase):
         init_db(self.db,hr_goals=True);init_db(self.db)
         for table,rows in before.items():
             self.assertEqual(rows,[tuple(r) for r in self.db.execute('SELECT * FROM '+table)],table)
-        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0],1)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0],2)
 
     def test_ui_direct_links_upload_search_and_csrf(self):
         raw=word(self.root/'ui.docx').read_bytes()
@@ -367,6 +367,10 @@ class GoalWorkflowTest(unittest.TestCase):
         decision('request_correction',recipient_email='person-111116@example.invalid',requested_at='2026-10-27')
         third=document('another-correction',new)
         with self.assertRaisesRegex(ValueError,'externe Korrektur'):decision('corrected',corrected_document_id=third)
+        # A repeated request must retain external effects of replaced ancestors.
+        decision('request_correction',recipient_email='person-111116@example.invalid',requested_at='2026-10-27')
+        fourth=document('fourth-correction',third)
+        with self.assertRaisesRegex(ValueError,'externe Korrektur'):decision('corrected',corrected_document_id=fourth)
         self.assertNotEqual(goal_queries.source_state(self.db,source),'done')
 
     def test_backup_restores_revisions_originals_outputs_and_dispatch_history(self):

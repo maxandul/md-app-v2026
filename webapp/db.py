@@ -30,7 +30,7 @@ def close_db(_error: BaseException | None = None) -> None:
         connection.close()
 
 
-def init_db(connection: sqlite3.Connection | None = None) -> None:
+def init_db(connection: sqlite3.Connection | None = None, *, hr_goals: bool = False) -> None:
     owns_connection = connection is None
     if connection is None:
         connection = get_db()
@@ -141,6 +141,16 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
         )
     if 'review_note' not in inbound_mail_columns:
         connection.execute("ALTER TABLE inbound_mail_messages ADD COLUMN review_note TEXT NOT NULL DEFAULT ''")
+    from .migrations import available
+    if hr_goals or available(connection):
+        # Do not replay legacy startup data rewrites in the new workflow.
+        connection.commit()
+        from .migrations import migrate
+        migrate(connection)
+        if owns_connection:
+            connection.close()
+            g.pop("db", None)
+        return
     # Offene Altfälle an die aktuelle Scanregel anpassen; bereits bereitgestellte Dateien bleiben unangetastet.
     connection.execute("""UPDATE official_documents SET scan_required=0,signature_checked=0,handoff_status='needs_signature_check'
         WHERE is_current=1 AND variant='digital' AND scan_required=1 AND handoff_status IN ('waiting_scan','needs_signature_check')
@@ -166,7 +176,7 @@ def init_db(connection: sqlite3.Connection | None = None) -> None:
 
 @click.command("init-db")
 def init_db_command() -> None:
-    init_db()
+    init_db(hr_goals=current_app.config.get("HR_GOAL_WORKFLOW", False))
     click.echo("SQLite-Datenbank initialisiert.")
 
 
@@ -174,4 +184,4 @@ def init_app(app: Flask) -> None:
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
     with app.app_context():
-        init_db()
+        init_db(hr_goals=app.config.get("HR_GOAL_WORKFLOW", False))

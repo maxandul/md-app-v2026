@@ -27,7 +27,9 @@
       <nav class="main-nav" aria-label="Hauptnavigation">
         <div class="app-shell main-nav__inner">
           <a href="{{ url_for('main.dashboard') }}"{% if active_nav == 'overview' %} class="is-active" aria-current="page"{% endif %}>Übersicht</a>
-          <a href="{{ url_for('main.worklist') }}">Arbeitsliste</a><a href="{{ url_for('main.help_page') }}">Hilfe</a>
+          <a href="{{ url_for('main.worklist') }}">Arbeitsliste</a>
+          {% if config.HR_GOAL_WORKFLOW %}<a href="{{ url_for('goal_work.index') }}"{% if active_nav == 'goal_work' %} class="is-active" aria-current="page"{% endif %}>Zielnachreichungen</a>{% endif %}
+          <a href="{{ url_for('main.help_page') }}">Hilfe</a>
           <a href="{{ url_for('main.master_data') }}"{% if active_nav == 'master_data' %} class="is-active" aria-current="page"{% endif %}>Stammdaten</a>
           <a href="{{ url_for('main.dialogs') }}"{% if active_nav == 'dialogs' %} class="is-active" aria-current="page"{% endif %}>Dialoge</a>
           <a href="{{ url_for('main.dispatch') }}"{% if active_nav == 'dispatch' %} class="is-active" aria-current="page"{% endif %}>Versand</a>

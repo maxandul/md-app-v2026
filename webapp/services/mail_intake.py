@@ -540,6 +540,14 @@ def resolve_inbound_message(
 def attachment_progress(connection, attachment):
     item=dict(attachment)
     item.update(progress='Prüfung erforderlich; noch keine Roboterübergabe', next_step='Original prüfen. Bei Unklarheit Rückfrage halten; erst nach Klärung die Mailprüfung abschliessen.', case_id='', cycle_id=None, original_available=bool(item['stored_path'] and Path(item['stored_path']).is_file()))
+    from webapp.migrations import available
+    if available(connection):
+        source=connection.execute('SELECT id FROM hr_goal_sources WHERE sha256=?',(item['sha256'],)).fetchone()
+        if source:
+            from .goal_queries import source_state,LABELS
+            item.update(goal_source_id=source['id'],progress=LABELS[source_state(connection,source['id'])],
+                next_step='Zielprüfung und Folgearbeit direkt öffnen. Die Mailablage ist davon unabhängig.')
+            return item
     word=connection.execute('SELECT w.*, COALESCE(s.dismissed,0) AS dismissed FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.sha256=?',(item['sha256'],)).fetchone()
     doc=connection.execute('SELECT * FROM official_documents WHERE id=? OR sha256=? ORDER BY id DESC LIMIT 1',(word['official_document_id'] if word else item.get('official_document_id'),item['sha256'])).fetchone()
     if doc:

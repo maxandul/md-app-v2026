@@ -10,6 +10,10 @@ WORD_SUFFIXES = {'.docx', '.docm'}
 
 
 def process_word_goals(connection, message_id):
+    from flask import current_app, has_app_context
+    if has_app_context() and current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .goal_review import stage_mail
+        return stage_mail(connection, message_id)
     rows = connection.execute("SELECT * FROM inbound_mail_attachments WHERE mail_message_id=? AND status='review_required'", (message_id,)).fetchall()
     candidates = []
     errors = {

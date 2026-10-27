@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 import shutil
 import uuid
 from io import BytesIO
@@ -1463,6 +1464,11 @@ def _reviewed_word_form(form):
 @bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
 def word_pdf_review(import_id):
     connection=get_db()
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        session.setdefault('goal_csrf',secrets.token_urlsafe(32))
+        routed=connection.execute('SELECT source_id FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone()
+        if routed:
+            return redirect(url_for('goal_work.source',source_id=routed['source_id']))
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item:
         abort(404)
@@ -1477,6 +1483,8 @@ def word_pdf_review(import_id):
         try:
             workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
             action=request.form.get('action','confirm')
+            if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('destination')=='historical' and action=='confirm':
+                raise ValueError('Bitte den Ausblick über «Diesen Ausblick als Zielquelle bearbeiten» direkt prüfen und bestätigen.')
             if action in ('draft','dismiss','reopen'):
                 reason=request.form.get('reason','').strip()
                 if action in ('dismiss','reopen') and len(reason)<10:
@@ -1806,6 +1814,11 @@ def _goal_batch_directory(batch_id):
 
 @bp.route('/alte-ziele', methods=['GET', 'POST'])
 def legacy_goal_upload():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        if request.method=='POST':
+            from .goal_routes import accept_uploads
+            return accept_uploads(request.files.getlist('forms'),request.form.get('goal_year',type=int))
+        return redirect(url_for('goal_work.index')+'#upload')
     from .services.goal_batches import create_batch, save_upload
     if request.method == 'POST':
         try:
@@ -1828,8 +1841,12 @@ def create_goal_batch():
         batch, _ = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
     except ValueError as exc:
         return {'error': str(exc)}, 400
-    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch),
-            'preview_url': url_for('main.legacy_goal_preview', batch_id=batch)}
+    preview_url=url_for('main.legacy_goal_preview',batch_id=batch)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .services.goal_review import batch as goal_batch
+        group=goal_batch(get_db(),'legacy-upload:'+batch,'Eingelesene Ausblicke')
+        preview_url=url_for('goal_work.index',batch_id=group,state='all')
+    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch), 'preview_url':preview_url}
 
 
 @bp.post('/alte-ziele/<batch_id>/files')
@@ -1841,6 +1858,12 @@ def upload_goal_batch_file(batch_id):
         return {'error': 'Keine Datei erhalten.'}, 400
     try:
         file_id = save_upload(directory, upload)
+        if current_app.config.get('HR_GOAL_WORKFLOW'):
+            from .services import goal_review
+            group=goal_review.batch(get_db(),'legacy-upload:'+batch_id,'Eingelesene Ausblicke')
+            path=next((directory/'files'/file_id).iterdir())
+            year=json.loads((directory/'year.json').read_text())['year']
+            goal_review.stage(get_db(),path,filename=upload.filename,batch_id=group,origin_key=f'legacy-upload:{batch_id}:{file_id}',goal_year=year)
     except ValueError as exc:
         return {'error': str(exc)}, 400
     return {'file_id': file_id}
@@ -1865,6 +1888,15 @@ def legacy_goal_preview(batch_id):
     directory = _goal_batch_directory(batch_id)
     year = json.loads((directory / 'year.json').read_text())['year']
     result, fingerprint = preview(get_db(), directory, year)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        if request.method=='POST':
+            from .services import goal_review
+            group=goal_review.batch(get_db(),'legacy-upload:'+batch_id,'Bereits gesicherte Ausblicke')
+            for item in result['items']:
+                goal_review.stage(get_db(),item['path'],filename=item['filename'],batch_id=group,
+                    origin_key=f'legacy-file:{batch_id}:{item["file_id"] or item["sha256"]}',goal_year=year)
+            return redirect(url_for('goal_work.index',batch_id=group,state='all'))
+        return render_template('goal_work/legacy_bridge.html',active_nav='goal_work',batch_id=batch_id)
     if request.method == 'POST':
         try:
             if request.form.get('checked') != 'yes' or request.form.get('fingerprint') != fingerprint:

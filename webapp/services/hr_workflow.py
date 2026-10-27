@@ -10,12 +10,17 @@ def stamp():
 
 
 def pending_pdfs(db):
+    from webapp.migrations import available
+    routed=" AND NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)" if available(db) else ''
     return db.execute("""SELECT w.* FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id
-        WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0 ORDER BY w.id""").fetchall()
+        WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0"""+routed+' ORDER BY w.id').fetchall()
 
 
 def pdf_queue(db, *, query='', status='pending', page=1):
     where=[];args=[]
+    from webapp.migrations import available
+    if available(db) and status=='pending':
+        where.append('NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)')
     if status=='dismissed':where.append('COALESCE(s.dismissed,0)=1')
     elif status=='pending':where.append("w.status='pending' AND COALESCE(s.dismissed,0)=0")
     elif status in ('imported','historical','duplicate'):where.append('w.status=?');args.append(status)

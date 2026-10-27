@@ -1,5 +1,10 @@
 # MD-App v2026
 
+Die neue Zielnachreichung (Etappen A/B) ist standardmässig ausgeschaltet und
+auf einer isolierten Testkopie mit `MD_HR_GOAL_WORKFLOW=1` prüfbar.
+[Lieferumfang, Gesamtstruktur, Tests und Betriebsgrenzen](docs/UMSETZUNG_AB_ZIELNACHREICHUNG.md)
+beschreiben den vollständigen Ablauf und die noch offenen Etappen C–F.
+
 Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
 Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für
 gemeinsame Tests und die schrittweise Weiterentwicklung.

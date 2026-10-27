@@ -36,6 +36,10 @@ def prepare(connection, *, case, kinds, template_paths, output_dir):
     return cur.lastrowid
 
 
+from .outlook_lock import serialized_goal_delivery, check_goal_workflow
+
+
+@serialized_goal_delivery
 def act(connection, *, correction_id, action, template_paths, sender_email, subject='', body='', checked=False, adapter=None):
     row = connection.execute('SELECT * FROM word_person_corrections WHERE id=?',(correction_id,)).fetchone()
     if not row: raise ValueError('Einzelausgabe nicht gefunden.')
@@ -51,6 +55,7 @@ def act(connection, *, correction_id, action, template_paths, sender_email, subj
         if connection.execute("SELECT 1 FROM word_person_corrections WHERE case_id=? AND id<>? AND status IN ('processing','draft_created','failed')",(row['case_id'],correction_id)).fetchone():
             raise ValueError('Für diese Person ist noch ein Outlook-Vorgang offen. Diesen zuerst klären.')
         manifest = json.loads(row['manifest_json'])
+        check_goal_workflow(connection,[row['case_id']])
         case = person(connection,row['case_id'],manifest['cycle_id'])
         if case['recipient_email'] != row['recipient_email']:
             raise ValueError('Empfänger hat sich geändert. Bitte neu erzeugen.')

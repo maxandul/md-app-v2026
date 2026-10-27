@@ -90,6 +90,10 @@ def repair_probation_boundary(connection: sqlite3.Connection) -> int:
         """).fetchall()
     changed=0
     for row in rows:
+        from webapp.migrations import available
+        if available(connection) and connection.execute('''SELECT 1 FROM hr_part_responsibilities p
+            JOIN document_obligations o ON o.id=p.obligation_id WHERE o.dialog_event_id=?''',(row['event_id'],)).fetchone():
+            continue
         scope,reason=_suggest_scope(row['exit_date'],row['probation_end'],row['review_year'])
         if scope != 'outlook_only':
             continue
@@ -210,6 +214,15 @@ def synchronize_cycle_with_import(
         (row["employee_pn"], row["employment_assignment"], row["manager_pn"]): row
         for row in existing_rows
     }
+    # Preserve explicit A/B part decisions; general SAP staging follows in stage D.
+    from webapp.migrations import available
+    protected = {}
+    if available(connection):
+        protected = {r['case_id']: r for r in connection.execute('''SELECT DISTINCT dc.*
+            FROM dialog_cases dc JOIN dialog_events e ON e.legacy_case_id=dc.case_id
+            JOIN document_obligations o ON o.dialog_event_id=e.id
+            JOIN hr_part_responsibilities p ON p.obligation_id=o.id WHERE dc.cycle_id=?''',(cycle_id,))}
+    protected_employments = {(r['employee_pn'],r['employment_assignment']) for r in protected.values()}
     lines = connection.execute(
         """
         SELECT rl.employee_pn, rl.manager_pn,
@@ -240,7 +253,11 @@ def synchronize_cycle_with_import(
     )
     added = 0
     reactivated = 0
+    for row in protected.values():
+        connection.execute('UPDATE dialog_cases SET active=?,updated_at=? WHERE id=?',(row['active'],row['updated_at'],row['id']))
     for line in lines:
+        if (line['employee_pn'],line['employment_assignment']) in protected_employments:
+            continue
         key = (line["employee_pn"], line["employment_assignment"], line["manager_pn"])
         scope, reason = _suggest_scope(line["exit_date"], line["probation_end"], cycle["review_year"])
         if key in existing:
@@ -294,7 +311,7 @@ def synchronize_cycle_with_import(
     }
     deactivated = sum(
         1 for key, row in existing.items()
-        if row["active"] and key not in active_keys and row["case_id"] not in manual_case_ids
+        if row["active"] and key not in active_keys and row["case_id"] not in manual_case_ids and row['case_id'] not in protected
     )
     connection.execute(
         "UPDATE cycles SET sap_import_id = ? WHERE id = ?", (sap_import_id, cycle_id)

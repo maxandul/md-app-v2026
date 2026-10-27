@@ -278,6 +278,8 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
         if row['delivery_status']=='failed' and not retry_confirmed:
             raise ValueError('Bitte vor einem erneuten Versuch in Outlook prüfen, ob bereits eine Nachricht angelegt oder versendet wurde, und die Wiederholung bestätigen.')
         row['subject'],row['body_html'] = word_message(row,sender_email=sender_email,subject_template=subject_template,body_template=body_template)
+        from .outlook_lock import check_goal_workflow
+        check_goal_workflow(connection,[d['case_id'] for d in json.loads(row['manifest_json'])['documents']])
     outlook = adapter or OutlookDraftAdapter()
     result = {'created':0,'sent':0,'failed':0,'errors':[]}
     for package_id in sorted(selected):
@@ -353,6 +355,10 @@ def discard_word_package(connection, package_id):
             raise
 
 
+from .outlook_lock import serialized_goal_delivery
+
+
+@serialized_goal_delivery
 def dispatch_word_packages(connection, *, cycle_id, package_ids, **kwargs):
     from contextlib import ExitStack
     from .outlook_lock import package_lock

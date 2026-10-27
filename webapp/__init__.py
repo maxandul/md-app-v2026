@@ -6,7 +6,7 @@ import os
 import secrets
 from pathlib import Path
 
-from flask import Flask, request
+from flask import Flask, request, session
 
 from . import db
 
@@ -44,6 +44,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
+        HR_GOAL_WORKFLOW=os.environ.get("MD_HR_GOAL_WORKFLOW", "0") == "1",
         ANALYTICS_MIN_GROUP_SIZE=max(
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
         ),
@@ -75,6 +76,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.before_request(load_logged_in_user)
     app.register_blueprint(auth_bp)
     app.register_blueprint(bp)
+    from .goal_routes import bp as goal_bp
+    app.register_blueprint(goal_bp)
 
     @app.after_request
     def retain_action_filters(response):
@@ -99,11 +102,17 @@ def create_app(test_config: dict | None = None) -> Flask:
             "default-src 'self'; style-src 'self'; img-src 'self' data:; "
             "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
+        if request.endpoint == 'goal_work.original':
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+            response.headers['Content-Security-Policy'] = "default-src 'none'; frame-ancestors 'self'"
         return response
 
     @app.context_processor
     def workflow_visibility():
-        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled'}
+        if app.config.get('HR_GOAL_WORKFLOW'):
+            session.setdefault('goal_csrf',secrets.token_urlsafe(32))
+        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled',
+                'goal_csrf_token':session.get('goal_csrf','')}
 
     from .services.mail_schedule import start_worker
     start_worker(app)

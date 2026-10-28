@@ -3,7 +3,6 @@ name: Synthetic regression tests
 on:
   push:
     branches: ['feat/hr-*']
-  pull_request:
 
 permissions:
   contents: read

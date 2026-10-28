@@ -10,7 +10,7 @@
     <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
     <h1>{{ manager.manager_name }}</h1>
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Der vorgeschlagene Umfang ergibt sich aus den SAP-Daten; bestätigte Abweichungen werden berücksichtigt.</p>
-    {% if config.HR_GOAL_WORKFLOW %}<p>{{ manager.part_count }} zugewiesene Gesprächsteile · <a href="{{ url_for('parts.index',manager=manager.manager_pn) }}">Offene Teile über alle Jahre anzeigen</a></p>{% endif %}
+    <p>{{ manager.part_count }} zugewiesene Gesprächsteile · <a href="{{ url_for('parts.index',manager=manager.manager_pn) }}">Offene Teile über alle Jahre anzeigen</a></p>
     <h2>Word-Vorlagen</h2>
     <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
     {% include '_word_setup.html' %}
@@ -18,12 +18,7 @@
     <p>Nach der Erzeugung wird eine ZIP-Datei heruntergeladen. Unter «Versand» kannst du das Paket der Führungslinie für Outlook verwenden. PDF-Rückläufe prüfst du unter «Rückläufe».</p>
     <p><a class="button" href="{{ url_for('main.dispatch', cycle_id=cycle.id) }}">Weiter zum Word-Versand</a> <a class="button" href="{{ url_for('main.returns_overview', cycle_id=cycle.id) }}">PDF-Rückläufe prüfen</a></p>
     {% if word_packages %}<details open><summary>Letzte Word-Pakete dieser Führungslinie</summary><ul>{% for package in word_packages %}<li>{{ package.created_at }} · <a href="{{ url_for('main.download_prepared_word_package', package_id=package.id) }}">{{ 'Aktuelle Ausgabe' if loop.first else 'Frühere Ausgabe' }} erneut herunterladen</a></li>{% endfor %}</ul><p>Einzelne Personenausgaben sind keine Versandpakete. Den Outlook-Status siehst du unter «Word-Versand».</p></details>{% endif %}
-    {% if legacy_workbooks_enabled %}<details class="legacy-box"><summary>Alternative: HTML-Arbeitsmappe</summary>
-    {% if package_state.blocking %}<span class="status status--danger">Zuordnung vor Erzeugung prüfen</span>
-    {% elif package_state.state == 'start_missing' %}<form action="{{ url_for('main.download_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">START-Datei erzeugen</button></form>
-    {% elif package_state.state == 'update_required' %}<div class="form-actions"><form action="{{ url_for('main.download_manager_update', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button button--primary" type="submit">Update-Datei erzeugen</button></form><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button" type="submit" data-confirm-recreate>START neu erzeugen</button></form></div>
-    {% else %}<div class="form-actions"><span class="status status--staged">Arbeitsmappe aktuell</span><form action="{{ url_for('main.recreate_manager_package', cycle_id=cycle.id, manager_pn=manager.manager_pn) }}" method="post" data-refresh-after-download><button class="button" type="submit" data-confirm-recreate>START neu erzeugen</button></form></div>{% endif %}
-    </details>{% endif %}
+
   </section>
 
   <section class="content-section" aria-labelledby="manager-deadline-title">
@@ -85,22 +80,6 @@
     </div>
   </section>
 
-  {% if legacy_workbooks_enabled %}<section class="content-section" aria-labelledby="history-title">
-    <div class="section-heading"><div><p class="kicker">Nachvollziehbarkeit</p><h2 id="history-title">Verlauf der HTML-Arbeitsmappen</h2></div></div>
-    {% if events %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Richtung</th><th>Version</th><th>Datei</th><th>Zeitpunkt</th><th>Prüfsumme</th></tr></thead>
-          <tbody>
-          {% for event in events %}
-            <tr><td>{{ event.direction }}</td><td>v{{ '%02d'|format(event.revision) }}</td><td>{{ event.filename }}</td><td>{{ event.created_at }}</td><td><code>{{ event.sha256[:12] }}…</code></td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="empty-state">Noch keine HTML-Arbeitsmappe erzeugt. Word-Ausgaben werden separat im Administrationsprotokoll erfasst.</div>
-    {% endif %}
-  </section>{% endif %}
+
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='dispatch.js') }}" defer></script>{% endblock %}

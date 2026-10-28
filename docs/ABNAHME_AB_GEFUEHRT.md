@@ -1,5 +1,8 @@
 # Geführte HR-Abnahme A/B
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 Die technische Prüfung und die fachliche Bedienprüfung werden getrennt
 festgehalten. Ein bestandener Test ist keine Bestätigung einer echten Zustellung.
 

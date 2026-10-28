@@ -1,17 +1,15 @@
 """Start an isolated, synthetic HR walkthrough (A/B through E/F). Never opens Outlook or real data.
 
-Run: python review_hr_ab.py
+Used only by automated tests.
 Each start uses a new directory under instance. No production settings are read.
 The generated originals/templates demonstrate behaviour, not the final HR layout.
 """
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 import secrets
 from unittest.mock import patch
-import uuid
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import pandas as pd
@@ -40,7 +38,7 @@ PEOPLE = [
 
 def complete_word_package(target: Path, xml: bytes) -> None:
     """Wrap synthetic Word XML in a valid repository-owned OOXML container."""
-    container = Path(__file__).parent/'templates'/'preparation'/'MD_Reflexion.docx'
+    container = Path(__file__).resolve().parents[1]/'templates'/'preparation'/'MD_Reflexion.docx'
     with ZipFile(container) as source, ZipFile(target,'w',ZIP_DEFLATED) as output:
         for item in source.infolist():
             output.writestr(item, xml if item.filename=='word/document.xml' else source.read(item.filename))
@@ -142,19 +140,3 @@ def create_review_app(directory: Path):
         pdf=form_pdf(test_pdfs/'e2-klaerung.pdf',pn='900003',manager='900102',no_reason='Test: Durchführung Ja, zugleich Nichtdurchführung begründet')
         stage_pdf(db,pdf,filename=pdf.name,directory=directory/'data'/'pdf_queue',auto_handoff_dir=directory/'handoff')
     return app
-
-
-def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--port',type=int,default=5056)
-    args=parser.parse_args()
-    directory=Path(__file__).parent/'instance'/('hr-ab-review-'+uuid.uuid4().hex[:10])
-    app=create_review_app(directory)
-    print(f'HR-TEST: http://127.0.0.1:{args.port}/arbeit',flush=True)
-    print(f'Nur synthetische Daten: {directory}',flush=True)
-    print('Outlook, Postfachzugriff und externe Übergaben sind gesperrt.',flush=True)
-    app.run(host='127.0.0.1',port=args.port,debug=False,use_reloader=False)
-
-
-if __name__=='__main__':
-    main()

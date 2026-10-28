@@ -1,5 +1,8 @@
 # Lieferung A/B: Zielnachreichung
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 Stand: 27. Oktober 2026. Implementierungsbranch: `feat/hr-zielnachreichung-ab`.
 
 Fortsetzung nach bestätigter Bedienprüfung: [Lieferung C – Verantwortung je

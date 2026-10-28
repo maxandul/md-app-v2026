@@ -13,7 +13,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from webapp.adapters.outlook import OutlookDraftAdapter
-from .packages import _secondary_employment_text
+from .form_data import _secondary_employment_text
 from .word_packages import create_word_package, prior_goals, preparation_templates
 
 

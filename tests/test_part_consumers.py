@@ -174,18 +174,23 @@ class PartConsumersTest(unittest.TestCase):
         self.assertIn('inzwischen',response.text);self.assertEqual(parts.resolve(self.db,self.case_id,'outlook')['manager_pn'],'111114')
         self.assertIn('q=111113',response.text)
 
-    def test_legacy_workbook_cannot_overwrite_split_case(self):
-        from webapp.services.packages import build_manager_payload,manager_package_state,create_package_file
-        from webapp.services.mail_dispatch import create_outlook_drafts
-        path,_=create_package_file(self.db,cycle_id=self.cycle_id,manager_pn='111116',output_dir=self.root/'old-html')
-        event=self.db.execute("SELECT id FROM package_events WHERE direction='versand' ORDER BY id DESC").fetchone()[0]
+
+    def test_word_dispatch_allows_managers_with_split_responsibilities(self):
+        from html.parser import HTMLParser
         self.assign('outlook')
-        with self.assertRaisesRegex(ValueError,'HTML-Arbeitsmappe'):build_manager_payload(self.db,cycle_id=self.cycle_id,manager_pn='111116')
-        self.assertTrue(manager_package_state(self.db,cycle_id=self.cycle_id,manager_pn='111114')['blocking'])
-        fake=FakeOutlook()
-        with self.assertRaisesRegex(ValueError,'HTML-Arbeitsmappe'):
-            create_outlook_drafts(self.db,cycle_id=self.cycle_id,package_event_ids=[event],sender_email='hr@example.invalid',adapter=fake)
-        self.assertFalse(fake.calls);self.assertTrue(path.is_file())
+        class SelectionParser(HTMLParser):
+            def __init__(self):
+                super().__init__();self.managers={}
+            def handle_starttag(self,tag,attrs):
+                attrs=dict(attrs)
+                if tag=='input' and attrs.get('name')=='manager_pn':
+                    self.managers[attrs['value']]='disabled' not in attrs
+        response=self.client.get('/versand',query_string={'cycle_id':self.cycle_id,'workflow':'workbook'})
+        self.assertEqual(response.status_code,200)
+        selection=SelectionParser();selection.feed(response.text)
+        self.assertTrue(selection.managers.get('111114'))
+        self.assertTrue(selection.managers.get('111116'))
+        self.assertNotIn('HTML-Arbeitsmappe',response.text)
 
     def test_person_and_manager_search_find_assigned_part(self):
         new=self.assign('outlook',period_start='2027-01-01',period_end='2027-12-31')

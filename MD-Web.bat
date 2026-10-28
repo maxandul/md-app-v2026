@@ -4,7 +4,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo =======================================================
-echo   MD-Verwaltung mit SQLite
+echo   MD-Verwaltung - HR-Arbeitsuebersicht
 echo =======================================================
 echo.
 
@@ -47,12 +47,12 @@ if errorlevel 1 (
     echo Port 5050 wird bereits verwendet.
     echo Falls die MD-App schon laeuft, wird sie jetzt im Browser geoeffnet.
     echo Andernfalls muss der Portkonflikt mit der anderen Anwendung geklaert werden.
-    start "" http://127.0.0.1:5050
+    start "" http://127.0.0.1:5050/arbeit
     pause
     exit /b 1
 )
 
-start "" http://127.0.0.1:5050
+start "" http://127.0.0.1:5050/arbeit
 "%PYTHON_EXE%" %PYTHON_ARGS% run_web.py --host 127.0.0.1 --port 5050
 
 echo.

@@ -8,25 +8,7 @@
   </section>
 
   <p><a class="button" href="{{ url_for('main.goal_sources') }}">Vorjahresziele und Quellen klären</a> <a class="button" href="{{ url_for('main.legacy_goal_upload') }}">Vorjahresziele aus Ordner importieren</a> <a href="{{ url_for('main.help_page') }}#2">Hilfe zum SAP-Import</a></p>
-  {% if config.HR_GOAL_WORKFLOW %}<p><a class="button" href="{{ url_for('sap_work.index') }}">Neue Exporte zuerst in der Vorschau prüfen</a></p>{% else %}<p>Verwende einen vollständigen freigegebenen SAP-Export. Eine Teilliste kann Zuordnungen in offenen Durchläufen deaktivieren. Fehlende Spalten werden beim Import benannt.</p>
-  <section class="split-layout">
-    <div class="content-card">
-      <p class="kicker">Aktualisieren</p>
-      <h2>SAP-Export importieren</h2>
-      <p>Der vollständige Datenstand wird historisiert. Zeilen mit Beschäftigungsgrad 0 werden nicht in den MD-Prozess übernommen.</p>
-      <form action="{{ url_for('main.upload_sap_import') }}" method="post" enctype="multipart/form-data">
-        <label for="sap_file">SAP-Datei im Format XLSX</label>
-        <input id="sap_file" name="sap_file" type="file" accept=".xlsx" required>
-        <button class="button button--primary" type="submit">SAP-Export importieren</button>
-      </form>
-    </div>
-    <aside class="info-box">
-      <h2>Wofür wird der Datenstand verwendet?</h2>
-      <p>Die App leitet daraus Personen, Anstellungen und direkte Führungslinien ab. Neue oder geänderte Zuordnungen können später neue Word-Vorlagen oder einen unterjährigen Dialog auslösen.</p>
-    </aside>
-  </section>
-
-  {% endif %}<section class="content-section" id="importe" aria-labelledby="imports-title">
+  <p><a class="button" href="{{ url_for('sap_work.index') }}">Neue Exporte zuerst in der Vorschau prüfen</a></p><section class="content-section" id="importe" aria-labelledby="imports-title">
     <div class="section-heading"><div><p class="kicker">Historie</p><h2 id="imports-title">Importierte Datenstände</h2></div></div>
     {% if imports %}
       <div class="table-wrap">

@@ -1,161 +1,66 @@
 # MD-App v2026
 
-Die neue HR-Nutzerführung enthält A–F und die E2-Rücklaufautomatik.
-Für den direkten Einstieg mit dem vorhandenen Datenbestand **MD-HR.bat** starten;
-die neue Oberfläche ist dann aktiv und Rückläufe werden zunächst manuell geprüft.
-Vor dem Versionswechsel sichern. Die Kurzanleitung steht in
-[START_HIER_PRODUKTIV.txt](START_HIER_PRODUKTIV.txt).
-[Prüfstand und Grenzen](docs/UMSETZUNG_E2_RELEASE.md) sowie
-[Windows-Test und Einführung](docs/START_NEUE_HR_VERSION.md) beschreiben den aktuellen Stand.
-Für die aktualisierte isolierte Übung mit erfundenen Personen: **HR_TEST_NEU.bat**
-starten. Outlook und Postfachzugriff sind gesperrt; Kopien bleiben im neuen
-Testordner. Die Übung ist freiwillig. Ohne den HR-Starter bzw. die entsprechenden
-Umgebungsvariablen sind neue Oberfläche und PDF-Automatik standardmässig aus.
+Lokale HR-Anwendung für Mitarbeitenden-Dialoge mit Word-Vorlagen und PDF-Rücklauf.
+Die neue Arbeitsübersicht mit den Etappen A–F und E2 ist der einzige Standardablauf.
 
-Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
-Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für
-gemeinsame Tests und die schrittweise Weiterentwicklung.
+## Start unter Windows
 
-Die Umstellung auf Word-Vorlagen mit PDF-Rücklauf ist begonnen. In der
-**Führungslinie → Word-Vorlagen** lassen sich personalisierte Formulare einzeln
-oder für die Führungslinie als ZIP erzeugen. Unter **Versand** werden Word-Pakete
-für ausgewählte Führungskräfte, eine Organisationseinheit oder den ganzen Durchlauf
-vorbereitet. Die Outlook-Zustellung und der tatsächliche Versand sind separat
-protokolliert. Unter **Rückläufe → Word-PDFs
-einlesen** werden Grundangaben, Zieltabellen und aktuelle Einschätzungen zur
-Prüfung vorgelegt. HR bestätigt Fall und Anstellung oder übernimmt einen
-nachgereichten Ausblick als versionierte Zielquelle. Word-PDFs aus dem Postfach
-landen ebenfalls in dieser Prüfung. Der bisherige Arbeitsmappen-Ablauf bleibt technisch erhalten, ist aber standardmässig ausgeblendet.
-Nichtdurchführungen lassen sich je Gesprächsteil mit Begründung bestätigen.
-Die Auswertung ergänzt Ja/Nein/offen-Angaben und Zeichenanzahlen geprüfter Textfelder.
-Einrichtung, Umsetzungsstand und nächste Schritte:
-[`docs/PLAN_B_WORD_PDF.md`](docs/PLAN_B_WORD_PDF.md).
+1. Das ZIP von `main` vollständig entpacken.
+2. Einmalig **INSTALL_MD.bat** ausführen. Voraussetzung: Python 3.11 oder neuer.
+3. **MD-Web.bat** starten und <http://127.0.0.1:5050/arbeit> öffnen.
+4. Beim ersten Start ein Administrationskonto anlegen und die Einrichtung abschliessen.
 
-Im Cockpit führen **Hilfe → Einrichtung** durch den Erststart und **Arbeitsliste** durch die offenen Aufgaben. Die [HR-Betreuungsanleitung](docs/HR_BETREUUNG.md) beschreibt Unterbrechungen, Ausnahmen und Jahreswechsel.
+[START_HIER.txt](START_HIER.txt) enthält die kurze Anleitung;
+[Einrichtung und Betrieb](docs/START_NEUE_HR_VERSION.md) erklärt Konfiguration,
+Word-Vorlagen, SAP-Import, Sicherung und Updates. Das Konsolenfenster muss während
+der Arbeit geöffnet bleiben. Zum Beenden Strg+C drücken.
 
-## Aktueller Standardablauf
+Beide Windows-Dateien verwenden eine vorhandene `.venv`, andernfalls das
+installierte Python. `python run_web.py` startet dieselbe neue Oberfläche.
+Die PDF-Automatik bleibt standardmässig aus; HR bestätigt die ausgelesenen Daten.
 
-- SAP-Stammdaten importieren, Zuordnungskonflikte prüfen und Durchlauf eröffnen.
-- Personalisierte Word-Vorlagen einzeln oder als Führungslinien-/Sammelpakete erzeugen.
-- Pro Führungskraft eine Reflexionsvorlage und eine mit ihren Stammdaten befüllte Feedbackvorlage zur Weiterleitung beilegen.
-- Eigene ZIP-Anhänge je Führungskraft über klassisches Outlook bereitstellen; Entwurf und Versand getrennt nachhalten.
-- Word-PDFs einlesen, am Original prüfen und dem Fall zuordnen.
-- Unterschriften und erforderliche Scans prüfen, danach Dossierübergabe bereitstellen.
-- Nachgereichte Ausblicke als Zielquelle übernehmen; bestehende Word-Ausgaben unverändert lassen.
-- Nichtdurchführung je Gesprächsteil dokumentieren; Auswertungen und SAP-Batches erzeugen.
-- Benutzer, Audit, Prozessbackups und Wiederherstellung verwalten.
+## Arbeitsablauf
 
-Die [Dokumentationsübersicht](docs/README.md) trennt aktuelle Anleitungen von
-historischen Spezifikationen. Alte Offline-Funktionen sind standardmässig
-unsichtbar und bleiben technisch verfügbar; zum ausdrücklichen Einblenden dient
-`LEGACY_WORKBOOKS: "enabled"` in der Organisationskonfiguration.
+- SAP-Export unter **Stammdaten** zunächst in der Vorschau prüfen und ausgewählte Änderungen übernehmen.
+- Durchläufe und unterjährige Dialoge planen; Verantwortung, Zeitraum und Formular-OE je Gesprächsteil festlegen.
+- Vorjahresziele direkt prüfen und versionieren; passende Rückblicke erzeugen und den Versand nachhalten.
+- Personalisierte Word-Dateien als Pakete bereitstellen; Outlook-Entwurf und tatsächlichen Versand getrennt dokumentieren.
+- Eingehende PDFs am Original prüfen, zuordnen und übernehmen. Erforderliche Unterschriften getrennt bestätigen.
+- Feedback je Führungskraft und Jahr sammeln; Dossierbereitstellung und SAP-Export getrennt nachhalten.
+- Offene Aufgaben über alle Jahre in **Arbeit**, **Mitarbeitende** und **Führungskräfte** bearbeiten.
 
-## Lokal unter Windows starten
+Die bisherige HTML-Arbeitsmappe mit START-/Update-Dateien, Demo und Generator ist
+entfernt. Erhalten bleiben benötigte Word-/PDF-Importformate, Vorjahresziele,
+Originale, Datenmigrationen und Prüfnachweise. Fachregeln und bisherige
+Implementierungsnachweise stehen in der [Dokumentation](docs/README.md).
 
-Voraussetzung: Python 3.11 oder neuer.
+## Lokaler Betrieb
+
+Die Anwendung bindet an `127.0.0.1:5050` und verlangt ein persönliches Konto.
+Netzwerkbetrieb auf mehreren HR-Geräten braucht eine passende Authentisierung,
+TLS und geklärte Betriebsverantwortung. Keine Personaldaten ungeschützt freigeben.
+
+Lokale Daten und Konfiguration liegen unter `instance`; externe Word-Vorlagen und
+Dossierpfade werden dort konfiguriert. Diese Dateien gehören nicht ins öffentliche
+Repository. Backups enthalten Personaldaten und sind entsprechend zu schützen.
+
+Word, klassisches Outlook/S-MIME und die externe Dossier-/SAP-Verarbeitung beim
+ersten echten Vorgang auf dem vorgesehenen Gerät kontrollieren. Lokal
+bereitgestellt bedeutet noch nicht extern verarbeitet.
+
+## Entwicklung und Prüfungen
 
 ```powershell
 py -3 -m venv .venv
-.venv\Scripts\activate
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe scripts/run_tests_offline.py tests -q --tb=short
+node --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs
 ```
 
-Anschliessend `MD-Web.bat` doppelklicken oder im aktivierten Terminal starten:
+Für lokale Entwicklung: `.\.venv\Scripts\python.exe run_web.py --dev`.
+Die Tests verwenden synthetische Daten; historische Datenbank-Fixtures prüfen
+Migration und unterstützte Altformate. Die neue App benötigt keinen Umschalter.
+Der CI-Lauf prüft `main` und HR-Arbeitsbranches ohne Netzwerkzugriff im Testprozess.
 
-```powershell
-python run_web.py
-```
-
-Die Anwendung ist danach unter <http://127.0.0.1:5050> erreichbar. Beim ersten
-Start wird die lokale SQLite-Datenbank automatisch unter `instance/` angelegt.
-Systemadministrationen finden Benutzerkonten, Audit, Backup und Restore unter
-`Administration`. Backups enthalten Personaldaten und müssen unmittelbar auf ein
-genehmigtes, verschlüsseltes und getrenntes Medium übertragen werden.
-
-## Erster Testlauf
-
-1. Die App starten.
-2. Den SAP-Export unter «Stammdaten» hochladen.
-3. Für diesen Import einen Jahresprozess eröffnen.
-4. In der Prozessübersicht eine vorgesetzte Person auswählen.
-5. Die lokalen Word-Vorlagen gemäss `docs/PLAN_B_WORD_PDF.md` einrichten und ein Word-Paket erzeugen.
-6. Unter «Versand» den Paketstatus prüfen. Testformulare in Word ausfüllen und als PDF zurückgeben.
-7. Unter «Rückläufe» einlesen, am Original prüfen und übernehmen. Danach beim Fall die Unterschriften- und Ablageprüfung abschliessen.
-8. Den SAP-Export erzeugen. Outlook, Dossier-RPA und SAP-Import werden auf dem Windows-Testgerät geprüft.
-
-Das Repository enthält bewusst keine SAP-Exporte, Personendaten, ausgefüllten
-Dialoge, PDFs oder lokale Datenbank. Solche Dateien bleiben auf dem geschützten
-HR-Gerät und sind durch `.gitignore` vom Commit ausgeschlossen.
-
-## Wichtige Sicherheitsgrenze des MVP
-
-Der Server bindet standardmässig an `127.0.0.1` und ist für den Betrieb auf
-einem einzelnen HR-Laptop gedacht. Vor einem Zugriff weiterer Arbeitsplätze
-müssen mindestens Windows-Authentisierung, Rollen/Berechtigungen, TLS, Backup,
-Protokollierung und die Betriebsverantwortung festgelegt werden. Den Server mit
-Personaldaten nicht ungeschützt über `0.0.0.0` im Netzwerk freigeben.
-
-Der Versand und Rückversand von Dateien mit Personaldaten erfolgt gemäss dem
-vorgesehenen Prozess S/MIME-verschlüsselt. Die Anwendung prüft die gespeicherte
-Verschlüsselungsmarkierung vor jedem Direktversand. Alternativ können weiterhin
-Outlook-Entwürfe erzeugt und vor dem manuellen Versand kontrolliert werden. Der
-vollständige Nachweis ist mit dem produktiven HR-Postfach, den Zertifikaten und
-der konkreten Outlook-Version durchzuführen.
-
-Für die Entwurfserstellung sind Windows, klassisches Outlook und `pywin32`
-erforderlich. Die Organisationswerte werden lokal hinterlegt:
-
-1. `config/organisation.example.json` nach `instance/organisation.json` kopieren.
-2. `HR_MAILBOX_EMAIL` (Absenderadresse), `OUTLOOK_MAILBOX_NAME` (Postfachname),
-   `OUTLOOK_TARGET_FOLDER`, `DOSSIER_HANDOFF_ROOT` und `SPECIAL_CASES_URL` setzen.
-3. App neu starten. Ohne Absenderadresse bleibt der Outlook-Versand gesperrt.
-   Ohne Spezialfälle-Link wird in der HTML-Alternative auf HR verwiesen.
-
-`MD_ORG_CONFIG` kann auf eine andere JSON-Datei zeigen. Umgebungsvariablen
-`MD_HR_MAILBOX_EMAIL`, `MD_OUTLOOK_MAILBOX`, `MD_OUTLOOK_TARGET_FOLDER`,
-`MD_ROBOT_INPUT_ROOT` (alternativ `MD_DOSSIER_HANDOFF_ROOT`) und
-`MD_SPECIAL_CASES_URL` überschreiben die jeweiligen Dateieinträge.
-Relative Ablagepfade beziehen sich auf das Konfigurationsverzeichnis. Ohne
-Ablagepfad verwendet die App lokal `STORAGE_ROOT/dossier_ready`; es gibt keinen
-fest eingebauten Netzlaufwerkspfad. Organisationsdatei und Word-Vorlagen bleiben
-in `instance/` und werden nicht in Git aufgenommen. Sie sind zusätzlich zum
-Datenbank-/Dateibackup lokal zu sichern.
-
-Das Einlesen ignoriert Mails ohne MD-Bezug. Erfolgreich verarbeitete reine
-MD-Mails werden nach «12 Mitarbeitenden-Dialog» verschoben. Bei gemischten Mails
-werden die MD-Dokumente verarbeitet, die Fremdanlagen aber nicht gespeichert;
-die Mail bleibt bis zur manuellen Prüfung im Posteingang.
-
-Mitarbeitende senden ihr separates Feedback-PDF standardmässig an ihre
-vorgesetzte Person. Diese übermittelt die gesammelten Feedbacks in einer
-S/MIME-verschlüsselten E-Mail an HR. Die Anwendung führt die eingegangenen
-Feedbacks pro Führungskraft zusammen; HR verfolgt deren Vollständigkeit nicht.
-
-## Zugriffsadresse für HR
-
-Unter **Administration** stehen Rechnername, Bindung/Port und der konfigurierte
-Zugriffslink. Trage in `instance/organisation.json` den vollständigen Link unter
-`PUBLIC_BASE_URL` ein, z. B. `http://md-server.example.invalid:5050`; alternativ
-`MD_PUBLIC_BASE_URL`. Vor dem Verteilen auf einem zweiten HR-PC testen.
-
-Ein Rechner-/DNS-Name kann bei wechselnder IP gleich bleiben, sofern die interne
-Namensauflösung aktualisiert wird. Die Linkeinstellung ändert weder Serverbindung
-noch Firewall. Der BAT-Starter bleibt lokal; ein bereits eingerichteter
-Netzwerkstart wird dadurch nicht umkonfiguriert. Details: [Technik](docs/FLASK_SQLITE_MVP.md).
-
-## Tests
-
-Die Tests erzeugen ausschliesslich synthetische SAP-Daten in temporären Ordnern.
-
-```powershell
-python -m pip install -r requirements-dev.txt
-python -m unittest discover -s tests -v
-python -m unittest discover -s prototype/html_dialog -p "test_*.py" -v
-```
-
-Weitere Architektur- und Prozesshinweise stehen in
-[`docs/FLASK_SQLITE_MVP.md`](docs/FLASK_SQLITE_MVP.md). Die betrieblichen
-Schutzmassnahmen, Restore-Schritte und noch notwendigen Freigaben stehen im
-[`docs/BETRIEBSKONZEPT.md`](docs/BETRIEBSKONZEPT.md).
-Die kontrollierte Prüfung mit SAP, Word-Formularen, Outlook und Restore ist in
-[`docs/BUEROTEST.md`](docs/BUEROTEST.md) beschrieben.
+Die sechs anonymisierten Originaldateien der E2-Prüfung werden nicht mitgeliefert:
+`python scripts/validate_e2_samples.py --input-dir "C:\Pfad\zu\Testdateien"`.

@@ -44,3 +44,14 @@ def create_sap_sample(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_excel(path, index=False)
     return path
+
+
+def legacy_pdf_source(connection, *, cycle_id, manager_pn, output_dir):
+    """Historical package record for testing old PDF imports; no HTML generation."""
+    import uuid,json
+    package_id='fixture-'+uuid.uuid4().hex
+    employees=[{'case_id':r['case_id'],'employee':{'pn':r['employee_pn'],'last_name':r['last_name']}} for r in connection.execute('SELECT dc.case_id,dc.employee_pn,e.last_name FROM dialog_cases dc JOIN employees e ON e.pn=dc.employee_pn WHERE dc.cycle_id=? AND dc.manager_pn=? ORDER BY dc.id',(cycle_id,manager_pn))]
+    payload={'package':{'package_id':package_id},'employees':employees}
+    connection.execute("INSERT INTO package_events(package_id,cycle_id,manager_pn,direction,filename,sha256,payload_json,created_at) VALUES (?,?,?,'versand','historical.html','fixture',?,'2025-01-01')",(package_id,cycle_id,manager_pn,json.dumps(payload)))
+    connection.commit()
+    return None,payload

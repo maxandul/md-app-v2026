@@ -15,7 +15,7 @@ class MailScheduleTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
-        self.app = create_app({'TESTING': True, 'AUTH_DISABLED': True,
+        self.app = create_app({"HR_GOAL_WORKFLOW": False, 'TESTING': True, 'AUTH_DISABLED': True,
             'DATABASE': str(root/'test.sqlite'), 'STORAGE_ROOT': str(root/'data'),
             'BACKUP_ROOT': str(root/'backup'), 'DOSSIER_HANDOFF_ROOT': str(root/'handoff')})
         self.context = self.app.app_context()

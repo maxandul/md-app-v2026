@@ -11,7 +11,7 @@ from datetime import date, datetime
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
-from .packages import _filename_part, _secondary_employment_text, bounded_review_period
+from .form_data import _filename_part, _secondary_employment_text, bounded_review_period
 from .word_templates import render_word_form, render_feedback_form
 
 
@@ -121,7 +121,6 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sou
     if len(sources) > 1:
         raise ValueError(f"Für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} liegen mehrere Zielquellen vor. Bitte unter «Stammdaten → Zielquellen» vergleichen und eine Quelle begründet auswählen.")
     return sources[0] if sources else ([], [], {})
-
 
 
 def missing_goal_hint(connection, *, employee_pn, assignment, year):

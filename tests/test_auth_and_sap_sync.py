@@ -44,7 +44,7 @@ class AuthAndSapSyncTest(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         root = Path(self.temp_dir.name)
         self.root = root
-        self.app = create_app({
+        self.app = create_app({"HR_GOAL_WORKFLOW": False,
             "TESTING": True,
             "SECRET_KEY": "test-secret",
             "DATABASE": str(root / "test.sqlite3"),

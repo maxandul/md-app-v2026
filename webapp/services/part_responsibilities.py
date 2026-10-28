@@ -1,7 +1,7 @@
 """Shared part responsibility for forms, deliveries, returns and reminders."""
 from datetime import date, datetime, timezone
 import json
-from .packages import bounded_review_period
+from .form_data import bounded_review_period
 from webapp.migrations import available
 from .outlook_lock import serialized_goal_delivery
 
@@ -134,8 +134,3 @@ def has_assignments(connection,*,cycle_id=None,manager_pn=None,case_id=None):
     return bool(connection.execute('''SELECT 1 FROM hr_part_responsibilities r
         JOIN document_obligations o ON o.id=r.obligation_id JOIN dialog_events de ON de.id=o.dialog_event_id
         JOIN dialog_cases dc ON dc.case_id=de.legacy_case_id WHERE '''+(' AND '.join(where) or '1')+' LIMIT 1',params).fetchone())
-
-
-def require_legacy_compatible(connection,*,cycle_id=None,manager_pn=None,case_id=None):
-    if has_assignments(connection,cycle_id=cycle_id,manager_pn=manager_pn,case_id=case_id):
-        raise ValueError('Dieser Bestand hat Zuständigkeiten oder Zeiträume je Gesprächsteil. Bitte die Word-Ausgabe verwenden; die bisherige HTML-Arbeitsmappe bildet diese Trennung nicht ab.')

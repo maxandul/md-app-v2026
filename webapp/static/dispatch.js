@@ -101,18 +101,11 @@
   document.querySelectorAll('button[data-confirm-direct-send]').forEach((button) => {
     button.addEventListener('click', (event) => {
       const form = button.form;
-      const selected = form ? form.querySelectorAll('input[name="package_event_id"]:checked,input[name="word_package_id"]:checked').length : 0;
+      const selected = form ? form.querySelectorAll('input[name="word_package_id"]:checked').length : 0;
       if (!window.confirm(`${selected} ausgewählte E-Mail(s) jetzt direkt S/MIME-verschlüsselt versenden?`)) {
         event.preventDefault();
       }
     });
   });
 
-  document.querySelectorAll('button[data-confirm-recreate]').forEach((button) => {
-    button.addEventListener('click', (event) => {
-      if (!window.confirm('Eine neue vollständige START-Datei erzeugen? Frühere Arbeitsmappen und Update-Dateien werden dadurch abgelöst.')) {
-        event.preventDefault();
-      }
-    });
-  });
 })();

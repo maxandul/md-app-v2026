@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from webapp import create_app
 from webapp.organisation import load_organisation
-from prototype.html_dialog.generate_package import render_html
 
 
 class OrganisationTest(unittest.TestCase):
@@ -62,25 +61,15 @@ class OrganisationTest(unittest.TestCase):
                 load_organisation()
             self.assertEqual(load_organisation(alias)['HR_MAILBOX_EMAIL'],'hr@example.invalid')
 
-    def test_html_embeds_configuration_as_json_without_interpolating_script_source(self):
-        url='https://intranet.example.invalid/special?x=`${test}</script>'
-        self.write({'HR_MAILBOX_EMAIL':'hr@example.invalid','SPECIAL_CASES_URL':url})
-        payload={'configuration':{},'package':{'package_id':'test'},'employees':[]}
-        page=render_html(payload)
-        self.assertIn('hr@example.invalid',page)
-        self.assertIn('specialCasesLink()',page)
-        self.assertNotIn(url,page)  # Script closing tag is safely escaped in JSON.
-        self.assertEqual(page.count('</script>'),2)
-        self.assertNotIn('hr_email',payload['configuration'])
 
     def test_app_settings_override_and_local_handoff_fallback(self):
         self.write({})
-        app=create_app({'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':'test','DATABASE':str(self.root/'db'),
+        app=create_app({"HR_GOAL_WORKFLOW": False, 'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':'test','DATABASE':str(self.root/'db'),
                         'STORAGE_ROOT':str(self.root/'data'),'BACKUP_ROOT':str(self.root/'backup'),
                         'HR_MAILBOX_EMAIL':'test@example.invalid','WORD_TEMPLATE_PATHS':{}})
         self.assertEqual(app.config['DOSSIER_HANDOFF_ROOT'],str(self.root/'data/dossier_ready'))
         with app.app_context():
-            page=render_html({'configuration':{},'package':{},'employees':[]})
-        self.assertIn('test@example.invalid',page)
+            from webapp.organisation import local_configuration
+            self.assertEqual(local_configuration()['hr_email'],'test@example.invalid')
 
 if __name__=='__main__':unittest.main()

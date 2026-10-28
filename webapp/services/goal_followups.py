@@ -5,7 +5,7 @@ from pathlib import Path
 from . import goal_review as review
 from .part_responsibilities import resolve, stamp
 from .word_packages import prior_goals, create_word_package
-from .packages import _secondary_employment_text
+from .form_data import _secondary_employment_text
 
 
 def revision(connection, revision_id, *, allow_withdrawn=False):

@@ -13,8 +13,6 @@ from openpyxl import load_workbook
 from pypdf import PdfReader
 from reportlab.pdfgen import canvas
 
-from prototype.html_dialog.generate_package import render_html
-from prototype.html_dialog.validate_package import extract_payload
 from webapp import create_app
 from webapp.db import close_db, connect_database, get_db
 from webapp.adapters.outlook import (
@@ -31,7 +29,6 @@ from webapp.services.documents import (
     import_handwritten_scan,
     import_official_pdf,
 )
-from webapp.services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from webapp.services.mail_intake import (
     mail_inbox_overview,
     process_inbound_messages,
@@ -51,13 +48,8 @@ from webapp.services.operations import (
     restore_system_backup,
     validate_backup,
 )
-from webapp.services.packages import (
-    build_manager_payload,
-    create_package_file,
-    create_update_file,
-    import_returned_package,
-    manager_package_state,
-)
+from tests.sample_data import legacy_pdf_source
+from webapp.services.form_data import bounded_review_period
 from webapp.services.sap_export import create_sap_upload_file
 from webapp.services.sap_import import import_sap_workbook
 
@@ -117,7 +109,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         root = Path(self.temp_dir.name)
         self.sap_sample = create_sap_sample(root / "EXPORT_TEST.xlsx")
         self.app = create_app(
-            {
+            {"HR_GOAL_WORKFLOW": False,
                 "TESTING": True,
                 "SECRET_KEY": "test-secret",
                 "DATABASE": str(root / "test.sqlite3"),
@@ -273,21 +265,10 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(
                 connection.execute("SELECT COUNT(*) FROM historical_goals").fetchone()[0], 2
             )
-            payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn=case["manager_pn"]
-            )
-            employee = next(
-                item for item in payload["employees"]
-                if item["employee"]["pn"] == case["employee_pn"]
-            )
-            self.assertEqual(
-                employee["previous_goals"][0]["title"], "Serviceprozess vereinfachen"
-            )
-            self.assertEqual(
-                employee["previous_development_goals"][0]["competency"],
-                "Entwicklungsfähigkeit",
-            )
-            self.assertEqual(employee["outlook"]["performance_goals"], [])
+            from webapp.services.word_packages import prior_goals
+            performance,development,_=prior_goals(connection,employee_pn=case['employee_pn'],assignment=case['employment_assignment'],year=2025)
+            self.assertEqual(performance[0]['title'],'Serviceprozess vereinfachen')
+            self.assertEqual(development[0]['competency'],'Entwicklungsfähigkeit')
             repeated = scan_legacy_forms(
                 connection, forms_root=forms_root, goal_year=2025
             )
@@ -355,24 +336,8 @@ class WebAppIntegrationTest(unittest.TestCase):
                 page = response.get_data(as_text=True)
                 self.assertIn(heading, page)
                 self.assertIn("Stammdaten", page)
-                self.assertIn("Rückläufe", page)
+                self.assertIn("Mitarbeitende", page)
 
-    def test_operational_overview_counts_missing_workbooks(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
-            self.assertEqual(data["metrics"]["workbooks_missing"], 3)
-            self.assertEqual(data["metrics"]["cases_open"], 9)
-            self.assertEqual(
-                len([task for task in data["tasks"] if task["kind"] == "Versand"]),
-                3,
-            )
-
-        package = self.client.post(f"/cycles/{cycle_id}/managers/111116/package")
-        package.close()
-        with self.app.app_context():
-            data = cockpit_overview(get_db(), selected_cycle_id=cycle_id)
-            self.assertEqual(data["metrics"]["workbooks_missing"], 2)
 
     def test_process_guide_and_controlled_cycle_phase_changes(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -428,310 +393,6 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()["status"]
             self.assertEqual(current, "ruecklauf")
 
-    def test_start_and_update_files_are_detected_and_generated(self) -> None:
-        cycle_id = self._prepare_cycle()
-        manager_page = self.client.get(
-            f"/cycles/{cycle_id}/managers/111116"
-        ).get_data(as_text=True)
-        self.assertIn("data-refresh-after-download", manager_page)
-        self.assertIn("dispatch.js", manager_page)
-        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
-            connection = get_db()
-            create_package_file(
-                connection, cycle_id=cycle_id, manager_pn="111116",
-                output_dir=Path(temp) / "packages",
-            )
-            self.assertEqual(
-                manager_package_state(
-                    connection, cycle_id=cycle_id, manager_pn="111116"
-                )["state"],
-                "current",
-            )
-            connection.execute(
-                "UPDATE employees SET org_unit = 'abt-neu' WHERE pn = '111111'"
-            )
-            connection.commit()
-            self.assertEqual(
-                manager_package_state(
-                    connection, cycle_id=cycle_id, manager_pn="111116"
-                )["state"],
-                "update_required",
-            )
-            path, payload = create_update_file(
-                connection, cycle_id=cycle_id, manager_pn="111116",
-                output_dir=Path(temp) / "packages",
-            )
-            self.assertEqual(path.suffix, ".json")
-            self.assertEqual(payload["schema_version"], "1.0-update")
-            self.assertEqual(payload["update"]["manager_pn"], "111116")
-            self.assertEqual(
-                manager_package_state(
-                    connection, cycle_id=cycle_id, manager_pn="111116"
-                )["state"],
-                "current",
-            )
-
-    def test_replacement_start_uses_current_state_and_supersedes_old_package(self) -> None:
-        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
-            connection = get_db()
-            _path, original_payload = create_package_file(
-                connection,
-                cycle_id=cycle_id,
-                manager_pn="111116",
-                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
-            )
-            original_package_id = original_payload["package"]["package_id"]
-            event_count = connection.execute(
-                "SELECT COUNT(*) AS count FROM package_events"
-            ).fetchone()["count"]
-            connection.execute(
-                "UPDATE employees SET org_unit = 'abt-aktuell' WHERE pn = '111111'"
-            )
-            connection.commit()
-
-        page = self.client.get(f"/versand?cycle_id={cycle_id}&workflow=workbook")
-        self.assertIn("START neu", page.get_data(as_text=True))
-        response = self.client.post(
-            f"/cycles/{cycle_id}/managers/111116/package/recreate"
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, "text/html")
-        replacement_package_id = response.headers["X-MD-Package-ID"]
-        self.assertNotEqual(replacement_package_id, original_package_id)
-        self.assertIn(b"abt-aktuell", response.data)
-        response.close()
-
-        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
-            connection = get_db()
-            self.assertEqual(
-                connection.execute(
-                    "SELECT COUNT(*) AS count FROM package_events"
-                ).fetchone()["count"],
-                event_count + 1,
-            )
-            self.assertEqual(
-                connection.execute(
-                    "SELECT action FROM audit_log ORDER BY id DESC LIMIT 1"
-                ).fetchone()["action"],
-                "manager_package_recreated",
-            )
-            self.assertEqual(
-                manager_package_state(
-                    connection, cycle_id=cycle_id, manager_pn="111116"
-                )["state"],
-                "current",
-            )
-            replacement_candidate = next(
-                item for item in dispatch_candidates(connection, cycle_id=cycle_id)
-                if item["manager_pn"] == "111116"
-            )
-            self.assertEqual(replacement_candidate["package_kind"], "start")
-            self.assertTrue(replacement_candidate["ready"])
-            self.assertIsNone(replacement_candidate["delivery_status"])
-            original_payload["package"]["revision"] = 1
-            original_payload["package"]["saved_at"] = datetime.now().isoformat()
-            old_return = Path(temp) / "alte_arbeitsmappe.html"
-            old_return.write_text(render_html(original_payload), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "neuere START-Datei ersetzt"):
-                import_returned_package(
-                    connection,
-                    path=old_return,
-                    original_filename=old_return.name,
-                )
-
-    def test_package_prefills_required_scope_and_all_secondary_permissions(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            connection = get_db()
-            employment = connection.execute(
-                """
-                SELECT id, last_import_id FROM employment_assignments
-                WHERE person_number = '111111' AND assignment_number = '2'
-                """
-            ).fetchone()
-            for fingerprint, permission_for, valid_from, valid_to in (
-                ("perm-a", "Vereinsvorstand", "2025-01-01", "2026-12-31"),
-                ("perm-b", "Dozententätigkeit", "2025-06-01", "2027-05-31"),
-            ):
-                connection.execute(
-                    """
-                    INSERT INTO secondary_activity_permissions (
-                        employment_id, valid_from, valid_to, permission,
-                        permission_for, source_fingerprint, last_import_id
-                    ) VALUES (?, ?, ?, 'Bewilligt', ?, ?, ?)
-                    """,
-                    (
-                        employment["id"], valid_from, valid_to, permission_for,
-                        fingerprint, employment["last_import_id"],
-                    ),
-                )
-            connection.commit()
-            payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn="111116"
-            )
-            employee = next(
-                item for item in payload["employees"]
-                if item["employee"]["pn"] == "111111"
-            )
-            self.assertEqual(employee["scope"], employee["suggestion"]["scope"])
-            self.assertIn("Vereinsvorstand", employee["employee"]["secondary_employment"])
-            self.assertIn("Dozententätigkeit", employee["employee"]["secondary_employment"])
-
-    def test_new_sap_import_marks_existing_workbook_for_update(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
-            create_package_file(
-                get_db(), cycle_id=cycle_id, manager_pn="111116",
-                output_dir=Path(temp) / "packages",
-            )
-        workbook = load_workbook(self.sap_sample)
-        worksheet = workbook.active
-        headers = {cell.value: cell.column for cell in worksheet[1]}
-        for row in range(2, worksheet.max_row + 1):
-            if str(worksheet.cell(row, headers["ID_NO_ZERO"]).value) == "111111":
-                worksheet.cell(row, headers["OE Bez."], "abt-neu")
-        changed = self.sap_sample.with_name("EXPORT_CHANGED.xlsx")
-        workbook.save(changed)
-        with changed.open("rb") as source:
-            response = self.client.post(
-                "/imports",
-                data={"sap_file": (source, "EXPORT_CHANGED.xlsx")},
-                content_type="multipart/form-data",
-                follow_redirects=True,
-            )
-        self.assertEqual(response.status_code, 200)
-        with self.app.app_context():
-            self.assertEqual(
-                manager_package_state(
-                    get_db(), cycle_id=cycle_id, manager_pn="111116"
-                )["state"],
-                "update_required",
-            )
-
-    def test_batch_download_contains_required_start_files(self) -> None:
-        cycle_id = self._prepare_cycle()
-        response = self.client.post(
-            f"/cycles/{cycle_id}/packages/batch",
-            data={"selection_mode": "all"},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, "application/zip")
-        with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
-            names = archive.namelist()
-        response.close()
-        self.assertEqual(len(names), 3)
-        self.assertTrue(all(name.startswith("START/") for name in names))
-
-    def test_outlook_draft_is_prepared_and_logged_without_sending(self) -> None:
-        self.app.config["LEGACY_WORKBOOKS"] = "enabled"
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            connection = get_db()
-            package_path, _payload = create_package_file(
-                connection,
-                cycle_id=cycle_id,
-                manager_pn="111116",
-                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
-            )
-            candidates = dispatch_candidates(
-                connection, cycle_id=cycle_id, sender_email="md-test@example.invalid"
-            )
-            candidate = next(
-                row for row in candidates if row["manager_pn"] == "111116"
-            )
-            self.assertTrue(candidate["ready"])
-            adapter = FakeOutlookDraftAdapter()
-            result = create_outlook_drafts(
-                connection,
-                cycle_id=cycle_id,
-                package_event_ids=[candidate["package_event_id"]],
-                sender_email="md-test@example.invalid",
-                adapter=adapter,
-            )
-            self.assertEqual(
-                result, {"created": 1, "sent": 0, "failed": 0, "errors": []}
-            )
-            self.assertEqual(adapter.calls[0]["attachments"], [package_path])
-            self.assertEqual(adapter.calls[0]["sender_email"], "md-test@example.invalid")
-            delivery = connection.execute(
-                "SELECT * FROM mail_deliveries WHERE package_event_id = ?",
-                (candidate["package_event_id"],),
-            ).fetchone()
-            self.assertEqual(delivery["status"], "draft_created")
-            self.assertEqual(delivery["encryption_flag_verified"], 1)
-            self.assertEqual(delivery["outlook_entry_id"], "draft-1")
-
-        page = self.client.get(f"/versand?cycle_id={cycle_id}&workflow=workbook")
-        body = page.get_data(as_text=True)
-        self.assertIn("Entwurf erstellt", body)
-        self.assertIn("direkt S/MIME-verschlüsselt versenden", body)
-        self.assertIn("E-Mailtext bearbeiten", body)
-        self.assertIn("Arbeitsmappen per E-Mail zustellen", body)
-        self.assertIn("data-refresh-after-download", body)
-        self.assertIn("dispatch.js", body)
-
-    def test_missing_recipient_blocks_outlook_draft(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            connection = get_db()
-            connection.execute("UPDATE employees SET email = '' WHERE pn = '111116'")
-            connection.commit()
-            create_package_file(
-                connection,
-                cycle_id=cycle_id,
-                manager_pn="111116",
-                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
-            )
-            candidate = next(
-                row for row in dispatch_candidates(connection, cycle_id=cycle_id)
-                if row["manager_pn"] == "111116"
-            )
-            adapter = FakeOutlookDraftAdapter()
-            result = create_outlook_drafts(
-                connection,
-                cycle_id=cycle_id,
-                package_event_ids=[candidate["package_event_id"]],
-                sender_email="hr@example.invalid",
-                adapter=adapter,
-            )
-            self.assertEqual(result["created"], 0)
-            self.assertEqual(result["failed"], 1)
-            self.assertEqual(adapter.calls, [])
-            self.assertIn("E-Mail-Adresse fehlt", result["errors"][0])
-
-    def test_selected_workbooks_can_be_sent_directly(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            connection = get_db()
-            create_package_file(
-                connection, cycle_id=cycle_id, manager_pn="111116",
-                output_dir=Path(self.app.config["STORAGE_ROOT"]) / "packages",
-            )
-            candidate = next(
-                row for row in dispatch_candidates(connection, cycle_id=cycle_id)
-                if row["manager_pn"] == "111116"
-            )
-            adapter = FakeOutlookDraftAdapter()
-            result = create_outlook_drafts(
-                connection,
-                cycle_id=cycle_id,
-                package_event_ids=[candidate["package_event_id"]],
-                sender_email="hr@example.invalid",
-                delivery_mode="send",
-                subject_template="MD {years} für {manager_name}",
-                body_template="Guten Tag {manager_name}\n\n{introduction}",
-                adapter=adapter,
-            )
-            self.assertEqual(result["sent"], 1)
-            self.assertEqual(result["created"], 0)
-            self.assertEqual(adapter.calls[0]["subject"], "MD 2025/2026 für Rufname6 Nachname6")
-            delivery = connection.execute(
-                "SELECT status FROM mail_deliveries WHERE package_event_id = ?",
-                (candidate["package_event_id"],),
-            ).fetchone()
-            self.assertEqual(delivery["status"], "sent_confirmed")
 
     def test_outlook_mailbox_is_resolved_by_display_name(self) -> None:
         class FakeStore:
@@ -763,7 +424,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             connection = get_db()
             root = Path(self.app.config["STORAGE_ROOT"])
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -842,7 +503,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             connection = get_db()
             root = Path(self.app.config["STORAGE_ROOT"])
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -948,7 +609,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             connection = get_db()
             root = Path(self.app.config["STORAGE_ROOT"])
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -1037,7 +698,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             connection = get_db()
             root = Path(self.app.config["STORAGE_ROOT"])
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection, cycle_id=cycle_id, manager_pn="111116",
                 output_dir=root / "packages",
             )
@@ -1129,7 +790,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context():
             connection = get_db()
             root = Path(self.app.config["STORAGE_ROOT"])
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection, cycle_id=cycle_id, manager_pn="111116",
                 output_dir=root / "packages",
             )
@@ -1438,12 +1099,6 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("<progress", page)
         self.assertIn("table_controls.js", page)
 
-    def test_workbook_pdf_data_block_contains_structured_competencies(self) -> None:
-        template = (PROJECT_ROOT / "prototype" / "html_dialog" / "template.html").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("review_competencies=", template)
-        self.assertIn("development_competencies=", template)
 
     def test_manual_dialog_event_can_be_added(self) -> None:
         cycle_id = self._prepare_cycle()
@@ -1484,15 +1139,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             ).fetchone()
             self.assertEqual(obligation["document_kind"], "review")
             self.assertEqual(obligation["due_date"], "2025-04-15")
-            payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn="111118"
-            )
-            manual_case = next(
-                item for item in payload["employees"]
-                if item["case_id"] == event["event_id"]
-            )
-            self.assertEqual(manual_case["dialog_type"], "probation")
-            self.assertEqual(manual_case["suggestion"]["scope"], "review_only")
+            self.assertEqual(event['required_scope'],'review_only')
             set_leading_sap_event(connection, event["id"])
 
     def test_sap_import_cycle_and_manager_counts(self) -> None:
@@ -1512,43 +1159,15 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Rufname1 Nachname1", response.get_data(as_text=True))
 
-    def test_review_period_is_clipped_to_entry_and_exit(self) -> None:
-        cycle_id = self._prepare_cycle()
-        with self.app.app_context():
-            connection = get_db()
-            exit_payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn="111116"
-            )
-            exiting = next(
-                item for item in exit_payload["employees"] if item["employee"]["pn"] == "111112"
-            )
-            self.assertEqual(exiting["period_start"], "2025-01-01")
-            self.assertEqual(exiting["period_end"], "2025-10-31")
-            self.assertEqual(exiting["suggestion"]["scope"], "review_only")
-            self.assertIn(
-                "Auf Wunsch des Mitarbeitenden kann auf den Rückblick verzichtet werden.",
-                exiting["suggestion"]["reason"],
-            )
-
-            entry_payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn="111118"
-            )
-            entrant = next(
-                item for item in entry_payload["employees"] if item["employee"]["pn"] == "111114"
-            )
-            self.assertEqual(entrant["period_start"], "2025-09-01")
-            self.assertEqual(entrant["period_end"], "2025-12-31")
+    def test_review_period_is_clipped_to_entry_and_exit(self):
+        self.assertEqual(bounded_review_period(2025,exit_date='2025-10-31'),('2025-01-01','2025-10-31'))
+        self.assertEqual(bounded_review_period(2025,entry_date='2025-09-01'),('2025-09-01','2025-12-31'))
 
     def test_sap_export_uses_only_required_columns_and_clipped_period(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
-            payload = build_manager_payload(
-                connection, cycle_id=cycle_id, manager_pn="111116"
-            )
-            employee = next(
-                item for item in payload["employees"] if item["employee"]["pn"] == "111112"
-            )
+            employee={'period_start':'2025-01-01','period_end':'2025-10-31','review':{}}
             employee["scope"] = "review_only"
             employee["scope_reason"] = "Austritt"
             employee["dialog_date"] = "2026-01-21"
@@ -1640,7 +1259,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
             root = Path(temp)
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -1694,7 +1313,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
             root = Path(temp)
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -1758,7 +1377,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         with self.app.app_context(), tempfile.TemporaryDirectory() as temp:
             connection = get_db()
             root = Path(temp)
-            _package_path, payload = create_package_file(
+            _package_path, payload = legacy_pdf_source(
                 connection,
                 cycle_id=cycle_id,
                 manager_pn="111116",
@@ -1787,95 +1406,6 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertEqual(case["status"], "kein_md")
             self.assertEqual(case["official_scope"], "none")
             self.assertFalse((root / "dossier_ready").exists())
-
-    def test_package_download_and_saved_return_roundtrip(self) -> None:
-        cycle_id = self._prepare_cycle()
-        response = self.client.post(f"/cycles/{cycle_id}/managers/111116/package")
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            "MD_Dialog_2025_2026_Nachname6_Rufname6_111116_START.html",
-            response.headers["Content-Disposition"],
-        )
-
-        with tempfile.TemporaryDirectory() as temp:
-            start_path = Path(temp) / "start.html"
-            start_path.write_bytes(response.data)
-            payload = extract_payload(start_path)
-            start_html = start_path.read_text(encoding="utf-8")
-        response.close()
-        preparation_template = payload["configuration"]["preparation_template"]
-        self.assertIn("Persönliche Reflexion als PDF", preparation_template)
-        self.assertIn("Feedback als PDF", preparation_template)
-        self.assertIn("Teilkompetenzen und Formulierungshilfen", preparation_template)
-        self.assertIn('data-action="print-preparation">Persönliche Reflexion als PDF', preparation_template)
-        self.assertIn("Ungespeicherte Angaben", preparation_template)
-        self.assertIn("Bitte mit dieser Datei weiterarbeiten", preparation_template)
-        self.assertIn("const markDirty", preparation_template)
-        self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.", preparation_template)
-        self.assertNotIn("gesammelt und S/MIME-verschlüsselt", preparation_template)
-        self.assertIn("Die Führungskräfte sammeln", self.client.get(
-            f"/ruecklaeufe?cycle_id={cycle_id}"
-        ).get_data(as_text=True))
-        self.assertIn("name:'Vorbereitung MA'", start_html)
-        self.assertIn("selectedStepByCase[employee.case_id] || 'basics'", start_html)
-        self.assertIn("selectedStep === 'preparation'", start_html)
-        self.assertIn('<div class="suggestion warning"><strong>Feedback-Rücklauf:', start_html)
-        self.assertNotIn("HR fordert fehlende Feedbacks nicht nach.</div>", start_html)
-        self.assertIn("const showFeedback = (hasReview || Boolean(selection.feedback)) && !isReturn", preparation_template)
-        self.assertIn("if (!showFeedback) return", preparation_template)
-        self.assertIn("showReflection && hasOutlook", preparation_template)
-        payload["package"]["revision"] = 1
-        payload["package"]["saved_at"] = "2025-09-17T12:30:00+00:00"
-        returned_html = render_html(payload).encode("utf-8")
-        response = self.client.post(
-            "/returns",
-            data={
-                "return_file": (
-                    io.BytesIO(returned_html),
-                    "MD_Dialog_2025_2026_Nachname6_Rufname6_111116_BEARBEITET_v01_20250917_1230.html",
-                )
-            },
-            content_type="multipart/form-data",
-            follow_redirects=True,
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Rücklauf von Rufname6 Nachname6", response.get_data(as_text=True))
-
-        duplicate_response = self.client.post(
-            "/returns",
-            data={
-                "return_file": (
-                    io.BytesIO(returned_html),
-                    "MD_Dialog_2025_2026_Nachname6_Rufname6_111116_BEARBEITET_v01_20250917_1230.html",
-                )
-            },
-            content_type="multipart/form-data",
-            follow_redirects=True,
-        )
-        self.assertIn("wurde bereits importiert oder ist veraltet", duplicate_response.get_data(as_text=True))
-
-        with self.app.app_context():
-            connection = get_db()
-            events = connection.execute(
-                "SELECT direction FROM package_events ORDER BY id"
-            ).fetchall()
-            self.assertEqual([row["direction"] for row in events], ["versand", "ruecklauf"])
-            _cycle, managers = cycle_overview(connection, cycle_id)
-            manager = next(row for row in managers if row["manager_pn"] == "111116")
-            self.assertEqual(manager["case_count"], 3)
-
-    def test_start_file_cannot_be_imported_as_return(self) -> None:
-        cycle_id = self._prepare_cycle()
-        package = self.client.post(f"/cycles/{cycle_id}/managers/111116/package")
-        package_data = package.data
-        package.close()
-        response = self.client.post(
-            "/returns",
-            data={"return_file": (io.BytesIO(package_data), "START.html")},
-            content_type="multipart/form-data",
-            follow_redirects=True,
-        )
-        self.assertIn("Die Datei ist noch eine Startdatei", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

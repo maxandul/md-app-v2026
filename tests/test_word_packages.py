@@ -52,7 +52,7 @@ class WordPackagesTest(unittest.TestCase):
         self.paths = {kind: str(self.root / f'{kind}.docx') for kind in ('review', 'outlook', 'probation')}
         for kind, prefix in [('review', 'rb'), ('outlook', 'ab'), ('probation', 'pz')]:
             synthetic_template(Path(self.paths[kind]), prefix)
-        self.app = create_app({'TESTING': True, 'AUTH_DISABLED': True, 'SECRET_KEY': 'test',
+        self.app = create_app({"HR_GOAL_WORKFLOW": False, 'TESTING': True, 'AUTH_DISABLED': True, 'SECRET_KEY': 'test',
             'DATABASE': str(self.root / 'db.sqlite3'), 'STORAGE_ROOT': str(self.root / 'data'),
             'BACKUP_ROOT': str(self.root / 'backup'), 'DOSSIER_HANDOFF_ROOT': str(self.root / 'handoff'),
             'WORD_TEMPLATE_PATHS': self.paths})

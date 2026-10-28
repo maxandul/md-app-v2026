@@ -1,5 +1,10 @@
 # E2 und Vorbereitung der neuen HR-Version
 
+**Historischer E2-Nachweis vor der Bereinigung.** Der aktuelle Einstieg ist
+[MD-Web.bat](../MD-Web.bat); die aktuelle Anleitung steht in
+[Einrichtung und Betrieb](START_NEUE_HR_VERSION.md). Frühere Starter und der
+Oberflächenschalter wurden anschliessend entfernt.
+
 Stand: 28. Oktober 2026. Arbeitsbranch: `feat/hr-e2-release-preparation`.
 Basis: `d171e96` auf `feat/hr-uebersicht-f`; enthält die bisherigen Etappen A–F.
 Produktives `main`: `9d7ca77`. Kein Merge und keine produktive Migration durchgeführt.

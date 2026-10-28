@@ -128,7 +128,7 @@ Sind die oben aufgeführten Bewilligungen vollständig und aktuell?
     def test_preview_handles_mixed_batch_without_persisting_upload(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            app = create_app({
+            app = create_app({"HR_GOAL_WORKFLOW": False,
                 "TESTING": True, "AUTH_DISABLED": True, "SECRET_KEY": "test",
                 "DATABASE": str(root / "test.sqlite3"),
                 "STORAGE_ROOT": str(root / "data"), "BACKUP_ROOT": str(root / "backup"),

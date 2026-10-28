@@ -1,5 +1,8 @@
 # Übergabe: Umsetzung der HR-Nutzerführung
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 **Fortschreibung vom 28. Oktober 2026:** A–F und die begrenzte E2-Automatik sind
 im Branch `feat/hr-e2-release-preparation` implementiert und automatisiert
 geprüft. Aktueller Stand: [E2-Ergebnisse](UMSETZUNG_E2_RELEASE.md) und
@@ -10,8 +13,8 @@ Windows-/Integrationsnachweise bleiben offen. Der folgende Auftrag
 hält die ursprünglichen Anforderungen fest; seine damaligen Ist-Aussagen sind
 kein aktueller Implementierungsstand.
 
-Stand: 27. Oktober 2026  
-Repository: maxandul/md-app-v2026  
+Stand: 27. Oktober 2026
+Repository: maxandul/md-app-v2026
 Konzeptbranch: `docs/prozessuebersicht-nutzerfuehrung`
 
 ## 1. Auftrag und aktueller Stand

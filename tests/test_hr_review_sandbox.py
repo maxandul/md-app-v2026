@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from review_hr_ab import create_review_app
+from tests.hr_sandbox import create_review_app
 from webapp.db import get_db
 from webapp.services import goal_review as review,goal_followups as followups,goal_delivery as delivery
 from webapp.services.word_packages import goal_sources_fingerprint

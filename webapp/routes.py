@@ -46,14 +46,6 @@ from .services.dialog_events import (
     dialog_event_rows,
     set_leading_sap_event,
 )
-from .services.packages import (
-    create_package_batch,
-    create_package_file,
-    create_replacement_package_file,
-    create_update_file,
-    import_returned_package,
-    manager_package_state,
-)
 from .services.documents import (
     confirm_digital_signature,
     import_handwritten_scan,
@@ -71,7 +63,6 @@ from .services.sap_export import (
     get_sap_export_batch,
     sap_export_batches,
 )
-from .services.mail_dispatch import create_outlook_drafts, dispatch_candidates
 from .services.mail_intake import (
     mail_inbox_overview,
     resolve_inbound_message,
@@ -418,15 +409,6 @@ def dispatch():
         enriched = []
         for row in managers:
             item = dict(row)
-            state = manager_package_state(
-                connection,
-                cycle_id=data["selected_cycle"]["id"],
-                manager_pn=item["manager_pn"],
-            )
-            item["package_state"] = state["state"]
-            item["package_label"] = state["label"]
-            item["package_issues"] = state["issues"]
-            item["package_blocking"] = state["blocking"]
             item["org_unit"] = connection.execute(
                 """
                 SELECT COALESCE(NULLIF(m.org_unit, ''), MIN(dc_employee.org_unit), '') AS org_unit
@@ -440,21 +422,14 @@ def dispatch():
             enriched.append(item)
         managers = enriched
     org_units = sorted({row["org_unit"] for row in managers if row["org_unit"]})
-    mail_candidates = []
-    if data["selected_cycle"]:
-        mail_candidates = dispatch_candidates(
-            get_db(),
-            cycle_id=data["selected_cycle"]["id"],
-            sender_email=current_app.config["HR_MAILBOX_EMAIL"],
-        )
     return render_template(
-        "dispatch_legacy.html" if request.args.get('workflow')=='workbook' and current_app.config.get('LEGACY_WORKBOOKS')=='enabled' else "dispatch.html",
+        "dispatch.html",
         active_nav="dispatch", managers=managers,
         default_word_subject=DEFAULT_WORD_SUBJECT, default_word_body=DEFAULT_WORD_BODY,
         word_candidates=word_dispatch_candidates(get_db(),cycle_id=data['selected_cycle']['id'],template_paths=current_app.config['WORD_TEMPLATE_PATHS']) if data['selected_cycle'] else [],
         word_templates=word_template_status(current_app.config['WORD_TEMPLATE_PATHS']),
         hr_sender=current_app.config['HR_MAILBOX_EMAIL'],
-        org_units=org_units, mail_candidates=mail_candidates, **data
+        org_units=org_units, **data
     )
 
 
@@ -781,11 +756,6 @@ def cycle_detail(cycle_id: int):
     manager_rows = []
     for row in managers:
         item = dict(row)
-        state = manager_package_state(
-            get_db(), cycle_id=cycle_id, manager_pn=item["manager_pn"]
-        )
-        item["package_state"] = state["state"]
-        item["package_blocking"] = state["blocking"]
         manager_rows.append(item)
     return render_template(
         "cycle.html", cycle=cycle, managers=manager_rows,
@@ -836,9 +806,6 @@ def manager_detail(cycle_id: int, manager_pn: str):
         manager=manager,
         cases=cases,
         events=events,
-        package_state=manager_package_state(
-            get_db(), cycle_id=cycle_id, manager_pn=manager_pn
-        ),
         word_templates=word_template_status(current_app.config["WORD_TEMPLATE_PATHS"]),
         word_packages=get_db().execute("SELECT id,created_at FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? ORDER BY id DESC LIMIT 5", (cycle_id,manager_pn)).fetchall(),
         active_nav="dialogs",
@@ -996,198 +963,6 @@ def download_word_package(cycle_id: int, manager_pn: str):
     if manifest["skipped_cases"]:
         flash(f"{len(manifest['skipped_cases'])} Fall/Fälle ohne Rückblick-/Ausblickpflicht übersprungen.", "info")
     return send_file(path, as_attachment=True, download_name=path.name, mimetype="application/zip")
-
-
-@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/package")
-def download_manager_package(cycle_id: int, manager_pn: str):
-    try:
-        path, payload = create_package_file(
-            get_db(),
-            cycle_id=cycle_id,
-            manager_pn=manager_pn,
-            output_dir=_storage_dir("packages"),
-        )
-    except (LookupError, ValueError) as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("main.cycle_detail", cycle_id=cycle_id))
-    audit(
-        "manager_package_created", "package", payload["package"]["package_id"],
-        cycle_id=cycle_id, manager_pn=manager_pn,
-    )
-    response = send_file(
-        path,
-        as_attachment=True,
-        download_name=path.name,
-        mimetype="text/html; charset=utf-8",
-    )
-    response.headers["X-MD-Package-ID"] = payload["package"]["package_id"]
-    return response
-
-
-@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/package/recreate")
-def recreate_manager_package(cycle_id: int, manager_pn: str):
-    try:
-        path, payload = create_replacement_package_file(
-            get_db(), cycle_id=cycle_id, manager_pn=manager_pn,
-            output_dir=_storage_dir("packages"),
-        )
-    except (LookupError, ValueError) as exc:
-        flash(str(exc), "error")
-        return redirect(request.referrer or url_for("main.dispatch", cycle_id=cycle_id))
-    audit(
-        "manager_package_recreated", "package", payload["package"]["package_id"],
-        cycle_id=cycle_id, manager_pn=manager_pn,
-    )
-    response = send_file(
-        path,
-        as_attachment=True,
-        download_name=path.name,
-        mimetype="text/html; charset=utf-8",
-    )
-    response.headers["X-MD-Package-ID"] = payload["package"]["package_id"]
-    return response
-
-
-@bp.post("/cycles/<int:cycle_id>/managers/<manager_pn>/update")
-def download_manager_update(cycle_id: int, manager_pn: str):
-    try:
-        path, payload = create_update_file(
-            get_db(),
-            cycle_id=cycle_id,
-            manager_pn=manager_pn,
-            output_dir=_storage_dir("packages"),
-        )
-    except (LookupError, ValueError) as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("main.dispatch", cycle_id=cycle_id))
-    audit(
-        "manager_update_created", "package_update", payload["update"]["update_id"],
-        cycle_id=cycle_id, manager_pn=manager_pn,
-    )
-    response = send_file(
-        path,
-        as_attachment=True,
-        download_name=path.name,
-        mimetype="application/json; charset=utf-8",
-    )
-    response.headers["X-MD-Update-ID"] = payload["update"]["update_id"]
-    return response
-
-
-@bp.post("/cycles/<int:cycle_id>/packages/batch")
-def download_package_batch(cycle_id: int):
-    manager_pns = request.form.getlist("manager_pn")
-    selection_mode = request.form.get("selection_mode", "selected")
-    if selection_mode in {"all", "org_unit"}:
-        _cycle, available = cycle_overview(get_db(), cycle_id)
-        if selection_mode == "all":
-            manager_pns = [row["manager_pn"] for row in available]
-        else:
-            org_unit = request.form.get("org_unit", "").strip()
-            manager_pns = _manager_pns_for_org_unit(get_db(), cycle_id, org_unit)
-    try:
-        path, counts = create_package_batch(
-            get_db(),
-            cycle_id=cycle_id,
-            manager_pns=manager_pns,
-            output_dir=_storage_dir("package_batches"),
-        )
-    except (LookupError, ValueError) as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("main.dispatch", cycle_id=cycle_id))
-    audit(
-        "package_batch_created", "package_batch", path.name,
-        cycle_id=cycle_id, start_count=counts["start"], update_count=counts["update"],
-    )
-    response = send_file(
-        path,
-        as_attachment=True,
-        download_name=path.name,
-        mimetype="application/zip",
-    )
-    response.headers["X-MD-START-Count"] = str(counts["start"])
-    response.headers["X-MD-Update-Count"] = str(counts["update"])
-    return response
-
-
-@bp.post("/cycles/<int:cycle_id>/mail-drafts")
-def prepare_mail_drafts(cycle_id: int):
-    delivery_mode = request.form.get("delivery_mode", "draft")
-    try:
-        result = create_outlook_drafts(
-            get_db(),
-            cycle_id=cycle_id,
-            package_event_ids=request.form.getlist("package_event_id", type=int),
-            sender_email=current_app.config["HR_MAILBOX_EMAIL"],
-            delivery_mode=delivery_mode,
-            subject_template=request.form.get("subject_template", ""),
-            body_template=request.form.get("body_template", ""),
-        )
-    except (LookupError, ValueError) as exc:
-        flash(str(exc), "error")
-    else:
-        if result["sent"]:
-            audit(
-                "workbook_emails_sent", "cycle", str(cycle_id),
-                sent=result["sent"],
-            )
-            flash(
-                f"{result['sent']} S/MIME-markierte Nachricht(en) wurden direkt versendet.",
-                "success",
-            )
-        if result["created"]:
-            flash(
-                f"{result['created']} verschlüsselt markierte Outlook-Entwurf/Entwürfe "
-                "wurden erstellt. Bitte Verschlüsselung, Absender und Anhang in Outlook "
-                "prüfen und dort manuell senden.",
-                "success",
-            )
-        if result["failed"]:
-            flash(
-                f"{result['failed']} Entwurf/Entwürfe konnten nicht erstellt werden: "
-                + " ".join(result["errors"]),
-                "error",
-            )
-    return redirect(url_for("main.dispatch", cycle_id=cycle_id, workflow="workbook"))
-
-
-@bp.post("/returns")
-def upload_return():
-    upload = request.files.get("return_file")
-    if not upload or not upload.filename:
-        flash("Bitte wähle die zurückgesendete HTML-Datei aus.", "error")
-        return redirect(url_for("main.returns_overview"))
-    if not upload.filename.lower().endswith(('.html', '.htm')):
-        flash("Der Rücklauf muss eine gespeicherte HTML-Datei sein.", "error")
-        return redirect(url_for("main.returns_overview"))
-
-    stored_name = _stored_name(upload.filename)
-    temporary = _storage_dir("returns_pending") / stored_name
-    upload.save(temporary)
-    try:
-        result = import_returned_package(
-            get_db(), path=temporary, original_filename=upload.filename
-        )
-    except Exception as exc:
-        rejected = _storage_dir("returns_rejected") / stored_name
-        shutil.move(str(temporary), str(rejected))
-        flash(str(exc), "error")
-        return redirect(url_for("main.returns_overview"))
-
-    accepted = _storage_dir("returns_accepted") / stored_name
-    shutil.move(str(temporary), str(accepted))
-    counts = result["summary"]["status_counts"]
-    audit(
-        "manager_return_imported", "manager", result["manager_pn"],
-        cycle_id=result["cycle_id"], revision=result["revision"],
-    )
-    flash(
-        f"Rücklauf von {result['manager_name']} (v{int(result['revision']):02d}) importiert: "
-        f"{counts['vollstaendig']} vollständig, {counts['kein_md']} ohne MD, "
-        f"{counts['offen']} noch offen.",
-        "success",
-    )
-    return redirect(url_for("main.cycle_detail", cycle_id=result["cycle_id"]))
 
 
 @bp.post("/word-pdf-preview")

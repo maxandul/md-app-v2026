@@ -44,7 +44,7 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
-        HR_GOAL_WORKFLOW=os.environ.get("MD_HR_GOAL_WORKFLOW", "0") == "1",
+        HR_GOAL_WORKFLOW=True,
         HR_RETURN_AUTOMATION=os.environ.get("MD_HR_RETURN_AUTOMATION", "0") == "1",
         ANALYTICS_MIN_GROUP_SIZE=max(
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
@@ -54,6 +54,10 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.config.update(load_organisation())
     if test_config:
         app.config.update(test_config)
+
+    # Only historical database fixtures may opt out of the new schema.
+    if not app.testing:
+        app.config['HR_GOAL_WORKFLOW'] = True
 
     if "WORD_TEMPLATE_PATHS" not in app.config:
         from .services.word_packages import load_word_config
@@ -120,8 +124,7 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     def workflow_visibility():
         if app.config.get('HR_GOAL_WORKFLOW'):
             session.setdefault('goal_csrf',secrets.token_urlsafe(32))
-        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled',
-                'goal_csrf_token':session.get('goal_csrf',''),
+        return {'goal_csrf_token':session.get('goal_csrf',''),
                 'return_review_enabled':bool(app.config.get('HR_GOAL_WORKFLOW'))}
 
     from .services.mail_schedule import start_worker

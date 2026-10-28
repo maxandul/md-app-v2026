@@ -1,5 +1,8 @@
 # Umstellung auf Word-Vorlagen und PDF-Rücklauf
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 Entscheid vom 09.10.2026: Word-Vorlagen pro Mitarbeitenden für den aktuellen
 Durchlauf. Das bestehende Repository wird weitergeführt; die HTML-Arbeitsmappe
 bleibt technisch erhalten und ist standardmässig ausgeblendet. Der aktuelle Teststand liegt auf `plan-b-word-pdf`.

@@ -1,5 +1,8 @@
 # Entwurf E1: Rücklaufprüfung, Unterschriften und Bereitstellung
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 **Fortschreibung:** Die Prüfung mit den sechs Originalen und die darauf begrenzte
 Automatik sind in [E2](UMSETZUNG_E2_RELEASE.md) dokumentiert. Dieser Text hält den
 E1-Zwischenstand fest; die Windows-Bedienabnahme bleibt offen.

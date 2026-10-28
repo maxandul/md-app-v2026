@@ -11,8 +11,10 @@ echo.
 set "PYTHON_EXE="
 set "PYTHON_ARGS="
 
-py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
-if not errorlevel 1 (
+if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=.venv\Scripts\python.exe"
+
+if not defined PYTHON_EXE py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+if not defined PYTHON_EXE if not errorlevel 1 (
     set "PYTHON_EXE=py"
     set "PYTHON_ARGS=-3.11"
 )
@@ -32,12 +34,14 @@ if not defined PYTHON_EXE (
 echo Verwende:
 "%PYTHON_EXE%" %PYTHON_ARGS% --version
 echo.
-echo Installiere die festgelegten Pakete fuer das aktuelle Windows-Konto ...
+echo Installiere die festgelegten Pakete fuer diese Python-Umgebung ...
+set "PIP_SCOPE=--user"
+if exist ".venv\Scripts\python.exe" set "PIP_SCOPE="
 
 if defined MD_PIP_PROXY (
-    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install --user --proxy "%MD_PIP_PROXY%" -r requirements.txt
+    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install %PIP_SCOPE% --proxy "%MD_PIP_PROXY%" -r requirements.txt
 ) else (
-    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install --user -r requirements.txt
+    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install %PIP_SCOPE% -r requirements.txt
 )
 
 if errorlevel 1 (
@@ -50,7 +54,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf; print('Alle benoetigten Pakete sind vorhanden.')"
+"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf, reportlab; print('Alle benoetigten Pakete sind vorhanden.')"
 if errorlevel 1 (
     echo FEHLER: Die Installationspruefung ist fehlgeschlagen.
     pause

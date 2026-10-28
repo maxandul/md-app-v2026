@@ -133,10 +133,10 @@ class GoalWithdrawalsTest(unittest.TestCase):
         self.confirm(source);withdrawal=self.withdraw(source)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM historical_goals').fetchone()[0],1)
         self.assertEqual(review.sources(self.db,item['employment_id'],2025),[])
-        from webapp.services.packages import _prior_goals
-        with self.assertRaises(ValueError):_prior_goals(self.db,employee_pn='111113',employment_assignment='1',review_year=2025)
+        from webapp.services.word_packages import prior_goals
+        with self.assertRaises(ValueError):prior_goals(self.db,employee_pn='111113',assignment='1',year=2025)[:2]
         self.resolve(withdrawal)
-        self.assertEqual(_prior_goals(self.db,employee_pn='111113',employment_assignment='1',review_year=2025),([],[]))
+        self.assertEqual(prior_goals(self.db,employee_pn='111113',assignment='1',year=2025)[:2],([],[]))
 
     def test_legacy_manager_dispatch_is_included_and_remains_open(self):
         from webapp.services.word_dispatch import prepare_word_batch,dispatch_word_packages

@@ -1,5 +1,8 @@
 # Etappe F: zusammenhängende HR-Übersichten
 
+> Entwicklungsnachweis: Startangaben und Zwischenstände in diesem Dokument sind historisch.
+> Aktuell: [MD-Web.bat und Einrichtung](START_NEUE_HR_VERSION.md).
+
 **Fortschreibung:** Das vollständige Testpaket mit E2, aktueller Gesamtprüfung und
 Startanleitung steht in [E2](UMSETZUNG_E2_RELEASE.md) und
 [Neue HR-Version starten](START_NEUE_HR_VERSION.md). Die folgenden Nachweise

@@ -1,0 +1,24 @@
+MD-App - neue HR-Oberflaeche
+
+1. Das ZIP von main vollstaendig in einen festen App-Ordner entpacken.
+2. Einmalig INSTALL_MD.bat ausfuehren (Python 3.11 oder neuer erforderlich).
+3. Danach immer MD-Web.bat starten.
+4. Im Browser http://127.0.0.1:5050/arbeit oeffnen.
+5. Beim ersten Start Administrationskonto anlegen, Einstellungen und
+   Word-Vorlagen einrichten, danach SAP-Stammdaten importieren.
+
+Die neue Oberflaeche ist immer aktiv. Ein zusaetzlicher Starter oder Schalter
+ist nicht erforderlich. INSTALL_MD.bat und MD-Web.bat verwenden eine vorhandene
+.venv gemeinsam; andernfalls das installierte Python.
+
+PDFs werden ausgelesen und vor der Uebernahme manuell bestaetigt.
+Die optionale PDF-Automatik bleibt standardmaessig ausgeschaltet.
+
+Das Konsolenfenster waehrend der Arbeit offen lassen. Strg+C beendet die App.
+Bei belegtem Port wird die bereits laufende App geoeffnet.
+
+Die Datenbank und lokale Ablage werden unter instance angelegt. Bei spaeteren
+Updates diesen Ordner, lokale Konfiguration und eigene Vorlagen behalten.
+Regelmaessig ueber Administration sichern; Konfiguration/Vorlagen separat sichern.
+
+Weitere Einrichtung: docs/START_NEUE_HR_VERSION.md

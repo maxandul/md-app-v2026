@@ -131,7 +131,7 @@ class WordWorkflowAuditTest(unittest.TestCase):
         self.assertIn('https://md.example.invalid',html)
         self.assertIn('Erreichbarkeit nicht geprüft',html)
         self.app.config['LEGACY_WORKBOOKS']='enabled'
-        self.assertIn('Arbeitsmappe',client.get('/versand?workflow=workbook').text)
+        self.assertNotIn('Arbeitsmappe',client.get('/versand?workflow=workbook').text)
 
     def test_setup_explains_default_config_and_relative_paths(self):
         self.app.config['WORD_TEMPLATE_PATHS']={}

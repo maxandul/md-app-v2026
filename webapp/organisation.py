@@ -9,7 +9,6 @@ from urllib.parse import urlsplit
 
 DEFAULTS = {
     'PUBLIC_BASE_URL':'',
-    'LEGACY_WORKBOOKS':'disabled',
     'HR_MAILBOX_EMAIL':'',
     'OUTLOOK_MAILBOX_NAME':'',
     'OUTLOOK_TARGET_FOLDER':'Mitarbeitenden-Dialog',
@@ -18,7 +17,6 @@ DEFAULTS = {
 }
 ENVIRONMENT = {
     'PUBLIC_BASE_URL':'MD_PUBLIC_BASE_URL',
-    'LEGACY_WORKBOOKS':'MD_LEGACY_WORKBOOKS',
     'HR_MAILBOX_EMAIL':'MD_HR_MAILBOX_EMAIL',
     'OUTLOOK_MAILBOX_NAME':'MD_OUTLOOK_MAILBOX',
     'OUTLOOK_TARGET_FOLDER':'MD_OUTLOOK_TARGET_FOLDER',
@@ -31,8 +29,6 @@ def validate_organisation(values):
     for key in DEFAULTS:
         if not isinstance(values.get(key,''),str):
             raise ValueError(f'Organisationskonfiguration: {key} muss Text enthalten.')
-    if values.get('LEGACY_WORKBOOKS','disabled') not in ('enabled','disabled'):
-        raise ValueError('LEGACY_WORKBOOKS muss enabled oder disabled sein.')
     public_url = values.get('PUBLIC_BASE_URL','')
     if public_url:
         parsed = urlsplit(public_url)
@@ -69,6 +65,9 @@ def load_organisation(path=None):
     if path.exists():
         try:
             configured = json.loads(path.read_text(encoding='utf-8-sig'))
+            if isinstance(configured,dict) and configured.get('LEGACY_WORKBOOKS') in ('enabled','disabled'):
+                configured.pop('LEGACY_WORKBOOKS')
+                notice = 'Die frühere Arbeitsmappen-Einstellung entfällt. Die App verwendet ausschliesslich den Word-/PDF-Ablauf.'
             if not isinstance(configured,dict) or set(configured)-set(DEFAULTS):
                 raise ValueError('Unbekannter Konfigurationsschlüssel')
             values.update(configured)
@@ -92,8 +91,7 @@ def load_organisation(path=None):
     return values
 
 
-def workbook_configuration():
-    # Auch der eigenständige HTML-Generator verwendet dieselbe lokale Datei.
+def local_configuration():
     from flask import current_app, has_app_context
     settings = current_app.config if has_app_context() else load_organisation()
     return {'hr_email':settings.get('HR_MAILBOX_EMAIL',''), 'special_cases_url':settings.get('SPECIAL_CASES_URL','')}

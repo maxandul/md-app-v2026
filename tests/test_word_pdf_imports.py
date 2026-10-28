@@ -65,7 +65,7 @@ def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year
 class WordPdfImportsTest(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.root=Path(self.tmp.name)
-        self.app=create_app({'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':'test','DATABASE':str(self.root/'db'),
+        self.app=create_app({"HR_GOAL_WORKFLOW": False, 'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':'test','DATABASE':str(self.root/'db'),
             'STORAGE_ROOT':str(self.root/'storage'),'BACKUP_ROOT':str(self.root/'backup'),'DOSSIER_HANDOFF_ROOT':str(self.root/'handoff')})
         self.context=self.app.app_context();self.context.push();self.db=get_db()
         sample=create_sap_sample(self.root/'sap.xlsx')

@@ -79,6 +79,11 @@ class HRReviewSandboxTest(unittest.TestCase):
             with app.app_context():
                 db=get_db()
                 documents=[dict(r) for r in db.execute("SELECT * FROM official_documents WHERE employee_pn='900005' AND is_current=1")]
+                automatic=[dict(r) for r in db.execute("SELECT * FROM official_documents WHERE employee_pn='900002' AND is_current=1")]
+                self.assertEqual(len(automatic),2)
+                for auto in automatic:
+                    self.assertTrue(return_review.view(db,auto['id'])['complete'])
+                    self.assertEqual(return_review.view(db,auto['id'])['validation_origin'],'automatic')
             self.assertEqual(len(documents),2)
             for document in documents:
                 doc=document['id']
@@ -103,7 +108,7 @@ class HRReviewSandboxTest(unittest.TestCase):
                     self.assertTrue(Path(state['handoff']['destination']).is_file())
             self.assertFalse(outside.exists())
             self.assertEqual(client.post('/mail-inbox/scan').status_code,403)
-            self.assertEqual(len(list((root/'handoff').glob('*.pdf'))),2)
+            self.assertEqual(len(list((root/'handoff').glob('*.pdf'))),4)
 
 
 if __name__=='__main__':unittest.main()

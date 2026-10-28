@@ -1,5 +1,10 @@
 # Umsetzungsplan: Durchgängige HR-Nutzerführung
 
+**Aktueller Umsetzungsnachweis vom 28. Oktober 2026:**
+[E2 und Release-Vorbereitung](UMSETZUNG_E2_RELEASE.md),
+[Testpaket und Windows-Abnahme](START_NEUE_HR_VERSION.md).
+Die folgenden Codebefunde beschreiben den ursprünglichen Planungsstand.
+
 Stand: 27. Oktober 2026  
 Geprüfte Codebasis: main, Commit `9d7ca779afc18e9bd9c6607a5b3dbe8465537a18`.  
 Status: Codeabgleich und Umsetzungsvorschlag; keine Implementierung oder Migration durchgeführt.

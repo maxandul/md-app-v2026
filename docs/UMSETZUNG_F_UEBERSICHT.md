@@ -1,5 +1,10 @@
 # Etappe F: zusammenhängende HR-Übersichten
 
+**Fortschreibung:** Das vollständige Testpaket mit E2, aktueller Gesamtprüfung und
+Startanleitung steht in [E2](UMSETZUNG_E2_RELEASE.md) und
+[Neue HR-Version starten](START_NEUE_HR_VERSION.md). Die folgenden Nachweise
+beschreiben den F-Zwischenstand.
+
 Branch: `feat/hr-uebersicht-f`; Basis: getestete Etappe E1.
 Stand: 28. Oktober 2026. Automatisierter Prüfstand siehe unten; visuelle Bedienabnahme offen.
 

@@ -1,12 +1,16 @@
 # MD-App v2026
 
-Die neue Zielnachreichung (Etappen A/B) ist standardmässig ausgeschaltet und
-auf einer isolierten Testkopie mit `MD_HR_GOAL_WORKFLOW=1` prüfbar.
-[Lieferumfang, Gesamtstruktur, Tests und Betriebsgrenzen](docs/UMSETZUNG_AB_ZIELNACHREICHUNG.md)
-beschreiben den vollständigen Ablauf und die noch offenen Etappen C–F.
-Für eine geführte Übung mit erfundenen Personen: `HR_TEST_AB.bat` starten.
-[Anleitung und Abnahmefälle](docs/ABNAHME_AB_GEFUEHRT.md). Diese Übung sperrt
-Outlook, Postfachzugriff und externe Übergaben.
+Die neue HR-Nutzerführung enthält A–F und die E2-Rücklaufautomatik.
+Für den direkten Einstieg mit dem vorhandenen Datenbestand **MD-HR.bat** starten;
+die neue Oberfläche ist dann aktiv und Rückläufe werden zunächst manuell geprüft.
+Vor dem Versionswechsel sichern. Die Kurzanleitung steht in
+[START_HIER_PRODUKTIV.txt](START_HIER_PRODUKTIV.txt).
+[Prüfstand und Grenzen](docs/UMSETZUNG_E2_RELEASE.md) sowie
+[Windows-Test und Einführung](docs/START_NEUE_HR_VERSION.md) beschreiben den aktuellen Stand.
+Für die aktualisierte isolierte Übung mit erfundenen Personen: **HR_TEST_NEU.bat**
+starten. Outlook und Postfachzugriff sind gesperrt; Kopien bleiben im neuen
+Testordner. Die Übung ist freiwillig. Ohne den HR-Starter bzw. die entsprechenden
+Umgebungsvariablen sind neue Oberfläche und PDF-Automatik standardmässig aus.
 
 Lokale Flask-/SQLite-Anwendung zur administrativen Verarbeitung des jährlichen
 Mitarbeitenden-Dialogs (MD). Der aktuelle Stand ist ein lauffähiger MVP für

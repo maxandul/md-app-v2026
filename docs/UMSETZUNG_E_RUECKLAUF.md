@@ -1,5 +1,9 @@
 # Entwurf E1: Rücklaufprüfung, Unterschriften und Bereitstellung
 
+**Fortschreibung:** Die Prüfung mit den sechs Originalen und die darauf begrenzte
+Automatik sind in [E2](UMSETZUNG_E2_RELEASE.md) dokumentiert. Dieser Text hält den
+E1-Zwischenstand fest; die Windows-Bedienabnahme bleibt offen.
+
 Stand: 28. Oktober 2026. Branch: `feat/hr-ruecklauf-e`.
 Basis: Etappe D bei `1eb56ce3b2652adff3ee90d1583bf88bb845c950`.
 

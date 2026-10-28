@@ -1,3 +1,19 @@
+# Vorbereitung HR-Version, 28. Oktober 2026
+
+Auf `feat/hr-e2-release-preparation`: A–F integriert, E2-Parserkorrekturen und
+eng begrenzte Rücklaufautomatik ergänzt. 340 Python-Tests, 50 Unterprüfungen,
+8 JavaScript-Tests sowie alle sechs Originalprüfungen erfolgreich.
+Aktueller Einstieg: [Windows-Test und Einführung](docs/START_NEUE_HR_VERSION.md).
+[Ergebnisse und verbleibende Grenzen](docs/UMSETZUNG_E2_RELEASE.md).
+Der Nutzer wünscht den direkten Einsatz mit laufender Mängelbehebung. Einstieg:
+`MD-HR.bat` aktiviert die neue Oberfläche bei manueller Rücklaufprüfung.
+GitHub-Schreibzugriff ist jetzt verfügbar. Die tatsächliche Installation sowie
+Windows-/Integrationsnachweise bleiben offen. Kein Merge nach main, keine
+produktive Migration in dieser Sitzung. Frühere Einträge unten
+beschreiben den jeweiligen damaligen Stand.
+
+---
+
 # Projektstand MD-App v2026
 
 **Stand:** 2. Oktober 2026

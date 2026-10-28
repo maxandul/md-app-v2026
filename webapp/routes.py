@@ -1450,7 +1450,7 @@ def upload_word_pdfs():
             if not upload.filename.lower().endswith('.pdf'):
                 raise ValueError('Bitte eine PDF-Datei auswählen.')
             upload.save(temporary)
-            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'))
+            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'), auto_handoff_dir=_handoff_dir())
             ids.append(item_id)
             if duplicate:
                 flash(f'{upload.filename}: bereits vorhanden; vorhandene Prüfung geöffnet.', 'info')
@@ -1762,8 +1762,8 @@ def setup_guide():
 
 @bp.get('/hilfe')
 def help_page():
-    from .services.help_content import SECTIONS
-    return render_template('help.html',active_nav='help',help_sections=SECTIONS)
+    from .services.help_content import sections
+    return render_template('help.html',active_nav='help',help_sections=sections(bool(current_app.config.get('HR_GOAL_WORKFLOW'))))
 
 
 @bp.post('/dialog-events/<int:event_id>/attach')

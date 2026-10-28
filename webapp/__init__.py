@@ -45,6 +45,7 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
         HR_GOAL_WORKFLOW=os.environ.get("MD_HR_GOAL_WORKFLOW", "0") == "1",
+        HR_RETURN_AUTOMATION=os.environ.get("MD_HR_RETURN_AUTOMATION", "0") == "1",
         ANALYTICS_MIN_GROUP_SIZE=max(
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
         ),

@@ -18,7 +18,7 @@ def now():
     return datetime.now().astimezone().isoformat(timespec='seconds')
 
 
-def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
+def stage_pdf(connection, path: Path, *, filename: str, directory: Path, auto_handoff_dir=None):
     digest=hashlib.sha256(path.read_bytes()).hexdigest()
     existing=connection.execute('SELECT id FROM word_pdf_imports WHERE sha256=?',(digest,)).fetchone()
     if existing:
@@ -54,7 +54,12 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
         raise
     except Exception:
         connection.rollback(); stored.unlink(missing_ok=True); raise
-    return cursor.lastrowid, False
+    import_id = cursor.lastrowid
+    if auto_handoff_dir is not None:
+        from .return_automation import enabled, process_new
+        if enabled():
+            process_new(connection, import_id, handoff_dir=auto_handoff_dir)
+    return import_id, False
 
 
 def matching_cases(connection, data):
@@ -127,7 +132,9 @@ def _validate(reviewed):
 
 
 def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: str, case_id: str,
-                   historical: bool, reason: str, user_id=None):
+                   historical: bool, reason: str, user_id=None, validation_origin='manual'):
+    if validation_origin not in ('manual','automatic'):
+        raise ValueError('Ungültige Herkunft der Datenprüfung.')
     _validate(reviewed)
     reviewed['data']['ans']=assignment
     reviewed['data']['probation']='ja' if reviewed['data'].get('probation')=='ja' else 'nein'
@@ -255,7 +262,7 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
             update_scope_obligations(connection,case_id=case_id,scope=scope,timestamp=timestamp)
             from . import return_review
             if return_review.available(connection) and not not_conducted:
-                return_review.register(connection,document_id,source_role=reviewed.get('source_role','digital'),user_id=user_id,reviewed=reviewed)
+                return_review.register(connection,document_id,source_role=reviewed.get('source_role','digital'),user_id=user_id,reviewed=reviewed,validation_origin=validation_origin)
             refresh_case_status(connection,case_id)
         connection.execute('''UPDATE word_pdf_imports SET reviewed_json=?,status=?,case_id=?,official_document_id=?,review_note=?,reviewed_by=?,reviewed_at=? WHERE id=?''',(json.dumps(reviewed,ensure_ascii=False),'historical' if historical else 'imported',case_id if case else None,document_id,reason,user_id,timestamp,import_id))
     return document_id

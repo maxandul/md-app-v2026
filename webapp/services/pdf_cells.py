@@ -26,6 +26,27 @@ def normalize_lines(lines):
     return result
 
 
+def positioned_lines(runs):
+    """Reassemble Word's split font runs without losing word boundaries."""
+    groups = []
+    for run in sorted(runs, key=lambda r: (round(r['y']), r['x'])):
+        if not groups or abs(groups[-1][0] - run['y']) > 1.5:
+            groups.append((run['y'], [run]))
+        else:
+            groups[-1][1].append(run)
+    result = []
+    for y, row in groups:
+        value, previous = '', None
+        for run in sorted(row, key=lambda r: r['x']):
+            if (previous and value and not value[-1].isspace() and not run['text'][0].isspace()
+                    and 'end_x' in previous and run['x'] - previous['end_x'] > float(previous['size']) * .15):
+                value += ' '
+            value += run['text']
+            previous = run
+        result.append((y, re.sub(r'\s+', ' ', value).strip()))
+    return result
+
+
 def page_cells(page):
     height = float(page.mediabox.height)
     rects, runs, stack, points = [], [], [], []
@@ -120,5 +141,6 @@ def read_cells(path):
     result=[]
     for number,page in enumerate(PdfReader(path).pages,1):
         cells,runs,lines=page_cells(page)
-        result.append(dict(page=number,cells=cells,runs=runs))
+        external = [r for r in runs if not any(c['x0']-.2 <= r['x'] < c['x1'] and c['y0'] <= r['y'] <= c['y1']+.2 for c in cells)]
+        result.append(dict(page=number,cells=cells,runs=runs,external_lines=positioned_lines(external)))
     return result

@@ -240,13 +240,13 @@ def process_inbound_messages(
                         is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
                         from .return_review import available as return_model
                         if is_feedback or (return_model(connection) and inspection.data and inspection.data.get('document','').upper()!='KEIN_MD') or (not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind'))):
-                            word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports')
+                            word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports', auto_handoff_dir=handoff_dir)
                             queued = connection.execute('SELECT * FROM word_pdf_imports WHERE id=?', (word_id,)).fetchone()
                             pending = queued['status'] == 'pending'
                             _insert_attachment(connection, message_id=message_id, index=attachment.index,
                                 filename=filename, stored_path=queued['stored_path'], digest=digest,
-                                file_kind=file_kind, status='review_required' if pending else 'duplicate',
-                                created_at=created_at, error_message='Word-PDF in der Prüfwarteschlange.' if pending else 'Word-PDF bereits verarbeitet.')
+                                file_kind=file_kind, status='review_required' if pending else ('duplicate' if duplicate else 'imported'),
+                                created_at=created_at, error_message='Word-PDF in der Prüfwarteschlange.' if pending else 'Word-PDF verarbeitet; Nachweis und Bereitstellung beim Rücklauf prüfen.')
                             md_relevant = True
                             needs_review = needs_review or pending
                             result['stored'] += 1

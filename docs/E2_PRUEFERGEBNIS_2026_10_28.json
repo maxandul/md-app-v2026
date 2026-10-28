@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-10-28",
+  "expected_values": "Aus den sichtbaren Originalen abgeleitet; keine zusätzliche fachliche Freigabe behauptet.",
+  "passed": true,
+  "files": [
+    {
+      "filename": "MD_Ausblick_2026_TEST.pdf",
+      "sha256": "1ca783e326482bf623598d1cbb1c82aea9bf932580988e9466b2d4f558908983",
+      "passed": true,
+      "errors": [],
+      "profile": "word-md-2026-v1",
+      "source_role": "digital",
+      "automatic": false,
+      "review_reasons": [
+        "Durchführung ist Ja, gleichzeitig ist eine Begründung der Nichtdurchführung ausgefüllt. Am Original klären."
+      ]
+    },
+    {
+      "filename": "MD_Rückblick_2026_TEST.pdf",
+      "sha256": "7f4b41406bd37d3266737bc5cf1000057d440355a09932c59bee54827ed97574",
+      "passed": true,
+      "errors": [],
+      "profile": "word-md-2026-v1",
+      "source_role": "digital",
+      "automatic": false,
+      "review_reasons": [
+        "Durchführung ist Ja, gleichzeitig ist eine Begründung der Nichtdurchführung ausgefüllt. Am Original klären.",
+        "Bewilligungen sind als vollständig/aktuell bestätigt, gleichzeitig ist eine Präzisierung ausgefüllt. Am Original klären."
+      ]
+    },
+    {
+      "filename": "MD_Rückblick_Probezeit_2026_TEST.pdf",
+      "sha256": "f00e973b6f9672a1006297d53e4239826039f16a6deb6ae119229f91e28333d0",
+      "passed": true,
+      "errors": [],
+      "profile": "word-md-2026-v1",
+      "source_role": "digital",
+      "automatic": false,
+      "review_reasons": [
+        "Das Gesprächsdatum liegt vor dem Rückblickzeitraum. Datum und Zuordnung klären.",
+        "Gespräch mit nächsthöherer Führungskraft ist Nein, dazu sind Gesprächsbemerkungen ausgefüllt. Am Original klären."
+      ]
+    },
+    {
+      "filename": "TEST_SCAN_AUSBLICK.pdf",
+      "sha256": "4d8213fcb200eb4f609d967f5fb79267b9acddd3bd7cf33e037abee7b39cd1b9",
+      "passed": true,
+      "errors": [],
+      "profile": "",
+      "source_role": "scan",
+      "automatic": false,
+      "review_reasons": [
+        "Scan: vollständige Feld- und Tabellenerkennung nicht nachgewiesen.",
+        "Formularstruktur oder Vollständigkeit nicht für die automatische Übernahme bestätigt.",
+        "Benötigte Angaben nicht eindeutig erkannt: pn, period_start, period_end, dialog_date, conducted, career_requested.",
+        "Nichtdurchführung oder offene Durchführung erfordert eine manuelle Prüfung.",
+        "Personalnummer: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Zeitraum: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Gesprächsdatum: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Antwortfeld nicht eindeutig zugeordnet: career_choice",
+        "Zieltabellen nicht sicher erkannt. Ältere oder abweichende Vorlage: Ziele anhand des Original-PDF prüfen und nötigenfalls erfassen.",
+        "Scan/OCR: Person, Führungskraft, Zeitraum und sämtliche Inhalte am Original prüfen. OCR-Angaben werden nicht als bestätigte Feldwerte vorgeschlagen."
+      ]
+    },
+    {
+      "filename": "TEST_SCAN_RÜCKBLICK.pdf",
+      "sha256": "cbdcf3f906a86c606a0b75593dc75ba30436e1181664d09cb866fc8295116ff4",
+      "passed": true,
+      "errors": [],
+      "profile": "",
+      "source_role": "scan",
+      "automatic": false,
+      "review_reasons": [
+        "Scan: vollständige Feld- und Tabellenerkennung nicht nachgewiesen.",
+        "Formularstruktur oder Vollständigkeit nicht für die automatische Übernahme bestätigt.",
+        "Benötigte Angaben nicht eindeutig erkannt: pn, manager_pn, period_start, period_end, conducted, higher_manager_requested, rating, sap_current.",
+        "Nichtdurchführung oder offene Durchführung erfordert eine manuelle Prüfung.",
+        "Personalnummer: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Personalnummer VG: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Zeitraum: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Antwortfeld nicht eindeutig zugeordnet: rating",
+        "Antwortfeld nicht eindeutig zugeordnet: sap_current",
+        "Zieltabellen nicht sicher erkannt. Ältere oder abweichende Vorlage: Ziele anhand des Original-PDF prüfen und nötigenfalls erfassen.",
+        "Scan/OCR: Person, Führungskraft, Zeitraum und sämtliche Inhalte am Original prüfen. OCR-Angaben werden nicht als bestätigte Feldwerte vorgeschlagen."
+      ]
+    },
+    {
+      "filename": "TEST_SCAN_PROBEZEIT.pdf",
+      "sha256": "b99f95ba7959cfe5dc02e560990fdd83766085a3d99b42aca78335fd781662d1",
+      "passed": true,
+      "errors": [],
+      "profile": "",
+      "source_role": "scan",
+      "automatic": false,
+      "review_reasons": [
+        "Scan: vollständige Feld- und Tabellenerkennung nicht nachgewiesen.",
+        "Formularstruktur oder Vollständigkeit nicht für die automatische Übernahme bestätigt.",
+        "Benötigte Angaben nicht eindeutig erkannt: pn, conducted, higher_manager_requested.",
+        "Nichtdurchführung oder offene Durchführung erfordert eine manuelle Prüfung.",
+        "Personalnummer: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.",
+        "Scan/OCR: Person, Führungskraft, Zeitraum und sämtliche Inhalte am Original prüfen. OCR-Angaben werden nicht als bestätigte Feldwerte vorgeschlagen."
+      ]
+    }
+  ]
+}

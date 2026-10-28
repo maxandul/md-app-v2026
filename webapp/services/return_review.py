@@ -13,7 +13,7 @@ LABELS = {'missing_scan':'Unterschriebener Scan fehlt','pending':'Unterschriften
           'missing':'Unterschrift fehlt','requested':'Nachgefordert',
           'confirmed':'Unterschriften vorhanden','legacy_confirmed':'Unterschriftenprüfung aus Altbestand',
           'not_required':'Keine besondere Unterschriftenprüfung erforderlich'}
-ACTION_LABELS={'data_validated':'Angaben übernommen','scan_received':'Scan zugeordnet','scan_duplicate':'Identischen Scan verknüpft',
+ACTION_LABELS={'data_validated':'Angaben übernommen','data_automated':'Angaben automatisch validiert','scan_received':'Scan zugeordnet','scan_duplicate':'Identischen Scan verknüpft',
     'confirmed':'Beide Unterschriften bestätigt','missing':'Fehlende Unterschrift erfasst','requested':'Nachforderung dokumentiert',
     'later_signature_requirement':'Nachträgliche Prüfpflicht erkannt','handoff_started':'Bereitstellung begonnen',
     'handoff_uncertain':'Übergabeausgang unklar','handoff_staged':'Lokal für Dossier bereitgestellt',
@@ -57,18 +57,20 @@ def decision(db,document_id,action,reason,user_id=None,details=None):
         VALUES (?,?,?,?,?,?,?)''',(document_id,row[0] if row else None,action,reason,encoded(details or {}),user_id,stamp()))
 
 
-def register(db,document_id,*,source_role='digital',user_id=None,reviewed=None):
+def register(db,document_id,*,source_role='digital',user_id=None,reviewed=None,validation_origin='manual'):
     """Participates in the caller's data-import transaction; never publishes."""
     if source_role not in ('digital','scan'):raise ValueError('Bitte Datenquelle als digitales PDF oder Scan kennzeichnen.')
     doc=db.execute('SELECT * FROM official_documents WHERE id=?',(document_id,)).fetchone()
     if not doc or doc['variant']=='administrative':return
     db.execute('''INSERT INTO hr_return_reviews(document_id,source_role,validation_origin,validated_at,validated_by,validation_json)
-        VALUES (?,?,'manual',?,?,?)''',(document_id,source_role,stamp(),user_id,encoded(reviewed or {})))
+        VALUES (?,?,?,?,?,?)''',(document_id,source_role,validation_origin,stamp(),user_id,encoded(reviewed or {})))
     if source_role=='scan':
         evidence=db.execute('''INSERT INTO hr_return_evidence(document_id,original_filename,stored_path,sha256,created_at,created_by)
             VALUES (?,?,?,?,?,?)''',(document_id,doc['original_filename'],doc['stored_path'],doc['sha256'],stamp(),user_id)).lastrowid
         db.execute("UPDATE hr_return_reviews SET evidence_id=?,signature_status='pending' WHERE document_id=?",(evidence,document_id))
-    decision(db,document_id,'data_validated','Angaben vollständig am Original geprüft',user_id,{'source_role':source_role,'sha256':doc['sha256']})
+    decision(db,document_id,'data_automated' if validation_origin=='automatic' else 'data_validated',
+             'Validiertes Formularprofil und eindeutige Gesprächsteilzuordnung' if validation_origin=='automatic' else 'Angaben vollständig am Original geprüft',
+             user_id,{'source_role':source_role,'sha256':doc['sha256'],'profile':(reviewed or {}).get('format_validation',{}).get('profile','')})
     sync_case(db,doc['case_id'])
 
 

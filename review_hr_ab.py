@@ -59,7 +59,7 @@ def create_review_app(directory: Path):
         complete_word_package(target,xml)
         paths[kind]=str(target)
     settings={**DEFAULTS,'TESTING':True,'AUTH_DISABLED':True,'SECRET_KEY':secrets.token_hex(32),
-        'SESSION_COOKIE_SECURE':False,'HR_GOAL_WORKFLOW':True,'HR_REVIEW_SANDBOX':True,
+        'SESSION_COOKIE_SECURE':False,'HR_GOAL_WORKFLOW':True,'HR_RETURN_AUTOMATION':True,'HR_REVIEW_SANDBOX':True,
         'DATABASE':str(directory/'review.sqlite3'),'STORAGE_ROOT':str(directory/'data'),
         'BACKUP_ROOT':str(directory/'backups'),'DOSSIER_HANDOFF_ROOT':str(directory/'handoff'),
         'WORD_TEMPLATE_PATHS':paths,'HR_MAILBOX_EMAIL':'hr@example.invalid'}
@@ -133,6 +133,14 @@ def create_review_app(directory: Path):
                 reason='Synthetische Uebung: Angaben vollstaendig im Testoriginal vorhanden')
             scan=sample_pdf(test_pdfs/(kind+'-testscan.pdf'),marker=marker+' / TEST-Unterschriften Alex + Luca',**values)
             stage_pdf(db,scan,filename=scan.name,directory=directory/'data'/'pdf_queue')
+        # E2: two valid machine-readable forms, plus a concrete contradiction.
+        # All bytes and identities are generated; no supplied scans are bundled.
+        from tests.e2_pdf_factory import form_pdf
+        for kind in ('review','outlook'):
+            pdf=form_pdf(test_pdfs/('e2-'+kind+'.pdf'),kind=kind,pn='900002',manager='900101')
+            stage_pdf(db,pdf,filename=pdf.name,directory=directory/'data'/'pdf_queue',auto_handoff_dir=directory/'handoff')
+        pdf=form_pdf(test_pdfs/'e2-klaerung.pdf',pn='900003',manager='900102',no_reason='Test: Durchführung Ja, zugleich Nichtdurchführung begründet')
+        stage_pdf(db,pdf,filename=pdf.name,directory=directory/'data'/'pdf_queue',auto_handoff_dir=directory/'handoff')
     return app
 
 

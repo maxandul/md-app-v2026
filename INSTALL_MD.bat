@@ -7,20 +7,23 @@ echo =======================================================
 echo   MD-App v2026 - einmalige Installation
 echo =======================================================
 echo.
+echo [1/3] Suche Python ...
 
 set "PYTHON_EXE="
 set "PYTHON_ARGS="
 
 if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=.venv\Scripts\python.exe"
 
-if not defined PYTHON_EXE py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
-if not defined PYTHON_EXE if not errorlevel 1 (
-    set "PYTHON_EXE=py"
-    set "PYTHON_ARGS=-3.11"
+if not defined PYTHON_EXE (
+    call py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+    if not errorlevel 1 (
+        set "PYTHON_EXE=py"
+        set "PYTHON_ARGS=-3.11"
+    )
 )
 
 if not defined PYTHON_EXE (
-    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+    call python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
     if not errorlevel 1 set "PYTHON_EXE=python"
 )
 
@@ -32,16 +35,16 @@ if not defined PYTHON_EXE (
 )
 
 echo Verwende:
-"%PYTHON_EXE%" %PYTHON_ARGS% --version
+call "%PYTHON_EXE%" %PYTHON_ARGS% --version
 echo.
-echo Installiere die festgelegten Pakete fuer diese Python-Umgebung ...
+echo [2/3] Installiere die Pakete fuer diese Python-Umgebung ...
 set "PIP_SCOPE=--user"
 if exist ".venv\Scripts\python.exe" set "PIP_SCOPE="
 
 if defined MD_PIP_PROXY (
-    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install %PIP_SCOPE% --proxy "%MD_PIP_PROXY%" -r requirements.txt
+    call "%PYTHON_EXE%" %PYTHON_ARGS% -u -m pip install %PIP_SCOPE% --proxy "%MD_PIP_PROXY%" -r requirements.txt
 ) else (
-    "%PYTHON_EXE%" %PYTHON_ARGS% -m pip install %PIP_SCOPE% -r requirements.txt
+    call "%PYTHON_EXE%" %PYTHON_ARGS% -u -m pip install %PIP_SCOPE% -r requirements.txt
 )
 
 if errorlevel 1 (
@@ -54,7 +57,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf, reportlab; print('Alle benoetigten Pakete sind vorhanden.')"
+echo [3/3] Pruefe, ob sich die Pakete laden lassen ...
+call "%PYTHON_EXE%" %PYTHON_ARGS% -u scripts\check_runtime.py
 if errorlevel 1 (
     echo FEHLER: Die Installationspruefung ist fehlgeschlagen.
     pause

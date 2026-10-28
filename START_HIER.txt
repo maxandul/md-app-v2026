@@ -21,6 +21,11 @@ Die optionale PDF-Automatik bleibt standardmaessig ausgeschaltet.
 Das Konsolenfenster waehrend der Arbeit offen lassen. Strg+C beendet die App.
 Bei belegtem Port wird die bereits laufende App geoeffnet.
 
+Installation und Start zeigen drei Schritte und jede Paketpruefung an.
+Bei einer Fehlermeldung das Fenster offen lassen und die Meldung weitergeben.
+Falls der Browser nicht automatisch aufgeht: http://127.0.0.1:5050/arbeit
+oeffnen, sobald im Fenster "MD-Verwaltung laeuft auf" angezeigt wird.
+
 Die Datenbank und lokale Ablage werden unter instance angelegt. Bei spaeteren
 Updates diesen Ordner, lokale Konfiguration und eigene Vorlagen behalten.
 Regelmaessig ueber Administration sichern; Konfiguration/Vorlagen separat sichern.

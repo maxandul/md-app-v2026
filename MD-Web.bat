@@ -7,6 +7,7 @@ echo =======================================================
 echo   MD-Verwaltung - HR-Arbeitsuebersicht
 echo =======================================================
 echo.
+echo [1/3] Suche Python ...
 
 set "PYTHON_EXE="
 set "PYTHON_ARGS="
@@ -14,7 +15,7 @@ set "PYTHON_ARGS="
 if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=.venv\Scripts\python.exe"
 
 if not defined PYTHON_EXE (
-    py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+    call py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
     if not errorlevel 1 (
         set "PYTHON_EXE=py"
         set "PYTHON_ARGS=-3.11"
@@ -22,7 +23,7 @@ if not defined PYTHON_EXE (
 )
 
 if not defined PYTHON_EXE (
-    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+    call python -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
     if not errorlevel 1 set "PYTHON_EXE=python"
 )
 
@@ -33,7 +34,8 @@ if not defined PYTHON_EXE (
     exit /b 1
 )
 
-"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf, reportlab" >nul 2>nul
+echo [2/3] Pruefe Python-Pakete ...
+call "%PYTHON_EXE%" %PYTHON_ARGS% -u scripts\check_runtime.py
 if errorlevel 1 (
     echo Die Python-Pakete fuer die MD-App fehlen oder sind unvollstaendig.
     echo Bitte zuerst INSTALL_MD.bat ausfuehren.
@@ -42,7 +44,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PYTHON_EXE%" %PYTHON_ARGS% -c "import socket; s=socket.socket(); s.settimeout(1); code=s.connect_ex(('127.0.0.1',5050)); s.close(); raise SystemExit(1 if code == 0 else 0)" >nul 2>nul
+echo [3/3] Pruefe Port 5050 und starte die App ...
+call "%PYTHON_EXE%" %PYTHON_ARGS% -u -c "import socket; s=socket.socket(); s.settimeout(1); code=s.connect_ex(('127.0.0.1',5050)); s.close(); raise SystemExit(1 if code == 0 else 0)"
 if errorlevel 1 (
     echo Port 5050 wird bereits verwendet.
     echo Falls die MD-App schon laeuft, wird sie jetzt im Browser geoeffnet.
@@ -52,8 +55,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-start "" http://127.0.0.1:5050/arbeit
-"%PYTHON_EXE%" %PYTHON_ARGS% run_web.py --host 127.0.0.1 --port 5050
+call "%PYTHON_EXE%" %PYTHON_ARGS% -u run_web.py --host 127.0.0.1 --port 5050 --open-browser
+if errorlevel 1 (
+    echo.
+    echo FEHLER: Die App konnte nicht gestartet werden. Bitte die Meldung oben weitergeben.
+    pause
+    exit /b 1
+)
 
 echo.
 echo MD-Verwaltung wurde beendet.

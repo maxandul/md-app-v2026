@@ -320,6 +320,15 @@ def cockpit_overview(
     metrics['signatures_pending'] = len(signatures)
     for item in signatures:
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title='Dossierübergabe erneut versuchen',subject=item['first_name']+' '+item['last_name'],context='PDF-Fachdaten übernommen; Übergabe noch offen',date=item['received_at'],target='case',case_id=item['case_id'],cycle_id=item['cycle_id'],manager_pn=item['manager_pn']))
+    from . import return_review
+    if return_review.available(connection):
+        tracked_cases={r[0] for r in connection.execute('''SELECT DISTINCT d.case_id FROM official_documents d
+            JOIN hr_return_reviews r ON r.document_id=d.id WHERE d.is_current=1''')}
+        tasks=[t for t in tasks if not (t['kind']=='Rücklauf' and t.get('case_id') in tracked_cases)]
+        return_tasks=return_review.tasks(connection)
+        tasks.extend(return_tasks)
+        metrics['signatures_pending']=sum(t['title']=='Unterschriftenprüfung offen' for t in return_tasks)
+        metrics['scans_pending']=sum(t['title']=='Unterschriebener Scan fehlt' for t in return_tasks)
     for item in connection.execute("SELECT * FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'"):
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Zuordnung',title='Ereignis einem Durchlauf zuordnen',subject=item['event_id'],context='Ohne Zuordnung sind Word-Erzeugung und Fallprüfung noch nicht möglich',date=item['created_at'],target='unassigned'))
 

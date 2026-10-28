@@ -82,6 +82,8 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.register_blueprint(part_bp)
     from .sap_routes import bp as sap_bp
     app.register_blueprint(sap_bp)
+    from .return_routes import bp as return_bp
+    app.register_blueprint(return_bp)
 
     @app.after_request
     def retain_action_filters(response):
@@ -116,7 +118,8 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
         if app.config.get('HR_GOAL_WORKFLOW'):
             session.setdefault('goal_csrf',secrets.token_urlsafe(32))
         return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled',
-                'goal_csrf_token':session.get('goal_csrf','')}
+                'goal_csrf_token':session.get('goal_csrf',''),
+                'return_review_enabled':bool(app.config.get('HR_GOAL_WORKFLOW'))}
 
     from .services.mail_schedule import start_worker
     start_worker(app)

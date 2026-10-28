@@ -12,7 +12,7 @@
   <section class="content-card">
     <p class="kicker">Word-Vorlagen</p><h2>Word-PDFs einlesen</h2>
     <p>Prüfe PDFs aus «Speichern als PDF» oder «Drucken als PDF». Rückblick, Ausblick und Feedback werden erkannt und zur Prüfung vorgelegt. Erst nach der Bestätigung werden sie dem Fall oder einer nachgereichten Zielquelle zugeordnet.</p>
-    <form action="{{ url_for('main.upload_word_pdfs') }}" method="post" enctype="multipart/form-data">
+    <form action="{{ url_for('main.upload_word_pdfs') }}" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}">
       <label for="word_pdf_files">PDF-Dateien aus Word</label><input id="word_pdf_files" name="word_pdf_files" type="file" accept=".pdf,application/pdf" multiple required>
       <button class="button button--primary" type="submit">Einlesen und prüfen</button>
     </form>
@@ -99,7 +99,7 @@
     {% set return_tasks = tasks|selectattr('kind', 'equalto', 'Rücklauf')|list %}
     {% if return_tasks %}
       <div class="task-list">
-        {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('main.case_detail', cycle_id=task.cycle_id, case_id=task.case_id) }}">Person öffnen</a><br><a class="compact-action" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Führungslinie</a></div></article>{% endfor %}
+        {% for task in return_tasks %}<article class="task-row"><div><span class="priority priority--{{ task.priority }}">{{ task.priority|capitalize }}</span></div><div class="task-row__main"><span class="task-row__kind">{{ task.kind }}</span><h3>{{ task.title }}</h3><p>{{ task.subject }} · {{ task.context }}</p></div><div class="task-row__date"><span class="context-label">Eingang</span>{{ task.date }}</div><div><a class="button button--small" href="{{ url_for('return_work.detail',document_id=task.document_id,back=request.full_path) if task.target=='return_review' else url_for('main.case_detail', cycle_id=task.cycle_id, case_id=task.case_id) }}">Rücklauf öffnen</a><br><a class="compact-action" href="{{ url_for('main.manager_detail', cycle_id=task.cycle_id, manager_pn=task.manager_pn) }}">Führungslinie</a></div></article>{% endfor %}
       </div>
     {% else %}<div class="empty-state empty-state--success">Keine weiteren Fallaufgaben vorhanden. Offene Word-PDF-Prüfungen stehen in der Warteschlange oben.</div>{% endif %}
   </section>

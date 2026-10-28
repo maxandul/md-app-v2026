@@ -374,6 +374,10 @@ def _current_documents(connection: sqlite3.Connection, case_id: str) -> dict[tup
 
 
 def refresh_case_status(connection: sqlite3.Connection, case_id: str) -> str:
+    from . import return_review
+    if return_review.available(connection):
+        status=return_review.refresh_case(connection,case_id)
+        if status is not None:return status
     case = _case_row(connection, case_id)
     documents = _current_documents(connection, case_id)
     scope = case["official_scope"]
@@ -463,7 +467,10 @@ def import_official_pdf(
     received_at: datetime | None = None,
     replacement_reason: str = "",
 ) -> dict[str, Any]:
+    from . import return_review
     inspection = inspect_pdf(path)
+    if return_review.available(connection) and inspection.data.get('document','').upper()!='KEIN_MD':
+        raise ValueError('Dieses PDF bitte über die gemeinsame Rücklaufprüfung übernehmen. Die alte Datenblockroute bestätigt keine neue Unterschriftenprüfung oder Ablage.')
     if not inspection.data:
         raise ValueError("Kein MD-Datenblock gefunden. Handschriftliche Scans bitte beim Fall hochladen.")
 
@@ -613,6 +620,15 @@ def confirm_digital_signature(
     handoff_dir: Path,
     checked_at: datetime | None = None,
 ) -> dict[str, Any]:
+    from . import return_review
+    if return_review.available(connection):
+        row=return_review.view(connection,document_id)
+        if row['required']:
+            return_review.sync_case(connection,row['case_id'])
+            refresh_case_status(connection,row['case_id']);connection.commit()
+            return {'case_id':row['case_id'],'cycle_id':row['cycle_id'],'scan_required':True,'handoff_filename':''}
+        result=return_review.handoff(connection,document_id,directory=handoff_dir,revision=row['revision'],token=row['token'])
+        return {'case_id':result['case_id'],'cycle_id':result['cycle_id'],'scan_required':False,'handoff_filename':result['handoff_filename']}
     document = connection.execute(
         "SELECT * FROM official_documents WHERE id = ? AND is_current = 1",
         (document_id,),
@@ -686,6 +702,9 @@ def import_handwritten_scan(
     handoff_dir: Path,
     received_at: datetime | None = None,
 ) -> dict[str, Any]:
+    from . import return_review
+    if return_review.available(connection):
+        raise ValueError('Den Scan bitte beim übernommenen Rücklauf zuordnen und die beiden Unterschriften dort versionsbezogen prüfen.')
     if document_kind != 'review':
         raise ValueError('Eine Unterschriftenprüfung ist nur für Rückblick-Scans vorgesehen.')
     case = _case_row(connection, case_id)
@@ -810,6 +829,16 @@ def case_document_overview(
                 state = _document_state(
                     documents.get((kind, "digital")), documents.get((kind, "scan"))
                 )
+                from . import return_review
+                data = documents.get((kind, 'digital'))
+                if data and return_review.available(connection):
+                    review = return_review.view(connection, data['id'], include_history=False)
+                    label = ('Für Dossier bereitgestellt' if review['complete'] else
+                             'Externe Ablage klären' if review['external_open'] else
+                             'Übergabeausgang klären' if review['handoff'] and review['handoff']['status'] in ('processing','uncertain') else
+                             'Für Dossier bereitstellen' if review['signature_ready'] else review['signature_label'])
+                    state = {'key': 'staged' if review['complete'] else 'pending', 'label': label,
+                             'digital': data, 'scan': review['evidence'], 'return_document_id': data['id']}
                 administrative = documents.get((kind, 'administrative'))
                 if administrative:
                     state = {'key': 'no_md', 'label': 'Nicht durchgeführt – geprüft', 'digital': administrative, 'scan': None}

@@ -25,7 +25,7 @@ def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit
 
 
 def managers(connection,cycle_id):
-    return [dict(r) for r in connection.execute('''WITH cases AS (
+    rows = [dict(r) for r in connection.execute('''WITH cases AS (
         SELECT manager_pn,case_id,COUNT(*) AS parts,
           SUM(status NOT IN ('complete','waived')) AS open_parts,SUM(status='received') AS received
         FROM hr_resolved_obligations WHERE cycle_id=? AND active=1 AND required=1
@@ -46,3 +46,14 @@ def managers(connection,cycle_id):
       (SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND manager_pn=s.manager_pn AND is_current=1 AND handoff_status='waiting_scan') AS scan_pending_count
     FROM scope s LEFT JOIN summary c ON c.manager_pn=s.manager_pn LEFT JOIN employees m ON m.pn=s.manager_pn
     ORDER BY manager_name,s.manager_pn''',(cycle_id,)*8)]
+    from .return_review import available
+    if available(connection):
+        counts={r['manager_pn']:r for r in connection.execute('''SELECT manager_pn,
+            SUM(required AND NOT signature_ready AND signature_status='pending') AS signature_check_count,
+            SUM(required AND NOT signature_ready AND signature_status IN ('missing_scan','missing','requested')) AS scan_pending_count
+            FROM hr_return_status WHERE cycle_id=? AND is_current=1 GROUP BY manager_pn''',(cycle_id,))}
+        for row in rows:
+            counts_for_manager=counts.get(row['manager_pn'])
+            for key in ('signature_check_count','scan_pending_count'):
+                row[key]=counts_for_manager[key] if counts_for_manager else 0
+    return rows

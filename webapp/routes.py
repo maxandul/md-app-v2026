@@ -1362,6 +1362,9 @@ def document_original(document_id):
 
 @bp.post("/documents/<int:document_id>/signature-checked")
 def mark_signature_checked(document_id: int):
+    from .services.return_review import available as return_model
+    if return_model(get_db()):
+        return redirect(url_for('return_work.detail',document_id=document_id))
     try:
         result = confirm_digital_signature(
             get_db(), document_id=document_id, handoff_dir=_handoff_dir()
@@ -1385,6 +1388,11 @@ def mark_signature_checked(document_id: int):
 
 @bp.post("/cases/<case_id>/scans/<document_kind>")
 def upload_scan(case_id: str, document_kind: str):
+    from .services.return_review import available as return_model
+    if return_model(get_db()):
+        doc=get_db().execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(case_id,document_kind)).fetchone()
+        flash('Den Scan beim Rücklauf zuordnen. Ohne vorhandene Datenquelle den Scan über die PDF-Prüfung vollständig erfassen.','info')
+        return redirect(url_for('return_work.detail',document_id=doc['id']) if doc else url_for('main.returns_overview'))
     if request.form.get('scan_checked') != 'yes':
         flash('Bitte Person, Zeitraum, Vollständigkeit und erforderliche Unterschriften am Scan prüfen und bestätigen.', 'error')
         return redirect(request.referrer or url_for('main.returns_overview'))
@@ -1453,7 +1461,7 @@ def upload_word_pdfs():
 def _reviewed_word_form(form):
     data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues','no_md_reason','higher_manager_requested','sap_current','career_requested')}
     from .services.word_pdf import NARRATIVE_FIELDS
-    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes',
+    result={'data':data,'scope':form.get('scope',''),'source_role':form.get('source_role','digital'),'assessments':{},'scan_required':form.get('scan_required')=='yes',
             'narratives':{key: form.get('narrative_'+key,'').strip() for key in NARRATIVE_FIELDS if form.get('narrative_present_'+key)=='yes' or form.get('narrative_'+key,'').strip()}}
     for group in ('performance','development'):
         keys=('title','criteria','steps','target_date') + (('competency',) if group=='development' else ())
@@ -1523,6 +1531,10 @@ def word_pdf_review(import_id):
                 message = 'Nichtdurchführung übernommen. Der Nachweis bleibt gespeichert; eine Unterschriften- oder Ablagefreigabe ist dafür nicht vorgesehen.'
             else:
                 doc = connection.execute('SELECT official_document_id FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+                from .services import return_review
+                if return_review.available(connection):
+                    flash('Angaben übernommen. Unterschriftennachweis und Bereitstellung hier weiterbearbeiten.','success')
+                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id']))
                 try:
                     released = confirm_digital_signature(connection, document_id=doc['official_document_id'], handoff_dir=_handoff_dir())
                     message = 'Angaben übernommen. Rückblick D/E: unterschriebenen Scan anfordern und im Fall prüfen; noch keine Roboterübergabe.' if released['scan_required'] else 'Angaben übernommen und Kopie im Roboter-Ordner bereitgestellt. Original bleibt im Projekt. Keine Unterschriftenprüfung erforderlich.'
@@ -1537,12 +1549,26 @@ def word_pdf_review(import_id):
     candidates=matching_cases(connection,reviewed.get('data',{}))
     assignments=connection.execute('SELECT assignment_number,org_unit FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
     from .services.word_pdf import NARRATIVE_FIELDS
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    from .services import return_review
+    evidence_targets=[]
+    return_document_id=None
+    if return_review.available(connection) and item['official_document_id']:
+        registered=connection.execute('SELECT document_id FROM hr_return_reviews WHERE document_id=?',(item['official_document_id'],)).fetchone()
+        if registered:return_document_id=registered['document_id']
+    if return_review.available(connection) and item['status']=='pending':
+        for candidate in candidates:
+            for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
+                evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')
 def assign_inbound_scan(import_id):
     db=get_db()
+    from .services.return_review import available as return_model
+    if return_model(db):
+        flash('Den gesicherten Scan in der PDF-Prüfung dem passenden Rücklauf zuordnen; die Unterschriften separat prüfen.','info')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
     try:
         if request.form.get('scan_checked')!='yes':
             raise ValueError('Bitte Zuordnung, vollständigen Inhalt und Unterschriften am Original-Scan bestätigen.')
@@ -1563,11 +1589,15 @@ def assign_inbound_scan(import_id):
 
 @bp.get('/word-pdf-imports/<int:import_id>/original')
 def word_pdf_original(import_id):
-    item=get_db().execute('''SELECT w.original_filename,COALESCE(d.stored_path,w.stored_path) AS stored_path
+    item=get_db().execute('''SELECT w.original_filename,w.stored_path AS original_path,w.sha256,COALESCE(d.stored_path,w.stored_path) AS stored_path
         FROM word_pdf_imports w LEFT JOIN official_documents d ON d.id=w.official_document_id WHERE w.id=?''',(import_id,)).fetchone()
-    if not item or not Path(item['stored_path']).is_file():
+    if not item:
         abort(404)
-    return send_file(item['stored_path'],download_name=item['original_filename'],mimetype='application/pdf')
+    from .services.return_review import checked_file
+    path=item['original_path'] if Path(item['original_path']).is_file() else item['stored_path']
+    try:path=checked_file(path,item['sha256'])
+    except ValueError:abort(409,'Das Original fehlt oder wurde verändert.')
+    return send_file(path,download_name=item['original_filename'],mimetype='application/pdf')
 
 
 @bp.post('/cycles/<int:cycle_id>/word-packages/batch')

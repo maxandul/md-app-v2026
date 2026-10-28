@@ -58,9 +58,11 @@ def advance_pdf(db,item_id,*,dismissed=0,reason=''):
 
 def closure_summary(db,cycle_id):
     def count(sql):return db.execute(sql,(cycle_id,)).fetchone()[0]
+    from .return_review import available
+    pending_handoffs=count("SELECT COUNT(*) FROM hr_return_status WHERE cycle_id=? AND is_current=1 AND NOT complete") if available(db) else count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0")
     return {
       'Offene Pflichtdokumente':count("SELECT COUNT(*) FROM document_obligations o JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.cycle_id=? AND e.status<>'cancelled' AND o.required=1 AND o.status NOT IN ('complete','waived')"),
-      'Offene Dossierübergaben':count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0"),
+      'Offene Dossierübergaben':pending_handoffs,
       'Offene Word-Versandvorgänge':count("SELECT COUNT(*) FROM word_dispatch_packages p LEFT JOIN word_mail_deliveries d ON d.package_id=p.id WHERE p.cycle_id=? AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='') AND COALESCE(d.status,'') NOT IN ('sent_confirmed','cancelled')"),
       'Noch nicht exportierte vollständige Rückblicke':count("SELECT COUNT(*) FROM dialog_cases c JOIN dialog_events e ON e.legacy_case_id=c.case_id WHERE c.cycle_id=? AND c.status='vollstaendig' AND c.official_scope IN ('full','review_only') AND e.sap_leading=1 AND c.overall_rating_code<>'' AND NOT EXISTS(SELECT 1 FROM sap_export_rows r WHERE r.dialog_event_id=e.id)"),
       'Ungebündelte Feedbacks':count('SELECT COUNT(*) FROM word_feedback_submissions WHERE cycle_id=? AND bundle_id IS NULL'),

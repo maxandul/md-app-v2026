@@ -30,7 +30,7 @@ def migrate(connection):
                         connection.execute(statement)
                 connection.execute('INSERT INTO schema_migrations VALUES (?,?,?)',
                                    (path.stem, digest, datetime.now(timezone.utc).isoformat()))
-                if rebuild and connection.execute('PRAGMA foreign_key_check').fetchone():
+                if (rebuild or path.stem=='005_return_review') and connection.execute('PRAGMA foreign_key_check').fetchone():
                     raise ValueError('Die Migration würde ungültige Datenverknüpfungen hinterlassen.')
             connection.commit()
         except Exception:

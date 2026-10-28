@@ -57,7 +57,9 @@
                   <div class="document-state">
                     <strong>{{ document.name }}</strong>
                     <span class="status status--{{ document.key }}">{{ document.label }}</span>
-                    {% if document.digital and document.key == 'legacy' %}
+                    {% if return_review_enabled and document.return_document_id %}
+                      <a class="button button--small" href="{{ url_for('return_work.detail',document_id=document.return_document_id,back=request.full_path) }}">Nachweis und Bereitstellung</a>
+                    {% elif document.digital and document.key == 'legacy' %}
                       <div class="muted">Die Fachdaten sind übernommen. Dossierübergabe erneut versuchen; keine Unterschriftenprüfung am digitalen PDF.</div>
                       <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
                         <button class="button button--small" type="submit">Dossierübergabe erneut versuchen</button>

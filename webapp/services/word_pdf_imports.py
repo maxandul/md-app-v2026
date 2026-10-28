@@ -30,6 +30,15 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
     if connection.execute('SELECT id FROM feedback_submissions WHERE sha256=?',(digest,)).fetchone():
         raise ValueError('Dieses Feedback wurde bereits über das Datenblockverfahren importiert.')
     parsed = inspect_feedback(path, filename) if inspection.data.get('document','').upper()=='FEEDBACK' or is_feedback(inspection.text, filename) else inspect_word_pdf(path)
+    from .return_review import available as return_model
+    if return_model(connection) and inspection.data.get('document','').upper() in ('RUECKBLICK','AUSBLICK'):
+        # Retain the legacy intake via the same explicit review; a data block
+        # alone is not a validated form profile for automatic acceptance.
+        block=inspection.data
+        parsed['data'].update({k:block[k] for k in ('pn','manager_pn','ans','period_start','period_end','dialog_date','rating') if k in block})
+        parsed['data']['document_kind']='review' if block['document'].upper()=='RUECKBLICK' else 'outlook'
+        parsed['scope']=block.get('scope','')
+        parsed['issues'].append('Frühere Arbeitsmappenfassung: Angaben, Durchführung und alle Inhalte vollständig am Original prüfen.')
     directory.mkdir(parents=True,exist_ok=True)
     stored=directory/(digest+'-'+uuid.uuid4().hex[:12]+'.pdf')
     try:
@@ -244,6 +253,9 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
             if kind=='review':
                 connection.execute("UPDATE dialog_cases SET dialog_date=?,period_start=?,period_end=?,overall_rating_code=?,agreement='' WHERE case_id=?",(data['dialog_date'],data['period_start'],data['period_end'],data.get('rating',''),case_id))
             update_scope_obligations(connection,case_id=case_id,scope=scope,timestamp=timestamp)
+            from . import return_review
+            if return_review.available(connection) and not not_conducted:
+                return_review.register(connection,document_id,source_role=reviewed.get('source_role','digital'),user_id=user_id,reviewed=reviewed)
             refresh_case_status(connection,case_id)
         connection.execute('''UPDATE word_pdf_imports SET reviewed_json=?,status=?,case_id=?,official_document_id=?,review_note=?,reviewed_by=?,reviewed_at=? WHERE id=?''',(json.dumps(reviewed,ensure_ascii=False),'historical' if historical else 'imported',case_id if case else None,document_id,reason,user_id,timestamp,import_id))
     return document_id

@@ -32,4 +32,12 @@ jobs:
             HOME="$RUNNER_TEMP/test-home" \
             TMPDIR="$RUNNER_TEMP/synthetic-tests" \
             LANG=C.UTF-8 \
-            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/run_tests_offline.py tests -q --tb=short --capture=tee-sys
+            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/run_tests_offline.py tests prototype/html_dialog -q --tb=short --capture=tee-sys
+      - name: Check browser scripts without network
+        run: |
+          task_node="$(command -v node)"
+          sudo unshare --net -- env -i \
+            PATH=/usr/bin:/bin \
+            HOME="$RUNNER_TEMP/test-home" \
+            LANG=C.UTF-8 \
+            "$task_node" --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs

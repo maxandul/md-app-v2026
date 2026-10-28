@@ -5,10 +5,11 @@ Basis: Etappe D bei `1eb56ce3b2652adff3ee90d1583bf88bb845c950`.
 
 **E1 automatisiert geprüft, Bedienabnahme noch offen.** Der isolierte CI-Lauf auf
 `68be0629533901166bee10d33a4cf4140155f734` bestand am 28. Oktober 2026 mit
-290 Tests und 36 Unterprüfungen (48,97 Sekunden). D war separat mit 291 Tests
-in der früheren Windows-Testumgebung geprüft; Testzähler verschiedener
-pytest-Versionen/Umgebungen werden nicht als identischer Umfang behauptet.
-Automatische Übernahme neuer PDF-/Scanvarianten und Etappe F sind noch offen.
+290 Tests und 36 Unterprüfungen (48,97 Sekunden). Der E1-CI-Lauf umfasst den Ordner `tests`. Der spätere Gesamtnachweis in
+[Etappe F](UMSETZUNG_F_UEBERSICHT.md) ergänzt die 22 Prüfungen der älteren
+Arbeitsmappe und die JavaScript-Tests.
+Automatische Übernahme neuer PDF-/Scanvarianten ist noch offen. Die anschliessende
+Konsolidierung steht in [Etappe F](UMSETZUNG_F_UEBERSICHT.md).
 
 ## Problem und Arbeitsweise
 
@@ -139,7 +140,8 @@ OCR-Verarbeitung.
 
 Die Automatik bleibt deshalb aus. E1 bereitet den nachvollziehbaren
 Ausnahme-/Nachweisweg vor; E2 benötigt Formatvalidierung und den anschliessenden
-vollständigen Automatikpfad. F wurde noch nicht begonnen.
+vollständigen Automatikpfad. Die anschliessende Konsolidierung ist in [Etappe F](UMSETZUNG_F_UEBERSICHT.md)
+separat dokumentiert.
 
 Kein Merge nach `main`, keine produktive Migration, keine echten Nachrichten
 und keine produktive Dossierübergabe. Den Entwurf erst nach bestandenem Nachtest

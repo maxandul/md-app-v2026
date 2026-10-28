@@ -1,15 +1,16 @@
 # Entwurf D: SAP-Abgleich und fortlaufende Dialoge
 
-Stand: 27. Oktober 2026. Branch: `feat/hr-sap-abgleich-d`.
+Stand: 28. Oktober 2026. Branch: `feat/hr-sap-abgleich-d`.
 Basis: geprüfte Etappe C bei `b94616781afabd572d6e113dc3c128a73d4242f5`.
 
 **Status: implementierter Review-Entwurf, noch kein bestandener D-Abschlusslauf.**
-Die automatische Freigabeprüfung hat den erneuten D-Testlauf wegen einer
-gemeldeten externen Visual-Studio-Telemetrieverbindung mit unbekanntem Inhalt
-abgelehnt. Sie verlangt dafür eine neue ausdrückliche Freigabe und wertet die
-bisherige Freigabe als auf den C-Abschlusslauf beschränkt. Nach der Ablehnung
-wurden keine weiteren D-Tests gestartet. Der Entwurf bleibt bis zum Nachtest
-offen; die 269 erfolgreichen C-Tests sind kein Nachweis für diese Änderungen.
+Der erneute D-Testlauf am 28. Oktober wurde nach der Zustimmung zu allen
+Etappen gestartet. Beim Abruf des weiteren Ergebnisses lehnte die automatische
+Freigabeprüfung die Fortsetzung wegen einer gemeldeten externen
+Visual-Studio-Telemetrieverbindung mit unbekanntem Inhalt erneut ab. Sie verlangt
+ausdrückliche Zustimmung zu dieser externen Datenübertragung. Danach wurde
+kein weiterer Testlauf gestartet. Ein vollständiges Ergebnis liegt nicht vor;
+die 269 erfolgreichen C-Tests sind kein Nachweis für diese Änderungen.
 
 ## Ausgangsproblem und neue Arbeitsweise
 
@@ -25,7 +26,8 @@ Upload speichert den Export und seinen Vergleichsstand, ohne vorhandene
 Stammdaten oder MDs zu ändern. Die bekannte SAP-Klassifizierung wird dazu nur
 in einer isolierten Datenbank im Arbeitsspeicher ausgeführt. Zusätzliche
 Prüfungen halten widersprüchliche Führungskräfte, OE/Funktionen, fehlende
-Anstellungsnummern und ungültige Datumsangaben zurück.
+Anstellungsnummern und ungültige Datumsangaben zurück. Unformatierte Zahlen in
+Datumsfeldern gelten als unklar; sie werden nicht als Kalenderdatum interpretiert.
 
 | Schritt | Wirkung |
 |---|---|
@@ -115,26 +117,30 @@ HR-Oberfläche ist weiterhin kein Datenbank-Rollback.
 
 ## Prüfstand und Wiederaufnahme
 
-Für D wurden in `tests/test_sap_staging.py` 21 Ablaufprüfungen ergänzt:
+Für D wurden in `tests/test_sap_staging.py` 22 Ablaufprüfungen ergänzt:
 Vorschau ohne Nebenwirkungen, Dubletten, Auswahl, Konflikte, fehlende Personen
 und Anstellungen, alte MD-Zuordnungen, veraltete Vergleiche, Rollback,
 Folgeentscheidungen, Quellenänderung, geschlossene Kampagnen, zusätzliche
 Ereignisse, eindeutige Dateien, geschützte Routen und Erhalt bestehender
-Dokumentverknüpfungen bei der Migration.
+Dokumentverknüpfungen bei der Migration sowie unformatierte numerische Datumswerte.
 
 Die ersten Testversuche fanden Anpassungsbedarf am bisherigen
 Migrationsvergleich (die neue Herkunftsspalte) und an einem Testdatensatz mit
 fehlender Anstellungsnummer. Beides wurde korrigiert. Der anschliessende Lauf
-wurde durch die automatische Freigabeprüfung abgelehnt. Ein vollständiges
-D-Testergebnis liegt deshalb noch nicht vor. Spätere Ergänzungen wurden nur
-statisch geprüft. Python- und Jinja-Syntax sowie `git diff --check` sind
-fehlerfrei; das ersetzt keine Ablauf- oder Migrationsprüfung.
+wurde durch die automatische Freigabeprüfung abgelehnt. Auch der erneute
+Versuch am 28. Oktober lieferte vor der erneuten Ablehnung nur Fortschrittsausgabe,
+kein vollständiges Testergebnis. Spätere Ergänzungen wurden nur statisch geprüft.
+Python- und Jinja-Syntax sowie `git diff --check` sind fehlerfrei; das ersetzt keine
+Ablauf- oder Migrationsprüfung.
 
 Nach Freigabe zunächst D und betroffene A/B/C-Abläufe ausführen, Fehler beheben
 und anschliessend die vollständige Testsammlung laufen lassen. Der bestehende
 lokale Prüfstarter begrenzt Python-Netzwerkzugriffe und Unterprozesse und
 deaktiviert zusätzliche pytest-Plugins. Die gemeldete Verbindung trat dennoch
-auf; ihre Herkunft ist ungeklärt.
+auf; ihre Herkunft ist ungeklärt. Die statische Suche in App- und Testquellen
+fand keine Visual-Studio-/Telemetrieanbindung. Die nachträgliche Abfrage aktiver
+HTTPS-Verbindungen und entsprechender DNS-Einträge lieferte keine Zuordnung.
+Beides ist kein Nachweis, dass die gemeldete Verbindung harmlos oder unterbunden ist.
 
 ## Isolierte Bedienfolge nach erfolgreichem Nachtest
 
@@ -158,6 +164,24 @@ Dies ist eine Prüfanleitung, keine bereits bestandene Bedienprüfung. Reale
 Outlook-Aufrufe, Postfachzugriff und externe Übergaben bleiben im Starter gesperrt.
 
 ## Weitere Etappen
+
+Die Codeprüfung für E am 28. Oktober zeigt folgende zusammenhängende Änderungen:
+
+| Befund im aktuellen Code | Erforderliche Änderung in E |
+|---|---|
+| `word_pdf_imports.confirm_import` setzt Scanpflicht nur am Rückblick D/E | Pflicht aus dem Rückblick auf beide zugehörigen Teile ableiten, auch bei späterem Eingang |
+| `documents.import_handwritten_scan` erlaubt nur Rückblicke und verlangt zuerst ein digitales PDF | Datenquelle und Unterschriftennachweis getrennt verknüpfen; validierten Scan als alleinige Quelle zulassen |
+| Scanimport speichert sofort `signature_checked=True` und stellt bereit | Upload, konkrete Sichtprüfung beider Unterschriften und technische Übergabe trennen |
+| `db.init_db` entfernt offene Scanpflicht bei Nicht-Rückblicken | Alte Startkorrektur für das neue Modell ablösen, bestehende Nachweise und wiederholten Start prüfen |
+| `confirm_digital_signature` vermischt Freigabe und Dateikopie | Fachliche Übernahme erhalten, technische Übergabe wiederholbar ausführen, keine erneute Sichtprüfung allein wegen Kopierfehler |
+| Outlook-Eingangsmodell enthält keinen Nachrichtentext | Zusätzliche Mailanliegen nicht aus erfolgreichen Anhängen als ausgeschlossen behandeln |
+
+Das ist eine Codeprüfung und noch keine Umsetzung oder Abnahme von E. In den
+Repository-Verzeichnissen `tests` und `templates` liegen keine repräsentativen
+Rücklauf-PDFs oder Scans; synthetische Parserprüfungen allein belegen keine
+Formatfreigabe für produktive Rücklaufautomatik. Die Vorbereitung des
+Versions-/Prüfmodells kann unabhängig davon erfolgen. Die Aktivierung der
+Automatik bleibt an nachgewiesene Formatvalidierung gebunden.
 
 E (validierte Rücklaufautomatik und selektive Scan-/Unterschriftenprüfung) und
 F (Konsolidierung, Feedback, Auswertung und Übergaben) bleiben offen. Auch die

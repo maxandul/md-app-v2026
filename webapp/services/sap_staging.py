@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import hashlib
 import json
+from numbers import Number
 from pathlib import Path
 import sqlite3
 
@@ -63,7 +64,9 @@ def parse(path):
                 if len({legacy.clean(v) for v in rows[col]})>1:errors.append('Widersprüchliche Personenangabe: '+col)
             if not assignment or any(not legacy.clean(v) for v in rows[assignment]):errors.append('Anstellungsnummer fehlt; bitte im Export klären.')
             for col in ('Eintritt','Austritt','Ende Probezeit'):
-                if col in rows and any(legacy.clean(v) and (not legacy.iso_date(v) or not '1900'<=legacy.iso_date(v)[:4]<='2100') for v in rows[col]):errors.append('Ungültiges Datum: '+col)
+                # Unformatted Excel serial numbers are ambiguous. Timestamp
+                # treats numbers as epoch offsets, not Excel calendar dates.
+                if col in rows and any(legacy.clean(v) and (isinstance(v,Number) or not legacy.iso_date(v) or not '1900'<=legacy.iso_date(v)[:4]<='2100') for v in rows[col]):errors.append('Ungültiges Datum: '+col)
             if assignment:
                 for _,same_assignment in rows.groupby(assignment,dropna=False):
                     for col in ('OE Bez.','Plans. Bez.'):

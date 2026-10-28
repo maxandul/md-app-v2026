@@ -95,6 +95,20 @@ class SapStagingTest(unittest.TestCase):
         self.assertEqual(self.db.execute("SELECT COUNT(*) FROM employment_assignments WHERE person_number='111113'").fetchone()[0],2)
         self.assertEqual(sap.snapshot(self.db,'111113')['employments'][1]['org_unit'],'Zweite OE')
 
+    def test_unformatted_numeric_dates_require_clarification(self):
+        before=sap.snapshot(self.db,'111113')
+        for index,value in enumerate((45292,45292.5,True)):
+            with self.subTest(value=value):
+                batch=self.changed(field='Eintritt',value=value,name=f'numeric-date-{index}.xlsx')
+                self.assertEqual(self.row(batch)['category'],'conflict')
+                self.assertIn('Ungültiges Datum: Eintritt',self.row(batch)['issues_json'])
+                with self.assertRaisesRegex(ValueError,'widersprüchlichen'):self.apply(batch)
+                self.assertEqual(sap.snapshot(self.db,'111113'),before)
+        batch=self.changed(field='Eintritt',value=pd.Timestamp('2025-03-01'),name='calendar-date.xlsx')
+        self.assertEqual(self.row(batch)['category'],'changed')
+        self.apply(batch)
+        self.assertEqual(sap.snapshot(self.db,'111113')['employments'][0]['entry_date'],'2025-03-01')
+
     def test_stale_comparison_requires_explicit_refresh_and_audits_prior_basis(self):
         batch=self.changed();row=self.row(batch)
         with self.db:self.db.execute("UPDATE employees SET email='changed@example.invalid' WHERE pn='111113'")

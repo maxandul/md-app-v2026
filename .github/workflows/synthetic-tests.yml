@@ -1,0 +1,36 @@
+name: Synthetic regression tests
+
+on:
+  push:
+    branches: ['feat/hr-*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: synthetic-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install test dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt pytest
+          .venv/bin/python -m pip freeze
+      - name: Run regression in isolated network namespace
+        run: |
+          mkdir -p "$RUNNER_TEMP/test-home" "$RUNNER_TEMP/synthetic-tests"
+          sudo unshare --net -- env -i \
+            PATH=/usr/bin:/bin \
+            HOME="$RUNNER_TEMP/test-home" \
+            TMPDIR="$RUNNER_TEMP/synthetic-tests" \
+            LANG=C.UTF-8 \
+            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/run_tests_offline.py tests -q --tb=short

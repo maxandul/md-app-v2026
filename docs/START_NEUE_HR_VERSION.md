@@ -35,6 +35,24 @@ Die neue Oberfläche wird auch bei `python run_web.py` automatisch verwendet.
 zwischenzeitlich geschlossen werden. Strg+C beendet die App. Bei belegtem Port
 keinen zweiten Prozess starten; der Starter öffnet die laufende Instanz.
 
+Installation und Start zeigen die Python-Suche, Paketprüfung und den App-Start
+als einzelne Schritte. Während der Paketprüfung wird jedes geladene Paket
+genannt; Fehlermeldungen bleiben sichtbar. «Requirement already satisfied»
+bestätigt nur die Installation, noch nicht, dass sich ein Paket laden lässt.
+Der Browser öffnet sich nach erfolgreichem Serverstart. Falls das Öffnen des
+Browsers blockiert ist, die angezeigte Adresse manuell öffnen.
+
+Bleibt der Start stehen, die letzte angezeigte Prüfung und eine allfällige
+Fehlermeldung weitergeben. Zum direkten Start PowerShell im App-Ordner öffnen:
+
+```powershell
+py -3.11 -u run_web.py --host 127.0.0.1 --port 5050
+```
+
+Bei Verwendung von `.venv` stattdessen `.\.venv\Scripts\python.exe` verwenden.
+Das Fenster offen lassen und nach «MD-Verwaltung läuft auf …» die angezeigte
+Adresse öffnen. Ein pip-Update ist für diese Diagnose nicht erforderlich.
+
 PDFs werden verbessert ausgelesen und vor der Übernahme von HR geprüft.
 Die begrenzte Rücklaufautomatik ist standardmässig ausgeschaltet. Sie kann später
 über `MD_HR_RETURN_AUTOMATION=1` vor dem Start aktiviert werden. Das ist kein

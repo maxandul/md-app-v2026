@@ -32,6 +32,9 @@ class ConsolidationTest(unittest.TestCase):
 
     def test_new_default_and_old_bookmarks_preserve_filters(self):
         self.assertEqual(urlsplit(self.client.get('/').location).path,'/arbeit')
+        planning=self.client.get('/?view=cycles')
+        self.assertEqual(planning.status_code,200);self.assertIn('/cycles',planning.text)
+        self.assertIn('view=cycles',self.client.get('/arbeit').text)
         response=self.client.get('/aufgaben?q=Test&state=waiting&page=3')
         self.assertEqual(urlsplit(response.location).path,'/arbeit')
         self.assertEqual(parse_qs(urlsplit(response.location).query)['state'],['waiting'])

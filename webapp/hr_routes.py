@@ -25,8 +25,11 @@ def back_link(default):
 def render(template, data, **values):
     def page_url(number):
         args=request.args.to_dict();args['page']=number
-        return url_for(request.endpoint,**request.view_args,**args)
-    return render_template(template,**data,states=views.STATES,page_url=page_url,**values)
+        return url_for(request.endpoint,**{**args,**request.view_args})
+    def filter_url(**updates):
+        args=request.args.to_dict();args.update(updates);args.pop('page',None)
+        return url_for(request.endpoint,**{**args,**request.view_args})
+    return render_template(template,**data,states=views.STATES,page_url=page_url,filter_url=filter_url,**values)
 
 def task_link(row):
     target=row['target'];key=row['record_id']

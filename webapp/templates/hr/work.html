@@ -2,6 +2,7 @@
 {% block title %}Arbeitsübersicht · MD{% endblock %}{% block content %}
 <section class="page-head"><h1>Arbeitsübersicht</h1><p>Offene Arbeit aus allen Jahren. Jede Zeile führt zum bestehenden Vorgang. Eine erledigte Mail beendet keine offene Folgearbeit.</p></section>
 {% if filters.cycle_id %}<p>Durchlauf {{ filters.cycle_id }} ausgewählt. <a href="{{ url_for("hr.work") }}">Alle Durchläufe öffnen</a></p>{% endif %}
+<details><summary>Durchläufe planen und Einrichtung</summary><p><a href="{{ url_for('main.dashboard',view='cycles') }}">Durchlauf anlegen / Planungsübersicht</a> · <a href="{{ url_for('main.setup_guide') }}">Einrichtung prüfen</a> · <a href="{{ url_for('parts.index') }}">Alle Gesprächsteile</a></p></details>
 {{ search(filters,years=true,kinds=kinds,org=true,manager=true,due=true,states=states) }}
 <p>Zähleinheit: Aufgaben zu Quellen, Gesprächsteilen, Rückläufen oder Sammlungen; keine Personenzahl. Ein leerer Jahresfilter schliesst offene Altjahre ein.</p>
 {% include 'hr/_pager.html' %}

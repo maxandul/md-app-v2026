@@ -46,10 +46,14 @@ def extend_deadlines(
         "o.status NOT IN ('complete', 'waived')",
     ]
     params: list[Any] = [cycle_id, document_kind]
+    from webapp.migrations import available
+    modern=available(connection)
+    manager_column='rp.manager_pn' if modern else 'ma.manager_person_number'
+    part_join='LEFT JOIN hr_resolved_obligations rp ON rp.id=o.id' if modern else ''
     if scope == "manager":
         if not manager_pn:
             raise ValueError("Die Personalnummer der vorgesetzten Person fehlt.")
-        where.append("ma.manager_person_number = ?")
+        where.append(manager_column+" = ?")
         params.append(manager_pn)
     elif scope == "case":
         if not case_id:
@@ -59,10 +63,11 @@ def extend_deadlines(
 
     rows = connection.execute(
         f"""
-        SELECT o.id, o.due_date, ma.manager_person_number AS manager_pn
+        SELECT o.id, o.due_date, {manager_column} AS manager_pn
         FROM document_obligations o
         JOIN dialog_events de ON de.id = o.dialog_event_id
         JOIN manager_assignments ma ON ma.id = de.manager_assignment_id
+        {part_join}
         WHERE {' AND '.join(where)}
         ORDER BY o.id
         """,

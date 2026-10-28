@@ -38,15 +38,29 @@ def source_snapshot(connection, *, cycle_id, manager_pn, template_paths):
         LEFT JOIN dialog_events de ON de.legacy_case_id=dc.case_id
         LEFT JOIN dialog_form_org_units fo ON fo.dialog_event_id=de.id
         WHERE dc.cycle_id=? AND dc.manager_pn=? AND dc.active=1 ORDER BY dc.case_id''', (cycle_id,manager_pn)).fetchall()
-    snapshot = {'package_format': 2, 'cycle':dict(cycle),'manager':dict(manager),'cases':[],'templates':{}}
+    from webapp.migrations import available
+    from .part_responsibilities import case_rows,case_parts,assigned_kinds
+    modern=available(connection)
+    if modern:cases=case_rows(connection,cycle_id,manager_pn)
+    snapshot = {'package_format': 3 if modern else 2, 'cycle':dict(cycle),'manager':dict(manager),'cases':[],'templates':{}}
     needed = set()
     for row in cases:
         item = dict(row)
+        if modern:item={k:item[k] for k in ('case_id','employee_pn','employment_assignment','official_scope','suggested_scope','period_start','period_end','first_name','last_name','position','org_unit','entry_date','exit_date','probation_end','secondary_employment','event_type')}
         scope = row['official_scope'] or row['suggested_scope']
+        if modern and scope!='none':
+            kinds=assigned_kinds(connection,row['case_id'],manager_pn)
+            scope='full' if len(kinds)==2 else ('outlook_only' if kinds==['outlook'] else 'review_only' if kinds else 'none')
+            item['official_scope']=scope if row['official_scope'] else ''
+            item['suggested_scope']=scope
+            item['parts']=[{key:p[key] for key in ('kind','manager_pn','recipient_email','form_org_unit','form_org_source','period_start','period_end','responsibility_revision')}
+                           for p in case_parts(connection,row['case_id']) if p['manager_pn']==manager_pn and p['required']]
+            review_part=next((p for p in item['parts'] if p['kind']=='review'),None)
+            if review_part:item['period_end']=review_part['period_end']
         if scope in ('full','review_only'):
             needed.add('probation' if row['event_type']=='probation_review' else 'review')
             if row['event_type']!='probation_review':
-                year = int(row['period_end'][:4]) if row['period_end'] else cycle['review_year']
+                year = int(item['period_end'][:4]) if item['period_end'] else cycle['review_year']
                 item['goals'] = prior_goals(connection,employee_pn=row['employee_pn'],assignment=row['employment_assignment'],year=year)
         if scope in ('full','outlook_only'):
             needed.add('outlook')
@@ -57,7 +71,11 @@ def source_snapshot(connection, *, cycle_id, manager_pn, template_paths):
         if not path or not Path(path).is_file():
             raise ValueError(f'Word-Vorlage «{kind}» fehlt in der lokalen Konfiguration.')
         snapshot['templates'][kind] = _hash(path)
+    if modern:
+        from .word_packages import feedback_cases
+        snapshot['feedback_case_ids']=feedback_cases(connection,cycle,manager_pn,cases)
     for kind,path in preparation_templates(template_paths).items():
+        if modern and kind=='feedback' and not snapshot['feedback_case_ids']:continue
         if not path.is_file():
             raise ValueError(f'Beilage «{kind}» fehlt. Vorlagenkonfiguration prüfen.')
         snapshot['templates'][kind] = _hash(path)
@@ -90,6 +108,10 @@ def prepare_word_batch(connection, *, cycle_id, manager_pns, template_paths, out
                 if pending:
                     raise ValueError(f'Für PN {pn} ist noch eine Outlook-Übernahme, ein fehlgeschlagener Versuch oder ein Entwurf offen. Bitte zuerst den Versand bestätigen oder den Entwurf in Outlook löschen und hier als verworfen markieren.')
                 scopes = connection.execute("SELECT COALESCE(NULLIF(official_scope,''),suggested_scope) AS scope FROM dialog_cases WHERE cycle_id=? AND manager_pn=? AND active=1", (cycle_id,pn)).fetchall()
+                from webapp.migrations import available
+                if available(connection):
+                    from .part_responsibilities import case_rows
+                    scopes=[{'scope':r['official_scope'] or r['suggested_scope']} for r in case_rows(connection,cycle_id,pn)]
                 if not scopes:
                     raise ValueError(f'Für PN {pn} sind keine aktiven Fälle vorhanden.')
                 if all(row['scope']=='none' for row in scopes):
@@ -255,6 +277,14 @@ def word_message(row, *, sender_email, subject_template='', body_template=''):
     try:
         subject = (subject_template.strip() or DEFAULT_WORD_SUBJECT).format_map(values)
         body = (body_template.strip() or DEFAULT_WORD_BODY).format_map(values)
+        manifest=json.loads(row.get('manifest_json') or '{}')
+        if not body_template.strip() and any(d.get('responsibility') for d in manifest.get('documents',[])):
+            labels={'review':'Rückblick','outlook':'Ausblick','probation':'Probezeit-Rückblick'}
+            entries='\n'.join('- '+labels[d['kind']]+': '+d['filename'] for d in manifest['documents'])
+            body=(f"{greeting}\n\nIm Anhang erhältst du die Word-Formulare für die dir zugewiesenen Gesprächsteile:\n{entries}\n\n"
+                  f"Frist Rückblick: {values['review_due']}; Frist Ausblick: {values['outlook_due']}. Individuell vereinbarte Fristen bleiben massgeblich.\n\n"
+                  f"Bitte speichere und entpacke das ZIP und sende die bearbeiteten PDFs S/MIME-verschlüsselt an {sender_email}. Beachte die Unterschriften- und Rücksendehinweise im jeweiligen Formular.\n\n"
+                  "Eine vorübergehende MD-Vertretung ändert die Feedback-Zuordnung nicht. Eine beigefügte Feedbackvorlage gilt für deine regulären Mitarbeitenden, nicht automatisch für vertretene Gesprächsteile.\n\nFreundliche Grüsse\nHR")
     except (ValueError,KeyError,IndexError,AttributeError) as exc:
         raise ValueError(f'Ungültiger Platzhalter im Word-E-Mailtext: {exc}') from exc
     return subject, _mail_html(body)
@@ -278,6 +308,9 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
         if row['delivery_status']=='failed' and not retry_confirmed:
             raise ValueError('Bitte vor einem erneuten Versuch in Outlook prüfen, ob bereits eine Nachricht angelegt oder versendet wurde, und die Wiederholung bestätigen.')
         row['subject'],row['body_html'] = word_message(row,sender_email=sender_email,subject_template=subject_template,body_template=body_template)
+        from .outlook_lock import check_goal_workflow
+        documents=json.loads(row['manifest_json'])['documents']
+        check_goal_workflow(connection,[d['case_id'] for d in documents],documents=documents,exclude=('package',package_id))
     outlook = adapter or OutlookDraftAdapter()
     result = {'created':0,'sent':0,'failed':0,'errors':[]}
     for package_id in sorted(selected):
@@ -353,6 +386,10 @@ def discard_word_package(connection, package_id):
             raise
 
 
+from .outlook_lock import serialized_goal_delivery
+
+
+@serialized_goal_delivery
 def dispatch_word_packages(connection, *, cycle_id, package_ids, **kwargs):
     from contextlib import ExitStack
     from .outlook_lock import package_lock

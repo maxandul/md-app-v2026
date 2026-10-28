@@ -98,8 +98,18 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sou
     for source_id in dict.fromkeys(row["legacy_form_import_id"] for row in historical):
         rows = [dict(row) for row in historical if row["legacy_form_import_id"] == source_id]
         sources.append(([g for g in rows if g["goal_kind"] == "performance"], [g for g in rows if g["goal_kind"] == "development"], {"legacy_form_import_id": source_id}))
+    from .goal_review import confirmed_sources, retired_original
+    sources=[source for source in sources if not retired_original(connection,source[2])]
+    corrected_sources = confirmed_sources(connection, employee_pn, assignment, year)
+    sources.extend(corrected_sources)
     if sources_only:
         return sources
+    from webapp.migrations import available
+    if available(connection) and not corrected_sources and connection.execute('''SELECT 1 FROM legacy_form_imports l
+        JOIN hr_goal_sources s ON s.sha256=l.sha256 WHERE l.employee_pn=? AND l.assignment_number=? AND l.goal_year=?
+        AND NOT EXISTS(SELECT 1 FROM hr_goal_revisions r WHERE r.source_id=s.id AND r.status='confirmed')''',
+        (employee_pn,assignment,year)).fetchone():
+        raise ValueError('Nachgereichte Zielquelle zuerst am Original prüfen und bestätigen.')
     choice=connection.execute('SELECT * FROM workflow_goal_choices WHERE employee_pn=? AND assignment_number=? AND goal_year=?',(employee_pn,assignment,year)).fetchone()
     if choice:
         fingerprint=goal_sources_fingerprint(sources)
@@ -137,10 +147,28 @@ def _date_text(value):
     return date.fromisoformat(value).strftime("%d.%m.%Y")
 
 
+def feedback_cases(connection,cycle,manager_pn,cases):
+    return [c['case_id'] for c in cases if connection.execute('''SELECT 1 FROM reporting_lines
+        WHERE sap_import_id=? AND employee_pn=? AND employment_assignment=? AND manager_pn=?''',
+        (cycle['sap_import_id'],c['employee_pn'],c['employment_assignment'],manager_pn)).fetchone()]
+
+
 def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str,
-                        template_paths: dict, output_dir: Path, case_id: str = "", document_kinds: list[str] | None = None) -> tuple[Path, dict]:
+                        template_paths: dict, output_dir: Path, case_id: str = "", document_kinds: list[str] | None = None,
+                        resolved_review: bool = False) -> tuple[Path, dict]:
     if document_kinds is not None and (not case_id or not document_kinds or not set(document_kinds) <= {'review','probation','outlook'}):
         raise ValueError('Bitte eine Person und mindestens einen gültigen Formulartyp auswählen.')
+    from webapp.migrations import available
+    from .part_responsibilities import resolve,case_rows,assigned_kinds
+    modern=available(connection)
+    part = None
+    if resolved_review:
+        from .part_responsibilities import resolve
+        if not case_id or document_kinds != ['review']:
+            raise ValueError('Die Zielnachreichung erstellt ausschliesslich ausgewählte Rückblicke.')
+        part = resolve(connection, case_id)
+        if part['manager_pn'] != manager_pn or part['cycle_id'] != cycle_id:
+            raise ValueError('Die Verantwortung hat sich geändert. Bitte Auswahl neu prüfen.')
     cycle = connection.execute("SELECT * FROM cycles WHERE id = ?", (cycle_id,)).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
@@ -156,8 +184,10 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
            LEFT JOIN dialog_form_org_units fo ON fo.dialog_event_id=de.id
            WHERE dc.cycle_id = ? AND dc.manager_pn = ? AND dc.active = 1
              AND (? = '' OR dc.case_id = ?) ORDER BY e.last_name, e.first_name, dc.id""",
-        (cycle_id, manager_pn, case_id, case_id),
+        (cycle_id, part['case_manager_pn'] if part else manager_pn, case_id, case_id),
     ).fetchall()
+    if modern:
+        cases=case_rows(connection,cycle_id,manager_pn,case_id=case_id)
     if not cases:
         raise LookupError("Keine aktiven MD-Fälle für diese Auswahl gefunden.")
     numbers = list(dict.fromkeys([manager_pn, *(row["employee_pn"] for row in cases)]))
@@ -190,16 +220,21 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                 kinds = (["probation" if is_probation else "review"] if scope in {"full", "review_only"} else [])
                 if scope in {"full", "outlook_only"}:
                     kinds.append("outlook")
+                if modern:
+                    kinds=[kind for kind in kinds if kind in assigned_kinds(connection,case['case_id'],manager_pn)]
                 if document_kinds is not None:
                     if not set(document_kinds) <= set(kinds):
                         raise ValueError('Die Auswahl passt nicht zum aktuellen Pflichtumfang dieser Person.')
                     kinds = [kind for kind in kinds if kind in document_kinds]
                 for kind in kinds:
+                    part=resolve(connection,case['case_id'],'review' if kind=='probation' else kind) if modern else None
                     template_path = template_paths.get(kind)
                     if not template_path or not Path(template_path).is_file():
                         raise ValueError(f"Die Word-Vorlage «{kind}» ist noch nicht lokal konfiguriert.")
                     year = cycle["outlook_year"] if kind == "outlook" else cycle["review_year"]
-                    if case["period_start"] and case["period_end"] and (kind != "outlook" or case["event_type"] != "annual"):
+                    if part:
+                        start,end=part['period_start'],part['period_end']
+                    elif case["period_start"] and case["period_end"] and (kind != "outlook" or case["event_type"] != "annual"):
                         start, end = case["period_start"], case["period_end"]
                     elif kind == "probation":
                         start, end = case["entry_date"], case["probation_end"]
@@ -207,15 +242,24 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                             raise ValueError("Für den Probezeit-Rückblick fehlt der bestätigte Zeitraum.")
                     else:
                         start, end = bounded_review_period(year, case["entry_date"], case["exit_date"])
+                    if part:
+                        start, end = part['period_start'], part['period_end']
                     if date.fromisoformat(start) > date.fromisoformat(end):
                         raise ValueError("Der Dokumentzeitraum endet vor seinem Beginn.")
                     year = date.fromisoformat(end).year
                     performance, development, source = prior_goals(connection, employee_pn=case["employee_pn"], assignment=assignment, year=year) if kind == "review" else ([], [], {})
+                    if modern and not resolved_review and source.get('hr_goal_revision_id'):
+                        from . import goal_followups
+                        revision_id=source['hr_goal_revision_id']
+                        goal_followups.inputs(connection,revision_id,case['case_id'],template_paths)
+                        decision=goal_followups.latest_decision(connection,revision_id,case['case_id'])
+                        if goal_followups.decision_effective(decision,[]):
+                            raise ValueError('Die Folgeentscheidung zur Zielnachreichung zuerst prüfen. Keine neue leere Rückblickvorlage erzeugt.')
                     if kind == "review" and not performance and not development:
                         manifest["goal_warnings"].append(missing_goal_hint(connection, employee_pn=case["employee_pn"], assignment=assignment, year=year))
                     fields = {
                         "name": f"{case['first_name']} {case['last_name']}".strip(), "pn": case["employee_pn"],
-                        "funktion": case["position"], "oe": case["org_unit"],
+                        "funktion": case["position"], "oe": part['form_org_unit'] if part else case["org_unit"],
                         "name_vg": f"{manager['first_name']} {manager['last_name']}".strip(), "pn_vg": manager_pn,
                         "datum_von": _date_text(start), "datum_bis": _date_text(end),
                         "nebenbeschaeftigung": _secondary_employment_text(connection, employee_pn=case["employee_pn"], employment_assignment=assignment, fallback=case["secondary_employment"]),
@@ -223,6 +267,8 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                     document = render_word_form(Path(template_path), kind=kind, fields=fields, performance_goals=performance, development_goals=development)
                     label = {"review": "Rückblick", "outlook": "Ausblick", "probation": "Rückblick_Probezeit"}[kind]
                     document_name = f"{label}_{year}_{_filename_part(case['last_name'])}_{_filename_part(case['first_name'])}_{_filename_part(case['employee_pn'])}.docx"
+                    if resolved_review or modern:
+                        document_name = document_name[:-5] + f"_Ans_{_filename_part(assignment)}_{hashlib.sha256(case['case_id'].encode()).hexdigest()[:8]}.docx"
                     person_cases = [c for c in cases if c['employee_pn'] == case['employee_pn'] and (c['official_scope'] or c['suggested_scope']) != 'none']
                     if len(person_cases) > 1:
                         case_number = next(i for i, c in enumerate(person_cases, 1) if c['case_id'] == case['case_id'])
@@ -230,13 +276,16 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
                     if document_name in bundle.namelist():
                         raise ValueError("Die Auswahl enthält mehrere Ereignisse mit demselben Dokumentnamen. Bitte die Fallzuordnung klären.")
                     bundle.writestr(document_name, document)
-                    manifest["documents"].append({"case_id": case["case_id"], "kind": kind, "filename": document_name,
+                    responsibility=({key:part[key] for key in ('obligation_id','kind','manager_pn','recipient_email','form_org_unit','form_org_source','period_start','period_end','responsibility_revision')} if part else {})
+                    manifest["documents"].append({**({'responsibility':responsibility} if part else {}),"case_id": case["case_id"], "kind": kind, "filename": document_name,
                         "period_start": start, "period_end": end, "sha256": hashlib.sha256(document).hexdigest(),
                         "template_sha256": hashlib.sha256(Path(template_path).read_bytes()).hexdigest(),
                         "goal_source": source, "performance_goals": len(performance), "development_goals": len(development)})
             if manifest["documents"]:
                 manifest['attachments'] = []
                 for kind, template in (preparation_templates(template_paths) if document_kinds is None else {}).items():
+                    if modern and kind=='feedback' and not feedback_cases(connection,cycle,manager_pn,cases):
+                        continue
                     if not template.is_file():
                         raise ValueError(f'Die Beilage «{kind}» fehlt. Vorlage unter templates/preparation prüfen oder in instance/word_config.json konfigurieren.')
                     raw = template.read_bytes()

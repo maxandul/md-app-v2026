@@ -1,0 +1,36 @@
+MD-App: Testversion der neuen HR-Nutzerfuehrung
+Stand: 28. Oktober 2026
+
+1. Das gesamte ZIP in einen neuen Ordner entpacken.
+   Den bisherigen App-Ordner nicht ueberschreiben.
+2. Bei Bedarf INSTALL_MD.bat starten.
+   Voraussetzung: Python 3.11 oder neuer auf dem Windows-Geraet.
+3. HR_TEST_NEU.bat doppelklicken.
+4. Im Browser http://127.0.0.1:5056/arbeit oeffnen.
+   Im Konsolenfenster Strg+C beendet die Uebung.
+
+Jeder Start erzeugt neue erfundene Testpersonen und eine getrennte Datenbank.
+Outlook und Postfachzugriff sind gesperrt. Die Testkopien bleiben im Testordner.
+Die vorhandene produktive Datenbank wird nicht geoeffnet.
+
+Zum Pruefen:
+- Noah Keller: zwei automatisch verarbeitete und bereitgestellte Ruecklaeufe.
+- Mira Steiner: widerspruechliche Antwort verlangt eine konkrete Klaerung.
+- Alex Huber: Rueckblick D und Ausblick mit getrennten Unterschriftennachweisen.
+- Lena Meier: Ziele pruefen, bestaetigen und Rueckblick vorbereiten.
+- Stammdaten: vorbereitete Aenderungen ansehen und gezielt uebernehmen.
+
+Die genaue Prueffolge und der Weg zum produktiven Einsatz stehen in
+docs/START_NEUE_HR_VERSION.md.
+Ergebnisse der Originalpruefung: docs/UMSETZUNG_E2_RELEASE.md.
+
+Geprueft: 340 Python-Tests, 50 Unterpruefungen, 8 JavaScript-Tests,
+alle sechs bereitgestellten Originaldateien.
+Noch offen: Windows-Bedienung, echte Word-/Outlook-/RPA-/SAP-Integration,
+Wiederherstellungsprobe und tatsaechliche Installation auf dem Arbeitsplatz.
+
+Fuer den gewuenschten direkten Einstieg: START_HIER_PRODUKTIV.txt lesen und
+nach Sicherung MD-HR.bat verwenden. Die Uebung hier bleibt freiwillig.
+Branch: feat/hr-e2-release-preparation. main blieb unveraendert.
+Der zusaetzliche Git-Patch setzt Etappe F (d171e96) voraus; das ZIP ist vollstaendig.
+Original-PDFs, Unterschriftenbilder und lokale Daten sind nicht im Paket enthalten.

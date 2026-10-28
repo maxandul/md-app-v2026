@@ -17,7 +17,7 @@ def changes_for_package(package, manifest, current):
     changes=[]
     scopes={'full':'Rückblick und Ausblick','review_only':'Nur Rückblick','outlook_only':'Nur Ausblick','none':'Kein MD','':'Noch nicht festgelegt'}
     kinds={'review':'Rückblick','outlook':'Ausblick','probation':'Probezeit-Rückblick'}
-    labels={'official_scope':'Pflichtumfang','suggested_scope':'Vorgeschlagener Umfang','period_start':'Zeitraum von','period_end':'Zeitraum bis','goals':'Vorjahresziele','secondary':'Nebenbeschäftigungen / öffentliche Ämter','secondary_employment':'Nebenbeschäftigungen','first_name':'Vorname','last_name':'Nachname','position':'Funktion','org_unit':'Organisationseinheit','entry_date':'Eintritt','exit_date':'Austritt','probation_end':'Probezeitende','employment_assignment':'Anstellung','event_type':'Dialogart'}
+    labels={'official_scope':'Pflichtumfang','suggested_scope':'Vorgeschlagener Umfang','period_start':'Zeitraum von','period_end':'Zeitraum bis','goals':'Vorjahresziele','secondary':'Nebenbeschäftigungen / öffentliche Ämter','secondary_employment':'Nebenbeschäftigungen','first_name':'Vorname','last_name':'Nachname','position':'Funktion','org_unit':'Organisationseinheit','entry_date':'Eintritt','exit_date':'Austritt','probation_end':'Probezeitende','employment_assignment':'Anstellung','event_type':'Dialogart','parts':'Zuständigkeit, Zeitraum oder Formular-OE eines zugewiesenen Gesprächsteils'}
     for key in sorted(set(previous)|set(current_cases)|set(docs)):
         before=previous.get(key);after=current_cases.get(key)
         fields=[]
@@ -31,7 +31,7 @@ def changes_for_package(package, manifest, current):
                     label=labels.get(k,k)
                     if k in ('official_scope','suggested_scope'):
                         label += ': '+scopes.get(before.get(k),str(before.get(k)))+' → '+scopes.get(after.get(k),str(after.get(k)))
-                    elif k not in ('goals','secondary','secondary_employment'):
+                    elif k not in ('goals','secondary','secondary_employment','parts'):
                         label += ': '+str(before.get(k) or 'leer')+' → '+str(after.get(k) or 'leer')
                     fields.append(label)
         elif after:
@@ -50,7 +50,7 @@ def changes_for_package(package, manifest, current):
         labels_shared=[]
         if not old:labels_shared=['Diese frühere Ausgabe enthält noch keinen Detailstand. Weitere Änderungen an Stammdaten, Zielen oder Vorlagen können nicht vollständig rekonstruiert werden.']
         else:
-            for key,label in [('cycle','Durchlauf / SAP-Importstand'),('manager','Führungskraft / Empfänger'),('templates','Vorlagen / Beilagen'),('package_format','Ausgabeformat')]:
+            for key,label in [('cycle','Durchlauf / SAP-Importstand'),('manager','Führungskraft / Empfänger'),('templates','Vorlagen / Beilagen'),('package_format','Ausgabeformat'),('feedback_case_ids','Reguläre Feedback-Zuordnung')]:
                 if old.get(key)!=current.get(key):labels_shared.append(label)
         changes.append({'case_id':'__shared__','name':'Übergreifende Änderung / Prüfung','details':'; '.join(labels_shared),'signature':fingerprint(current if not old else shared),'can_generate':False})
     return changes

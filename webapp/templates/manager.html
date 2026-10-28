@@ -10,6 +10,7 @@
     <p class="kicker">Führungslinie · PN {{ manager.manager_pn }}</p>
     <h1>{{ manager.manager_name }}</h1>
     <p class="lead">{{ manager.done_count or 0 }} von {{ manager.case_count }} Fällen abgeschlossen. Der vorgeschlagene Umfang ergibt sich aus den SAP-Daten; bestätigte Abweichungen werden berücksichtigt.</p>
+    {% if config.HR_GOAL_WORKFLOW %}<p>{{ manager.part_count }} zugewiesene Gesprächsteile · <a href="{{ url_for('parts.index',manager=manager.manager_pn) }}">Offene Teile über alle Jahre anzeigen</a></p>{% endif %}
     <h2>Word-Vorlagen</h2>
     <p>Erzeugt die benötigten Vorlagen pro Person mit aktuellen Stammdaten und vorhandenen Vorjahreszielen als ZIP-Datei. Jede Erzeugung erstellt eine neue Ausgabe. Bereits bearbeitete Dateien werden nicht aktualisiert.</p>
     {% include '_word_setup.html' %}
@@ -56,7 +57,9 @@
                   <div class="document-state">
                     <strong>{{ document.name }}</strong>
                     <span class="status status--{{ document.key }}">{{ document.label }}</span>
-                    {% if document.digital and document.key == 'legacy' %}
+                    {% if return_review_enabled and document.return_document_id %}
+                      <a class="button button--small" href="{{ url_for('return_work.detail',document_id=document.return_document_id,back=request.full_path) }}">Nachweis und Bereitstellung</a>
+                    {% elif document.digital and document.key == 'legacy' %}
                       <div class="muted">Die Fachdaten sind übernommen. Dossierübergabe erneut versuchen; keine Unterschriftenprüfung am digitalen PDF.</div>
                       <form class="inline-action" action="{{ url_for('main.mark_signature_checked', document_id=document.digital.id) }}" method="post">
                         <button class="button button--small" type="submit">Dossierübergabe erneut versuchen</button>

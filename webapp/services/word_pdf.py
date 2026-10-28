@@ -22,7 +22,9 @@ NARRATIVE_FIELDS = {
     'higher_manager_comment': ('Bemerkungen der nächsthöheren Führungskraft', r'Gibt es Bemerkungen der nächsthöheren vorgesetzten Person'),
     'higher_employee_comment': ('Bemerkungen zum Gespräch mit der nächsthöheren Führungskraft', r'Gibt es Bemerkungen des/der Mitarbeitenden zum Gespräch'),
     'sap_comment': ('Präzisierung zu Bewilligungen', r'Falls nicht vollständig und/oder aktuell, bitte präzisieren'),
+    'sap_activities': ('Aufgeführte Nebenbeschäftigungen / öffentliche Ämter', r'Aktuell bewilligte und als derzeit ausgeübt erfasste Nebenbeschäftigungen'),
     'career_comment': ('Bemerkungen zur Laufbahnentwicklung', r'Gibt es Bemerkungen bezüglich laufbahnorientierter Entwicklung'),
+    'career_choice': ('Laufbahnwunsch laut Formular', r'Besteht ein Wunsch bezüglich laufbahnorientierter Entwicklung'),
 }
 
 
@@ -85,6 +87,9 @@ def inspect_word_pdf(path: Path) -> dict:
         result[key] = merge_goal_continuations(result[key])
     result['data']['no_md_reason'] = result.pop('no_md_reason', '')
     result['issues'].extend(result.pop('content_issues'))
+    result['data'].update(result.pop('scalar_fields', {}))
+    from .pdf_validation import validate_format
+    validate_format(path, result)
     result['status'] = 'needs_review'
     return result
 
@@ -150,7 +155,8 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
     from .pdf_cells import read_cells
     from .legacy_forms import COMPETENCY_TAGS
     performance, development, assessments, fields, issues = [], [], {}, [], []
-    narratives = {}
+    narratives, scalar_fields, field_evidence = {}, {}, {}
+    competency_anchors = set()
     no_md_reason = ''
     context = ''
     assessment_done = False
@@ -159,18 +165,17 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
         cells, runs = page['cells'], page['runs']
         # Nur Überschriften ausserhalb der Eingabefelder setzen den Kontext.
         external = [r for r in runs if not any(c['x0']-.2 <= r['x'] < c['x1'] and c['y0'] <= r['y'] <= c['y1']+.2 for c in cells)]
-        lines = []
-        for run in sorted(external, key=lambda r: (round(r['y']), r['x'])):
-            if not lines or abs(lines[-1][0]-run['y']) > 1.5:
-                lines.append([run['y'], run['text']])
-            else:
-                lines[-1][1] += run['text']
+        lines = page['external_lines']
         anchors = []
         narrative_anchors = []
-        for y, text in lines:
+        for index, (y, text) in enumerate(lines):
             text = re.sub(r'\s+', ' ', text).strip()
+            # Labels can wrap, including the employee's higher-manager comment.
+            label = text
+            if index+1 < len(lines) and lines[index+1][0]-y < 18:
+                label += ' ' + lines[index+1][1]
             for key, (_label, pattern) in NARRATIVE_FIELDS.items():
-                if re.search(pattern, text, re.I):
+                if key != 'career_choice' and re.match(pattern, label, re.I):
                     narrative_anchors.append((y, key))
             if 'Falls nein, hier Begründung' in text:
                 narrative_anchors.append((y, 'no_md_reason'))
@@ -179,8 +184,31 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
             for name in COMPETENCY_TAGS.values():
                 if re.sub(r'[\s-]+', '', text).startswith(re.sub(r'[\s-]+', '', name)):
                     anchors.append((y, name))
+                    competency_anchors.add(name)
             if re.match(r'\d+(?:\.\d+)*\.\s*(?:Gesamt|Weitere|Bemerkungen|Unterschriften|Entwicklungsperspektiven|Laufbahn|Nebenbeschäftigungen|Gespräch|Anstellungsentscheid|Bestätigung)', text):
                 anchors.append((y, ''))
+        for key, pattern in (
+            ('rating', r'Der Gesamteindruck ist'),
+            ('sap_current', r'Sind die oben aufgeführten Bewilligungen vollständig\s*und aktuell'),
+            ('career_choice', NARRATIVE_FIELDS['career_choice'][1]),
+        ):
+            for y, label in lines:
+                if not re.match(pattern, label, re.I):
+                    continue
+                matches = [c for c in cells if c['color']=='blue' and c['x1']-c['x0']<200 and c['y0']<=y<=c['y1']+.2]
+                if len(matches)!=1 or key in field_evidence:
+                    issues.append('Antwortfeld nicht eindeutig zugeordnet: '+key)
+                    scalar_fields[key] = ''
+                    continue
+                value = _field_text(matches[0]['text'])
+                field_evidence[key] = {'page':page['page'],'top':round(matches[0]['y0'],1),'text':value}
+                if key=='rating':
+                    scalar_fields[key] = {'vorzüglich':'A','sehr gut':'B','gut':'C','genügend':'D','ungenügend':'E'}.get(value.casefold(), '')
+                elif key=='sap_current':
+                    scalar_fields[key] = value.lower() if value.lower() in ('ja','nein') else ''
+                else:
+                    narratives['career_choice'] = value
+                    scalar_fields['career_requested'] = ('ja' if value in ('Ja','KNF I','KNF II','Führungsverantwortung','Fachführungsverantwortung','Projektverantwortung','Stellvertretung','Anderer Entwicklungswunsch') else 'nein' if value in ('Nein','Kein Entwicklungswunsch') else '')
         rows=[]
         for cell in cells:
             if not rows or abs(rows[-1][0]['y0']-cell['y0'])>.25:
@@ -245,8 +273,10 @@ def extract_form_content(path: Path, kind: str, *, probation: bool = False) -> d
         # Kontext auch dann übertragen, wenn am Seitenende keine Zelle folgt.
         if anchor_index<len(anchors):
             context=anchors[-1][1]
+            assessment_done=False
     if not goal_rows and not probation:
         issues.append('Zieltabellen nicht sicher erkannt. Ältere oder abweichende Vorlage: Ziele anhand des Original-PDF prüfen und nötigenfalls erfassen.')
     return {'performance_goals':performance, 'development_goals':development,
             'assessments':assessments, 'narratives':narratives, 'no_md_reason':no_md_reason, 'fields':fields, 'content_issues':issues,
-            'goal_context':'previous' if kind=='review' else 'agreed'}
+            'goal_context':'previous' if kind=='review' else 'agreed', 'scalar_fields':scalar_fields,
+            'field_evidence':field_evidence, 'coverage':{'goal_rows':goal_rows,'competencies':sorted(competency_anchors)}}

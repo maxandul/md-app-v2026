@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% from 'hr/_filters.html' import search with context %}
+{% block title %}Arbeitsübersicht · MD{% endblock %}{% block content %}
+<section class="page-head"><h1>Arbeitsübersicht</h1><p>Offene Arbeit aus allen Jahren. Jede Zeile führt zum bestehenden Vorgang. Eine erledigte Mail beendet keine offene Folgearbeit.</p></section>
+{% if filters.cycle_id %}<p>Durchlauf {{ filters.cycle_id }} ausgewählt. <a href="{{ url_for("hr.work") }}">Alle Durchläufe öffnen</a></p>{% endif %}
+<details><summary>Durchläufe planen und Einrichtung</summary><p><a href="{{ url_for('main.dashboard',view='cycles') }}">Durchlauf anlegen / Planungsübersicht</a> · <a href="{{ url_for('main.setup_guide') }}">Einrichtung prüfen</a> · <a href="{{ url_for('parts.index') }}">Alle Gesprächsteile</a></p></details>
+{{ search(filters,years=true,kinds=kinds,org=true,manager=true,due=true,states=states) }}
+<p>Zähleinheit: Aufgaben zu Quellen, Gesprächsteilen, Rückläufen oder Sammlungen; keine Personenzahl. Ein leerer Jahresfilter schliesst offene Altjahre ein.</p>
+{% include 'hr/_pager.html' %}
+<div class="table-wrap"><table><thead><tr><th>Nächste Aktion</th><th>Person / Quelle</th><th>Bezug</th><th>Frist / Stand</th></tr></thead><tbody>
+{% for row in rows %}<tr><td><a href="{{ row.href }}">{{ row.title }}</a><br><span class="muted">{{ row.kind }}</span></td><td>{{ row.subject }}{% if row.person_number %}<br>PN {{ row.person_number }}{% endif %}</td><td>{{ row.context }}{% if row.year %}<br>{{ row.year }}{% endif %}{% if row.manager_pn %} · FK {{ row.manager_pn }}{% endif %}{% if row.org_unit %}<br>OE {{ row.org_unit }}{% endif %}</td><td>{{ row.due_date or 'Keine Frist hinterlegt' }}<br>{{ states[row.state] }}</td></tr>
+{% else %}<tr><td colspan="4">Keine passenden Aufgaben. Prüfe die Filter oder wechsle in den Verlauf.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

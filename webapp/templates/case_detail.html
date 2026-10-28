@@ -17,6 +17,7 @@
     <p><a class="button" href="{{ url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case.case_id) }}">Einzelne Formulare erzeugen / versenden</a></p>
   </section>
 
+  {% include 'parts/_summary.html' %}
   <section class="content-section" aria-labelledby="case-data-title">
     <div class="section-heading"><div><p class="kicker">Übernommene Angaben</p><h2 id="case-data-title">Fachdaten prüfen</h2></div></div>
     {% if correction_locked %}<div class="info-box"><p>Mindestens ein aktuelles Dokument wurde bereits freigegeben. Direkte Datenkorrekturen sind deshalb gesperrt; Bereits zur Ablage bereitgestellte Dokumente lassen sich auch durch eine neue PDF-Version nicht automatisch ersetzen. Kläre solche Korrekturen zuerst mit der zuständigen Dossier- und SAP-Verarbeitung.</p></div>{% endif %}
@@ -56,6 +57,7 @@
     {% if documents %}<div class="table-wrap"><table><thead><tr><th>Dokument</th><th>Version</th><th>Eingang</th><th>Status</th><th>Ersetzungsgrund</th></tr></thead><tbody>{% for document in documents %}<tr><td><strong>{{ document.document_name }}</strong><br><span class="muted">{{ document.original_filename }}</span><br><a href="{{ url_for('main.document_original',document_id=document.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a></td><td>{% if document.is_current %}<span class="status status--staged">Aktuell</span>{% else %}<span class="status">Ersetzt</span>{% endif %}<br><code>{{ document.sha256[:12] }}…</code></td><td>{{ document.received_at }}</td><td>{{ document.variant_label }}<br><span class="muted">{{ document.handoff_label }}</span>{% if document.data_block.get('conducted')=='nein' %}<br><strong>Nicht durchgeführt</strong><br>{{ document.data_block.get('no_md_reason','') }}{% endif %}{% if document.data_block.get('word_pdf_import_id') %}<br><a href="{{ url_for('main.word_pdf_review', import_id=document.data_block.word_pdf_import_id|int) }}">PDF-Prüfung und Original</a>{% endif %}</td><td>{{ document.replacement_reason or '–' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state">Noch kein offizielles Dokument vorhanden.</div>{% endif %}
 
     {% for document in documents if document.is_current and document.variant == 'digital' %}
+      {% if return_review_enabled %}<div class="content-card"><h3>{{ document.document_name }}: Nachweis und Bereitstellung</h3><a class="button" href="{{ url_for('return_work.detail',document_id=document.id,back=request.full_path) }}">Rücklauf weiterbearbeiten</a></div>{% else %}
       {% if not document.signature_checked %}
       <div class="content-card"><h3>{{ document.document_name }}: Dossierübergabe offen</h3><p>Die Fachdaten wurden übernommen. Keine Unterschriftenprüfung am digitalen PDF. Die Übergabe erneut versuchen; bei Rückblick D/E wird stattdessen die Scanaufgabe geöffnet. Bei fehlerhaften Fachdaten zuerst korrigiertes PDF einlesen.</p><form action="{{ url_for('main.mark_signature_checked', document_id=document.id) }}" method="post"><button class="button button--primary">Dossierübergabe erneut versuchen</button></form></div>
       {% elif document.scan_required and document.handoff_status == 'waiting_scan' %}
@@ -63,6 +65,7 @@
       <form action="{{ url_for('main.upload_scan', case_id=case.case_id, document_kind=document.document_kind) }}" method="post" enctype="multipart/form-data">
       <label>Unterschriebener PDF-Scan<input type="file" name="scan_file" accept=".pdf,application/pdf" required></label>
       <p>Scan öffnen und mit dem Rückblick vergleichen. Bei fehlender Unterschrift oder unvollständigem Inhalt korrigierten Scan anfordern; Aufgabe offen lassen.</p><label><input type="checkbox" name="scan_checked" value="yes" required> Person, Zeitraum, vollständiger Inhalt und erforderliche Unterschriften am Scan geprüft.</label><button class="button">Geprüften Scan als Kopie bereitstellen</button></form></div>
+      {% endif %}
       {% endif %}
     {% endfor %}
     <div class="content-card version-upload">

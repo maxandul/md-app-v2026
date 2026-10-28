@@ -176,6 +176,13 @@ def cockpit_overview(
             """,
             (cycle_id, date.today().isoformat()),
         ).fetchall()
+        from webapp.migrations import available
+        if available(connection):
+            overdue_managers=connection.execute('''SELECT o.manager_pn,COALESCE(e.first_name||' '||e.last_name,o.manager_pn) AS manager_name,
+                COUNT(*) AS obligation_count,MIN(o.due_date) AS oldest_due FROM hr_resolved_obligations o
+                LEFT JOIN employees e ON e.pn=o.manager_pn WHERE o.cycle_id=? AND o.active=1 AND o.required=1
+                AND o.event_status<>'cancelled' AND o.status IN ('open','rejected','scan_pending')
+                AND o.due_date<>'' AND o.due_date<? GROUP BY o.manager_pn ORDER BY oldest_due,manager_name''',(cycle_id,date.today().isoformat())).fetchall()
         for manager in overdue_managers:
             tasks.append(
                 {
@@ -215,6 +222,14 @@ def cockpit_overview(
             """,
             (cycle_id,),
         ).fetchall()
+        if available(connection):
+            missing_workbooks=connection.execute('''SELECT o.manager_pn,COALESCE(e.first_name||' '||e.last_name,o.manager_pn) AS manager_name,
+                COUNT(DISTINCT o.employee_pn) AS case_count FROM hr_resolved_obligations o LEFT JOIN employees e ON e.pn=o.manager_pn
+                WHERE o.cycle_id=? AND o.active=1 AND o.required=1 AND o.status NOT IN ('complete','waived')
+                AND o.event_status NOT IN ('cancelled','no_md')
+                AND NOT EXISTS(SELECT 1 FROM word_dispatch_packages p WHERE p.cycle_id=o.cycle_id AND p.manager_pn=o.manager_pn AND p.discarded_at='')
+                AND NOT EXISTS(SELECT 1 FROM package_events p WHERE p.cycle_id=o.cycle_id AND p.manager_pn=o.manager_pn AND p.direction='versand')
+                GROUP BY o.manager_pn ORDER BY manager_name''',(cycle_id,)).fetchall()
         metrics["workbooks_missing"] = len(missing_workbooks)
         for manager in missing_workbooks:
             tasks.append(
@@ -305,9 +320,31 @@ def cockpit_overview(
     metrics['signatures_pending'] = len(signatures)
     for item in signatures:
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title='Dossierübergabe erneut versuchen',subject=item['first_name']+' '+item['last_name'],context='PDF-Fachdaten übernommen; Übergabe noch offen',date=item['received_at'],target='case',case_id=item['case_id'],cycle_id=item['cycle_id'],manager_pn=item['manager_pn']))
+    from . import return_review
+    if return_review.available(connection):
+        tracked_cases={r[0] for r in connection.execute('''SELECT DISTINCT d.case_id FROM official_documents d
+            JOIN hr_return_reviews r ON r.document_id=d.id WHERE d.is_current=1''')}
+        tasks=[t for t in tasks if not (t['kind']=='Rücklauf' and t.get('case_id') in tracked_cases)]
+        return_tasks=return_review.tasks(connection)
+        tasks.extend(return_tasks)
+        metrics['signatures_pending']=sum(t['title']=='Unterschriftenprüfung offen' for t in return_tasks)
+        metrics['scans_pending']=sum(t['title']=='Unterschriebener Scan fehlt' for t in return_tasks)
     for item in connection.execute("SELECT * FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'"):
         tasks.append(dict(priority='hoch',priority_rank=2,kind='Zuordnung',title='Ereignis einem Durchlauf zuordnen',subject=item['event_id'],context='Ohne Zuordnung sind Word-Erzeugung und Fallprüfung noch nicht möglich',date=item['created_at'],target='unassigned'))
 
+    from .sap_staging import available as staged
+    if staged(connection):
+        for row in connection.execute('''SELECT b.id,b.original_filename,b.created_at,COUNT(*) AS count
+            FROM hr_sap_batches b JOIN hr_sap_changes c ON c.batch_id=b.id WHERE c.superseded_by IS NULL
+            AND ((c.data_status='pending' AND c.category<>'unchanged') OR c.followup_status='open') GROUP BY b.id'''):
+            tasks.append(dict(priority='mittel',priority_rank=3,kind='Stammdaten',title='SAP-Abgleich und Dialogfolgen prüfen',
+                subject=row['original_filename'],context=f"{row['count']} Personeneinträge offen",date=row['created_at'],target='sap_preview',batch_id=row['id']))
+        for row in connection.execute('''SELECT cycle_id,COUNT(*) AS count FROM hr_resolved_obligations
+            WHERE active=1 AND event_status<>'cancelled' AND required=1 AND status NOT IN ('complete','waived')
+              AND document_kind IN ('review','outlook') AND (? IS NULL OR cycle_id<>?) GROUP BY cycle_id''',
+            (selected_cycle['id'] if selected_cycle else None,selected_cycle['id'] if selected_cycle else None)):
+            tasks.append(dict(priority='mittel',priority_rank=4,kind='Weitere Jahre',title='Offene Gesprächsteile aus anderen Jahren',
+                subject=f"{row['count']} Gesprächsteile",context=f"Durchlauf {row['cycle_id']}; auch nach Kampagnenabschluss bearbeitbar",date='',target='dialogs',cycle_id=row['cycle_id']))
     tasks.sort(key=lambda item: (item["priority_rank"], item["date"] or ""))
     for cycle in cycles:
         cycle["status_label"] = CYCLE_STATUS_LABELS.get(cycle["status"], cycle["status"])

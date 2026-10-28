@@ -1,9 +1,14 @@
 # Dokumentation MD-App 2026
 
-Stand: 9. Oktober 2026. Standard ist Word-Erzeugung mit geprüftem PDF-Rücklauf.
+Stand: 28. Oktober 2026. Standard ist Word-Erzeugung mit geprüftem PDF-Rücklauf.
+Die neue HR-Version ist für den gewünschten direkten Einstieg vorbereitet;
+offene Funktionsnachweise werden bei der ersten Nutzung erbracht.
 
 | Dokument | Zweck |
 |---|---|
+| [Direkter Einstieg](../START_HIER_PRODUKTIV.txt) | Neue Oberfläche im Alltag, bestehende Daten behalten, Rückläufe manuell prüfen |
+| [Neue HR-Version starten](START_NEUE_HR_VERSION.md) | Testpaket, Windows-Abnahme, Sicherung, Aktivierung und Rückkehr |
+| [E2-Prüfergebnisse](UMSETZUNG_E2_RELEASE.md) | Sechs Originale, Parserkorrekturen, begrenzte Automatik und offene Nachweise |
 | [HR-Betreuung](HR_BETREUUNG.md) | Erststart, laufende Arbeit, Ausnahmen und Folgejahr |
 | [Selbständigkeitsprüfung](HR_SELBSTAENDIGKEITSPRUEFUNG.md) | Ursprüngliche Befunde mit Verweis auf die Nachbearbeitung |
 | [Anforderungen](ANFORDERUNGEN.md) | Aktueller fachlicher Umfang und Grenzen |

@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Zielnachreichungen · MD{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Pfad"><a href="{{ url_for('main.worklist',cycle_id='') }}">Arbeit</a> / Zielnachreichungen</nav>
+<div class="page-heading"><p class="kicker">Arbeit · alle Jahre</p><h1>Zielnachreichungen</h1><p>Alte Ausblicke prüfen, betroffene Rückblicke aktualisieren und den Versand nachvollziehen.</p></div>
+<p class="goal-actions"><a class="button button--secondary" href="{{ url_for('main.returns_overview',cycle_id='') }}">Eingänge</a> <a class="button button--secondary" href="{{ url_for('goal_work.dispatches') }}">Versand fortsetzen</a></p>
+{% if group %}<div class="notice"><strong>{{ group.title }}</strong> · Eingang {{ group.created_at }} · <a href="{{ url_for('goal_work.index') }}">Alle Zielnachreichungen</a></div>{% endif %}
+<details class="goal-panel" id="upload"><summary>Alte Ausblicke einlesen</summary><form action="{{ url_for('goal_work.upload') }}" method="post" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Word oder PDF<input type="file" name="forms" accept=".docx,.docm,.pdf" multiple required></label><label>Zieljahr, falls im Dokument nicht erkennbar<input type="number" name="goal_year" min="2020" max="2100"></label><button class="button">Einlesen und prüfen</button><p class="muted">Gesicherte Mailanhänge kannst du direkt im Eingang öffnen. Ein erneuter Upload ist nicht nötig.</p></form></details>
+<form method="get" class="compact-filter">
+{% if filters.batch_id %}<input type="hidden" name="batch_id" value="{{ filters.batch_id }}">{% endif %}
+<label>Name, PN oder Datei<input type="search" name="q" value="{{ filters.q }}"></label>
+<label>Arbeitsstand<select name="state"><option value="open"{% if filters.state=='open' %} selected{% endif %}>Alle offenen</option><option value="all"{% if filters.state=='all' %} selected{% endif %}>Alle einschliesslich Verlauf</option>{% for key,label in labels.items() %}<option value="{{ key }}"{% if filters.state==key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<label>Zieljahr<input type="number" name="year" value="{{ filters.year or '' }}"></label><label>Aktuelle Anstellungs-OE<input name="org_unit" value="{{ filters.org_unit }}"></label>
+<label>Pro Seite<select name="page_size">{% for size in (25,50,100) %}<option{% if page_size==size %} selected{% endif %}>{{ size }}</option>{% endfor %}</select></label><button class="button">Filtern</button><a href="{{ url_for('goal_work.index') }}">Filter zurücksetzen</a>
+</form>
+<p><strong>{{ total }} Zielquellen</strong> · Seite {{ page }} von {{ pages }}. Offene Altjahre bleiben ohne Jahresfilter sichtbar.</p>
+<form method="get" action="{{ url_for('goal_work.outputs') }}"><input type="hidden" name="back" value="{{ request.full_path }}">
+{% if rows %}<div class="table-wrap"><table data-server-paginated><thead><tr><th>Auswahl</th><th>Person / Anstellung</th><th>Zieljahr / Original</th><th>Nächste Aktion</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{% if row.status=='confirmed' %}<input type="checkbox" name="source" value="{{ row.id }}" aria-label="Zielquelle für {{ row.first_name }} {{ row.last_name }} auswählen">{% else %}<span class="muted">Zuerst prüfen</span>{% endif %}</td><td><strong>{{ row.first_name or 'Zuordnung' }} {{ row.last_name or 'offen' }}</strong><br>{{ row.person_number or 'PN offen' }} · Ans. {{ row.assignment_number or 'offen' }}<br>{{ row.org_unit or '' }}</td><td>{{ row.goal_year or 'Jahr klären' }}<br>{{ row.original_filename }}</td><td><a href="{{ (url_for('goal_work.outputs',source=row.id,back=request.full_path) if row.status=='confirmed' and row.task_state not in ('done','withdrawal') else url_for('goal_work.source',source_id=row.id,back=request.full_path)) }}">{{ labels[row.task_state] }}</a></td></tr>{% endfor %}
+</tbody></table></div><p>Die Auswahl gilt nur für diese Seite. Bei einem Filterwechsel wird sie aufgehoben.</p><button class="button">Folgeaktionen der Auswahl prüfen</button>
+{% else %}<div class="empty-state">Keine Zielquellen für diese Auswahl. <a href="{{ url_for('goal_work.index',state='all') }}">Filter zurücksetzen und Verlauf anzeigen</a></div>{% endif %}
+</form>
+<nav class="goal-actions" aria-label="Listenseiten">{% if page>1 %}<a href="{{ page_url(page-1) }}">Vorherige Seite</a>{% endif %}{% if page<pages %}<a href="{{ page_url(page+1) }}">Nächste Seite</a>{% endif %}</nav>
+{% endblock %}

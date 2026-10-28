@@ -135,16 +135,30 @@ def case_review_detail(
         )
     return {
         "case": item,
+        "part_rows": _part_rows(connection,case_id),
         "word_pdf_case": any(document['data_block'].get('source')=='word_pdf' for document in documents),
         "documents": documents,
         "obligations": obligations,
         "corrections": corrections,
-        "correction_locked": any(
+        "correction_locked": _validated_return(connection,case_id) or any(
             document["is_current"]
             and (document["signature_checked"] or document["handoff_status"] == "staged" or document["variant"] == "administrative")
             for document in documents
         ),
     }
+
+
+def _validated_return(connection,case_id):
+    from .return_review import available
+    return available(connection) and bool(connection.execute('''SELECT 1 FROM hr_return_reviews r
+        JOIN official_documents d ON d.id=r.document_id WHERE d.case_id=? AND d.is_current=1
+        AND r.validation_origin<>'legacy' ''',(case_id,)).fetchone())
+
+
+def _part_rows(connection,case_id):
+    from webapp.migrations import available
+    from .part_responsibilities import case_parts
+    return case_parts(connection,case_id) if available(connection) else []
 
 
 def _validate_date(value: str, label: str) -> str:
@@ -185,7 +199,7 @@ def correct_case_data(
         """,
         (case_id,),
     ).fetchone()
-    if locked:
+    if locked or _validated_return(connection,case_id):
         raise ValueError(
             "Freigegebene Dokumentdaten können nicht direkt korrigiert werden. "
             "Bitte importiere eine begründete neue PDF-Version."

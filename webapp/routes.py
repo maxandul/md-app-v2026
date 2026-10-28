@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 import shutil
 import uuid
 from io import BytesIO
@@ -111,6 +112,7 @@ def protect_hr_cockpit():
 
 @bp.url_defaults
 def preserve_cycle(endpoint, values):
+    if current_app.config.get('HR_GOAL_WORKFLOW') and endpoint=='main.dashboard':return
     if endpoint in {'main.dashboard','main.dialogs','main.dispatch','main.returns_overview','main.worklist','main.analytics'} and 'cycle_id' not in values and not values.get('unassigned') and session.get('active_cycle_id'):
         values['cycle_id']=session['active_cycle_id']
 
@@ -141,6 +143,12 @@ def _backup_root() -> Path:
 
 def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[str]:
     """Löst eine OE in alle darunterliegenden Führungskräfte des Durchlaufs auf."""
+    from webapp.migrations import available as parts_available
+    part_managers=set()
+    if parts_available(connection):
+        part_managers={r['manager_pn'] for r in connection.execute('''SELECT DISTINCT o.manager_pn FROM hr_resolved_obligations o
+            JOIN employees m ON m.pn=o.manager_pn WHERE o.cycle_id=? AND o.active=1 AND o.required=1
+            AND o.event_status<>'cancelled' AND (o.form_org_unit=? OR m.org_unit=?) ORDER BY o.manager_pn''',(cycle_id,org_unit,org_unit))}
     available = {
         row["manager_pn"]
         for row in connection.execute(
@@ -172,11 +180,13 @@ def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[
         next_frontier = reports.intersection(available).difference(selected)
         selected.update(next_frontier)
         frontier = next_frontier
-    return sorted(selected)
+    return sorted(selected|part_managers)
 
 
 @bp.get("/")
 def dashboard():
+    if current_app.config.get("HR_GOAL_WORKFLOW") and request.args.get("view")!="cycles":
+        return redirect(url_for("hr.work"))
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
@@ -188,6 +198,7 @@ def dashboard():
 
 @bp.get("/stammdaten")
 def master_data():
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.args.get('history')!='yes':return redirect(url_for('sap_work.index'))
     return render_template(
         "master_data.html",
         active_nav="master_data",
@@ -203,7 +214,7 @@ def dialogs():
     unassigned = request.args.get('unassigned') == 'yes'
     if unassigned:
         selected_cycle_id = None
-    if selected_cycle_id is None and data["cycles"] and not unassigned:
+    if selected_cycle_id is None and data["cycles"] and not unassigned and not current_app.config.get('HR_GOAL_WORKFLOW'):
         selected_cycle_id = data["cycles"][0]["id"]
     query = request.args.get("q", "").strip()
     event_type = request.args.get("event_type", "").strip()
@@ -220,7 +231,7 @@ def dialogs():
             if needle in " ".join(
                 str(item.get(key, "")) for key in (
                     "first_name", "last_name", "employee_pn", "assignment_number",
-                    "manager_name", "manager_pn",
+                    "manager_name", "manager_pn", "part_search_text",
                 )
             ).casefold()
         ]
@@ -668,6 +679,9 @@ def export_analytics():
 
 @bp.post("/imports")
 def upload_sap_import():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .sap_routes import upload
+        return upload()
     upload = request.files.get("sap_file")
     if not upload or not upload.filename:
         flash("Bitte wähle einen SAP-Excel-Export aus.", "error")
@@ -1351,6 +1365,9 @@ def document_original(document_id):
 
 @bp.post("/documents/<int:document_id>/signature-checked")
 def mark_signature_checked(document_id: int):
+    from .services.return_review import available as return_model
+    if return_model(get_db()):
+        return redirect(url_for('return_work.detail',document_id=document_id))
     try:
         result = confirm_digital_signature(
             get_db(), document_id=document_id, handoff_dir=_handoff_dir()
@@ -1374,6 +1391,11 @@ def mark_signature_checked(document_id: int):
 
 @bp.post("/cases/<case_id>/scans/<document_kind>")
 def upload_scan(case_id: str, document_kind: str):
+    from .services.return_review import available as return_model
+    if return_model(get_db()):
+        doc=get_db().execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(case_id,document_kind)).fetchone()
+        flash('Den Scan beim Rücklauf zuordnen. Ohne vorhandene Datenquelle den Scan über die PDF-Prüfung vollständig erfassen.','info')
+        return redirect(url_for('return_work.detail',document_id=doc['id']) if doc else url_for('main.returns_overview'))
     if request.form.get('scan_checked') != 'yes':
         flash('Bitte Person, Zeitraum, Vollständigkeit und erforderliche Unterschriften am Scan prüfen und bestätigen.', 'error')
         return redirect(request.referrer or url_for('main.returns_overview'))
@@ -1428,7 +1450,7 @@ def upload_word_pdfs():
             if not upload.filename.lower().endswith('.pdf'):
                 raise ValueError('Bitte eine PDF-Datei auswählen.')
             upload.save(temporary)
-            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'))
+            item_id, duplicate = stage_pdf(get_db(), temporary, filename=upload.filename, directory=_storage_dir('word_pdf_imports'), auto_handoff_dir=_handoff_dir())
             ids.append(item_id)
             if duplicate:
                 flash(f'{upload.filename}: bereits vorhanden; vorhandene Prüfung geöffnet.', 'info')
@@ -1442,7 +1464,7 @@ def upload_word_pdfs():
 def _reviewed_word_form(form):
     data={key:form.get(key,'').strip() for key in ('document_kind','pn','manager_pn','period_start','period_end','dialog_date','conducted','rating','probation','employment_continues','no_md_reason','higher_manager_requested','sap_current','career_requested')}
     from .services.word_pdf import NARRATIVE_FIELDS
-    result={'data':data,'scope':form.get('scope',''),'assessments':{},'scan_required':form.get('scan_required')=='yes',
+    result={'data':data,'scope':form.get('scope',''),'source_role':form.get('source_role','digital'),'assessments':{},'scan_required':form.get('scan_required')=='yes',
             'narratives':{key: form.get('narrative_'+key,'').strip() for key in NARRATIVE_FIELDS if form.get('narrative_present_'+key)=='yes' or form.get('narrative_'+key,'').strip()}}
     for group in ('performance','development'):
         keys=('title','criteria','steps','target_date') + (('competency',) if group=='development' else ())
@@ -1463,6 +1485,11 @@ def _reviewed_word_form(form):
 @bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
 def word_pdf_review(import_id):
     connection=get_db()
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        session.setdefault('goal_csrf',secrets.token_urlsafe(32))
+        routed=connection.execute('SELECT source_id FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone()
+        if routed:
+            return redirect(url_for('goal_work.source',source_id=routed['source_id']))
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item:
         abort(404)
@@ -1477,6 +1504,8 @@ def word_pdf_review(import_id):
         try:
             workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
             action=request.form.get('action','confirm')
+            if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('destination')=='historical' and action=='confirm':
+                raise ValueError('Bitte den Ausblick über «Diesen Ausblick als Zielquelle bearbeiten» direkt prüfen und bestätigen.')
             if action in ('draft','dismiss','reopen'):
                 reason=request.form.get('reason','').strip()
                 if action in ('dismiss','reopen') and len(reason)<10:
@@ -1505,6 +1534,10 @@ def word_pdf_review(import_id):
                 message = 'Nichtdurchführung übernommen. Der Nachweis bleibt gespeichert; eine Unterschriften- oder Ablagefreigabe ist dafür nicht vorgesehen.'
             else:
                 doc = connection.execute('SELECT official_document_id FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
+                from .services import return_review
+                if return_review.available(connection):
+                    flash('Angaben übernommen. Unterschriftennachweis und Bereitstellung hier weiterbearbeiten.','success')
+                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id']))
                 try:
                     released = confirm_digital_signature(connection, document_id=doc['official_document_id'], handoff_dir=_handoff_dir())
                     message = 'Angaben übernommen. Rückblick D/E: unterschriebenen Scan anfordern und im Fall prüfen; noch keine Roboterübergabe.' if released['scan_required'] else 'Angaben übernommen und Kopie im Roboter-Ordner bereitgestellt. Original bleibt im Projekt. Keine Unterschriftenprüfung erforderlich.'
@@ -1519,12 +1552,26 @@ def word_pdf_review(import_id):
     candidates=matching_cases(connection,reviewed.get('data',{}))
     assignments=connection.execute('SELECT assignment_number,org_unit FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
     from .services.word_pdf import NARRATIVE_FIELDS
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    from .services import return_review
+    evidence_targets=[]
+    return_document_id=None
+    if return_review.available(connection) and item['official_document_id']:
+        registered=connection.execute('SELECT document_id FROM hr_return_reviews WHERE document_id=?',(item['official_document_id'],)).fetchone()
+        if registered:return_document_id=registered['document_id']
+    if return_review.available(connection) and item['status']=='pending':
+        for candidate in candidates:
+            for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
+                evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
+    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')
 def assign_inbound_scan(import_id):
     db=get_db()
+    from .services.return_review import available as return_model
+    if return_model(db):
+        flash('Den gesicherten Scan in der PDF-Prüfung dem passenden Rücklauf zuordnen; die Unterschriften separat prüfen.','info')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
     try:
         if request.form.get('scan_checked')!='yes':
             raise ValueError('Bitte Zuordnung, vollständigen Inhalt und Unterschriften am Original-Scan bestätigen.')
@@ -1545,11 +1592,15 @@ def assign_inbound_scan(import_id):
 
 @bp.get('/word-pdf-imports/<int:import_id>/original')
 def word_pdf_original(import_id):
-    item=get_db().execute('''SELECT w.original_filename,COALESCE(d.stored_path,w.stored_path) AS stored_path
+    item=get_db().execute('''SELECT w.original_filename,w.stored_path AS original_path,w.sha256,COALESCE(d.stored_path,w.stored_path) AS stored_path
         FROM word_pdf_imports w LEFT JOIN official_documents d ON d.id=w.official_document_id WHERE w.id=?''',(import_id,)).fetchone()
-    if not item or not Path(item['stored_path']).is_file():
+    if not item:
         abort(404)
-    return send_file(item['stored_path'],download_name=item['original_filename'],mimetype='application/pdf')
+    from .services.return_review import checked_file
+    path=item['original_path'] if Path(item['original_path']).is_file() else item['stored_path']
+    try:path=checked_file(path,item['sha256'])
+    except ValueError:abort(409,'Das Original fehlt oder wurde verändert.')
+    return send_file(path,download_name=item['original_filename'],mimetype='application/pdf')
 
 
 @bp.post('/cycles/<int:cycle_id>/word-packages/batch')
@@ -1696,6 +1747,8 @@ def discard_word_mail_draft(package_id):
 
 @bp.get('/aufgaben')
 def worklist():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        return redirect(url_for('hr.work',**request.args.to_dict()))
     data=cockpit_overview(get_db(),selected_cycle_id=request.args.get('cycle_id',type=int))
     kind=request.args.get('kind','');query=request.args.get('q','').casefold()
     rows=[t for t in data['tasks'] if (not kind or t['kind']==kind) and (not query or query in (t['title']+' '+t['subject']+' '+t.get('context','')).casefold())]
@@ -1709,8 +1762,8 @@ def setup_guide():
 
 @bp.get('/hilfe')
 def help_page():
-    from .services.help_content import SECTIONS
-    return render_template('help.html',active_nav='help',help_sections=SECTIONS)
+    from .services.help_content import sections
+    return render_template('help.html',active_nav='help',help_sections=sections(bool(current_app.config.get('HR_GOAL_WORKFLOW'))))
 
 
 @bp.post('/dialog-events/<int:event_id>/attach')
@@ -1806,6 +1859,11 @@ def _goal_batch_directory(batch_id):
 
 @bp.route('/alte-ziele', methods=['GET', 'POST'])
 def legacy_goal_upload():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        if request.method=='POST':
+            from .goal_routes import accept_uploads
+            return accept_uploads(request.files.getlist('forms'),request.form.get('goal_year',type=int))
+        return redirect(url_for('goal_work.index')+'#upload')
     from .services.goal_batches import create_batch, save_upload
     if request.method == 'POST':
         try:
@@ -1828,8 +1886,12 @@ def create_goal_batch():
         batch, _ = create_batch(_storage_dir('legacy_preview'), request.form.get('goal_year', type=int))
     except ValueError as exc:
         return {'error': str(exc)}, 400
-    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch),
-            'preview_url': url_for('main.legacy_goal_preview', batch_id=batch)}
+    preview_url=url_for('main.legacy_goal_preview',batch_id=batch)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .services.goal_review import batch as goal_batch
+        group=goal_batch(get_db(),'legacy-upload:'+batch,'Eingelesene Ausblicke')
+        preview_url=url_for('goal_work.index',batch_id=group,state='all')
+    return {'upload_url': url_for('main.upload_goal_batch_file', batch_id=batch), 'preview_url':preview_url}
 
 
 @bp.post('/alte-ziele/<batch_id>/files')
@@ -1841,6 +1903,12 @@ def upload_goal_batch_file(batch_id):
         return {'error': 'Keine Datei erhalten.'}, 400
     try:
         file_id = save_upload(directory, upload)
+        if current_app.config.get('HR_GOAL_WORKFLOW'):
+            from .services import goal_review
+            group=goal_review.batch(get_db(),'legacy-upload:'+batch_id,'Eingelesene Ausblicke')
+            path=next((directory/'files'/file_id).iterdir())
+            year=json.loads((directory/'year.json').read_text())['year']
+            goal_review.stage(get_db(),path,filename=upload.filename,batch_id=group,origin_key=f'legacy-upload:{batch_id}:{file_id}',goal_year=year)
     except ValueError as exc:
         return {'error': str(exc)}, 400
     return {'file_id': file_id}
@@ -1865,6 +1933,15 @@ def legacy_goal_preview(batch_id):
     directory = _goal_batch_directory(batch_id)
     year = json.loads((directory / 'year.json').read_text())['year']
     result, fingerprint = preview(get_db(), directory, year)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        if request.method=='POST':
+            from .services import goal_review
+            group=goal_review.batch(get_db(),'legacy-upload:'+batch_id,'Bereits gesicherte Ausblicke')
+            for item in result['items']:
+                goal_review.stage(get_db(),item['path'],filename=item['filename'],batch_id=group,
+                    origin_key=f'legacy-file:{batch_id}:{item["file_id"] or item["sha256"]}',goal_year=year)
+            return redirect(url_for('goal_work.index',batch_id=group,state='all'))
+        return render_template('goal_work/legacy_bridge.html',active_nav='goal_work',batch_id=batch_id)
     if request.method == 'POST':
         try:
             if request.form.get('checked') != 'yes' or request.form.get('fingerprint') != fingerprint:
@@ -1967,7 +2044,10 @@ def feedback_collection(cycle_id,manager_pn):
     manager=connection.execute('SELECT * FROM employees WHERE pn=?',(manager_pn,)).fetchone()
     if not cycle or not manager: abort(404)
     pending=connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending' AND json_extract(parsed_json,'$.data.document_kind')='feedback'").fetchone()[0]
-    return render_template('feedback_collection.html', collection=next((x for x in word_feedback.collections(connection) if x['cycle_id']==cycle_id and x['manager_pn']==manager_pn),None),active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
+    bundle_page=request.args.get('bundle_page',1,type=int)
+    from .services.hr_views import page as paged
+    history=paged(connection,'SELECT * FROM feedback_bundles WHERE cycle_id=? AND manager_pn=?',(cycle_id,manager_pn),number=bundle_page,size=25,order='id DESC')
+    return render_template('feedback_collection.html', bundle_history=history,collection=next((x for x in word_feedback.collections(connection) if x['cycle_id']==cycle_id and x['manager_pn']==manager_pn),None),active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
 
 
 @bp.get('/feedback-bundles/<int:bundle_id>/download')
@@ -1989,7 +2069,8 @@ def reopen_feedback(import_id):
         row=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()
         if not row or row['bundle_id'] or str(state['revision'])!=request.form.get('revision'):
             raise ValueError('Bereits gebündelt oder inzwischen geändert. Bitte die Seite neu laden.')
-        if connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+        from .services.sap_staging import available as staged
+        if not staged(connection) and connection.execute('SELECT status FROM cycles WHERE id=?',(row['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Den Jahresprozess für die Korrektur zuerst wieder öffnen.')
         previous=dict(row)
         connection.execute('DELETE FROM word_feedback_submissions WHERE import_id=?',(import_id,))
@@ -2013,10 +2094,11 @@ def person_word_correction(cycle_id, case_id):
         abort(404)
     if request.method == 'POST':
         try:
-            correction_id = corrections.prepare(db,case=case,kinds=request.form.getlist('kind'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_corrections'))
-            audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
-            flash('Einzelausgabe erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
-            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+'#correction-'+str(correction_id))
+            correction_ids,errors = corrections.prepare_groups(db,case=case,kinds=request.form.getlist('kind'),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],output_dir=_storage_dir('word_corrections'))
+            for correction_id in correction_ids:audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
+            for error in errors:flash(error,'error')
+            if correction_ids:flash(f'{len(correction_ids)} Ausgabe(n) nach zuständiger Führungskraft erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
+            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
         except (ValueError,LookupError,OSError) as exc:
             flash(str(exc),'error')
     rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]

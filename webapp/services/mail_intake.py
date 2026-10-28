@@ -238,14 +238,15 @@ def process_inbound_messages(
                     try:
                         inspection = inspect_pdf(temporary_path)
                         is_feedback = inspection.data.get("document", "").upper() == "FEEDBACK"
-                        if is_feedback or (not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind'))):
-                            word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports')
+                        from .return_review import available as return_model
+                        if is_feedback or (return_model(connection) and inspection.data and inspection.data.get('document','').upper()!='KEIN_MD') or (not inspection.data and (hint or is_word_feedback(inspection.text, filename) or parse_word_pdf_text(inspection.text)['data'].get('document_kind'))):
+                            word_id, duplicate = stage_pdf(connection, temporary_path, filename=filename, directory=pdf_dir / 'word_pdf_imports', auto_handoff_dir=handoff_dir)
                             queued = connection.execute('SELECT * FROM word_pdf_imports WHERE id=?', (word_id,)).fetchone()
                             pending = queued['status'] == 'pending'
                             _insert_attachment(connection, message_id=message_id, index=attachment.index,
                                 filename=filename, stored_path=queued['stored_path'], digest=digest,
-                                file_kind=file_kind, status='review_required' if pending else 'duplicate',
-                                created_at=created_at, error_message='Word-PDF in der Prüfwarteschlange.' if pending else 'Word-PDF bereits verarbeitet.')
+                                file_kind=file_kind, status='review_required' if pending else ('duplicate' if duplicate else 'imported'),
+                                created_at=created_at, error_message='Word-PDF in der Prüfwarteschlange.' if pending else 'Word-PDF verarbeitet; Nachweis und Bereitstellung beim Rücklauf prüfen.')
                             md_relevant = True
                             needs_review = needs_review or pending
                             result['stored'] += 1
@@ -407,6 +408,13 @@ def process_inbound_messages(
         if processed:
             needs_review = any(a['status']=='review_required' for a in processed) or bool(connection.execute(
                 "SELECT 1 FROM inbound_mail_attachments a JOIN word_pdf_imports w ON w.sha256=a.sha256 WHERE a.mail_message_id=? AND w.status='pending' LIMIT 1", (message_id,)).fetchone())
+        from .return_review import available as return_model
+        if return_model(connection):
+            # The adapter has no message body. Attachment success cannot certify
+            # that there are no additional requests in the original message.
+            needs_review=True
+            connection.execute("UPDATE inbound_mail_messages SET error_message=CASE WHEN error_message='' THEN ? ELSE error_message END WHERE id=?",
+                ('Zusätzliche Anliegen in Outlook prüfen: Der Nachrichtentext ist der App nicht verfügbar. Keine automatische Verschiebung allein aufgrund verarbeiteter Anhänge.',message_id))
         if needs_review:
             message_status = "review_required"
             result["review"] += 1
@@ -540,10 +548,26 @@ def resolve_inbound_message(
 def attachment_progress(connection, attachment):
     item=dict(attachment)
     item.update(progress='Prüfung erforderlich; noch keine Roboterübergabe', next_step='Original prüfen. Bei Unklarheit Rückfrage halten; erst nach Klärung die Mailprüfung abschliessen.', case_id='', cycle_id=None, original_available=bool(item['stored_path'] and Path(item['stored_path']).is_file()))
+    from webapp.migrations import available
+    if available(connection):
+        source=connection.execute('SELECT id FROM hr_goal_sources WHERE sha256=?',(item['sha256'],)).fetchone()
+        if source:
+            from .goal_queries import source_state,LABELS
+            item.update(goal_source_id=source['id'],progress=LABELS[source_state(connection,source['id'])],
+                next_step='Zielprüfung und Folgearbeit direkt öffnen. Die Mailablage ist davon unabhängig.')
+            return item
     word=connection.execute('SELECT w.*, COALESCE(s.dismissed,0) AS dismissed FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.sha256=?',(item['sha256'],)).fetchone()
     doc=connection.execute('SELECT * FROM official_documents WHERE id=? OR sha256=? ORDER BY id DESC LIMIT 1',(word['official_document_id'] if word else item.get('official_document_id'),item['sha256'])).fetchone()
     if doc:
         item.update(case_id=doc['case_id'],cycle_id=doc['cycle_id'])
+        from . import return_review
+        if return_review.available(connection) and connection.execute('SELECT 1 FROM hr_return_reviews WHERE document_id=?',(doc['id'],)).fetchone():
+            state=return_review.view(connection,doc['id'],include_history=False)
+            item.update(return_document_id=doc['id'],progress='Angaben übernommen · '+state['signature_label'],
+                next_step='Rücklauf öffnen: konkreten Nachweis und getrennten Bereitstellungsstand weiterbearbeiten.')
+            if state['locally_staged']:item['progress']+=' · lokal bereitgestellt'
+            if state['external_open']:item['progress']+=' · externe Klärung offen'
+            return item
         status=doc['handoff_status']
         item['progress']={'staged':'Kopie an Roboter übergeben; Original im Projekt','waiting_scan':'Original im Projekt; Scan ausstehend, noch keine Roboterübergabe','needs_signature_check':'Angaben übernommen; Dossierübergabe noch offen','not_applicable':'Original im Projekt; keine weitere Übergabe dieses Dokuments vorgesehen'}.get(status,status)
         item['next_step']={'staged':'Keine erneute Ablage. Bei Fehlern bereits erfolgte Dossierverarbeitung separat klären.','waiting_scan':'Rückblick D/E: unterschriebenen Scan anfordern, zuordnen und Unterschriften prüfen.','needs_signature_check':'Fall öffnen und Dossierübergabe erneut versuchen; bei falschen Angaben zuerst korrigiertes PDF einlesen.','not_applicable':'Kein weiterer Ablageschritt für dieses Dokument.'}.get(status,'Fall öffnen.')

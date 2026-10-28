@@ -10,12 +10,17 @@ def stamp():
 
 
 def pending_pdfs(db):
+    from webapp.migrations import available
+    routed=" AND NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)" if available(db) else ''
     return db.execute("""SELECT w.* FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id
-        WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0 ORDER BY w.id""").fetchall()
+        WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0"""+routed+' ORDER BY w.id').fetchall()
 
 
 def pdf_queue(db, *, query='', status='pending', page=1):
     where=[];args=[]
+    from webapp.migrations import available
+    if available(db) and status=='pending':
+        where.append('NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)')
     if status=='dismissed':where.append('COALESCE(s.dismissed,0)=1')
     elif status=='pending':where.append("w.status='pending' AND COALESCE(s.dismissed,0)=0")
     elif status in ('imported','historical','duplicate'):where.append('w.status=?');args.append(status)
@@ -53,9 +58,11 @@ def advance_pdf(db,item_id,*,dismissed=0,reason=''):
 
 def closure_summary(db,cycle_id):
     def count(sql):return db.execute(sql,(cycle_id,)).fetchone()[0]
+    from .return_review import available
+    pending_handoffs=count("SELECT COUNT(*) FROM hr_return_status WHERE cycle_id=? AND is_current=1 AND NOT complete") if available(db) else count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0")
     return {
       'Offene Pflichtdokumente':count("SELECT COUNT(*) FROM document_obligations o JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.cycle_id=? AND e.status<>'cancelled' AND o.required=1 AND o.status NOT IN ('complete','waived')"),
-      'Offene Dossierübergaben':count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0"),
+      'Offene Dossierübergaben':pending_handoffs,
       'Offene Word-Versandvorgänge':count("SELECT COUNT(*) FROM word_dispatch_packages p LEFT JOIN word_mail_deliveries d ON d.package_id=p.id WHERE p.cycle_id=? AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='') AND COALESCE(d.status,'') NOT IN ('sent_confirmed','cancelled')"),
       'Noch nicht exportierte vollständige Rückblicke':count("SELECT COUNT(*) FROM dialog_cases c JOIN dialog_events e ON e.legacy_case_id=c.case_id WHERE c.cycle_id=? AND c.status='vollstaendig' AND c.official_scope IN ('full','review_only') AND e.sap_leading=1 AND c.overall_rating_code<>'' AND NOT EXISTS(SELECT 1 FROM sap_export_rows r WHERE r.dialog_event_id=e.id)"),
       'Ungebündelte Feedbacks':count('SELECT COUNT(*) FROM word_feedback_submissions WHERE cycle_id=? AND bundle_id IS NULL'),
@@ -82,12 +89,13 @@ def setup_checks(config,db):
 
 
 def attach_event(db,event_id,cycle_id,reason):
+    from .sap_staging import available as staged
     if len(reason.strip())<10:raise ValueError('Bitte die Zuordnung mit mindestens 10 Zeichen begründen.')
     e=db.execute('''SELECT e.*,a.person_number,a.assignment_number,m.manager_person_number FROM dialog_events e JOIN employment_assignments a ON a.id=e.employment_id JOIN manager_assignments m ON m.id=e.manager_assignment_id WHERE e.id=?''',(event_id,)).fetchone()
     c=db.execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
     if not e or e['cycle_id'] is not None or e['status']=='cancelled':raise ValueError('Nur ein offenes Ereignis ohne Durchlauf kann zugeordnet werden.')
-    if not c or c['review_year']!=e['review_year'] or c['status']=='abgeschlossen':raise ValueError('Wähle einen offenen Durchlauf mit demselben Rückblickjahr. Bei Bedarf zuerst den Durchlauf eröffnen oder wieder öffnen.')
-    if db.execute('SELECT 1 FROM dialog_cases WHERE cycle_id=? AND employee_pn=? AND employment_assignment=? AND manager_pn=?',(cycle_id,e['person_number'],e['assignment_number'],e['manager_person_number'])).fetchone():
+    if not c or c['review_year']!=e['review_year'] or (not staged(db) and c['status']=='abgeschlossen'):raise ValueError('Wähle einen passenden Durchlauf mit demselben Rückblickjahr.')
+    if not staged(db) and db.execute('SELECT 1 FROM dialog_cases WHERE cycle_id=? AND employee_pn=? AND employment_assignment=? AND manager_pn=?',(cycle_id,e['person_number'],e['assignment_number'],e['manager_person_number'])).fetchone():
         raise ValueError('Für diese Person, Anstellung und Führungslinie besteht bereits ein Fall im Durchlauf. Prüfe diesen bestehenden Fall. Eine doppelte Fehlanlage kannst du begründet aufheben; fachlich unterschiedliche Gespräche benötigen eine Klärung mit der Systemadministration.')
     with db:
         db.execute('''INSERT INTO dialog_cases(case_id,cycle_id,employee_pn,employment_assignment,manager_pn,suggested_scope,suggestion_reason,status,period_start,period_end,data_json,active,updated_at)

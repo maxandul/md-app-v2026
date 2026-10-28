@@ -250,7 +250,11 @@ def analytics_data(
         for obligation in connection.execute("""SELECT o.status, EXISTS(SELECT 1 FROM official_documents d WHERE d.document_obligation_id=o.id AND d.is_current=1 AND d.handoff_status='needs_signature_check') AS handoff_pending FROM document_obligations o WHERE o.dialog_event_id=? AND o.required=1""",(row['event_id'],)):
             key='review' if obligation['handoff_pending'] else {'open':'missing','rejected':'missing','received':'review','review':'review','scan_pending':'scan','complete':'complete'}.get(obligation['status'])
             if key:group[key]+=1
+    from .return_review import available as returns_available
+    from .hr_views import operational_counts
+    part_status=operational_counts(connection,cycle_id=cycle_id,org_unit=org_unit,event_type=event_type) if returns_available(connection) else []
     return {
+        "part_status": part_status,
         "followups": followups,
         "return_summary": list(returns.values()),
         "unassigned_pdf_count": connection.execute("SELECT COUNT(*) FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0").fetchone()[0],

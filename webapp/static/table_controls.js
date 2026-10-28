@@ -2,6 +2,7 @@
   'use strict';
 
   document.querySelectorAll('table').forEach((table, tableIndex) => {
+    if (table.hasAttribute('data-server-paginated')) return;
     const body = table.tBodies[0];
     if (!body) return;
     const rows = Array.from(body.rows);

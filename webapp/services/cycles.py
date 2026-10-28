@@ -75,6 +75,8 @@ def _suggest_scope(exit_date: str, probation_end: str, review_year: int) -> tupl
 
 def repair_probation_boundary(connection: sqlite3.Connection) -> int:
     """Korrigiert unbestätigte Jahresfälle am 30. Juni, ohne Rückläufe zu verändern."""
+    from .sap_staging import available
+    if available(connection):return 0
     rows = connection.execute("""SELECT dc.case_id,c.review_year,e.exit_date,e.probation_end,de.id AS event_id
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id
         JOIN employees e ON e.pn=dc.employee_pn
@@ -90,6 +92,10 @@ def repair_probation_boundary(connection: sqlite3.Connection) -> int:
         """).fetchall()
     changed=0
     for row in rows:
+        from webapp.migrations import available
+        if available(connection) and connection.execute('''SELECT 1 FROM hr_part_responsibilities p
+            JOIN document_obligations o ON o.id=p.obligation_id WHERE o.dialog_event_id=?''',(row['event_id'],)).fetchone():
+            continue
         scope,reason=_suggest_scope(row['exit_date'],row['probation_end'],row['review_year'])
         if scope != 'outlook_only':
             continue
@@ -190,6 +196,10 @@ def synchronize_cycle_with_import(
     updated_at: datetime | None = None,
 ) -> dict[str, int]:
     """Gleicht einen offenen Durchlauf mit einem neueren vollständigen SAP-Import ab."""
+    from .sap_staging import available as staged
+    if staged(connection):
+        # Applied master data and MD decisions have separate lifecycles.
+        return {"added":0,"reactivated":0,"deactivated":0}
     cycle = connection.execute(
         "SELECT * FROM cycles WHERE id = ?", (cycle_id,)
     ).fetchone()
@@ -210,6 +220,15 @@ def synchronize_cycle_with_import(
         (row["employee_pn"], row["employment_assignment"], row["manager_pn"]): row
         for row in existing_rows
     }
+    # Preserve explicit A/B part decisions; general SAP staging follows in stage D.
+    from webapp.migrations import available
+    protected = {}
+    if available(connection):
+        protected = {r['case_id']: r for r in connection.execute('''SELECT DISTINCT dc.*
+            FROM dialog_cases dc JOIN dialog_events e ON e.legacy_case_id=dc.case_id
+            JOIN document_obligations o ON o.dialog_event_id=e.id
+            JOIN hr_part_responsibilities p ON p.obligation_id=o.id WHERE dc.cycle_id=?''',(cycle_id,))}
+    protected_employments = {(r['employee_pn'],r['employment_assignment']) for r in protected.values()}
     lines = connection.execute(
         """
         SELECT rl.employee_pn, rl.manager_pn,
@@ -240,7 +259,11 @@ def synchronize_cycle_with_import(
     )
     added = 0
     reactivated = 0
+    for row in protected.values():
+        connection.execute('UPDATE dialog_cases SET active=?,updated_at=? WHERE id=?',(row['active'],row['updated_at'],row['id']))
     for line in lines:
+        if (line['employee_pn'],line['employment_assignment']) in protected_employments:
+            continue
         key = (line["employee_pn"], line["employment_assignment"], line["manager_pn"])
         scope, reason = _suggest_scope(line["exit_date"], line["probation_end"], cycle["review_year"])
         if key in existing:
@@ -294,7 +317,7 @@ def synchronize_cycle_with_import(
     }
     deactivated = sum(
         1 for key, row in existing.items()
-        if row["active"] and key not in active_keys and row["case_id"] not in manual_case_ids
+        if row["active"] and key not in active_keys and row["case_id"] not in manual_case_ids and row['case_id'] not in protected
     )
     connection.execute(
         "UPDATE cycles SET sap_import_id = ? WHERE id = ?", (sap_import_id, cycle_id)
@@ -359,6 +382,10 @@ def dashboard_data(connection: sqlite3.Connection) -> dict:
         ORDER BY c.review_year DESC
         """
     ).fetchall()
+    from .sap_staging import available as staged
+    if staged(connection):
+        selections={r['applied_import_id']:r['batch_id'] for r in connection.execute('SELECT applied_import_id,batch_id FROM hr_sap_changes WHERE applied_import_id IS NOT NULL')}
+        imports=[{**dict(r),'selection_batch_id':selections.get(r['id'])} for r in imports]
     return {"imports": imports, "cycles": cycles}
 
 
@@ -373,6 +400,10 @@ def cycle_overview(connection: sqlite3.Connection, cycle_id: int) -> tuple[sqlit
     ).fetchone()
     if not cycle:
         raise LookupError("Jahresprozess nicht gefunden.")
+    from webapp.migrations import available
+    if available(connection):
+        from .part_queries import managers
+        return cycle,managers(connection,cycle_id)
     managers = connection.execute(
         """
         WITH case_summary AS (

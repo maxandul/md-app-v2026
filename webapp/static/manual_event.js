@@ -8,6 +8,7 @@
       select.replaceChildren(...options.filter(option => !option.value || option.value === selected || option.textContent.toLocaleLowerCase('de-CH').includes(needle)));
       select.value = selected;
     });
+    if (input.value) input.dispatchEvent(new Event('input'));
   });
   const employee = document.getElementById('manual-employee');
   const manager = document.getElementById('manual-manager');

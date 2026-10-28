@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Versand · Zielnachreichungen{% endblock %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Pfad"><a href="{{ url_for('goal_work.index') }}">Zielnachreichungen</a> / Versand</nav><h1>Versand fortsetzen</h1><p>{{ total }} Versandgruppen · <a href="{{ url_for('goal_work.dispatches',state='open') }}">Offene</a> · <a href="{{ url_for('goal_work.dispatches',state='all') }}">Alle einschliesslich Verlauf</a></p>
+<div class="table-wrap"><table data-server-paginated><thead><tr><th>Empfänger</th><th>Stand</th><th>Letzte Änderung</th></tr></thead><tbody>{% for row in rows %}<tr><td><a href="{{ url_for('goal_work.dispatch',dispatch_id=row.id,back=request.full_path) }}">{{ row.recipient_email }} · Gruppe {{ row.id }}</a></td><td>{{ {'prepared':'Versand vorbereiten','processing':'Outlook-Ausgang klären','failed':'Outlook-Ausgang klären','draft_created':'Entwurf erstellt · Versand unbestätigt','sent_confirmed':'Versand bestätigt','cancelled':'Abgebrochen'}[row.status] }}</td><td>{{ row.updated_at }}</td></tr>{% else %}<tr><td colspan="3">Keine Versandgruppen für diese Auswahl.</td></tr>{% endfor %}</tbody></table></div>
+<nav class="goal-actions" aria-label="Versandseiten">{% if page>1 %}<a href="{{ url_for('goal_work.dispatches',page=page-1,state=state) }}">Vorherige Seite</a>{% endif %}{% if page*25<total %}<a href="{{ url_for('goal_work.dispatches',page=page+1,state=state) }}">Nächste Seite</a>{% endif %}</nav>
+{% endblock %}

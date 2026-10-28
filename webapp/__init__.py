@@ -6,7 +6,7 @@ import os
 import secrets
 from pathlib import Path
 
-from flask import Flask, request
+from flask import Flask, request, session
 
 from . import db
 
@@ -30,10 +30,10 @@ def _secret_key(instance_path: str) -> str:
     return generated
 
 
-def create_app(test_config: dict | None = None) -> Flask:
-    app = Flask(__name__, instance_relative_config=True)
+def create_app(test_config: dict | None = None, *, instance_path: str | None = None) -> Flask:
+    app = Flask(__name__, instance_relative_config=True, instance_path=instance_path)
     app.config.from_mapping(
-        SECRET_KEY=_secret_key(app.instance_path),
+        SECRET_KEY=test_config['SECRET_KEY'] if test_config and 'SECRET_KEY' in test_config else _secret_key(app.instance_path),
         DATABASE=str(Path(app.instance_path) / "md.sqlite3"),
         STORAGE_ROOT=str(Path(app.instance_path) / "data"),
         BACKUP_ROOT=str(Path(app.instance_path) / "backups"),
@@ -44,6 +44,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         SESSION_COOKIE_SECURE=os.environ.get("MD_COOKIE_SECURE", "0") == "1",
         PERMANENT_SESSION_LIFETIME=8 * 60 * 60,
         AUTH_DISABLED=False,
+        HR_GOAL_WORKFLOW=os.environ.get("MD_HR_GOAL_WORKFLOW", "0") == "1",
+        HR_RETURN_AUTOMATION=os.environ.get("MD_HR_RETURN_AUTOMATION", "0") == "1",
         ANALYTICS_MIN_GROUP_SIZE=max(
             1, int(os.environ.get("MD_ANALYTICS_MIN_GROUP_SIZE", "5"))
         ),
@@ -75,6 +77,16 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.before_request(load_logged_in_user)
     app.register_blueprint(auth_bp)
     app.register_blueprint(bp)
+    from .goal_routes import bp as goal_bp
+    app.register_blueprint(goal_bp)
+    from .part_routes import bp as part_bp
+    app.register_blueprint(part_bp)
+    from .sap_routes import bp as sap_bp
+    app.register_blueprint(sap_bp)
+    from .return_routes import bp as return_bp
+    app.register_blueprint(return_bp)
+    from .hr_routes import bp as hr_bp
+    app.register_blueprint(hr_bp)
 
     @app.after_request
     def retain_action_filters(response):
@@ -99,11 +111,18 @@ def create_app(test_config: dict | None = None) -> Flask:
             "default-src 'self'; style-src 'self'; img-src 'self' data:; "
             "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
+        if request.endpoint == 'goal_work.original':
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+            response.headers['Content-Security-Policy'] = "default-src 'none'; frame-ancestors 'self'"
         return response
 
     @app.context_processor
     def workflow_visibility():
-        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled'}
+        if app.config.get('HR_GOAL_WORKFLOW'):
+            session.setdefault('goal_csrf',secrets.token_urlsafe(32))
+        return {'legacy_workbooks_enabled': app.config.get('LEGACY_WORKBOOKS') == 'enabled',
+                'goal_csrf_token':session.get('goal_csrf',''),
+                'return_review_enabled':bool(app.config.get('HR_GOAL_WORKFLOW'))}
 
     from .services.mail_schedule import start_worker
     start_worker(app)

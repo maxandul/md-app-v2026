@@ -11,10 +11,14 @@ echo.
 set "PYTHON_EXE="
 set "PYTHON_ARGS="
 
-py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
-if not errorlevel 1 (
-    set "PYTHON_EXE=py"
-    set "PYTHON_ARGS=-3.11"
+if exist ".venv\Scripts\python.exe" set "PYTHON_EXE=.venv\Scripts\python.exe"
+
+if not defined PYTHON_EXE (
+    py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
+    if not errorlevel 1 (
+        set "PYTHON_EXE=py"
+        set "PYTHON_ARGS=-3.11"
+    )
 )
 
 if not defined PYTHON_EXE (
@@ -29,10 +33,11 @@ if not defined PYTHON_EXE (
     exit /b 1
 )
 
-"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf" >nul 2>nul
+"%PYTHON_EXE%" %PYTHON_ARGS% -c "import flask, waitress, pandas, openpyxl, pypdf, reportlab" >nul 2>nul
 if errorlevel 1 (
     echo Die Python-Pakete fuer die MD-App fehlen oder sind unvollstaendig.
     echo Bitte zuerst INSTALL_MD.bat ausfuehren.
+    echo Bei Verwendung von .venv: .venv\Scripts\python.exe -m pip install -r requirements.txt
     pause
     exit /b 1
 )

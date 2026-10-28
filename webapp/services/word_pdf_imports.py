@@ -18,7 +18,7 @@ def now():
     return datetime.now().astimezone().isoformat(timespec='seconds')
 
 
-def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
+def stage_pdf(connection, path: Path, *, filename: str, directory: Path, auto_handoff_dir=None):
     digest=hashlib.sha256(path.read_bytes()).hexdigest()
     existing=connection.execute('SELECT id FROM word_pdf_imports WHERE sha256=?',(digest,)).fetchone()
     if existing:
@@ -30,6 +30,15 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
     if connection.execute('SELECT id FROM feedback_submissions WHERE sha256=?',(digest,)).fetchone():
         raise ValueError('Dieses Feedback wurde bereits über das Datenblockverfahren importiert.')
     parsed = inspect_feedback(path, filename) if inspection.data.get('document','').upper()=='FEEDBACK' or is_feedback(inspection.text, filename) else inspect_word_pdf(path)
+    from .return_review import available as return_model
+    if return_model(connection) and inspection.data.get('document','').upper() in ('RUECKBLICK','AUSBLICK'):
+        # Retain the legacy intake via the same explicit review; a data block
+        # alone is not a validated form profile for automatic acceptance.
+        block=inspection.data
+        parsed['data'].update({k:block[k] for k in ('pn','manager_pn','ans','period_start','period_end','dialog_date','rating') if k in block})
+        parsed['data']['document_kind']='review' if block['document'].upper()=='RUECKBLICK' else 'outlook'
+        parsed['scope']=block.get('scope','')
+        parsed['issues'].append('Frühere Arbeitsmappenfassung: Angaben, Durchführung und alle Inhalte vollständig am Original prüfen.')
     directory.mkdir(parents=True,exist_ok=True)
     stored=directory/(digest+'-'+uuid.uuid4().hex[:12]+'.pdf')
     try:
@@ -45,7 +54,12 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path):
         raise
     except Exception:
         connection.rollback(); stored.unlink(missing_ok=True); raise
-    return cursor.lastrowid, False
+    import_id = cursor.lastrowid
+    if auto_handoff_dir is not None:
+        from .return_automation import enabled, process_new
+        if enabled():
+            process_new(connection, import_id, handoff_dir=auto_handoff_dir)
+    return import_id, False
 
 
 def matching_cases(connection, data):
@@ -55,6 +69,16 @@ def matching_cases(connection, data):
     if not pn or not year.isdigit() or kind not in ('review','outlook'):
         return []
     year_column='outlook_year' if kind=='outlook' else 'review_year'
+    from webapp.migrations import available
+    if available(connection):
+        from .part_responsibilities import resolve
+        matches=[]
+        for row in connection.execute('SELECT case_id FROM dialog_cases WHERE employee_pn=? ORDER BY id',(pn,)):
+            if not connection.execute('''SELECT 1 FROM document_obligations o JOIN dialog_events de ON de.id=o.dialog_event_id
+                WHERE de.legacy_case_id=? AND o.document_kind=?''',(row['case_id'],kind)).fetchone():continue
+            part=resolve(connection,row['case_id'],kind)
+            if part['period_end'][:4]==year:matches.append(part)
+        return matches
     return [dict(row) for row in connection.execute(f'''SELECT dc.*,c.review_year,c.outlook_year,e.first_name,e.last_name
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id JOIN employees e ON e.pn=dc.employee_pn
         WHERE dc.employee_pn=? AND c.{year_column}=? ORDER BY dc.id''',(pn,int(year)))]
@@ -108,7 +132,9 @@ def _validate(reviewed):
 
 
 def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: str, case_id: str,
-                   historical: bool, reason: str, user_id=None):
+                   historical: bool, reason: str, user_id=None, validation_origin='manual'):
+    if validation_origin not in ('manual','automatic'):
+        raise ValueError('Ungültige Herkunft der Datenprüfung.')
     _validate(reviewed)
     reviewed['data']['ans']=assignment
     reviewed['data']['probation']='ja' if reviewed['data'].get('probation')=='ja' else 'nein'
@@ -135,6 +161,17 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
     else:
         case=_case_row(connection,case_id)
         expected=case['outlook_year'] if kind=='outlook' else case['review_year']
+        from webapp.migrations import available
+        part=None
+        if available(connection):
+            from .part_responsibilities import resolve,case_parts
+            part=resolve(connection,case_id,kind)
+            expected=int(part['period_end'][:4])
+            case={**dict(case),'manager_pn':part['manager_pn']}
+            if part['responsibility_revision'] and (part['period_start'],part['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
+                raise ValueError('Der Zeitraum weicht vom zugewiesenen Gesprächsteil ab. Bitte die Zuordnung am Original prüfen und begründen.')
+            if len({p['manager_pn'] for p in case_parts(connection,case_id) if p['required']})>1 and reviewed.get('scope')!=(case['official_scope'] or case['suggested_scope']):
+                raise ValueError('Bei getrennter Zuständigkeit bleibt der gesamte MD-Umfang erhalten. Eine Umfangsänderung separat im Fall klären.')
         if case['employee_pn']!=pn or case['employment_assignment']!=assignment or expected!=year:
             raise ValueError('Personalnummer, Anstellung oder Zielzeitraum passen nicht zum gewählten Fall.')
         event_status=connection.execute('SELECT status FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
@@ -142,13 +179,16 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
             raise ValueError('Dieses Ereignis wurde aufgehoben. Bitte die Fallzuordnung fachlich klären.')
         if not case['active'] and len(reason.strip())<10:
             raise ValueError('Nachzügler zu einem inaktiven Fall: Bitte die historische Zuordnung mit mindestens 10 Zeichen begründen. Der Fall wird dadurch nicht erneut für den Versand aktiviert.')
-        if case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
+        from .sap_staging import available as staged
+        if not staged(connection) and case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Dieser Durchlauf ist abgeschlossen. Öffne ihn für die Nachbearbeitung zuerst wieder in der Durchlaufübersicht.')
         # Abweichende unterjährige Ereignisse nicht aufgrund des Jahres allein übernehmen.
-        if case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
+        if not (part and part['responsibility_revision']) and case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
             raise ValueError('Der Zeitraum weicht vom Fall ab. Bitte die Zuordnung begründen.')
         if data.get('manager_pn')!=case['manager_pn'] and not reason.strip():
             raise ValueError('Die Führungskraft weicht vom Fall ab. Bitte die Zuordnung begründen.')
+        if part:
+            case['_document_manager']=data.get('manager_pn') or part['manager_pn']
     if case and kind=='review':
         event=connection.execute('SELECT event_type FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
         if event and (event['event_type']=='probation_review') != (data.get('probation')=='ja'):
@@ -220,6 +260,9 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
             if kind=='review':
                 connection.execute("UPDATE dialog_cases SET dialog_date=?,period_start=?,period_end=?,overall_rating_code=?,agreement='' WHERE case_id=?",(data['dialog_date'],data['period_start'],data['period_end'],data.get('rating',''),case_id))
             update_scope_obligations(connection,case_id=case_id,scope=scope,timestamp=timestamp)
+            from . import return_review
+            if return_review.available(connection) and not not_conducted:
+                return_review.register(connection,document_id,source_role=reviewed.get('source_role','digital'),user_id=user_id,reviewed=reviewed,validation_origin=validation_origin)
             refresh_case_status(connection,case_id)
         connection.execute('''UPDATE word_pdf_imports SET reviewed_json=?,status=?,case_id=?,official_document_id=?,review_note=?,reviewed_by=?,reviewed_at=? WHERE id=?''',(json.dumps(reviewed,ensure_ascii=False),'historical' if historical else 'imported',case_id if case else None,document_id,reason,user_id,timestamp,import_id))
     return document_id

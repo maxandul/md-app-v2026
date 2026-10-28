@@ -20,10 +20,21 @@ def person(connection, case_id, cycle_id):
     row = dict(row)
     scope = row['official_scope'] or row['suggested_scope']
     row['kinds'] = (['probation' if row['event_type']=='probation_review' else 'review'] if scope in ('full','review_only') else []) + (['outlook'] if scope in ('full','outlook_only') else [])
+    from webapp.migrations import available
+    if available(connection):
+        from .part_responsibilities import case_parts
+        row['parts']=[p for p in case_parts(connection,case_id) if p['required']]
     return row
 
 
 def prepare(connection, *, case, kinds, template_paths, output_dir):
+    if case.get('parts'):
+        selected=[p for p in case['parts'] if ('probation' if p['kind']=='review' and p['event_type']=='probation_review' else p['kind']) in kinds]
+        managers={p['manager_pn'] for p in selected}
+        if len(managers)!=1 or len(selected)!=len(set(kinds)):
+            raise ValueError('Diese Auswahl benötigt getrennte Empfängergruppen. Bitte die Teile gemeinsam über die Fallansicht vorbereiten.')
+        part=selected[0]
+        case={**case,**{k:part[k] for k in ('manager_pn','recipient_email','manager_first_name','manager_salutation')}}
     path, manifest = create_word_package(connection, cycle_id=case['cycle_id'], manager_pn=case['manager_pn'], case_id=case['case_id'], document_kinds=kinds, template_paths=template_paths, output_dir=output_dir)
     labels = {'review':'Rückblick','probation':'Probezeit-Rückblick','outlook':'Ausblick'}
     names = ', '.join(labels[d['kind']] for d in manifest['documents'])
@@ -36,6 +47,25 @@ def prepare(connection, *, case, kinds, template_paths, output_dir):
     return cur.lastrowid
 
 
+def prepare_groups(connection,*,case,kinds,template_paths,output_dir):
+    """Prepare one durable output per actual recipient; return separate failures."""
+    if not kinds or not set(kinds)<=set(case['kinds']):raise ValueError('Bitte gültige Gesprächsteile auswählen.')
+    groups={}
+    for kind in dict.fromkeys(kinds):
+        part=next((p for p in case.get('parts',[]) if p['kind']==('review' if kind=='probation' else kind)),None)
+        groups.setdefault(part['manager_pn'] if part else case['manager_pn'],[]).append(kind)
+    ids=[];errors=[]
+    for manager,selected in groups.items():
+        try:ids.append(prepare(connection,case=case,kinds=selected,template_paths=template_paths,output_dir=output_dir))
+        except (ValueError,LookupError,OSError) as exc:
+            connection.rollback();errors.append(f'PN {manager}: {exc}')
+    return ids,errors
+
+
+from .outlook_lock import serialized_goal_delivery, check_goal_workflow
+
+
+@serialized_goal_delivery
 def act(connection, *, correction_id, action, template_paths, sender_email, subject='', body='', checked=False, adapter=None):
     row = connection.execute('SELECT * FROM word_person_corrections WHERE id=?',(correction_id,)).fetchone()
     if not row: raise ValueError('Einzelausgabe nicht gefunden.')
@@ -48,10 +78,17 @@ def act(connection, *, correction_id, action, template_paths, sender_email, subj
             return
         if action != 'draft' or row['status'] != 'prepared':
             raise ValueError('Diese Ausgabe wurde bereits an Outlook übergeben. Bestehenden Vorgang zuerst klären.')
-        if connection.execute("SELECT 1 FROM word_person_corrections WHERE case_id=? AND id<>? AND status IN ('processing','draft_created','failed')",(row['case_id'],correction_id)).fetchone():
+        from webapp.migrations import available
+        if not available(connection) and connection.execute("SELECT 1 FROM word_person_corrections WHERE case_id=? AND id<>? AND status IN ('processing','draft_created','failed')",(row['case_id'],correction_id)).fetchone():
             raise ValueError('Für diese Person ist noch ein Outlook-Vorgang offen. Diesen zuerst klären.')
         manifest = json.loads(row['manifest_json'])
+        check_goal_workflow(connection,[row['case_id']],documents=manifest['documents'],exclude=('person',correction_id))
         case = person(connection,row['case_id'],manifest['cycle_id'])
+        if case.get('parts'):
+            selected=[p for p in case['parts'] if p['kind'] in {('review' if d['kind']=='probation' else d['kind']) for d in manifest['documents']}]
+            if not selected or any(p['manager_pn']!=manifest['manager_pn'] for p in selected):
+                raise ValueError('Zuständigkeit geändert. Bitte die betroffenen Formulare neu erzeugen.')
+            case={**case,**{k:selected[0][k] for k in ('manager_pn','recipient_email','manager_first_name','manager_salutation')}}
         if case['recipient_email'] != row['recipient_email']:
             raise ValueError('Empfänger hat sich geändert. Bitte neu erzeugen.')
         if not sender_email or '@' not in sender_email or not row['recipient_email'] or '@' not in row['recipient_email']:

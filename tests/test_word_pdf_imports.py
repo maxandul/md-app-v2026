@@ -22,7 +22,7 @@ from webapp.adapters.outlook import InboundAttachment, InboundMessage
 from webapp.services.mail_intake import process_inbound_messages, resolve_inbound_message, mail_inbox_overview
 
 
-def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year=2025, narrative=False):
+def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year=2025, narrative=False, person_pn='111113',manager_pn='111116',person_name='Test',manager_name='Andere Person'):
     c=canvas.Canvas(str(path),pagesize=(595,842))
     if printed:
         c.translate(0,842); c.scale(.75,-.75)
@@ -40,7 +40,7 @@ def sample_pdf(path, *, printed=False, old=False, marker='', kind='review', year
             c.rect(x,y,w,h,fill=1,stroke=0)
         c.setFillColorRGB(0,0,0)
     label='Ausblick' if kind=='outlook' else 'Rückblick'
-    for y,s in [(805,f'Mitarbeitenden-Dialog (MD) - {label}'),(785,'Name: Test PN: 111113'),(770,'Name VG: Andere Person PN VG: 111116'),(755,f'Wird der {label} durchgeführt? Ja'),(740,f'{label} auf: 01.01.{year} bis 31.12.{year} Gespräch vom: 15.01.{year+1}')]:
+    for y,s in [(805,f'Mitarbeitenden-Dialog (MD) - {label}'),(785,f'Name: {person_name} PN: {person_pn}'),(770,f'Name VG: {manager_name} PN VG: {manager_pn}'),(755,f'Wird der {label} durchgeführt? Ja'),(740,f'{label} auf: 01.01.{year} bis 31.12.{year} Gespräch vom: 15.01.{year+1}')]:
         text(40,y,s)
     if not old:
         text(40,705,'1. Zielvereinbarung' if kind=='outlook' else 'Leistungsziele aus dem Vorjahr')

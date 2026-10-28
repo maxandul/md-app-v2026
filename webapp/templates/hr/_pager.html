@@ -1,0 +1,1 @@
+<nav aria-label="Ergebnisseiten"><p>{{ total }} Treffer · Seite {{ page }} von {{ pages }} · {{ rows|length }} auf dieser Seite</p>{% if page>1 %}<a class="button" href="{{ page_url(page-1) }}">Zurück</a>{% endif %} {% if page<pages %}<a class="button" href="{{ page_url(page+1) }}">Weiter</a>{% endif %}</nav>

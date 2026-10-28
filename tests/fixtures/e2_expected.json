@@ -1,0 +1,212 @@
+{
+  "source": "Sechs am 28.10.2026 bereitgestellte Testdateien. Originale bleiben ausserhalb des Repositories. Sollwerte aus Originalansicht, nicht von HR separat freigegeben.",
+  "files": [
+    {
+      "filename": "MD_Ausblick_2026_TEST.pdf",
+      "sha256": "1ca783e326482bf623598d1cbb1c82aea9bf932580988e9466b2d4f558908983",
+      "expected_parser": {
+        "data": {
+          "document_kind": "outlook",
+          "probation": "nein",
+          "pn": "1345",
+          "manager_pn": "696731",
+          "period_start": "2026-10-28",
+          "period_end": "2026-10-28",
+          "dialog_date": "2026-10-28",
+          "conducted": "ja",
+          "career_requested": "ja",
+          "no_md_reason": "ASDF"
+        },
+        "narratives": {
+          "general_comment": "ASFSAF",
+          "performance_comment": "SDF",
+          "career_choice": "KNF I",
+          "career_comment": "ASF"
+        },
+        "assessments": {},
+        "performance_goals": [
+          {
+            "title": "ASDF",
+            "criteria": "ASDF",
+            "steps": "ASDF",
+            "target_date": "ASDF"
+          }
+        ],
+        "development_goals": [
+          {
+            "title": "ASDF",
+            "criteria": "SADF",
+            "steps": "ASDF",
+            "target_date": "SDF",
+            "competency": "Entwicklungsfähigkeit"
+          },
+          {
+            "title": "ASDFASF",
+            "criteria": "SDF",
+            "steps": "SADF",
+            "target_date": "SDF",
+            "competency": "Selbstmanagement"
+          },
+          {
+            "title": "ASF",
+            "criteria": "ASDF",
+            "steps": "ASDF",
+            "target_date": "ASDF",
+            "competency": "Werteorientierung"
+          }
+        ],
+        "source_role": "digital"
+      }
+    },
+    {
+      "filename": "MD_Rückblick_2026_TEST.pdf",
+      "sha256": "7f4b41406bd37d3266737bc5cf1000057d440355a09932c59bee54827ed97574",
+      "expected_parser": {
+        "data": {
+          "document_kind": "review",
+          "probation": "nein",
+          "pn": "231654",
+          "manager_pn": "654",
+          "period_start": "2026-10-28",
+          "period_end": "2026-10-28",
+          "dialog_date": "2026-10-28",
+          "conducted": "ja",
+          "higher_manager_requested": "ja",
+          "sap_current": "ja",
+          "no_md_reason": "ASDF",
+          "rating": "C"
+        },
+        "narratives": {
+          "general_comment": "ASDF",
+          "performance_comment": "ASF",
+          "manager_comment": "",
+          "employee_comment": "",
+          "higher_manager_comment": "ASDFAS",
+          "higher_employee_comment": "DF",
+          "sap_activities": "ASF",
+          "sap_comment": "ASF"
+        },
+        "assessments": {
+          "Entwicklungsfähigkeit": "ASFASFSD",
+          "Selbstmanagement": "ASFASF",
+          "Werteorientierung": "ASFASF"
+        },
+        "performance_goals": [
+          {
+            "title": "ASF",
+            "criteria": "ASF",
+            "steps": "ASF",
+            "target_date": "ASF"
+          }
+        ],
+        "development_goals": [
+          {
+            "title": "ASDF",
+            "criteria": "ASFD",
+            "steps": "ASDF",
+            "target_date": "ASDF",
+            "competency": "Entwicklungsfähigkeit"
+          }
+        ],
+        "source_role": "digital"
+      }
+    },
+    {
+      "filename": "MD_Rückblick_Probezeit_2026_TEST.pdf",
+      "sha256": "f00e973b6f9672a1006297d53e4239826039f16a6deb6ae119229f91e28333d0",
+      "expected_parser": {
+        "data": {
+          "document_kind": "review",
+          "probation": "ja",
+          "pn": "1234",
+          "manager_pn": "3214",
+          "period_start": "2025-09-05",
+          "period_end": "2025-09-28",
+          "dialog_date": "2024-09-13",
+          "conducted": "ja",
+          "higher_manager_requested": "nein",
+          "sap_current": "",
+          "employment_continues": "ja",
+          "no_md_reason": ""
+        },
+        "narratives": {
+          "general_comment": "asdf",
+          "performance_comment": "SDF",
+          "manager_comment": "ASDF",
+          "employee_comment": "ASDF",
+          "higher_manager_comment": "ASDF",
+          "higher_employee_comment": "ASDF"
+        },
+        "assessments": {
+          "Entwicklungsfähigkeit": "ASF",
+          "Selbstmanagement": "ASDF",
+          "Werteorientierung": "ASDF",
+          "Fach- und Spezialwissen": "ASDF",
+          "Planungs- und Organisationsfähigkeit": "ASDF",
+          "Problemlösefähigkeit": "ASF",
+          "Ergebnisorientiertes Handeln": "ASDFAS",
+          "Leistungsorientierung": "ASFDASDFA",
+          "Leistungskonstanz": "SDFA",
+          "Gestaltungsfähigkeit": "SDF",
+          "Kommunikationsfähigkeit": "ASDF",
+          "Beziehungsmanagement": "ASDF",
+          "Konfliktmanagement": "ASDF"
+        },
+        "performance_goals": [],
+        "development_goals": [],
+        "source_role": "digital"
+      }
+    },
+    {
+      "filename": "TEST_SCAN_AUSBLICK.pdf",
+      "sha256": "4d8213fcb200eb4f609d967f5fb79267b9acddd3bd7cf33e037abee7b39cd1b9",
+      "visually_matches_data_from": "MD_Ausblick_2026_TEST.pdf",
+      "visual_signature_marks_in_both_final_boxes": true,
+      "expected_parser": {
+        "data": {
+          "document_kind": "outlook",
+          "probation": "nein"
+        },
+        "narratives": {},
+        "assessments": {},
+        "performance_goals": [],
+        "development_goals": [],
+        "source_role": "scan"
+      }
+    },
+    {
+      "filename": "TEST_SCAN_RÜCKBLICK.pdf",
+      "sha256": "cbdcf3f906a86c606a0b75593dc75ba30436e1181664d09cb866fc8295116ff4",
+      "visually_matches_data_from": "MD_Rückblick_2026_TEST.pdf",
+      "visual_signature_marks_in_both_final_boxes": true,
+      "expected_parser": {
+        "data": {
+          "document_kind": "review",
+          "probation": "nein"
+        },
+        "narratives": {},
+        "assessments": {},
+        "performance_goals": [],
+        "development_goals": [],
+        "source_role": "scan"
+      }
+    },
+    {
+      "filename": "TEST_SCAN_PROBEZEIT.pdf",
+      "sha256": "b99f95ba7959cfe5dc02e560990fdd83766085a3d99b42aca78335fd781662d1",
+      "visually_matches_data_from": "MD_Rückblick_Probezeit_2026_TEST.pdf",
+      "visual_signature_marks_in_both_final_boxes": true,
+      "expected_parser": {
+        "data": {
+          "document_kind": "review",
+          "probation": "ja"
+        },
+        "narratives": {},
+        "assessments": {},
+        "performance_goals": [],
+        "development_goals": [],
+        "source_role": "scan"
+      }
+    }
+  ]
+}

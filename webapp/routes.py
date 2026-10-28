@@ -112,6 +112,7 @@ def protect_hr_cockpit():
 
 @bp.url_defaults
 def preserve_cycle(endpoint, values):
+    if current_app.config.get('HR_GOAL_WORKFLOW') and endpoint=='main.dashboard':return
     if endpoint in {'main.dashboard','main.dialogs','main.dispatch','main.returns_overview','main.worklist','main.analytics'} and 'cycle_id' not in values and not values.get('unassigned') and session.get('active_cycle_id'):
         values['cycle_id']=session['active_cycle_id']
 
@@ -184,6 +185,8 @@ def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[
 
 @bp.get("/")
 def dashboard():
+    if current_app.config.get("HR_GOAL_WORKFLOW") and request.args.get("view")!="cycles":
+        return redirect(url_for("hr.work"))
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
@@ -1744,6 +1747,8 @@ def discard_word_mail_draft(package_id):
 
 @bp.get('/aufgaben')
 def worklist():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        return redirect(url_for('hr.work',**request.args.to_dict()))
     data=cockpit_overview(get_db(),selected_cycle_id=request.args.get('cycle_id',type=int))
     kind=request.args.get('kind','');query=request.args.get('q','').casefold()
     rows=[t for t in data['tasks'] if (not kind or t['kind']==kind) and (not query or query in (t['title']+' '+t['subject']+' '+t.get('context','')).casefold())]
@@ -2039,7 +2044,10 @@ def feedback_collection(cycle_id,manager_pn):
     manager=connection.execute('SELECT * FROM employees WHERE pn=?',(manager_pn,)).fetchone()
     if not cycle or not manager: abort(404)
     pending=connection.execute("SELECT COUNT(*) FROM word_pdf_imports WHERE status='pending' AND json_extract(parsed_json,'$.data.document_kind')='feedback'").fetchone()[0]
-    return render_template('feedback_collection.html', collection=next((x for x in word_feedback.collections(connection) if x['cycle_id']==cycle_id and x['manager_pn']==manager_pn),None),active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
+    bundle_page=request.args.get('bundle_page',1,type=int)
+    from .services.hr_views import page as paged
+    history=paged(connection,'SELECT * FROM feedback_bundles WHERE cycle_id=? AND manager_pn=?',(cycle_id,manager_pn),number=bundle_page,size=25,order='id DESC')
+    return render_template('feedback_collection.html', bundle_history=history,collection=next((x for x in word_feedback.collections(connection) if x['cycle_id']==cycle_id and x['manager_pn']==manager_pn),None),active_nav='returns',rows=rows,cycle=cycle,manager=manager,pending=pending)
 
 
 @bp.get('/feedback-bundles/<int:bundle_id>/download')

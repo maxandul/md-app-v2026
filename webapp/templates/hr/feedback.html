@@ -1,0 +1,9 @@
+{% extends 'base.html' %}{% from 'hr/_filters.html' import search with context %}
+{% block title %}Feedback-Sammlungen · MD{% endblock %}{% block content %}
+<section class="page-head"><h1>Feedback-Sammlungen</h1><p>Nach Führungskraft und Rückblickjahr. Bündel und Nachträge werden bewusst ausgelöst. Aus einer leeren Sammlung entsteht keine Vollständigkeitsmahnung.</p></section>
+{{ search(filters,years=true,manager=true) }}
+<p>Getrennte Durchläufe bleiben getrennt nachvollziehbar, auch innerhalb desselben Jahres. Eine temporäre MD-Vertretung verändert die Feedback-Zuordnung nicht.</p>
+{% include 'hr/_pager.html' %}
+<div class="table-wrap"><table><thead><tr><th>Führungskraft</th><th>Jahr / Durchlauf</th><th>Geprüft, noch nicht gebündelt</th><th>Bereits gebündelt</th><th>Aktion</th></tr></thead><tbody>
+{% for row in rows %}<tr><td><a href="{{ url_for('hr.manager',pn=row.manager_pn,back=request.full_path) }}">{{ row.first_name }} {{ row.last_name }}</a><br>PN {{ row.manager_pn }}</td><td>{{ row.review_year }} · {{ row.cycle_id }}</td><td>{{ row.pending }}</td><td>{{ row.bundled }} Eingänge · {{ row.bundles }} Bündel</td><td><a href="{{ url_for('main.feedback_collection',cycle_id=row.cycle_id,manager_pn=row.manager_pn) }}">Sammlung / Nachträge</a></td></tr>{% else %}<tr><td colspan="5">Keine passenden Sammlungen.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

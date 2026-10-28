@@ -1,0 +1,9 @@
+{% extends 'base.html' %}{% from 'hr/_filters.html' import search with context %}
+{% block title %}Übergaben · MD{% endblock %}{% block content %}
+<section class="page-head"><h1>Übergaben</h1><p>Dossierbereitstellung und SAP-Export sind getrennte Schritte. Eine lokale Datei bestätigt keine externe Verarbeitung.</p></section>
+<p><strong>Dossierbereitstellung</strong> · <a class="button" href="{{ url_for('main.sap_exports') }}">SAP-Export und Exportverlauf</a> · <a href="{{ url_for('main.dialogs') }}">Durchläufe und Abschlusskontrollen</a></p>
+{{ search(filters,years=true,states={'open':'Bereitstellung / Klärung offen','done':'Lokal bereitgestellt','all':'Alle'}) }}
+{% include 'hr/_pager.html' %}
+<div class="table-wrap"><table><thead><tr><th>Person / Art</th><th>Fassung</th><th>Stand</th><th>Aktion</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.subject }} · PN {{ row.pn }}<br>{{ {'review':'Rückblick','outlook':'Ausblick','feedback':'Feedback','no_md':'Kein MD'}.get(row.kind,row.kind) }} · {{ row.year }}</td><td>{{ row.filename or 'Noch kein Ablagename' }}<br>{{ row.stamp }}</td><td>{{ row.label }}</td><td><a href="{{ row.href }}">{{ 'Bündel herunterladen' if row.target=='feedback_bundle' else 'Nachweis / Verlauf öffnen' }}</a></td></tr>{% else %}<tr><td colspan="4">Keine passenden Übergaben.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

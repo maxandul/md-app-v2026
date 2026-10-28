@@ -18,7 +18,7 @@ bp=Blueprint('goal_work',__name__,url_prefix='/arbeit/ziele')
 
 @bp.before_app_request
 def protect_legacy_goal_aliases():
-    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs'}
+    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs','main.feedback_collection'}
     if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and request.endpoint in aliases:
         token=request.form.get('csrf_token','') or request.headers.get('X-CSRF-Token','')
         expected=session.get('goal_csrf','')
@@ -51,7 +51,7 @@ def root(name):
 def back_link():
     value=request.values.get('back','')
     parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and parsed.path.startswith('/arbeit/ziele') else url_for('goal_work.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
 
 
 def render(template,**kwargs):

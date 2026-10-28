@@ -24,6 +24,25 @@
       </div>
     </div>
     {% if g.user or config.AUTH_DISABLED %}
+      {% if config.HR_GOAL_WORKFLOW %}
+      {% set work_nav=['work','overview','returns','dispatch','goal_work','parts','feedback','handoffs','sap_export','dialogs'] %}
+      <nav class="main-nav" aria-label="Hauptnavigation"><div class="app-shell main-nav__inner">
+        <a href="{{ url_for('hr.work') }}" {% if active_nav in work_nav %}class="is-active" aria-current="page"{% endif %}>Arbeit</a>
+        <a href="{{ url_for('hr.people') }}" {% if active_nav=='people' %}class="is-active" aria-current="page"{% endif %}>Mitarbeitende</a>
+        <a href="{{ url_for('hr.managers') }}" {% if active_nav=='managers' %}class="is-active" aria-current="page"{% endif %}>Führungskräfte</a>
+        <a href="{{ url_for('main.master_data') }}" {% if active_nav=='master_data' %}class="is-active" aria-current="page"{% endif %}>Stammdaten</a>
+        <a href="{{ url_for('main.analytics',cycle_id='') }}" {% if active_nav=='analytics' %}class="is-active" aria-current="page"{% endif %}>Auswertungen</a>
+        <a href="{{ url_for('main.help_page') }}">Hilfe</a>
+        {% if g.user and g.user.role=='system_admin' %}<a href="{{ url_for('main.administration') }}">Administration</a>{% endif %}
+      </div></nav>
+      {% if active_nav in work_nav %}
+      <nav class="main-nav" aria-label="Arbeitsbereiche"><div class="app-shell main-nav__inner">
+        {% for endpoint,label,active in [('hr.work','Arbeitsübersicht','work'),('main.returns_overview','Eingänge','returns'),('main.dispatch','Versand','dispatch'),('goal_work.index','Zielnachreichungen','goal_work'),('hr.feedback','Feedback','feedback'),('hr.handoffs','Übergaben','handoffs'),('main.dialogs','Durchläufe / Dialoge','dialogs')] %}
+        <a href="{{ url_for(endpoint) }}" {% if active_nav==active %}class="is-active" aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+      </div></nav>
+      {% endif %}
+      {% else %}
       <nav class="main-nav" aria-label="Hauptnavigation">
         <div class="app-shell main-nav__inner">
           <a href="{{ url_for('main.dashboard') }}"{% if active_nav == 'overview' %} class="is-active" aria-current="page"{% endif %}>Übersicht</a>
@@ -40,6 +59,7 @@
           {% if g.user and g.user.role == 'system_admin' %}<a href="{{ url_for('main.administration') }}"{% if active_nav == 'administration' %} class="is-active" aria-current="page"{% endif %}>Administration</a>{% endif %}
         </div>
       </nav>
+      {% endif %}
     {% endif %}
   </header>
 

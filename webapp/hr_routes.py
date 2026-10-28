@@ -4,6 +4,7 @@ from flask import Blueprint, abort, render_template, request, url_for
 from .db import get_db
 from .goal_routes import protect
 from .services import hr_views as views
+from .services.dialog_events import EVENT_TYPE_LABELS
 
 bp=Blueprint('hr',__name__)
 bp.before_request(protect)
@@ -67,7 +68,7 @@ def part_list(person='',manager=''):
     subject=get_db().execute('SELECT first_name,last_name FROM persons WHERE person_number=?',(person or manager,)).fetchone()
     if not subject:abort(404)
     assignments=get_db().execute('SELECT * FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(person,)).fetchall() if person else []
-    return render('hr/parts.html',data,active_nav='people' if person else 'managers',filters=args,subject=subject,person=person,manager=manager,assignments=assignments,
+    return render('hr/parts.html',data,active_nav='people' if person else 'managers',filters=args,subject=subject,person=person,manager=manager,assignments=assignments,event_labels=EVENT_TYPE_LABELS,
         back=back_link(url_for('hr.people' if person else 'hr.managers')))
 
 @bp.get('/mitarbeitende/<pn>')

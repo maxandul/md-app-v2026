@@ -32,4 +32,4 @@ jobs:
             HOME="$RUNNER_TEMP/test-home" \
             TMPDIR="$RUNNER_TEMP/synthetic-tests" \
             LANG=C.UTF-8 \
-            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/run_tests_offline.py tests -q --tb=short
+            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/run_tests_offline.py tests -q --tb=short --capture=tee-sys

@@ -111,16 +111,21 @@ def view(db,document_id,*,include_history=True):
     return result
 
 
+def next_action(item):
+    if item['complete']:return 'Für Dossier bereitgestellt'
+    if item['external_open']:return 'Externe Ablage und zusätzlichen Nachweis klären'
+    if item['handoff'] and item['handoff']['status'] in ('processing','uncertain'):return 'Unklaren Übergabeausgang klären'
+    if not item['signature_ready']:return item['signature_label']
+    return 'Für Dossier bereitstellen'
+
+
 def tasks(db):
     result=[]
     for row in db.execute('''SELECT d.id FROM official_documents d JOIN hr_return_reviews r ON r.document_id=d.id
         WHERE d.is_current=1 ORDER BY d.received_at,d.id'''):
         item=view(db,row['id'],include_history=False)
         if item['complete']:continue
-        if item['external_open']:title='Externe Ablage und zusätzlichen Nachweis klären'
-        elif item['handoff'] and item['handoff']['status'] in ('processing','uncertain'):title='Unklaren Übergabeausgang klären'
-        elif not item['signature_ready']:title=item['signature_label']
-        else:title='Für Dossier bereitstellen'
+        title=next_action(item)
         result.append(dict(priority='hoch',priority_rank=2,kind='Rücklauf',title=title,
             subject=item['first_name']+' '+item['last_name'],context=('Rückblick' if item['document_kind']=='review' else 'Ausblick')+' · '+item['part']['manager_pn'],
             date=item['received_at'],target='return_review',document_id=item['id'],case_id=item['case_id'],cycle_id=item['cycle_id'],

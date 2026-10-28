@@ -67,6 +67,7 @@ class ConsolidationTest(unittest.TestCase):
             recipient='Führungskraft',requested_at='2026-01-15',**self.current(doc))
         rows=views.work(self.db,kind='Rücklauf',state='waiting')['rows']
         self.assertEqual([r['record_id'] for r in rows],[doc])
+        self.assertEqual(rows[0]['title'],'Nachgefordert')
         self.confirm(doc);self.publish(doc)
         self.assertEqual(views.work(self.db,kind='Rücklauf',state='open')['total'],0)
         self.assertEqual(views.work(self.db,kind='Rücklauf',state='waiting')['total'],0)
@@ -130,6 +131,23 @@ class ConsolidationTest(unittest.TestCase):
         self.app.config['HR_GOAL_WORKFLOW']=True
         self.app.config['AUTH_DISABLED']=False
         self.assertIn(self.client.get('/arbeit').status_code,(302,303))
+
+    def test_delivery_label_uses_canonical_proof_when_legacy_flag_differs(self):
+        doc,_=self.imported(rating='A');self.publish(doc)
+        with self.db:self.db.execute("UPDATE official_documents SET handoff_status='needs_signature_check' WHERE id=?",(doc,))
+        row=views.handoffs(self.db,state='done')['rows'][0]
+        self.assertEqual(row['id'],doc);self.assertEqual(row['label'],'Lokal bereitgestellt')
+        self.assertEqual(views.work(self.db,kind='Rücklauf',state='done')['rows'][0]['title'],'Für Dossier bereitgestellt')
+
+    def test_person_lists_all_assignments_without_invented_feedback_author(self):
+        person=self.db.execute('SELECT * FROM persons WHERE person_number=?',(self.person_pn(),)).fetchone()
+        with self.db:self.db.execute('INSERT INTO employment_assignments(person_number,assignment_number,org_unit,last_import_id,updated_at) VALUES (?,?,?,?,?)',
+            (self.person_pn(),'2','Zweite OE',person['last_import_id'],person['updated_at']))
+        row=next(r for r in views.people(self.db,q=self.person_pn())['rows'] if r['person_number']==self.person_pn())
+        self.assertEqual(row['assignments'],2)
+        page=self.client.get('/mitarbeitende/'+self.person_pn())
+        self.assertIn('Zweite OE',page.text)
+        self.assertNotIn('Feedback-Sammlungen und Nachträge',page.text)
 
     def test_volume_1000_people_five_years_and_10000_parts(self):
         def clone(table, row, **values):

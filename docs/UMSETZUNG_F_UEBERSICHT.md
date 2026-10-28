@@ -30,7 +30,7 @@ bestehende fachliche Auswertungen und Anonymisierungsschwellen bleiben erhalten.
 
 ## Validierung
 
-14 neue Prüfungen vorbereitet: Navigation/HTTP, bestehende Daten, getrennte
+16 neue Prüfungen vorbereitet: Navigation/HTTP, bestehende Daten, getrennte
 Verantwortung, Altjahre, Verlauf, Rücklauf-/Zielstatus, Feedback-Nachtrag,
 Originalbündel, CSRF, Rückkehr zur Liste, Suchparameter, Auswertung und Zugriff.
 Mengenfall: 1000 synthetische Mitarbeitende, fünf Jahre und 10000 Gesprächsteile.

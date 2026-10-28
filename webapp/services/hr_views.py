@@ -91,7 +91,14 @@ def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='',
     if due=='overdue':where.append("state<>'done' AND due_date<>'' AND due_date<?");params.append(date.today().isoformat())
     elif due=='dated':where.append("due_date<>''")
     sql='SELECT * FROM ('+task_query(db)+')'+(' WHERE '+' AND '.join(where) if where else '')
-    return page(db,sql,params,number=page_number,size=page_size,order="CASE WHEN due_date<>'' THEN 0 ELSE 1 END,due_date,stamp,kind,record_id,manager_pn")
+    result=page(db,sql,params,number=page_number,size=page_size,order="CASE WHEN due_date<>'' THEN 0 ELSE 1 END,due_date,stamp,kind,record_id,manager_pn")
+    from . import return_review
+    for row in result['rows']:
+        if row['target']=='return':
+            row['title']=return_review.next_action(return_review.view(db,row['record_id'],include_history=False))
+        elif row['target']=='goal':
+            row['title']=goal_queries.LABELS[goal_queries.source_state(db,row['record_id'])]
+    return result
 
 def people(db, *, q='', org_unit='', state='open', page_number=1, page_size=25):
     where=[];params=[]
@@ -156,7 +163,7 @@ def handoffs(db, *, q='', state='open', year=None, page_number=1, page_size=25):
         CASE WHEN r.document_id IS NOT NULL THEN r.complete ELSE d.handoff_status='staged' END AS complete,
         CASE WHEN r.external_open THEN 'Externe Ablage klären' WHEN h.status IN ('processing','uncertain') THEN 'Übergabeausgang klären'
             WHEN r.document_id IS NOT NULL AND NOT r.signature_ready THEN 'Unterschriftennachweis offen'
-            WHEN d.handoff_status='staged' THEN 'Lokal bereitgestellt' ELSE 'Bereitstellung offen' END AS label,
+            WHEN r.locally_staged OR d.handoff_status='staged' THEN 'Lokal bereitgestellt' ELSE 'Bereitstellung offen' END AS label,
         CASE d.document_kind WHEN 'outlook' THEN c.outlook_year ELSE c.review_year END AS year
         FROM official_documents d JOIN employees e ON e.pn=d.employee_pn JOIN cycles c ON c.id=d.cycle_id
         LEFT JOIN hr_return_status r ON r.document_id=d.id LEFT JOIN hr_return_handoffs h ON h.document_id=d.id

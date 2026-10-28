@@ -27,6 +27,7 @@ Die PDF-Automatik bleibt standardmässig aus; HR bestätigt die ausgelesenen Dat
 ## Arbeitsablauf
 
 - SAP-Export unter **Stammdaten** zunächst in der Vorschau prüfen und ausgewählte Änderungen übernehmen.
+- Im SAP-Abgleich lassen sich alle passenden Einträge eines Exports über sämtliche Seiten auswählen. Die gemeinsame Prüfung erlaubt danach einzelne Ausschlüsse oder «Alles abwählen»; bereits übernommene Einträge und Konflikte bleiben ausgenommen.
 - Durchläufe und unterjährige Dialoge planen; Verantwortung, Zeitraum und Formular-OE je Gesprächsteil festlegen.
 - Vorjahresziele direkt prüfen und versionieren; passende Rückblicke erzeugen und den Versand nachhalten.
 - Personalisierte Word-Dateien als Pakete bereitstellen; Outlook-Entwurf und tatsächlichen Versand getrennt dokumentieren.
@@ -63,7 +64,7 @@ Arbeitsplatz muss Node dafür nicht installiert werden.
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe scripts/run_tests_offline.py tests -q --tb=short
-node --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs
+node --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs tests/test_bulk_selection.cjs
 ```
 
 Für lokale Entwicklung: `.\.venv\Scripts\python.exe run_web.py --dev`.

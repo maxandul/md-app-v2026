@@ -133,6 +133,9 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; }
 .section-count { padding: 5px 9px; background: var(--zh-black-10); color: var(--zh-black-80); font-size: 14px; font-weight: 800; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--zh-black-20); border-radius: 4px; }
 .table-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin-bottom: 10px; }
+.selection-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0; }
+.selection-controls .button { margin: 0; }
+.selection-controls [role="status"] { color: var(--zh-black-60); }
 .table-controls label { margin: 0; font-size: 13px; }
 .table-controls input { width: min(300px, 100%); }
 .table-controls select { width: 90px; margin-left: 5px; }

@@ -100,7 +100,7 @@
     <div class="info-box"><p>Die Anwendung erstellt nur S/MIME-markierte Outlook-Entwürfe. Absender, Empfänger, Inhalt und Verschlüsselung müssen in Outlook geprüft werden; der Versand erfolgt ausschliesslich manuell.</p></div>
     {% if reminder_rows %}
     <form action="{{ url_for('main.prepare_reminder_drafts', cycle_id=selected_cycle_id) }}" method="post">
-      <div class="table-wrap"><table><thead><tr><th>Auswahl</th><th>Führungskraft</th><th>Überfällig</th><th>Älteste Frist</th><th>Letzte Erinnerung</th></tr></thead><tbody>
+      <div class="table-wrap"><table data-bulk-selection="manager_pn"><thead><tr><th>Auswahl</th><th>Führungskraft</th><th>Überfällig</th><th>Älteste Frist</th><th>Letzte Erinnerung</th></tr></thead><tbody>
       {% for row in reminder_rows %}<tr>
         <td><input type="checkbox" name="manager_pn" value="{{ row.manager_pn }}" aria-label="{{ row.manager_name }} auswählen"{% if not row.ready %} disabled{% endif %}></td>
         <td><strong>{{ row.manager_name }}</strong><br><span class="muted">{{ row.recipient_email or 'E-Mail-Adresse fehlt' }}</span></td>

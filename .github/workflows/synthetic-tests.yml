@@ -40,7 +40,15 @@ jobs:
             PATH=/usr/bin:/bin \
             HOME="$RUNNER_TEMP/test-home" \
             LANG=C.UTF-8 \
-            "$task_node" --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs
+            "$task_node" --test tests/test_action_position.cjs tests/test_dispatch_download.cjs tests/test_goal_import.cjs tests/test_bulk_selection.cjs
+      - name: Check selection and pagination in a browser without network
+        run: |
+          sudo unshare --net -- env -i \
+            PATH=/usr/bin:/bin \
+            HOME="$RUNNER_TEMP/test-home" \
+            TMPDIR="$RUNNER_TEMP/synthetic-tests" \
+            LANG=C.UTF-8 \
+            "$GITHUB_WORKSPACE/.venv/bin/python" scripts/check_browser_selection.py
 
   windows-startup:
     runs-on: windows-2022

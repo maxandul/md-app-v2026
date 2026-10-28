@@ -60,15 +60,25 @@ def selection():
     return result
 
 
+def list_url():
+    return url_for('sap_work.index',batch_id=request.form.get('batch_id',type=int),
+        q=request.form.get('q',''),state=request.form.get('state','open'),page=request.form.get('page',1,type=int))
+
+
 @bp.post('/auswahl')
 def selected():
-    try:chosen=selection()
-    except ValueError as exc:flash(str(exc),'error');return redirect(url_for('sap_work.index'))
+    try:
+        if request.form.get('selection_scope')=='all_filtered':
+            chosen={r['id']:r['revision'] for r in service.eligible_changes(get_db(),
+                request.form.get('batch_id',type=int),q=request.form.get('q',''),state=request.form.get('state','open'))}
+            if not chosen:raise ValueError('Keine übernehmbaren Einträge für diesen Export und Filter vorhanden.')
+        else:chosen=selection()
+    except ValueError as exc:flash(str(exc),'error');return redirect(list_url())
     rows=[]
     for key,revision in chosen.items():
         row=get_db().execute('SELECT * FROM hr_sap_changes WHERE id=?',(key,)).fetchone()
         if not row or row['revision']!=revision or row['superseded_by'] or row['data_status']!='pending' or row['category'] not in ('new','changed','unchanged'):
-            flash('Die Auswahl enthält inzwischen geänderte oder nicht zulässige Einträge. Bitte neu auswählen.','error');return redirect(url_for('sap_work.index'))
+            flash('Die Auswahl enthält inzwischen geänderte oder nicht zulässige Einträge. Bitte neu auswählen.','error');return redirect(list_url())
         value=dict(row);value['assignments']=[e['assignment_number'] for e in json.loads(row['after_json'])['employments']];rows.append(value)
     if len({r['batch_id'] for r in rows})!=1:
         flash('Bitte einen Export öffnen und daraus Personen auswählen.','error');return redirect(url_for('sap_work.index'))
@@ -82,7 +92,7 @@ def apply_selection():
         imported=service.apply(get_db(),selection(),reason=request.form.get('reason',''),user_id=actor())
     except ValueError as exc:flash(str(exc),'error')
     else:flash(f'Datenübernahme {imported} gespeichert. Dialogentscheidungen bleiben separat offen.' if imported else 'Diese Auswahl wurde bereits übernommen.','success')
-    return redirect(url_for('sap_work.index'))
+    return redirect(list_url())
 
 
 def comparison(before,after):

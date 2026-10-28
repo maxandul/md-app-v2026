@@ -25,6 +25,9 @@ class HRReviewSandboxTest(unittest.TestCase):
             response=client.get('/arbeit/ziele')
             self.assertEqual(response.status_code,200)
             self.assertIn('HR-TEST',response.text);self.assertIn('Lena',response.text)
+            for path in ('/arbeit','/mitarbeitende','/fuehrungskraefte','/arbeit/feedback','/arbeit/uebergaben','/?view=cycles'):
+                page=client.get(path)
+                self.assertEqual(page.status_code,200,path);self.assertIn('HR-TEST',page.text)
             with client.session_transaction() as session:csrf=session['goal_csrf']
             with app.app_context():
                 db=get_db()
@@ -62,6 +65,45 @@ class HRReviewSandboxTest(unittest.TestCase):
             marker=root/'preserve.txt';marker.write_text('preserve',encoding='utf-8')
             with self.assertRaises(FileExistsError):create_review_app(root)
             self.assertEqual(marker.read_text(encoding='utf-8'),'preserve')
+
+
+    def test_signature_walkthrough_only_copies_into_fresh_test_directory(self):
+        from webapp.services import return_review
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/'guided'
+            outside=Path(temp)/'must-not-exist'
+            with patch.dict(os.environ,{'MD_DOSSIER_HANDOFF_ROOT':str(outside)}):
+                app=create_review_app(root)
+            client=app.test_client();client.get('/arbeit')
+            with client.session_transaction() as session:csrf=session['goal_csrf']
+            with app.app_context():
+                db=get_db()
+                documents=[dict(r) for r in db.execute("SELECT * FROM official_documents WHERE employee_pn='900005' AND is_current=1")]
+            self.assertEqual(len(documents),2)
+            for document in documents:
+                doc=document['id']
+                with app.app_context():
+                    db=get_db();state=return_review.view(db,doc)
+                    incoming=db.execute("SELECT id FROM word_pdf_imports WHERE original_filename=? AND status='pending'",(document['document_kind']+'-testscan.pdf',)).fetchone()[0]
+                    form={'csrf_token':csrf,'action':'attach','revision':state['revision'],'token':state['token'],'import_id':incoming}
+                response=client.post(f'/arbeit/ruecklaeufe/{doc}',data=form,follow_redirects=True)
+                self.assertEqual(response.status_code,200)
+                with app.app_context():
+                    state=return_review.view(get_db(),doc)
+                    form={'csrf_token':csrf,'action':'confirmed','revision':state['revision'],'token':state['token'],'employee_signed':'yes','manager_signed':'yes','content_matches':'yes'}
+                self.assertEqual(client.post(f'/arbeit/ruecklaeufe/{doc}',data=form).status_code,302)
+                with app.app_context():
+                    state=return_review.view(get_db(),doc)
+                    form={'csrf_token':csrf,'action':'handoff','revision':state['revision'],'token':state['token']}
+                self.assertEqual(client.post(f'/arbeit/ruecklaeufe/{doc}',data=form).status_code,302)
+                with app.app_context():
+                    state=return_review.view(get_db(),doc)
+                    self.assertTrue(state['complete'])
+                    self.assertTrue(Path(state['handoff']['destination']).is_relative_to(root/'handoff'))
+                    self.assertTrue(Path(state['handoff']['destination']).is_file())
+            self.assertFalse(outside.exists())
+            self.assertEqual(client.post('/mail-inbox/scan').status_code,403)
+            self.assertEqual(len(list((root/'handoff').glob('*.pdf'))),2)
 
 
 if __name__=='__main__':unittest.main()

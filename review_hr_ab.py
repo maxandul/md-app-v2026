@@ -1,4 +1,4 @@
-"""Start an isolated, synthetic A/B walkthrough. Never opens Outlook or real data.
+"""Start an isolated, synthetic HR walkthrough (A/B through E/F). Never opens Outlook or real data.
 
 Run: python review_hr_ab.py
 Each start uses a new directory under instance. No production settings are read.
@@ -7,6 +7,7 @@ The generated originals/templates demonstrate behaviour, not the final HR layout
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import secrets
 from unittest.mock import patch
@@ -69,16 +70,18 @@ def create_review_app(directory: Path):
     def walkthrough_boundary():
         if request.remote_addr not in ('127.0.0.1','::1'):
             abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
-        allowed_read={'main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','main.dialogs','main.master_data','main.import_detail','main.cycle_detail','static'}
+        allowed_read={'main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','main.dialogs','main.master_data','main.import_detail','main.cycle_detail','main.dashboard','main.analytics','main.setup_guide','main.help_page','main.help_document','main.sap_exports','main.cycle_closure','main.word_pdf_review','main.word_pdf_original','main.document_original','main.feedback_collection','main.feedback_review','main.feedback_bundle_download','static'}
         goal_endpoint=(request.endpoint or '').startswith('goal_work.')
         part_endpoint=(request.endpoint or '').startswith('parts.')
         sap_endpoint=(request.endpoint or '').startswith('sap_work.')
-        allowed_prepare={'main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines','main.add_dialog_event','main.attach_dialog_event','main.cancel_dialog_event','main.add_cycle'}
+        workspace_endpoint=(request.endpoint or '').startswith('hr.')
+        return_endpoint=(request.endpoint or '').startswith('return_work.')
+        allowed_prepare={'main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines','main.add_dialog_event','main.attach_dialog_event','main.cancel_dialog_event','main.add_cycle','main.word_pdf_review','main.upload_word_pdfs'}
         if request.method=='POST':
-            if not (goal_endpoint or part_endpoint or sap_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
+            if not (goal_endpoint or part_endpoint or sap_endpoint or return_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
                 abort(403,'HR-Test: Outlook, Postfachzugriff und externe Übergaben sind gesperrt.')
-        elif not goal_endpoint and not part_endpoint and not sap_endpoint and request.endpoint not in allowed_read:
-            return redirect(url_for('goal_work.index'))
+        elif not goal_endpoint and not part_endpoint and not sap_endpoint and not workspace_endpoint and not return_endpoint and request.endpoint not in allowed_read:
+            return redirect(url_for('hr.work'))
 
     with app.app_context():
         db=get_db()
@@ -109,6 +112,27 @@ def create_review_app(directory: Path):
             'lange ID/Nummer':'900199@example.invalid','Eintritt':'2026-09-01','Ende Probezeit':'2026-11-30'})
         changed_path=directory/'synthetic-sap-changes.xlsx';pd.DataFrame(changed).to_excel(changed_path,index=False)
         sap_staging.stage(db,changed_path,original_filename='Übung D – Wechsel, Eintritt und fehlender Datensatz.xlsx')
+        # Two fully synthetic returns for the signature/handoff walkthrough.
+        # The separate pending copies are explicitly labelled test evidence.
+        from tests.test_word_pdf_imports import sample_pdf
+        from webapp.services.word_pdf_imports import stage_pdf,confirm_import
+        test_pdfs=directory/'test-pdfs';test_pdfs.mkdir()
+        case_id=db.execute("SELECT case_id FROM dialog_cases WHERE employee_pn='900005'").fetchone()[0]
+        for kind,year in (('review',2025),('outlook',2026)):
+            values=dict(kind=kind,year=year,person_pn='900005',manager_pn='900102',person_name='Alex Huber',manager_name='Luca Winter')
+            marker='HR-TEST: Gesamtbeurteilung D (genuegend)' if kind=='review' else 'HR-TEST: fiktiver Ausblick'
+            pdf=sample_pdf(test_pdfs/(kind+'.pdf'),marker=marker,**values)
+            incoming=stage_pdf(db,pdf,filename=pdf.name,directory=directory/'data'/'pdf_queue')[0]
+            parsed=json.loads(db.execute('SELECT parsed_json FROM word_pdf_imports WHERE id=?',(incoming,)).fetchone()[0])
+            for key in ('performance_goals','development_goals'):
+                for goal in parsed[key]:goal.pop('evidence',None)
+            parsed['data']['rating']='D' if kind=='review' else ''
+            reviewed={key:parsed[key] for key in ('data','performance_goals','development_goals','assessments')}
+            reviewed.update(scope='full',source_role='digital')
+            confirm_import(db,incoming,reviewed=reviewed,assignment='1',case_id=case_id,historical=False,
+                reason='Synthetische Uebung: Angaben vollstaendig im Testoriginal vorhanden')
+            scan=sample_pdf(test_pdfs/(kind+'-testscan.pdf'),marker=marker+' / TEST-Unterschriften Alex + Luca',**values)
+            stage_pdf(db,scan,filename=scan.name,directory=directory/'data'/'pdf_queue')
     return app
 
 
@@ -118,7 +142,7 @@ def main():
     args=parser.parse_args()
     directory=Path(__file__).parent/'instance'/('hr-ab-review-'+uuid.uuid4().hex[:10])
     app=create_review_app(directory)
-    print(f'HR-TEST: http://127.0.0.1:{args.port}/arbeit/ziele',flush=True)
+    print(f'HR-TEST: http://127.0.0.1:{args.port}/arbeit',flush=True)
     print(f'Nur synthetische Daten: {directory}',flush=True)
     print('Outlook, Postfachzugriff und externe Übergaben sind gesperrt.',flush=True)
     app.run(host='127.0.0.1',port=args.port,debug=False,use_reloader=False)

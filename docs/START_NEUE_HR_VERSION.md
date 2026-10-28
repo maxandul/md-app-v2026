@@ -3,6 +3,12 @@
 Stand: 28. Oktober 2026. Die neue HR-Oberfläche ist der Standard. Für den Alltag
 gibt es **MD-Web.bat**, für die einmalige Installation **INSTALL_MD.bat**.
 
+**Node.js und npm werden nicht benötigt.** Alle fertigen Oberflächen-Dateien
+(CSS und JavaScript) sind unter `webapp/static` auf GitHub und im ZIP enthalten.
+Für die Oberfläche ist kein Build-Schritt oder zusätzlicher Download nötig.
+Die Node-Befehle im Entwicklungsabschnitt der README betreffen ausschliesslich
+Tests, die auch automatisch auf GitHub laufen.
+
 ## Neuinstallation
 
 1. Das ZIP von `main` vollständig in einen festen App-Ordner entpacken.

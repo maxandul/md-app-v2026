@@ -7,6 +7,10 @@ MD-App - neue HR-Oberflaeche
 5. Beim ersten Start Administrationskonto anlegen, Einstellungen und
    Word-Vorlagen einrichten, danach SAP-Stammdaten importieren.
 
+Node.js und npm werden nicht benoetigt. Die fertigen Oberflaechen-Dateien
+(CSS und JavaScript) sind unter webapp\static bereits im ZIP enthalten.
+Fuer die Oberflaeche muss nichts gebaut oder zusaetzlich heruntergeladen werden.
+
 Die neue Oberflaeche ist immer aktiv. Ein zusaetzlicher Starter oder Schalter
 ist nicht erforderlich. INSTALL_MD.bat und MD-Web.bat verwenden eine vorhandene
 .venv gemeinsam; andernfalls das installierte Python.

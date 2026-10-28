@@ -10,6 +10,11 @@ Die neue Arbeitsübersicht mit den Etappen A–F und E2 ist der einzige Standard
 3. **MD-Web.bat** starten und <http://127.0.0.1:5050/arbeit> öffnen.
 4. Beim ersten Start ein Administrationskonto anlegen und die Einrichtung abschliessen.
 
+**Node.js und npm sind für Installation und Betrieb nicht erforderlich.** Die
+fertigen CSS- und JavaScript-Dateien liegen unter [`webapp/static`](webapp/static)
+im Repository und sind im ZIP bereits enthalten. Es gibt keinen zusätzlichen
+Build-Schritt und keinen Download von Oberflächen-Dateien beim Start.
+
 [START_HIER.txt](START_HIER.txt) enthält die kurze Anleitung;
 [Einrichtung und Betrieb](docs/START_NEUE_HR_VERSION.md) erklärt Konfiguration,
 Word-Vorlagen, SAP-Import, Sicherung und Updates. Das Konsolenfenster muss während
@@ -49,6 +54,10 @@ ersten echten Vorgang auf dem vorgesehenen Gerät kontrollieren. Lokal
 bereitgestellt bedeutet noch nicht extern verarbeitet.
 
 ## Entwicklung und Prüfungen
+
+Die folgenden Befehle sind für die Entwicklung, nicht für die Installation der
+App. Die JavaScript-Tests mit Node laufen auch automatisch auf GitHub; auf dem
+Arbeitsplatz muss Node dafür nicht installiert werden.
 
 ```powershell
 py -3 -m venv .venv

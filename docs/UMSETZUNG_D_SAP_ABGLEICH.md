@@ -3,14 +3,10 @@
 Stand: 28. Oktober 2026. Branch: `feat/hr-sap-abgleich-d`.
 Basis: geprüfte Etappe C bei `b94616781afabd572d6e113dc3c128a73d4242f5`.
 
-**Status: implementierter Review-Entwurf, noch kein bestandener D-Abschlusslauf.**
-Der erneute D-Testlauf am 28. Oktober wurde nach der Zustimmung zu allen
-Etappen gestartet. Beim Abruf des weiteren Ergebnisses lehnte die automatische
-Freigabeprüfung die Fortsetzung wegen einer gemeldeten externen
-Visual-Studio-Telemetrieverbindung mit unbekanntem Inhalt erneut ab. Sie verlangt
-ausdrückliche Zustimmung zu dieser externen Datenübertragung. Danach wurde
-kein weiterer Testlauf gestartet. Ein vollständiges Ergebnis liegt nicht vor;
-die 269 erfolgreichen C-Tests sind kein Nachweis für diese Änderungen.
+**Status: automatisiert geprüft, bereit zum Code-Review.**
+Am 28. Oktober 2026 bestanden die gezielten D-/A–C-Prüfungen (64 Tests) und
+anschliessend die vollständige Testsammlung (291 Tests). Eine manuelle
+D-Bedienprüfung und die produktive Integrationsabnahme bleiben separat offen.
 
 ## Ausgangsproblem und neue Arbeitsweise
 
@@ -124,23 +120,21 @@ Folgeentscheidungen, Quellenänderung, geschlossene Kampagnen, zusätzliche
 Ereignisse, eindeutige Dateien, geschützte Routen und Erhalt bestehender
 Dokumentverknüpfungen bei der Migration sowie unformatierte numerische Datumswerte.
 
-Die ersten Testversuche fanden Anpassungsbedarf am bisherigen
-Migrationsvergleich (die neue Herkunftsspalte) und an einem Testdatensatz mit
-fehlender Anstellungsnummer. Beides wurde korrigiert. Der anschliessende Lauf
-wurde durch die automatische Freigabeprüfung abgelehnt. Auch der erneute
-Versuch am 28. Oktober lieferte vor der erneuten Ablehnung nur Fortschrittsausgabe,
-kein vollständiges Testergebnis. Spätere Ergänzungen wurden nur statisch geprüft.
-Python- und Jinja-Syntax sowie `git diff --check` sind fehlerfrei; das ersetzt keine
-Ablauf- oder Migrationsprüfung.
+Der gezielte Lauf mit SAP-Staging, Teilverbrauchern, Zielablauf und isoliertem
+HR-Starter bestand mit **64 Tests**. Der anschliessende vollständige Lauf
+bestand mit **291 Tests**, sechs Warnungen und Exitcode 0 (237,60 Sekunden).
+Getesteter Code: `4008e4f01298cbe6dfd88c805c68768b9efb21c3`.
 
-Nach Freigabe zunächst D und betroffene A/B/C-Abläufe ausführen, Fehler beheben
-und anschliessend die vollständige Testsammlung laufen lassen. Der bestehende
-lokale Prüfstarter begrenzt Python-Netzwerkzugriffe und Unterprozesse und
-deaktiviert zusätzliche pytest-Plugins. Die gemeldete Verbindung trat dennoch
-auf; ihre Herkunft ist ungeklärt. Die statische Suche in App- und Testquellen
-fand keine Visual-Studio-/Telemetrieanbindung. Die nachträgliche Abfrage aktiver
-HTTPS-Verbindungen und entsprechender DNS-Einträge lieferte keine Zuordnung.
-Beides ist kein Nachweis, dass die gemeldete Verbindung harmlos oder unterbunden ist.
+Die Warnungen betreffen SWIG. Nach dem Testergebnis meldet die lokale
+pyreadline3-Konsole einen ignorierten Destruktorfehler; der Prozess endete
+erfolgreich. Der lokale Prüfstarter sperrt Python-Netzwerk-/Unterprozesszugriffe
+und zusätzliche pytest-Plugins. Die zuvor gemeldete externe Telemetrie war
+für diese Wiederholung ausdrücklich freigegeben; ihre Herkunft wurde nicht
+behauptet. Die Tests verwenden synthetische Daten und Testadapter.
+
+Zusätzlich sind 78 Python-Dateien und 48 Jinja-Vorlagen syntaktisch gültig;
+`git diff --check` ist fehlerfrei. Kein Nachweis echter Outlook-, RPA- oder
+produktiver Datenmigration wird daraus abgeleitet.
 
 ## Isolierte Bedienfolge nach erfolgreichem Nachtest
 
@@ -172,7 +166,7 @@ Die Codeprüfung für E am 28. Oktober zeigt folgende zusammenhängende Änderun
 | `word_pdf_imports.confirm_import` setzt Scanpflicht nur am Rückblick D/E | Pflicht aus dem Rückblick auf beide zugehörigen Teile ableiten, auch bei späterem Eingang |
 | `documents.import_handwritten_scan` erlaubt nur Rückblicke und verlangt zuerst ein digitales PDF | Datenquelle und Unterschriftennachweis getrennt verknüpfen; validierten Scan als alleinige Quelle zulassen |
 | Scanimport speichert sofort `signature_checked=True` und stellt bereit | Upload, konkrete Sichtprüfung beider Unterschriften und technische Übergabe trennen |
-| `db.init_db` entfernt offene Scanpflicht bei Nicht-Rückblicken | Alte Startkorrektur für das neue Modell ablösen, bestehende Nachweise und wiederholten Start prüfen |
+| `db.init_db` überspringt im migrierten HR-Modus bereits die alte Scanregel-Korrektur | Diesen vorhandenen Schutz durch Wiederanlauftests für beide Teile absichern |
 | `confirm_digital_signature` vermischt Freigabe und Dateikopie | Fachliche Übernahme erhalten, technische Übergabe wiederholbar ausführen, keine erneute Sichtprüfung allein wegen Kopierfehler |
 | Outlook-Eingangsmodell enthält keinen Nachrichtentext | Zusätzliche Mailanliegen nicht aus erfolgreichen Anhängen als ausgeschlossen behandeln |
 

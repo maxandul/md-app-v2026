@@ -5,11 +5,11 @@
 <p>Vergleiche die erkannten Ziele mit dem Original. Bei Word und PDF oder mehreren Versionen derselben Person wähle genau eine Quelle. Die Zielzahlen oben können solche Mehrfachquellen enthalten. Bei Abweichungen korrigiere das Original und lade es erneut hoch; unklare Erkennungen werden nicht importiert.</p>
 <p><a href="{{ url_for('main.legacy_goal_upload') }}">Weiteren Ordner auswählen</a> · <a href="{{ url_for('main.goal_sources') }}">Gespeicherte Zielquellen vergleichen</a></p>
 {% set labels={'matched':'Zuordnung eindeutig – Ziele prüfen','same_goals':'Identische Ziele in anderer Quelle – keine doppelte Übernahme','already_imported':'Bereits importiert','duplicate_in_batch':'Identische Datei in dieser Auswahl','not_outlook':'Kein Ausblick','no_goals':'Keine Ziele erkannt','missing_person_number':'Personalnummer fehlt','person_not_active':'Keine aktive Anstellung','assignment_not_found':'Anstellung nicht gefunden','ambiguous_assignment':'Mehrere Anstellungen – nicht eindeutig','read_error':'Datei nicht lesbar','year_mismatch':'Zieljahr stimmt nicht überein','extraction_uncertain':'Erkennung unklar – Original prüfen'} %}
-<form method="post">
+<form method="post" data-bulk-selection="source">
 <input type="hidden" name="fingerprint" value="{{ fingerprint }}">
 {% for item in result['items'] %}
 <section class="content-card">
-  {% if item.status == 'matched' %}<label><input type="checkbox" name="source" value="{{ item.sha256 }}" {% if not item.competing %}checked{% endif %}> {{ item.filename }} übernehmen</label>{% else %}<h2>{{ item.filename }}</h2>{% endif %}
+  {% if item.status == 'matched' %}<label><input type="checkbox" name="source" value="{{ item.sha256 }}" {% if not item.competing %}checked{% else %}data-bulk-skip{% endif %}> {{ item.filename }} übernehmen</label>{% else %}<h2>{{ item.filename }}</h2>{% endif %}
   <p>{{ labels.get(item.status, item.status) }} · PN {{ item.employee_pn or 'unbekannt' }} · Ans. {{ item.resolved_assignment or item.assignment_number or 'offen' }} · Erkanntes Zieljahr: {{ item.get('detected_years', [])|join(', ') or 'nicht lesbar – gewähltes Jahr am Original prüfen' }}</p>
   {% if item.duplicate_of %}<p>Gleiche Quelle/Ziele wie: {{ item.duplicate_of }}</p>{% endif %}
   {% if item.competing %}<p class="issue-text">Mehrere Quellen für diese Person und Anstellung. Bitte eine auswählen.</p>{% endif %}

@@ -51,6 +51,7 @@
       status.textContent = `${filtered.length} Einträge · Seite ${page} von ${pages}`;
       previous.disabled = page === 1;
       next.disabled = page === pages;
+      table.dispatchEvent(new CustomEvent('md-table-filter', {detail: {rows: filtered}}));
       try { sessionStorage.setItem(stateKey, JSON.stringify({query: search.value, size, page})); }
       catch (_) { /* Keep controls usable without storage. */ }
     };

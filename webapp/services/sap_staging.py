@@ -129,19 +129,33 @@ def stage(db,path,*,original_filename,user_id=None):
     except Exception:db.rollback();raise
 
 
-def changes(db,batch_id=None,*,q='',state='open',page=1,page_size=25):
+APPLICABLE = "superseded_by IS NULL AND data_status='pending' AND category IN ('new','changed','unchanged')"
+
+
+def change_query(batch_id=None,*,q='',state='open'):
     where=['1'];params=[]
     if batch_id is not None:where.append('batch_id=?');params.append(batch_id)
     if q:where.append("first_name||' '||last_name||' '||person_number LIKE ?");params.append('%'+q+'%')
     if state=='open':where.extend(['superseded_by IS NULL',"((data_status='pending' AND category<>'unchanged') OR followup_status='open')"])
-    elif state in ('new','changed','missing','conflict','unchanged'):where.append('category=?');params.append(state)
-    base=' FROM hr_sap_changes WHERE '+' AND '.join(where)
+    elif state in ('new','changed','missing','conflict','unchanged','excluded'):where.append('category=?');params.append(state)
+    return ' FROM hr_sap_changes WHERE '+' AND '.join(where),params
+
+
+def eligible_changes(db,batch_id,*,q='',state='open'):
+    if batch_id is None:raise ValueError('Bitte zuerst einen einzelnen SAP-Export öffnen.')
+    base,params=change_query(batch_id,q=q,state=state)
+    return db.execute('SELECT *'+base+' AND '+APPLICABLE+' ORDER BY last_name,first_name,id',params).fetchall()
+
+
+def changes(db,batch_id=None,*,q='',state='open',page=1,page_size=25):
+    base,params=change_query(batch_id,q=q,state=state)
     total=db.execute('SELECT COUNT(*)'+base,params).fetchone()[0]
     pages=max(1,(total+page_size-1)//page_size);page=max(1,min(page,pages))
     rows=[dict(r) for r in db.execute('SELECT *'+base+' ORDER BY last_name,first_name,id LIMIT ? OFFSET ?',[*params,page_size,(page-1)*page_size])]
     for row in rows:
         row['after']=json.loads(row['after_json']);row['before']=json.loads(row['before_json'])
-    return dict(rows=rows,total=total,page=page,pages=pages)
+    selectable=db.execute('SELECT COUNT(*)'+base+' AND '+APPLICABLE,params).fetchone()[0]
+    return dict(rows=rows,total=total,page=page,pages=pages,selectable=selectable)
 
 
 def decision(db,row,action,reason,user_id,details):

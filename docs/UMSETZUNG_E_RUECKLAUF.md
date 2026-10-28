@@ -3,8 +3,11 @@
 Stand: 28. Oktober 2026. Branch: `feat/hr-ruecklauf-e`.
 Basis: Etappe D bei `1eb56ce3b2652adff3ee90d1583bf88bb845c950`.
 
-**Review-Entwurf, noch kein bestandener E-Testlauf.** D ist separat mit
-291 Tests geprüft. Dieser Nachweis gilt nicht für die Änderungen in E.
+**E1 automatisiert geprüft, Bedienabnahme noch offen.** Der isolierte CI-Lauf auf
+`68be0629533901166bee10d33a4cf4140155f734` bestand am 28. Oktober 2026 mit
+290 Tests und 36 Unterprüfungen (48,97 Sekunden). D war separat mit 291 Tests
+in der früheren Windows-Testumgebung geprüft; Testzähler verschiedener
+pytest-Versionen/Umgebungen werden nicht als identischer Umfang behauptet.
 Automatische Übernahme neuer PDF-/Scanvarianten und Etappe F sind noch offen.
 
 ## Problem und Arbeitsweise
@@ -104,20 +107,25 @@ Die statische Syntaxprüfung ist erfolgreich: 80 Python-Dateien in `webapp`
 und `tests`, 49 Jinja-Vorlagen; `git diff --check` ohne Beanstandung.
 Dies prüft keine SQL-Ausführung, Migration, Dateikopie oder Bedienabläufe.
 
-Es sind 21 neue Ablaufprüfungen vorbereitet: beide Gesprächsteile, Scan allein,
+Die 21 neuen E-Ablaufprüfungen sind im erfolgreichen Gesamtlauf enthalten: beide Gesprächsteile, Scan allein,
 zwei Unterschriften, identische/neue Scanversion, neue Fachdatenversion,
 Nachforderung, späte Prüfpflicht, Originalintegrität, Zuständigkeitswechsel,
 technischer Wiederanlauf, verbrauchter Übergabeordner, CSRF, alte Routen,
 Mailablage, abgeleitete Aufgaben, bestehende Führungs-/Abschlussübersichten sowie
 Migration und erneuter Start.
 
-Der erste E-Testversuch wurde beim Ergebnisabruf durch die automatische
-Freigabeprüfung abgelehnt: gemeldete Visual-Studio-Telemetrie mit unbekanntem,
-möglicherweise lokal sensiblem Inhalt. Diesmal wertete die Prüfung auch die
-ausdrückliche Nutzerfreigabe nicht als ausreichend. Danach wurden keine weiteren
-E-Laufzeittests gestartet. Aus diesem Versuch wird kein bestandenes Ergebnis
-abgeleitet. Spätere Änderungen sind nur statisch geprüft; Ablauf-, Migrations-
-und Regressionstests stehen aus. Kein E-Bediennachweis liegt vor.
+Der frühere lokale Ergebnisabruf blieb ohne Nachweis; der Prozess ist nicht
+mehr verfügbar. Der neue Testlauf verwendet einen frischen Ubuntu-Runner,
+synthetische Testdaten und keine lokalen HR-Dateien. Der Python-Testprozess
+läuft in einem eigenen Linux-Netzwerk-Namensraum, mit leerer Umgebung und
+zusätzlichem Python-Audit-Hook gegen Netzwerk- und Kindprozesse. Outlook und
+produktive Ablagen sind nicht angeschlossen.
+
+Der erste CI-Lauf zeigte eine fehlende Testabhängigkeit (PyMuPDF); diese ist
+nun in requirements-dev.txt deklariert. Der anschliessende Gesamtlauf bestand:
+[CI-Nachweis](https://github.com/maxandul/md-app-v2026/actions/runs/40657897837).
+Er umfasst auch Migration, Wiederanlauf und bestehende Regressionstests.
+Ein visueller E-Bediennachweis auf dem vorgesehenen Windows-System steht aus.
 
 Für eine Formatfreigabe fehlen noch repräsentative ausgefüllte Rückblicke,
 Ausblicke, Probezeitformulare und Scans mit geprüften Sollwerten für sämtliche

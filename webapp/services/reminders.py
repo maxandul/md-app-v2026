@@ -128,7 +128,7 @@ def create_reminder_drafts(
     sender_email = configured_sender(sender_email)
     from .hr_workflow import pending_pdfs
     if pending_pdfs(connection):
-        raise ValueError('Erinnerungen pausiert: Bitte zuerst alle offenen PDF-Eingänge prüfen oder begründet zurückstellen. So werden eingereichte Unterlagen nicht nochmals angefordert.')
+        raise ValueError('Erinnerungen pausiert: Bitte zuerst alle offenen PDF-Eingänge prüfen oder zurückstellen. So werden eingereichte Unterlagen nicht nochmals angefordert.')
     selected = {value.strip() for value in manager_pns if value.strip()}
     if not selected:
         raise ValueError("Bitte wähle mindestens eine überfällige Führungskraft aus.")
@@ -248,8 +248,8 @@ def _part_candidates(connection,cycle_id,cutoff,sender_email):
 
 @serialized_goal_delivery
 def resolve_reminder(connection,reminder_id,*,outcome,reason,checked,user_id=None):
-    if not checked or len(reason.strip())<10 or outcome not in ('cancelled','sent_confirmed'):
-        raise ValueError('Bitte tatsächlichen Outlook-Stand ausdrücklich prüfen und begründen.')
+    if not checked or outcome not in ('cancelled','sent_confirmed'):
+        raise ValueError('Bitte tatsächlichen Outlook-Stand ausdrücklich prüfen und bestätigen.')
     row=connection.execute('SELECT * FROM reminders WHERE id=?',(reminder_id,)).fetchone()
     if not row or row['status'] not in ('prepared','draft_created','failed'):
         raise ValueError('Kein offener Erinnerungsvorgang vorhanden.')

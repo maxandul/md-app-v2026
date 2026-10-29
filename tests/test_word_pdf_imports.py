@@ -222,12 +222,10 @@ class WordPdfImportsTest(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_pdf_goal_versions').fetchone()[0],0)
         self.assertEqual(self.db.execute('SELECT status FROM word_pdf_imports').fetchone()[0],'pending')
 
-    def test_old_layout_requires_review_note_and_can_be_manually_completed(self):
+    def test_old_layout_can_be_manually_completed_without_required_note(self):
         item_id=self.stage(old=True)
-        with self.assertRaisesRegex(ValueError,'Klärung'):
-            self.confirm(item_id)
         reviewed=self.reviewed(item_id);reviewed['performance_goals']=[{'title':'Manuell geprüft'}]
-        confirm_import(self.db,item_id,reviewed=reviewed,assignment='1',case_id=self.case,historical=False,reason='Alte Vorlage am Original geprüft')
+        confirm_import(self.db,item_id,reviewed=reviewed,assignment='1',case_id=self.case,historical=False,reason='')
         self.assertEqual(self.db.execute('SELECT status FROM word_pdf_imports').fetchone()[0],'imported')
 
     def test_semantic_duplicate_across_export_paths_is_closed_without_reimport(self):
@@ -239,14 +237,16 @@ class WordPdfImportsTest(unittest.TestCase):
         self.assertEqual(duplicate['duplicate_of'],first)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents').fetchone()[0],1)
 
-    def test_replacement_requires_reason_and_staged_version_cannot_be_replaced(self):
-        first=self.stage();doc=self.confirm(first)
+    def test_replacement_allows_empty_reason_but_staged_version_is_protected(self):
+        first=self.stage();self.confirm(first)
         second=self.stage(marker='Revidiert');reviewed=self.reviewed(second);reviewed['data']['rating']='B'
-        with self.assertRaisesRegex(ValueError,'Ersetzungsgrund'):
-            self.confirm(second,reviewed)
+        doc=self.confirm(second,reviewed)
+        self.assertFalse(self.db.execute('SELECT is_current FROM official_documents ORDER BY id').fetchone()[0])
+        self.assertEqual(self.db.execute('SELECT replacement_reason FROM official_documents WHERE id=?',(doc,)).fetchone()[0],'')
         confirm_digital_signature(self.db,document_id=doc,handoff_dir=self.root/'handoff')
+        third=self.stage(marker='Erneut revidiert');reviewed=self.reviewed(third);reviewed['data']['rating']='A'
         with self.assertRaisesRegex(ValueError,'Ablageprozess'):
-            confirm_import(self.db,second,reviewed=reviewed,assignment='1',case_id=self.case,historical=False,reason='Korrektur')
+            self.confirm(third,reviewed)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM official_documents WHERE is_current=1').fetchone()[0],1)
 
     def test_probation_negative_decision_does_not_require_signature_scan(self):
@@ -341,9 +341,9 @@ class WordPdfImportsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'keine neuen'):
             collect_sap_upload_rows(self.db,self.cycle)
 
-    def test_nonconducted_requires_reason_and_rejects_invented_facts_or_scope_reduction(self):
+    def test_nonconducted_rejects_invented_facts_or_scope_reduction(self):
         item=self.stage()
-        for field,value in [('no_md_reason',''),('dialog_date','2026-01-01'),('rating','C'),('conducted','')]:
+        for field,value in [('dialog_date','2026-01-01'),('rating','C'),('conducted','')]:
             reviewed=self.nonconducted(item); reviewed['data'][field]=value
             with self.subTest(field=field), self.assertRaises(ValueError): self.confirm(item,reviewed)
         reviewed=self.nonconducted(item); reviewed['scope']='review_only'

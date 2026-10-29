@@ -31,7 +31,7 @@ Die PDF-Automatik bleibt standardmässig aus; HR bestätigt die ausgelesenen Dat
 - Durchläufe und unterjährige Dialoge planen; Verantwortung, Zeitraum und Formular-OE je Gesprächsteil festlegen.
 - Vorjahresziele direkt prüfen und versionieren; passende Rückblicke erzeugen und den Versand nachhalten.
 - Personalisierte Word-Dateien als Pakete bereitstellen; Outlook-Entwurf und tatsächlichen Versand getrennt dokumentieren.
-- Eingehende PDFs am Original prüfen, zuordnen und übernehmen. Erforderliche Unterschriften getrennt bestätigen.
+- Eingehende PDFs am Original prüfen, zuordnen und übernehmen. Beim regulären Rückblick sind Zeitraum (innerhalb Jahr und Anstellung) und Gesamtbeurteilung Pflichtinhalte; leere Zusatzfelder und kurze oder leere Prüfnotizen sind zulässig. Ein fehlendes Gesprächsdatum wird mit dem Tagesdatum ergänzt. Erforderliche Unterschriften getrennt bestätigen.
 - Feedback je Führungskraft und Jahr sammeln; Dossierbereitstellung und SAP-Export getrennt nachhalten.
 - Offene Aufgaben über alle Jahre in **Arbeit**, **Mitarbeitende** und **Führungskräfte** bearbeiten.
 

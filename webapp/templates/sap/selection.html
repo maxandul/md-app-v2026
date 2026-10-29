@@ -16,7 +16,7 @@
       <td>{{ row.assignments|join(', ') }}</td><td>{{ category_labels[row.category] }}</td>
     </tr>{% endfor %}</tbody>
   </table></div>
-  <label>Prüfvermerk<textarea name="reason" minlength="10" required></textarea></label>
+  <label>Prüfvermerk<textarea name="reason"></textarea></label>
   <label><input type="checkbox" name="checked" value="yes" required>Ich habe die ausgewählten Personen und den Umfang geprüft.</label>
   <button class="button button--primary">Ausgewählte Stammdaten übernehmen</button>
   <a href="{{ url_for('sap_work.index',batch_id=rows[0].batch_id,q=request.form.get('q',''),state=request.form.get('state','open'),page=request.form.get('page',1)) }}">Zurück zur Auswahl</a>

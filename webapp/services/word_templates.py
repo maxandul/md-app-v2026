@@ -179,6 +179,31 @@ class WordTemplate:
                 keep = "_vorjahr_ziel_" in tags[0] and index == max(1, len(goals))
                 self.fill(tag, value, goal=True, keep_with_next=keep)
 
+    def unassigned_goals(self, goals):
+        """Preserve partial development goals without inventing a competency."""
+        if not goals:
+            return
+        body = _all(self.doc, 'body')[0]
+        section = next(iter(_children(body, 'sectPr')), None)
+        def paragraph(value, *, bold=False):
+            p = self.new('p'); run = self.new('r'); props = self.new('rPr')
+            fonts = self.new('rFonts')
+            for key in ('ascii','hAnsi','cs'):
+                fonts.setAttributeNS(W, 'w:'+key, 'Arial')
+            props.appendChild(fonts)
+            if bold:props.appendChild(self.new('b'))
+            run.appendChild(props)
+            for i,line in enumerate(value.replace('\r\n','\n').split('\n')):
+                if i:run.appendChild(self.new('br'))
+                text=self.new('t');text.setAttribute('xml:space','preserve')
+                text.appendChild(self.doc.createTextNode(line));run.appendChild(text)
+            p.appendChild(run);body.insertBefore(p,section)
+        paragraph('Entwicklungsziele aus dem Vorjahr ohne Kompetenzzuordnung',bold=True)
+        for index,goal in enumerate(goals,1):
+            paragraph(f"{index}. Ziel: {goal.get('title','')}",bold=True)
+            for key,label in [('criteria','Messkriterien'),('steps','Weg zum Ziel'),('target_date','Termin')]:
+                paragraph(label+': '+goal.get(key,''))
+
     def to_bytes(self):
         output = BytesIO()
         with ZipFile(BytesIO(self.raw)) as source, ZipFile(output, "w", ZIP_DEFLATED) as result:
@@ -196,13 +221,19 @@ def render_word_form(template_path: Path, *, kind: str, fields: dict, performanc
         template.fill("rb_nebenbeschaeftigung", fields.get("nebenbeschaeftigung", ""))
         template.goals([f"rb_ziel_{suffix}_1" for suffix in ("vorjahr", "kriterien", "schritte", "termin")], performance_goals)
         by_competency = {name: [] for name in COMPETENCY_TAGS.values()}
+        unassigned = []
         for goal in development_goals:
             competency = goal.get("competency", "")
+            if not competency:
+                if any(goal.get(k,'') for k in ('title','criteria','steps','target_date')):
+                    unassigned.append(goal)
+                continue
             if competency not in by_competency:
                 raise ValueError(f"Entwicklungsziel hat keine bekannte Kompetenz: {competency or 'leer'}.")
             by_competency[competency].append(goal)
         for tag, name in COMPETENCY_TAGS.items():
             template.goals([f"rb_{tag}_vorjahr_{suffix}_1" for suffix in ("ziel", "kriterien", "schritte", "termin")], by_competency[name])
+        template.unassigned_goals(unassigned)
     return template.to_bytes()
 
 

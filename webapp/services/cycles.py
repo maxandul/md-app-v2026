@@ -43,8 +43,8 @@ def change_cycle_status(
         summary = closure_summary(connection,cycle_id)
         if not external_checked:
             raise ValueError('Bitte zuerst die Abschlussprüfung öffnen und die externe Dossier-/SAP-Verarbeitung prüfen.')
-        if any(summary.values()) and (len(closure_reason.strip())<10 or not closure_owner.strip()):
-            raise ValueError('Es bestehen offene Aufgaben. Bitte zuerst erledigen oder Restfälle mit Begründung und verantwortlicher Person dokumentieren.')
+        if any(summary.values()) and not closure_owner.strip():
+            raise ValueError('Es bestehen offene Aufgaben. Bitte zuerst erledigen oder eine verantwortliche Person für Restfälle angeben.')
         connection.execute("""INSERT INTO workflow_cycle_closures(cycle_id,reason,owner,summary_json,created_at) VALUES (?,?,?,?,?)
             ON CONFLICT(cycle_id) DO UPDATE SET reason=excluded.reason,owner=excluded.owner,summary_json=excluded.summary_json,created_at=excluded.created_at""",(cycle_id,closure_reason.strip(),closure_owner.strip(),json.dumps(summary,ensure_ascii=False),stamp()))
     connection.execute(

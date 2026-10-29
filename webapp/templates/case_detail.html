@@ -29,7 +29,7 @@
         <div><label for="period_start">Zeitraum von</label><input id="period_start" name="period_start" type="date" value="{{ case.period_start }}"{% if correction_locked %} disabled{% endif %}></div>
         <div><label for="period_end">Zeitraum bis</label><input id="period_end" name="period_end" type="date" value="{{ case.period_end }}"{% if correction_locked %} disabled{% endif %}></div>
         {% if not word_pdf_case %}<div><label for="agreement">Einigkeitsstatus</label><select id="agreement" name="agreement"{% if correction_locked %} disabled{% endif %}><option value="">Noch offen</option><option value="JA"{% if case.agreement == 'JA' %} selected{% endif %}>Ja</option><option value="NEIN"{% if case.agreement == 'NEIN' %} selected{% endif %}>Nein</option></select></div>{% endif %}
-        <div class="form-grid__wide"><label for="reason">Begründung der Korrektur</label><input id="reason" name="reason" minlength="10" placeholder="Was war falsch und weshalb wird es geändert?"{% if correction_locked %} disabled{% endif %}></div>
+        <div class="form-grid__wide"><label for="reason">Begründung der Korrektur</label><input id="reason" name="reason" placeholder="Was war falsch und weshalb wird es geändert?"{% if correction_locked %} disabled{% endif %}></div>
       </div>
       <button class="button button--primary" type="submit"{% if correction_locked %} disabled{% endif %}>Begründete Korrektur speichern</button>
     </form>
@@ -45,9 +45,9 @@
         <div class="form-grid form-grid--three">
           <div><label for="case-deadline-kind">Dokumentart</label><select id="case-deadline-kind" name="document_kind" required><option value="review">Rückblick</option><option value="outlook">Ausblick</option></select></div>
           <div><label for="case-new-due">Neue Frist</label><input id="case-new-due" name="new_due_date" type="date" required></div>
-          <div><label for="case-deadline-reason">Begründung</label><input id="case-deadline-reason" name="reason" minlength="10" required></div>
+          <div><label for="case-deadline-reason">Begründung</label><input id="case-deadline-reason" name="reason"></div>
         </div>
-        <button class="button" type="submit">Frist begründet anpassen</button>
+        <button class="button" type="submit">Frist anpassen</button>
       </form>
     </div>
   </section>

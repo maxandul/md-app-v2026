@@ -224,7 +224,7 @@ def write_person(db,pn,value,import_id,now):
 @serialized_goal_delivery
 def apply(db,selection,*,reason,user_id=None):
     """One transaction for selected person groups; reject stale/conflicting rows."""
-    if not selection or len(reason.strip())<10:raise ValueError('Bitte Personen auswählen und die geprüfte Übernahme begründen.')
+    if not selection:raise ValueError('Bitte Personen auswählen.')
     db.execute('BEGIN IMMEDIATE')
     try:
         rows=[]
@@ -272,7 +272,6 @@ def apply(db,selection,*,reason,user_id=None):
 
 
 def resolve(db,change_id,*,revision,action,reason,token,user_id=None):
-    if len(reason.strip())<10:raise ValueError('Bitte die Entscheidung mit mindestens 10 Zeichen begründen.')
     db.execute('BEGIN IMMEDIATE')
     try:
         row=db.execute('SELECT * FROM hr_sap_changes WHERE id=?',(change_id,)).fetchone()

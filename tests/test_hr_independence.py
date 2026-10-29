@@ -45,7 +45,7 @@ class HRIndependenceTest(unittest.TestCase):
         self.assertIn('inzwischen geändert', client.post(url, data=form).text)
         self.assertEqual(workflow.pdf_state(self.db, item)['revision'], 1)
         form.update(action='dismiss', revision='1')
-        self.assertIn('begründet zurückgestellt', client.post(url, data=form, follow_redirects=True).text)
+        self.assertIn('Prüfung zurückgestellt', client.post(url, data=form, follow_redirects=True).text)
         self.assertEqual(len(workflow.pending_pdfs(self.db)), 0)
         self.assertEqual(workflow.pdf_queue(self.db, status='dismissed')['pdf_total'], 1)
         with self.assertRaisesRegex(ValueError, 'zurückgestellt'):
@@ -85,21 +85,19 @@ class HRIndependenceTest(unittest.TestCase):
         self.confirm(item)
         self.assertIn('Dossierübergabe', client.get('/aufgaben').text)
 
-    def test_inactive_late_return_requires_reason_and_closed_cycle_reopening(self):
+    def test_inactive_late_return_allows_empty_reason_but_closed_cycle_requires_reopening(self):
         from webapp.services.word_pdf_imports import confirm_import, matching_cases
         item = self.stage()
         self.db.execute('UPDATE dialog_cases SET active=0 WHERE case_id=?', (self.case,))
         self.db.commit()
         self.assertTrue(matching_cases(self.db, self.reviewed(item)['data']))
-        with self.assertRaisesRegex(ValueError, 'Nachzügler'):
-            self.confirm(item)
         self.db.execute("UPDATE cycles SET status='abgeschlossen' WHERE id=?", (self.cycle,))
         self.db.commit()
         with self.assertRaisesRegex(ValueError, 'abgeschlossen'):
-            confirm_import(self.db, item, reviewed=self.reviewed(item), assignment='1', case_id=self.case, historical=False, reason='Verspäteter Rücklauf nach Austritt')
+            confirm_import(self.db, item, reviewed=self.reviewed(item), assignment='1', case_id=self.case, historical=False, reason='')
         self.db.execute("UPDATE cycles SET status='ruecklauf' WHERE id=?", (self.cycle,))
         self.db.commit()
-        confirm_import(self.db, item, reviewed=self.reviewed(item), assignment='1', case_id=self.case, historical=False, reason='Verspäteter Rücklauf nach Austritt')
+        confirm_import(self.db, item, reviewed=self.reviewed(item), assignment='1', case_id=self.case, historical=False, reason='')
         self.assertEqual(self.db.execute('SELECT active FROM dialog_cases WHERE case_id=?', (self.case,)).fetchone()[0], 0)
 
     def test_closure_requires_external_check_and_owned_remainder(self):

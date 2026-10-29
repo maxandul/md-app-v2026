@@ -95,9 +95,6 @@ def confirm_feedback(connection, import_id, *, cycle_id, manager_pn, fields, rea
         raise ValueError('Den Jahresprozess für einen Nachtrag zuerst wieder öffnen.')
     if any(key not in FIELDS or not isinstance(value,str) for key,value in fields.items()):
         raise ValueError('Ungültige Feedbackfelder.')
-    parsed = json.loads(item['parsed_json'])
-    if parsed['data'].get('manager_pn') != manager_pn and len(reason.strip()) < 10:
-        raise ValueError('Fehlende oder abweichende Personalnummer bitte mit mindestens 10 Zeichen begründen.')
     if not Path(item['stored_path']).is_file() or file_sha256(Path(item['stored_path'])) != item['sha256']:
         raise ValueError('Das Original fehlt oder wurde verändert.')
     reviewed = {'cycle_id': cycle_id, 'manager_pn': manager_pn, 'feedback_fields': fields,

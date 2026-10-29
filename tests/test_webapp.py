@@ -785,7 +785,7 @@ class WebAppIntegrationTest(unittest.TestCase):
         self.assertIn("Einzelfallprüfung", body)
         self.assertIn("Begründete Korrekturen", body)
 
-    def test_corrected_pdf_requires_reason_and_keeps_both_versions(self) -> None:
+    def test_corrected_pdf_allows_empty_reason_and_keeps_both_versions(self) -> None:
         cycle_id = self._prepare_cycle()
         with self.app.app_context():
             connection = get_db()
@@ -815,16 +815,10 @@ class WebAppIntegrationTest(unittest.TestCase):
             )
             corrected_path = root / "corrected.pdf"
             make_pdf(corrected_path, "C")
-            with self.assertRaisesRegex(ValueError, "Ersetzungsgrund"):
-                import_official_pdf(
-                    connection, path=corrected_path, original_filename="corrected.pdf",
-                    accepted_dir=root / "pdf_processed",
-                )
-            self.assertTrue(corrected_path.exists())
             second = import_official_pdf(
                 connection, path=corrected_path, original_filename="corrected.pdf",
                 accepted_dir=root / "pdf_processed",
-                replacement_reason="Korrigierte Gesamtbeurteilung nach Rückfrage.",
+                replacement_reason="",
             )
             versions = connection.execute(
                 """
@@ -839,7 +833,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             self.assertTrue(versions[0]["replaced_at"])
             self.assertEqual(versions[1]["id"], second["document_id"])
             self.assertEqual(versions[1]["replaces_document_id"], first["document_id"])
-            self.assertIn("Rückfrage", versions[1]["replacement_reason"])
+            self.assertEqual(versions[1]["replacement_reason"], "")
 
     def test_cycle_creates_dialog_events_and_separate_obligations(self) -> None:
         cycle_id = self._prepare_cycle()

@@ -89,7 +89,7 @@ class WordPdfTest(unittest.TestCase):
     def test_missing_selection_is_not_no(self):
         result = parse_word_pdf_text(REVIEW.replace("? Ja", "? Bitte wählen."))
         self.assertEqual(result["data"]["conducted"], "")
-        self.assertTrue(result["issues"])
+        self.assertEqual(result["issues"], [])
 
     def test_optional_answers_are_explicit_and_missing_is_unknown(self):
         result=parse_word_pdf_text(REVIEW + """

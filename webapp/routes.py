@@ -847,7 +847,7 @@ def correct_case(cycle_id: int, case_id: str):
             "case_data_corrected", "dialog_case", case_id,
             fields=changed, reason=request.form.get("reason", "").strip(),
         )
-        flash(f"{len(changed)} Angabe(n) wurden begründet korrigiert.", "success")
+        flash(f"{len(changed)} Angabe(n) wurden korrigiert.", "success")
     return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
 
 
@@ -857,9 +857,6 @@ def replace_case_pdf(cycle_id: int, case_id: str):
     reason = request.form.get("replacement_reason", "").strip()
     if not upload or not upload.filename or not upload.filename.lower().endswith(".pdf"):
         flash("Bitte wähle eine korrigierte PDF-Datei aus.", "error")
-        return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
-    if len(reason) < 10:
-        flash("Bitte begründe die Ersetzung mit mindestens 10 Zeichen.", "error")
         return redirect(url_for("main.case_detail", cycle_id=cycle_id, case_id=case_id))
     stored_name = _stored_name(upload.filename)
     temporary = _storage_dir("pdf_pending") / stored_name
@@ -1283,22 +1280,25 @@ def word_pdf_review(import_id):
                 raise ValueError('Bitte den Ausblick über «Diesen Ausblick als Zielquelle bearbeiten» direkt prüfen und bestätigen.')
             if action in ('draft','dismiss','reopen'):
                 reason=request.form.get('reason','').strip()
-                if action in ('dismiss','reopen') and len(reason)<10:
-                    raise ValueError('Bitte das Zurückstellen oder Wiederöffnen mit mindestens 10 Zeichen begründen.')
                 if state['dismissed'] and action!='reopen':
-                    raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst begründet wieder.')
+                    raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst wieder.')
                 reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
                 connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
                 workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
                 connection.commit()
                 audit('word_pdf_'+action,'word_pdf_import',str(import_id),reason=reason)
-                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung begründet zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
+                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
                 return redirect(url_for('main.word_pdf_review',import_id=import_id))
             if state['dismissed']:
                 raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
             if request.form.get('checked')!='yes':
                 raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
-            confirm_import(connection,import_id,reviewed=reviewed,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            from copy import deepcopy
+            confirmed_review=deepcopy(reviewed)
+            confirm_import(connection,import_id,reviewed=confirmed_review,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            reviewed=confirmed_review
+            if reviewed.get('filled_fields',{}).get('dialog_date'):
+                flash('Fehlendes Gesprächsdatum mit '+reviewed['data']['dialog_date']+' ergänzt.','success')
             audit('word_pdf_imported','word_pdf_import',str(import_id))
             status = connection.execute('SELECT status FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()['status']
             if status == 'historical':
@@ -1326,6 +1326,16 @@ def word_pdf_review(import_id):
             flash(str(exc),'error')
     candidates=matching_cases(connection,reviewed.get('data',{}))
     assignments=connection.execute('SELECT assignment_number,org_unit FROM employment_assignments WHERE person_number=? ORDER BY assignment_number',(reviewed.get('data',{}).get('pn',''),)).fetchall()
+    from .services.form_data import bounded_review_period
+    for candidate in candidates:
+        employment=connection.execute('SELECT entry_date,exit_date FROM employment_assignments WHERE person_number=? AND assignment_number=?',
+                                      (candidate['employee_pn'],candidate['employment_assignment'])).fetchone()
+        try:
+            candidate['review_min'],candidate['review_max']=bounded_review_period(candidate['review_year'],
+                employment['entry_date'] if employment else '',employment['exit_date'] if employment else '')
+        except ValueError:
+            candidate['review_min']=candidate['review_max']=''
+
     from .services.word_pdf import NARRATIVE_FIELDS
     from .services import return_review
     evidence_targets=[]
@@ -1611,7 +1621,7 @@ def goal_sources():
         if request.method=='POST':
             index=values.get('source',type=int);reason=values.get('reason','').strip()
             if not fingerprint or values.get('fingerprint')!=fingerprint:raise ValueError('Die Quellen haben sich geändert. Bitte die neue Übersicht vergleichen.')
-            if index is None or not 0<=index<len(sources) or len(reason)<10:raise ValueError('Bitte eine Quelle wählen und die Entscheidung mit mindestens 10 Zeichen begründen.')
+            if index is None or not 0<=index<len(sources):raise ValueError('Bitte eine Quelle wählen.')
             with get_db():
                 get_db().execute("""INSERT INTO workflow_goal_choices VALUES (?,?,?,?,?,?,?) ON CONFLICT(employee_pn,assignment_number,goal_year) DO UPDATE SET source_json=excluded.source_json,sources_fingerprint=excluded.sources_fingerprint,reason=excluded.reason,updated_at=excluded.updated_at""",(pn,assignment,year,json.dumps(sources[index][2]),fingerprint,reason,workflow.stamp()))
             audit('goal_source_selected','person',pn,assignment=assignment,year=year,source=sources[index][2],reason=reason)
@@ -1770,7 +1780,6 @@ def feedback_review(import_id):
             action=request.form.get('action','confirm')
             if item['status']!='pending': raise ValueError('Bereits verarbeitet; das Original bleibt erhalten.')
             if state['dismissed'] and action!='reopen': raise ValueError('Bitte die Prüfung zuerst wieder öffnen.')
-            if action in ('dismiss','reopen') and len(reason)<10: raise ValueError('Bitte mit mindestens 10 Zeichen begründen.')
             if action=='to_document':
                 from .services.word_pdf import inspect_word_pdf
                 connection.execute("UPDATE word_pdf_imports SET parsed_json=?,reviewed_json='' WHERE id=?",(json.dumps(inspect_word_pdf(Path(item['stored_path'])),ensure_ascii=False),import_id))
@@ -1838,7 +1847,6 @@ def reopen_feedback(import_id):
     connection=get_db()
     try:
         reason=request.form.get('reason','').strip()
-        if len(reason)<10: raise ValueError('Bitte die Korrektur mit mindestens 10 Zeichen begründen.')
         connection.execute('BEGIN IMMEDIATE')
         state=workflow.pdf_state(connection,import_id)
         row=connection.execute('SELECT * FROM word_feedback_submissions WHERE import_id=?',(import_id,)).fetchone()

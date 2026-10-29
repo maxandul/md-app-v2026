@@ -72,3 +72,18 @@ def bounded_review_period(
             f"Für {review_year} liegt kein Zeitraum innerhalb der bekannten Anstellung vor."
         )
     return period_start.isoformat(), period_end.isoformat()
+
+
+def validate_review_period(start: str, end: str, review_year: int,
+                           entry_date: str = "", exit_date: str = "") -> None:
+    """Validate against the selected employment, including both boundary days."""
+    try:
+        first, last = date.fromisoformat(start), date.fromisoformat(end)
+    except (ValueError, TypeError):
+        raise ValueError("Bitte beide Datumsfelder «Rückblick auf: von … bis …» ausfüllen.") from None
+    if first > last:
+        raise ValueError("Der Rückblickzeitraum endet vor seinem Beginn.")
+    earliest, latest = bounded_review_period(review_year, entry_date, exit_date)
+    if first.isoformat() < earliest or last.isoformat() > latest:
+        raise ValueError(f"Der Rückblickzeitraum muss innerhalb des Jahres {review_year} und der "
+                         f"gewählten Anstellung liegen: {earliest} bis {latest}.")

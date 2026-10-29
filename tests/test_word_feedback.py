@@ -122,11 +122,11 @@ class WordFeedbackTest(unittest.TestCase):
 
     def test_conflicting_pn_missing_year_and_unchecked_are_blocked(self):
         item=self.stage(filename='Name_Feedback_an_Test_111117.pdf')
-        for changes in ({'cycle_id':''},{'checked':''},{'manager_pn':'111118'},{'reason':''}):
+        for changes in ({'cycle_id':''},{'checked':''},{'manager_pn':'999999'}):
             response=self.confirm(item,**changes)
             self.assertEqual(response.status_code,200)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_feedback_submissions').fetchone()[0],0)
-        self.assertEqual(self.confirm(item,reason='PN anhand Original geprüft').status_code,302)
+        self.assertEqual(self.confirm(item,reason='').status_code,302)
 
     def test_draft_stale_submission_dismiss_reopen(self):
         item=self.stage();client=self.app.test_client()

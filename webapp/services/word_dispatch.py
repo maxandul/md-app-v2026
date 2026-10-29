@@ -403,8 +403,8 @@ def dispatch_word_packages(connection, *, cycle_id, package_ids, **kwargs):
 
 def resolve_interrupted_delivery(connection, package_id, *, outcome, reason):
     from .outlook_lock import package_lock
-    if outcome not in ('sent_confirmed','cancelled') or len(reason.strip())<10:
-        raise ValueError('Bitte Ergebnis der Outlook-Prüfung wählen und mit mindestens 10 Zeichen begründen.')
+    if outcome not in ('sent_confirmed','cancelled'):
+        raise ValueError('Bitte Ergebnis der Outlook-Prüfung wählen.')
     row=connection.execute('SELECT stored_path FROM word_dispatch_packages WHERE id=?',(package_id,)).fetchone()
     if not row:raise ValueError('Word-Ausgabe nicht gefunden.')
     with package_lock(row['stored_path']):

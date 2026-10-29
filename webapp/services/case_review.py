@@ -182,8 +182,6 @@ def correct_case_data(
     corrected_at: datetime | None = None,
 ) -> list[str]:
     reason = reason.strip()
-    if len(reason) < 10:
-        raise ValueError("Bitte begründe die Korrektur mit mindestens 10 Zeichen.")
     current = connection.execute(
         "SELECT * FROM dialog_cases WHERE cycle_id = ? AND case_id = ?",
         (cycle_id, case_id),
@@ -202,7 +200,7 @@ def correct_case_data(
     if locked or _validated_return(connection,case_id):
         raise ValueError(
             "Freigegebene Dokumentdaten können nicht direkt korrigiert werden. "
-            "Bitte importiere eine begründete neue PDF-Version."
+            "Bitte importiere eine neue PDF-Version."
         )
 
     normalized = {
@@ -225,6 +223,16 @@ def correct_case_data(
         and normalized["period_start"] > normalized["period_end"]
     ):
         raise ValueError("Der Zeitraum beginnt nach seinem Enddatum.")
+
+    event = connection.execute('SELECT event_type FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
+    if event and event['event_type']!='probation_review' and (normalized['period_start'] or normalized['period_end']):
+        from .form_data import bounded_review_period
+        employment = connection.execute('SELECT entry_date,exit_date FROM employment_assignments WHERE person_number=? AND assignment_number=?',
+                                        (current['employee_pn'],current['employment_assignment'])).fetchone()
+        year = connection.execute('SELECT review_year FROM cycles WHERE id=?',(cycle_id,)).fetchone()[0]
+        earliest,latest = bounded_review_period(year,employment['entry_date'],employment['exit_date'])
+        if any(value and not earliest<=value<=latest for value in (normalized['period_start'],normalized['period_end'])):
+            raise ValueError(f'Der Rückblickzeitraum muss im Jahr {year} und innerhalb der Anstellung liegen: {earliest} bis {latest}.')
 
     changed = [
         field for field in CORRECTABLE_FIELDS

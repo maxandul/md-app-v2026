@@ -57,8 +57,8 @@ def changes_for_package(package, manifest, current):
 
 
 def resolve_change(db, *, package_id, case_id, signature, outcome, reason, current_changes):
-    if outcome not in ('no_resend','person_corrected') or len(reason.strip())<10:
-        raise ValueError('Bitte Vorgehen wählen und mit mindestens 10 Zeichen begründen.')
+    if outcome not in ('no_resend','person_corrected'):
+        raise ValueError('Bitte Vorgehen wählen.')
     change=next((c for c in current_changes if c['case_id']==case_id),None)
     if not change or change['signature']!=signature:
         raise ValueError('Die Grundlagen haben sich inzwischen geändert. Ansicht neu laden und erneut prüfen.')

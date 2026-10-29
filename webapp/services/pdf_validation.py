@@ -9,7 +9,7 @@ import re
 from pypdf import PdfReader
 
 
-PROFILE = 'word-md-2026-v1'
+PROFILE = 'word-md-2026-v2'
 
 
 def contains_page_image(path):
@@ -78,13 +78,16 @@ def validate_format(path, parsed):
             issues.append('Bewilligungen sind als vollständig/aktuell bestätigt, gleichzeitig ist eine Präzisierung ausgefüllt. Am Original klären.')
         if data.get('higher_manager_requested')=='nein' and any(parsed.get('narratives',{}).get(k) for k in ('higher_manager_comment','higher_employee_comment')):
             issues.append('Gespräch mit nächsthöherer Führungskraft ist Nein, dazu sind Gesprächsbemerkungen ausgefüllt. Am Original klären.')
-    required = ['pn','manager_pn','period_start','period_end','dialog_date','conducted']
-    required += ['career_requested'] if kind=='outlook' else ['higher_manager_requested'] + (['employment_continues'] if probation else ['rating','sap_current'])
+    required = ['pn']
+    if kind=='review' and not probation:
+        required += ['period_start','period_end']
+        if data.get('conducted')!='nein':
+            required += ['rating']
     missing = [key for key in required if not data.get(key)]
     if missing:
         reasons.append('Benötigte Angaben nicht eindeutig erkannt: '+', '.join(missing)+'.')
-    if data.get('conducted')!='ja':
-        reasons.append('Nichtdurchführung oder offene Durchführung erfordert eine manuelle Prüfung.')
+    if data.get('conducted')=='nein':
+        reasons.append('Nichtdurchführung erfordert eine manuelle Prüfung.')
     reasons.extend(issues)
     parsed['validation'] = {'profile':PROFILE if structural and numbered else '',
                             'eligible':not reasons, 'reasons':list(dict.fromkeys(reasons))}

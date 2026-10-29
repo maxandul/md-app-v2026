@@ -49,6 +49,13 @@ class GoalImportTest(unittest.TestCase):
             self.assertEqual(data['performance_goals'][0]['criteria'], 'Qualität bestätigt')
             self.assertEqual(data['detected_years'], [2025])
 
+    def test_word_goal_without_title_keeps_existing_criteria(self):
+        for modern in (False,True):
+            data=parse_legacy_form(word(self.root/'partial.docx',modern=modern,title=''))
+            self.assertEqual(data['performance_goals'][0]['title'],'')
+            self.assertEqual(data['performance_goals'][0]['criteria'],'Qualität bestätigt')
+            self.assertFalse(any('leer' in issue for issue in data.get('issues',[])))
+
     def test_year_and_document_type_cannot_be_silently_overridden(self):
         folder = self.root / 'sources'; folder.mkdir()
         word(folder / 'wrong-year.docx', year=2026)
@@ -102,14 +109,14 @@ class GoalImportTest(unittest.TestCase):
         self.assertFalse((self.root / 'escape.docx').exists())
         self.assertEqual(client.get(data['preview_url'] + '/original/invalid').status_code, 404)
 
-    def test_pdf_unassigned_fragment_requires_review(self):
+    def test_partial_pdf_goal_is_preserved_without_missing_title_error(self):
         parsed = {'data': {'document_kind': 'outlook', 'pn': '111113'}, 'text': 'Ausblick auf: 2025 bis 2025',
                   'performance_goals': [], 'development_goals': [dict(title='', criteria='', steps='Nicht zugeordnet',
                       target_date='', competency='Selbstmanagement', evidence={'page': 2, 'top': 85})]}
         with patch('webapp.services.word_pdf.inspect_word_pdf', return_value=parsed):
             data = pdf_goals(Path('test.pdf'))
         self.assertEqual(data['development_goals'][0]['steps'], 'Nicht zugeordnet')
-        self.assertTrue(data['issues'])
+        self.assertEqual(data['issues'],[])
 
     def test_new_pdf_is_imported_as_goals_without_creating_official_return(self):
         from tests.test_word_pdf_imports import sample_pdf

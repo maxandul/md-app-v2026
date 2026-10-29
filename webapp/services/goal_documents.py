@@ -81,8 +81,6 @@ def word_tables(path):
                 issues.append(f'{location}: nicht übernommen ({reason}). Lesbarer Inhalt: {excerpt}')
                 continue
             goal = dict(zip(KEYS, texts))
-            if not goal['title']:
-                issues.append(f'{location}: Zielbeschreibung leer; vorhandene Messkriterien, Schritte und Termin übernommen. Inhalt: {excerpt}')
             goal['source_tag_family'] = 'word_table'
             goal['competency'] = '' if context == 'performance' else context
             (performance if context == 'performance' else development).append(goal)
@@ -103,10 +101,8 @@ def pdf_goals(path):
             goal['competency'] = source.get('competency', '')
             goal['source_tag_family'] = 'pdf_table'
             goal['evidence'] = source.get('evidence', {})
-            if not goal['title'] and any(goal[k] for k in KEYS):
-                issues.append('Zielteil ohne Zielbeschreibung: Zuordnung im Original prüfen.')
             destination.append(goal)
-    if not performance and not development and parsed['text'].strip():
+    if not performance and not development and parsed['text'].strip() and not parsed.get('coverage',{}).get('goal_rows'):
         issues.append('Keine ausgefüllten Zieltabellen erkannt. Original oder Word-Version prüfen.')
     return {'document_type': parsed['data'].get('document_kind', 'unknown'),
             'employee_pn': parsed['data'].get('pn', ''), 'assignment_number': '',

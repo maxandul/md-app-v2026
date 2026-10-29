@@ -116,8 +116,8 @@ def decision_effective(decision,evidence):
 def decide(connection, revision_id, case_id, *, outcome, reason, expected_evidence,
            recipient_email='', requested_at='', corrected_document_id=None, user_id=None,
            withdrawal_id=None,effects_checked=False):
-    if outcome not in ('no_change','waiting','request_correction','corrected','no_output','resume') or not reason.strip():
-        raise ValueError('Bitte Entscheidung und Begründung angeben.')
+    if outcome not in ('no_change','waiting','request_correction','corrected','no_output','resume'):
+        raise ValueError('Bitte Entscheidung angeben.')
     connection.execute('BEGIN IMMEDIATE')
     try:
         rev=revision(connection,revision_id,allow_withdrawn=withdrawal_id is not None)

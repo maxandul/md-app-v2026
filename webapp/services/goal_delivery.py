@@ -68,7 +68,7 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
             group=get(connection,dispatch_id)
             outputs=members(connection,dispatch_id)
             if action in ('sent_confirmed','cancelled'):
-                if not checked or not reason.strip():
+                if not checked:
                     raise ValueError('Bitte den tatsächlichen Outlook-Stand prüfen und den Nachweis festhalten.')
                 if group['status']==action:
                     connection.rollback()

@@ -4,16 +4,16 @@ from webapp.services.legacy_forms import COMPETENCY_TAGS
 
 
 def form_pdf(path, *, kind='review', probation=False, rating='Gut', pn='111113',
-             manager='111116', year=None, marker='', no_reason='', missing_page=False):
+             manager='111116', year=None, marker='', no_reason='', missing_page=False, blank_optional=False):
     year = year or (2026 if kind=='outlook' else 2025)
     count = 5
     c = canvas.Canvas(str(path), pagesize=(595,842), invariant=1)
     def text(x,y,value,size=9):
         c.setFillColorRGB(0,0,0);c.setFont('Helvetica',size);c.drawString(x,y,value)
-    def field(x,y,w,h,value='',blue=True):
+    def field(x,y,w,h,value='',blue=True,required=False):
         c.setFillColorRGB(*((.882,.965,1) if blue else (.949,.949,.949)))
         c.rect(x,y,w,h,fill=1,stroke=0)
-        text(x+4,y+h-13,value)
+        text(x+4,y+h-13,value if required or not blank_optional else '')
     def page(n):
         text(40,815,'Kanton Zürich');text(520,815,f'{n}/{count}')
     def wide(y,label,value=''):
@@ -24,9 +24,10 @@ def form_pdf(path, *, kind='review', probation=False, rating='Gut', pn='111113',
     label='Ausblick' if kind=='outlook' else ('Rückblick auf die Probezeit' if probation else 'Rückblick')
     page(1);text(40,790,'Mitarbeitenden-Dialog (MD) - '+label)
     text(40,765,'Name: Testperson PN: '+pn)
-    text(40,745,'Name VG: Testführung PN VG: '+manager)
-    text(40,720,'Wird der '+label+' durchgeführt? Ja')
-    text(40,695,('Ausblick' if kind=='outlook' else 'Rückblick')+f' auf: 01.01.{year} bis 31.12.{year} Gespräch vom: 15.01.{year if kind=="outlook" else year+1}')
+    text(40,745,'Name VG: Testführung PN VG: '+('' if blank_optional else manager))
+    text(40,720,'Wird der '+label+' durchgeführt? '+('' if blank_optional else 'Ja'))
+    conversation='' if blank_optional else f'15.01.{year if kind=="outlook" else year+1}'
+    text(40,695,('Ausblick' if kind=='outlook' else 'Rückblick')+f' auf: 01.01.{year} bis 31.12.{year} Gespräch vom: '+conversation)
     wide(665,'Falls nein, hier Begründung',no_reason)
     wide(605,'Gibt es allgemeine Bemerkungen?',marker or 'Gemeinsam besprochen')
     if probation:
@@ -58,17 +59,17 @@ def form_pdf(path, *, kind='review', probation=False, rating='Gut', pn='111113',
         text(40,790,'2. Bemerkungen zum Gespräch')
         wide(765,'Gibt es Bemerkungen der vorgesetzten Person?','Besprochen')
         wide(705,'Gibt es Bemerkungen des/der Mitarbeitenden?','Besprochen')
-        text(40,645,'Ist ein Gespräch mit der nächsthöheren vorgesetzten Person gewünscht? Nein')
+        text(40,645,'Ist ein Gespräch mit der nächsthöheren vorgesetzten Person gewünscht? '+('' if blank_optional else 'Nein'))
         wide(610,'Gibt es Bemerkungen der nächsthöheren vorgesetzten Person?')
         text(40,550,'Gibt es Bemerkungen des/der Mitarbeitenden')
         text(40,537,'zum Gespräch mit der nächsthöheren vorgesetzten Person?')
         field(40,500,513,24)
         if probation:
             text(40,465,'4. Anstellungsentscheid')
-            text(40,440,'Wird das Arbeitsverhältnis weitergeführt? Ja')
+            text(40,440,'Wird das Arbeitsverhältnis weitergeführt? '+('' if blank_optional else 'Ja'))
         else:
             text(40,465,'1.3. Gesamteindruck');text(40,440,'Der Gesamteindruck ist:')
-            field(460,427,93,24,rating)
+            field(460,427,93,24,rating,required=True)
             wide(395,'Aktuell bewilligte und als derzeit ausgeübt erfasste Nebenbeschäftigungen','Keine')
             text(40,330,'Sind die oben aufgeführten Bewilligungen vollständig und aktuell?')
             field(460,317,93,24,'Ja')

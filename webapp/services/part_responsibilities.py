@@ -1,7 +1,7 @@
 """Shared part responsibility for forms, deliveries, returns and reminders."""
 from datetime import date, datetime, timezone
 import json
-from .form_data import bounded_review_period
+from .form_data import bounded_review_period, validate_review_period
 from webapp.migrations import available
 from .outlook_lock import serialized_goal_delivery
 
@@ -12,7 +12,10 @@ def stamp():
 
 def resolve(connection, case_id, kind='review'):
     case = connection.execute('''SELECT dc.*, c.review_year,c.outlook_year,
-        e.first_name,e.last_name,e.position,e.entry_date,e.exit_date,e.probation_end,e.secondary_employment,
+        e.first_name,e.last_name,e.position,
+        COALESCE(ea.entry_date,e.entry_date) AS entry_date,
+        COALESCE(ea.exit_date,e.exit_date) AS exit_date,
+        COALESCE(ea.probation_end,e.probation_end) AS probation_end,e.secondary_employment,
         COALESCE(ea.org_unit,e.org_unit) AS employee_org_unit
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id
         JOIN employees e ON e.pn=dc.employee_pn LEFT JOIN employment_assignments ea
@@ -59,8 +62,8 @@ def resolve(connection, case_id, kind='review'):
 @serialized_goal_delivery
 def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_start, period_end,
                   expected_revision, reason, user_id=None):
-    if not reason.strip() or form_org_source not in ('employee','manager'):
-        raise ValueError('Bitte OE-Quelle und Grund für die Zuordnung angeben.')
+    if form_org_source not in ('employee','manager'):
+        raise ValueError('Bitte OE-Quelle für die Zuordnung angeben.')
     try:
         if date.fromisoformat(period_start)>date.fromisoformat(period_end):
             raise ValueError()
@@ -69,6 +72,8 @@ def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_sta
     connection.execute('BEGIN IMMEDIATE')
     try:
         part=resolve(connection,case_id,kind)
+        if kind=='review' and part['event_type']!='probation_review':
+            validate_review_period(period_start,period_end,part['review_year'],part['entry_date'],part['exit_date'])
         if part['responsibility_revision']!=expected_revision:
             raise ValueError('Die Zuständigkeit wurde inzwischen geändert. Bitte neu laden.')
         manager=connection.execute('SELECT org_unit FROM employees WHERE pn=?',(manager_pn,)).fetchone()

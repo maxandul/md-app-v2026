@@ -37,8 +37,6 @@ def extend_deadlines(
     if document_kind not in DOCUMENT_KINDS:
         raise ValueError("Die Dokumentart ist ungültig.")
     reason = reason.strip()
-    if len(reason) < 10:
-        raise ValueError("Die Begründung muss mindestens 10 Zeichen umfassen.")
     new_due_date = _valid_date(new_due_date)
 
     where = [

@@ -115,8 +115,8 @@ def pending_choice(connection,withdrawal):
 
 @serialized_goal_delivery
 def withdraw(connection,source_id,*,expected_revision,expected_impact,reason,checked=False,user_id=None):
-    if not checked or len(reason.strip())<10:
-        raise ValueError('Bitte Rücknahme und Auswirkungen ausdrücklich prüfen und begründen (mindestens 10 Zeichen).')
+    if not checked:
+        raise ValueError('Bitte Rücknahme und Auswirkungen ausdrücklich prüfen und bestätigen.')
     connection.execute('BEGIN IMMEDIATE')
     try:
         source=review.get(connection,source_id)

@@ -15,8 +15,8 @@
 <p>Auch heruntergeladene oder manuell weitergegebene Dateien können betroffen sein. Die App kann eine Weitergabe ausserhalb ihrer Versandwege nicht feststellen.</p>
 <form method="post" class="goal-panel">
 <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="impact" value="{{ impact_token }}"><input type="hidden" name="back" value="{{ back }}">
-<label>Was war falsch, und was soll korrigiert werden?<textarea name="reason" required minlength="10"></textarea></label>
+<label>Was war falsch, und was soll korrigiert werden?<textarea name="reason"></textarea></label>
 <label class="check-label"><input type="checkbox" name="checked" value="yes" required>Ich habe die betroffene Freigabe und die angezeigten Auswirkungen geprüft. Bereits erfolgte Weitergaben kläre ich separat.</label>
-<button class="button">Freigabe zurücknehmen und Folgen klären</button>
+<button class="button button--danger">Freigabe zurücknehmen und Folgen klären</button>
 </form>
 {% endblock %}

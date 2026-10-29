@@ -81,6 +81,19 @@ class ReturnAutomationTest(unittest.TestCase):
         self.assertEqual(result['state'],'unchanged')
         self.assertEqual(self.item(i)['reviewed_json'],'{"note":"HR-Entwurf"}')
 
+    def test_blank_optional_fields_are_accepted_without_false_answers(self):
+        from datetime import date
+        i=self.stage(blank_optional=True)
+        item=self.item(i)
+        self.assertEqual(item['status'],'imported',item['parsed_json'])
+        saved=json.loads(item['reviewed_json'])
+        self.assertEqual(saved['data']['conducted'],'')
+        self.assertEqual(saved['data']['sap_current'],'')
+        self.assertEqual(saved['data']['dialog_date'],date.today().isoformat())
+        state=return_review.view(self.db,item['official_document_id'])
+        self.assertEqual(state['filled_fields']['dialog_date']['origin'],'current_date')
+        self.assertIn('war leer',self.client.get('/arbeit/ruecklaeufe/'+str(item['official_document_id'])).text)
+
     def test_http_upload_uses_same_pipeline_and_shows_automatic_origin(self):
         path=form_pdf(self.root/'upload.pdf')
         response=self.client.post('/word-pdf-imports',data={'csrf_token':self.csrf,'word_pdf_files':(io.BytesIO(path.read_bytes()),'upload.pdf')})
@@ -100,6 +113,18 @@ class ReturnAutomationTest(unittest.TestCase):
 
 
 class ValidatedFormTest(unittest.TestCase):
+    def test_empty_optional_cells_are_not_extraction_errors(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            for values in ({'kind':'review'},{'kind':'outlook'},{'probation':True}):
+                with self.subTest(values=values):
+                    result=inspect_word_pdf(form_pdf(Path(directory)/'blank.pdf',blank_optional=True,**values))
+                    self.assertEqual(result['issues'],[])
+                    self.assertTrue(result['validation']['eligible'],result['validation'])
+                    self.assertEqual(result['performance_goals'],[])
+                    self.assertEqual(result['development_goals'],[])
+                    self.assertEqual(result['data']['dialog_date'],'')
+
     def test_page_image_with_ocr_reading_order_cannot_suggest_wrong_manager(self):
         import tempfile
         from PIL import Image

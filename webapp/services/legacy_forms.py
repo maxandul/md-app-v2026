@@ -133,7 +133,7 @@ def _goal_rows(
             key: values[index] if index < len(values) else ""
             for key, values in fields.items()
         }
-        if not item["title"]:
+        if not any(item.values()):
             continue
         item["competency"] = competency
         item["source_tag_family"] = prefix
@@ -162,7 +162,7 @@ def _performance_goals(controls: dict[str, list[str]]) -> list[dict[str, str]]:
                 key: values[index] if index < len(values) else ""
                 for key, values in fields.items()
             }
-            if item["title"]:
+            if any(item.values()):
                 item.update({
                     "competency": "", "source_tag_family": source_tag_family,
                 })

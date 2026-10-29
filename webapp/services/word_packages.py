@@ -22,6 +22,7 @@ def preparation_templates(paths):
 
 
 def load_word_config(path: Path) -> dict[str, str]:
+    path = Path(path).expanduser().resolve()
     if not path.exists():
         return {}
     try:
@@ -31,19 +32,33 @@ def load_word_config(path: Path) -> dict[str, str]:
             raise ValueError("Unbekannte Vorlagenart")
         result = {}
         for key, value in templates.items():
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError("Vorlagenpfad ist leer")
-            template = Path(value).expanduser()
-            result[key] = str(template if template.is_absolute() else path.parent / template)
+            if not isinstance(value, str):
+                raise ValueError("Vorlagenpfad muss Text sein")
+            if not value.strip():
+                continue
+            template = Path(value.strip()).expanduser()
+            result[key] = str((template if template.is_absolute() else path.parent / template).resolve())
         return result
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Word-Konfiguration {path}: ungültiges JSON in Zeile {exc.lineno}, Spalte {exc.colno}. "
+                         "Die Datei muss mit zwei schliessenden Klammern enden: eine für templates, eine für das äussere Objekt.") from exc
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise ValueError("Word-Konfiguration nicht lesbar; erwartet wird ein JSON-Objekt mit «templates».") from exc
+        raise ValueError(f"Word-Konfiguration {path} nicht lesbar; erwartet wird ein JSON-Objekt mit «templates».") from exc
 
 
 def word_template_status(paths: dict) -> dict:
+    from flask import current_app, has_app_context
     names = {"review": "Rückblick", "outlook": "Ausblick", "probation": "Rückblick Probezeit"}
-    missing = [name for kind, name in names.items() if not paths.get(kind) or not Path(paths[kind]).is_file()]
-    return {"ready": not missing, "missing": missing}
+    files = [{'kind':kind,'name':name,'path':paths.get(kind,''),
+              'exists':bool(paths.get(kind) and Path(paths[kind]).is_file())} for kind,name in names.items()]
+    missing = [item['name'] for item in files if not item['exists']]
+    config = current_app.config if has_app_context() else {}
+    config_path = config.get('WORD_CONFIG_PATH','')
+    return {"ready": not missing, "missing": missing, 'files':files,
+            'config_path':config_path, 'config_loaded':config.get('WORD_CONFIG_LOADED',False),
+            'config_error':config.get('WORD_CONFIG_ERROR',''),
+            'config_override':config.get('WORD_CONFIG_ENV_OVERRIDE',False),
+            'txt_file':bool(config_path and Path(config_path+'.txt').is_file())}
 
 
 def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sources_only: bool = False):
@@ -119,7 +134,7 @@ def prior_goals(connection, *, employee_pn: str, assignment: str, year: int, sou
         for source in sources:
             if source[2]==selected:return source
     if len(sources) > 1:
-        raise ValueError(f"Für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} liegen mehrere Zielquellen vor. Bitte unter «Stammdaten → Zielquellen» vergleichen und eine Quelle begründet auswählen.")
+        raise ValueError(f"Für PN {employee_pn}, Ans. {assignment}, Zieljahr {year} liegen mehrere Zielquellen vor. Bitte unter «Stammdaten → Zielquellen» vergleichen und eine Quelle auswählen.")
     return sources[0] if sources else ([], [], {})
 
 

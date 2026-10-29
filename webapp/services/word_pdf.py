@@ -41,10 +41,11 @@ def _field_text(value):
 DATE = r"\d{2}\.\d{2}\.\d{4}"
 
 
-def _single(pattern: str, text: str, label: str, issues: list[str]) -> str:
+def _single(pattern: str, text: str, label: str, issues: list[str], *, required=True) -> str:
     values = set(re.findall(pattern, text, re.IGNORECASE))
     if len(values) != 1:
-        issues.append(f"{label}: nicht eindeutig lesbar oder nicht ausgefüllt.")
+        if values or required:
+            issues.append(f"{label}: nicht eindeutig lesbar oder nicht ausgefüllt.")
         return ""
     return values.pop()
 
@@ -111,9 +112,9 @@ def parse_word_pdf_text(text: str, *, page_count: int = 0) -> dict:
         data["document_kind"] = "review" if "rückblick" in kinds else "outlook"
         data['probation'] = 'ja' if re.search(r'Rückblick auf (?:die )?Probezeit', flat, re.I) else 'nein'
         data["pn"] = _single(r"\bPN\s*:\s*(\d+)\b", flat, "Personalnummer", issues)
-        data["manager_pn"] = _single(r"\bPN\s+VG\s*:\s*(\d+)\b", flat, "Personalnummer VG", issues)
+        data["manager_pn"] = _single(r"\bPN\s+VG\s*:\s*(\d+)\b", flat, "Personalnummer VG", issues, required=False)
         periods = set(re.findall(
-            rf"(?:Rückblick|Ausblick)\s+auf\s*:\s*({DATE})\s+bis\s*({DATE})", flat,
+            rf"(?:Rückblick|Ausblick)\s+auf\s*:\s*({DATE})?\s+bis\s*({DATE})?", flat,
             re.IGNORECASE,
         ))
         if len(periods) == 1:
@@ -122,14 +123,15 @@ def parse_word_pdf_text(text: str, *, page_count: int = 0) -> dict:
             data["period_end"] = _iso_date(end, "Zeitraum bis", issues)
             if data["period_start"] > data["period_end"] and data["period_end"]:
                 issues.append("Der Zeitraum endet vor seinem Beginn.")
-        else:
+        elif periods or (data['document_kind']=='review' and data['probation']!='ja'):
             issues.append("Zeitraum: nicht eindeutig lesbar oder nicht ausgefüllt.")
+        data.setdefault('period_start','')
+        data.setdefault('period_end','')
         label = 'Rückblick' if data['document_kind'] == 'review' else 'Ausblick'
-        data['conducted'] = _answer(rf'Wird der {label}(?: auf (?:die )?Probezeit)? durchgeführt\?', flat)
-        if not data['conducted']:
-            issues.append('Durchführung: nicht eindeutig lesbar oder nicht ausgefüllt.')
+        data['conducted'] = _single(rf'Wird der {label}(?: auf (?:die )?Probezeit)? durchgeführt\?\s*(Ja|Nein)\b', flat,
+                                    'Durchführung', issues, required=False).lower()
         date_issues = [] if data['conducted'] == 'nein' else issues
-        dialog_date = _single(rf"Gespräch\s+vom\s*:\s*({DATE})", flat, "Gesprächsdatum", date_issues)
+        dialog_date = _single(rf"Gespräch\s+vom\s*:\s*({DATE})", flat, "Gesprächsdatum", date_issues, required=False)
         data['dialog_date'] = _iso_date(dialog_date, 'Gesprächsdatum', date_issues)
         if data['document_kind'] == 'review':
             data['higher_manager_requested'] = _answer(r'Ist ein Gespräch mit der nächsthöheren vorgesetzten Person gewünscht\?', flat)

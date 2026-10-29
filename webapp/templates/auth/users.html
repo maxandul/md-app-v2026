@@ -21,7 +21,7 @@
   {% for item in users %}<tr><td>{{ item.email }}</td><td>{{ item.role }}</td><td>{{ 'aktiv' if item.active else 'inaktiv' }}</td><td>
     <form class="inline-form" action="{{ url_for('auth.reset_password', user_id=item.id) }}" method="post">
       <input name="temporary_password" type="password" minlength="12" placeholder="Temporäres Passwort" required>
-      <button class="button button--small" type="submit">Zurücksetzen</button>
+      <button class="button button--small button--danger" type="submit">Zurücksetzen</button>
     </form></td></tr>{% endfor %}
   </tbody></table></div>
 </section>

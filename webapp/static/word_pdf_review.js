@@ -15,12 +15,22 @@ document.addEventListener('click', event => {
   else row.querySelectorAll('textarea,select').forEach(field => { field.value = ''; });
 });
 
-const conducted = document.querySelector('[name="conducted"]');
+const field = name => document.querySelector(`[name="${name}"]`);
 function updateRequiredFields() {
-  document.querySelector('[name="dialog_date"]').required = conducted.value !== 'nein';
-  document.querySelector('[name="no_md_reason"]').required = conducted.value === 'nein';
+  const regularReview = field('document_kind').value === 'review' && field('probation').value !== 'ja';
+  const option = field('case_id').selectedOptions[0];
+  for (const name of ['period_start', 'period_end']) {
+    field(name).required = regularReview;
+    field(name).min = regularReview ? (option?.dataset.reviewMin || '') : '';
+    field(name).max = regularReview ? (option?.dataset.reviewMax || '') : '';
+  }
+  field('rating').required = regularReview && field('conducted').value !== 'nein';
+  field('dialog_date').required = false;
+  field('no_md_reason').required = false;
 }
-conducted.addEventListener('change', updateRequiredFields);
+for (const name of ['conducted', 'document_kind', 'probation', 'case_id']) {
+  field(name).addEventListener('change', updateRequiredFields);
+}
 updateRequiredFields();
 
 let reviewDirty = false;

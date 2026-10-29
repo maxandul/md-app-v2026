@@ -1,6 +1,11 @@
 {% if not word_templates.ready %}
 <details class="info-box" open><summary>Word-Vorlagen einrichten</summary>
 <p>Es fehlen: {{ word_templates.missing|join(', ') }}.</p>
+{% if word_templates.config_path %}<p>Konfiguration: <code>{{ word_templates.config_path }}</code><br>{{ 'Geladen.' if word_templates.config_loaded else 'Fehler beim Laden.' if word_templates.config_error else 'An diesem Ort nicht gefunden.' }}{% if word_templates.config_override %} Der Speicherort wird durch <code>MD_WORD_CONFIG</code> vorgegeben.{% endif %}</p>{% endif %}
+{% if word_templates.config_error %}<p class="message message--error">{{ word_templates.config_error }}</p>{% endif %}
+{% if word_templates.txt_file %}<p class="message message--error">Es gibt eine Datei <code>word_config.json.txt</code>. Blende im Windows-Explorer die Dateinamenerweiterungen ein und entferne die zusätzliche Endung <code>.txt</code>.</p>{% endif %}
+<ul>{% for item in word_templates.files %}<li><strong>{{ item.name }}:</strong> {% if item.path %}<code>{{ item.path }}</code> – {{ 'Datei vorhanden' if item.exists else 'Datei an diesem Pfad nicht gefunden' }}{% else %}Kein Pfad eingetragen{% endif %}</li>{% endfor %}</ul>
+<p>Die drei eigenen Word-Vorlagen müssen als DOCX-Dateien am angegebenen Ort liegen. Die Konfigurationsdatei allein enthält keine Vorlagen.</p>
 <ol><li>Kopiere <code>config/word.example.json</code> nach <code>instance/word_config.json</code>.</li>
 <li>Hinterlege dort die Dateipfade für <code>review</code> (Rückblick), <code>outlook</code> (Ausblick) und <code>probation</code> (Probezeit).</li>
 <li>Relative Pfade beginnen beim Ordner der Konfigurationsdatei. Liegen die Vorlagen im Projektordner unter <code>templates</code>, verwende <code>../templates/Dateiname.docx</code>.</li>

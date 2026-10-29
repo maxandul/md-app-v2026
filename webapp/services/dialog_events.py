@@ -348,8 +348,6 @@ def _create_manual_event(
         raise ValueError("Unbekannter Gesprächsumfang.")
     if not employee_pn.strip() or not assignment_number.strip() or not manager_pn.strip():
         raise ValueError("Personalnummer, Ans. und vorgesetzte Person sind erforderlich.")
-    if not reason.strip():
-        raise ValueError("Für eine manuelle Zuordnung ist eine Begründung erforderlich.")
     if not 2020 <= review_year <= 2100:
         raise ValueError('Das Rückblickjahr liegt ausserhalb des unterstützten Bereichs.')
     try:
@@ -383,6 +381,9 @@ def _create_manual_event(
         raise ValueError("Der Beurteilungsbeginn liegt vor dem Eintritt in diese Anstellung.")
     if employment["exit_date"] and end > date.fromisoformat(employment["exit_date"]):
         raise ValueError("Das Beurteilungsende liegt nach dem Austritt aus dieser Anstellung.")
+    if event_type!='probation_review' and required_scope in ('full','review_only'):
+        from .form_data import validate_review_period
+        validate_review_period(period_start,period_end,review_year,employment['entry_date'],employment['exit_date'])
     if cycle_id is not None:
         cycle = connection.execute(
             "SELECT review_year FROM cycles WHERE id = ?", (cycle_id,)

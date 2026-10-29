@@ -56,8 +56,8 @@ def process_new(db, import_id, *, handoff_dir):
         matches = matching_cases(db,data)
         matches = [m for m in matches if m['active'] and m['required'] and m['event_status'] not in ('cancelled','no_md')
                    and m['employment_assignment']==assignments[0][0]
-                   and m['manager_pn']==data['manager_pn']
-                   and (m['period_start'],m['period_end'])==(data['period_start'],data['period_end'])
+                   and (not data.get('manager_pn') or m['manager_pn']==data['manager_pn'])
+                   and all(not data.get(k) or m[k]==data[k] for k in ('period_start','period_end'))
                    and (m['event_type']=='probation_review')==(data.get('probation')=='ja')]
         if len(matches)!=1:
             raise ValueError('Person, Anstellung, verantwortliche Führungskraft und genauer Zeitraum ergeben keinen eindeutigen offenen Gesprächsteil.')

@@ -74,9 +74,14 @@ def closure_summary(db,cycle_id):
 def setup_checks(config,db):
     templates=config.get('WORD_TEMPLATE_PATHS',{})
     items=[]
+    config_path=config.get('WORD_CONFIG_PATH','instance/word_config.json')
+    config_hint=config.get('WORD_CONFIG_ERROR') or str(config_path)
+    if Path(str(config_path)+'.txt').is_file():
+        config_hint+=' · Zusätzliche Endung .txt entfernen: word_config.json.txt'
+    items.append(('Word-Konfiguration geladen',config.get('WORD_CONFIG_LOADED',False),config_hint))
     for kind,name in [('review','Rückblick'),('outlook','Ausblick'),('probation','Probezeit')]:
         ready=bool(templates.get(kind) and Path(templates[kind]).is_file())
-        items.append((name+'-Vorlage vorhanden',ready,'Vorlagendatei und Pfad in instance/word_config.json hinterlegen.'))
+        items.append((name+'-Vorlage vorhanden',ready,templates.get(kind) or 'Kein Pfad in '+str(config_path)+' eingetragen.'))
     from .word_packages import preparation_templates
     for kind,path in preparation_templates(templates).items():
         items.append((('Reflexionsvorlage' if kind=='reflection' else 'Feedbackvorlage')+' vorhanden',path.is_file(),'Dateien unter templates/preparation prüfen; eigene Pfade optional in instance/word_config.json hinterlegen.'))
@@ -90,13 +95,12 @@ def setup_checks(config,db):
 
 def attach_event(db,event_id,cycle_id,reason):
     from .sap_staging import available as staged
-    if len(reason.strip())<10:raise ValueError('Bitte die Zuordnung mit mindestens 10 Zeichen begründen.')
     e=db.execute('''SELECT e.*,a.person_number,a.assignment_number,m.manager_person_number FROM dialog_events e JOIN employment_assignments a ON a.id=e.employment_id JOIN manager_assignments m ON m.id=e.manager_assignment_id WHERE e.id=?''',(event_id,)).fetchone()
     c=db.execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
     if not e or e['cycle_id'] is not None or e['status']=='cancelled':raise ValueError('Nur ein offenes Ereignis ohne Durchlauf kann zugeordnet werden.')
     if not c or c['review_year']!=e['review_year'] or (not staged(db) and c['status']=='abgeschlossen'):raise ValueError('Wähle einen passenden Durchlauf mit demselben Rückblickjahr.')
     if not staged(db) and db.execute('SELECT 1 FROM dialog_cases WHERE cycle_id=? AND employee_pn=? AND employment_assignment=? AND manager_pn=?',(cycle_id,e['person_number'],e['assignment_number'],e['manager_person_number'])).fetchone():
-        raise ValueError('Für diese Person, Anstellung und Führungslinie besteht bereits ein Fall im Durchlauf. Prüfe diesen bestehenden Fall. Eine doppelte Fehlanlage kannst du begründet aufheben; fachlich unterschiedliche Gespräche benötigen eine Klärung mit der Systemadministration.')
+        raise ValueError('Für diese Person, Anstellung und Führungslinie besteht bereits ein Fall im Durchlauf. Prüfe diesen bestehenden Fall. Eine doppelte Fehlanlage kannst du aufheben; fachlich unterschiedliche Gespräche benötigen eine Klärung mit der Systemadministration.')
     with db:
         db.execute('''INSERT INTO dialog_cases(case_id,cycle_id,employee_pn,employment_assignment,manager_pn,suggested_scope,suggestion_reason,status,period_start,period_end,data_json,active,updated_at)
             VALUES (?,?,?,?,?,?,?,'offen',?,?,'',1,?)''',(e['event_id'],cycle_id,e['person_number'],e['assignment_number'],e['manager_person_number'],e['required_scope'],reason,e['period_start'],e['period_end'],stamp()))
@@ -105,7 +109,6 @@ def attach_event(db,event_id,cycle_id,reason):
 
 
 def cancel_manual_event(db,event_id,reason):
-    if len(reason.strip())<10:raise ValueError('Bitte die Aufhebung mit mindestens 10 Zeichen begründen.')
     e=db.execute('SELECT * FROM dialog_events WHERE id=?',(event_id,)).fetchone()
     if not e or e['source']!='manual' or e['status']=='cancelled':raise ValueError('Nur ein noch nicht aufgehobenes manuelles Ereignis kann hier aufgehoben werden.')
     if e['legacy_case_id'] and db.execute('SELECT 1 FROM official_documents WHERE case_id=?',(e['legacy_case_id'],)).fetchone():raise ValueError('Zum Ereignis liegen Dokumente vor. Eine Aufhebung erfordert eine separate fachliche Klärung.')

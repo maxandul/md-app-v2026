@@ -103,9 +103,7 @@ def validate_goals(goals, *, confirmed):
             row={k:row.get(k,'').replace('\r\n','\n').strip() for k in FIELDS}
             if not any(row.values()):
                 continue
-            if confirmed and not row['title']:
-                raise ValueError('Bei einem Ziel fehlt der Zieltext.')
-            if confirmed and kind=='development_goals' and row['competency'] not in COMPETENCY_TAGS.values():
+            if confirmed and kind=='development_goals' and row['competency'] and row['competency'] not in COMPETENCY_TAGS.values():
                 raise ValueError('Bitte jedem Entwicklungsziel eine bekannte Kompetenz zuordnen.')
             cleaned[kind].append(row)
     return cleaned
@@ -126,8 +124,6 @@ def save(connection, source_id, *, expected_revision, status, employment_id, goa
         raise ValueError('Unbekannte Prüfaktion.')
     confirmed=status=='confirmed'
     cleaned=validate_goals(goals,confirmed=confirmed)
-    if status in ('waiting','discarded') and not note.strip():
-        raise ValueError('Bitte den offenen Punkt oder den Grund festhalten.')
     connection.execute('BEGIN IMMEDIATE')
     try:
         previous=get(connection,source_id)
@@ -141,19 +137,15 @@ def save(connection, source_id, *, expected_revision, status, employment_id, goa
             AND NOT EXISTS(SELECT 1 FROM hr_goal_withdrawals w WHERE w.source_id=r.source_id AND w.through_revision>=r.revision)
             ORDER BY revision DESC LIMIT 1""",(source_id,)).fetchone()
         if earlier and (earlier['employment_id']!=employment_id or earlier['goal_year']!=goal_year or status=='discarded'):
-            raise ValueError('Für eine andere Person, Anstellung oder ein anderes Zieljahr zuerst die Freigabe begründet zurücknehmen.')
+            raise ValueError('Für eine andere Person, Anstellung oder ein anderes Zieljahr zuerst die Freigabe zurücknehmen.')
         if confirmed:
             if not checked or not employment_id or not goal_year:
                 raise ValueError('Zuordnung, Zieljahr und sämtliche Angaben am Original prüfen und ausdrücklich bestätigen.')
-            if not cleaned['performance_goals'] and not cleaned['development_goals'] and not note.strip():
-                raise ValueError('Bitte begründen, weshalb der Ausblick keine Ziele enthält.')
             if not Path(previous['stored_path']).is_file() or hashlib.sha256(Path(previous['stored_path']).read_bytes()).hexdigest()!=previous['sha256']:
                 raise ValueError('Das gesicherte Original fehlt oder wurde verändert.')
             before=sources(connection,employment_id,goal_year)
             if goal_sources_fingerprint(before)!=expected_sources:
                 raise ValueError('Die vorhandenen Zielquellen haben sich geändert. Bitte erneut vergleichen.')
-            if (before or previous['extraction'].get('issues')) and not note.strip():
-                raise ValueError('Bitte die Quellenwahl bzw. Klärung der erkannten Unsicherheiten begründen.')
         revision=expected_revision+1
         connection.execute('UPDATE hr_goal_sources SET revision=? WHERE id=?',(revision,source_id))
         cur=connection.execute('''INSERT INTO hr_goal_revisions(source_id,revision,status,employment_id,goal_year,

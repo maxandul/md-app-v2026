@@ -44,6 +44,17 @@ class BulkSelectionTest(unittest.TestCase):
             'checked': 'yes', 'reason': 'Synthetischen Originalexport und Umfang geprüft', **extra,
         }, follow_redirects=True)
 
+    def test_optional_reason_accepts_empty_and_single_character(self):
+        batch=self.preview(2)
+        response=self.choose_all(batch,state='new')
+        selected=SelectionParser(response.text).selected
+        for selection,reason in zip(selected,('', 'x')):
+            response=self.apply([selection],batch,reason=reason)
+            self.assertEqual(response.status_code,200)
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM employees WHERE pn LIKE '77%'").fetchone()[0],2)
+        reasons=[row[0] for row in self.db.execute("SELECT d.reason FROM hr_sap_decisions d JOIN hr_sap_changes c ON c.id=d.change_id WHERE c.batch_id=? AND d.action='apply' ORDER BY d.id",(batch,))]
+        self.assertEqual(reasons,['','x'])
+
     def test_47_pages_selected_together_and_individual_exclusions_are_respected(self):
         batch = self.preview(1175)
         page = self.client.get(f'/stammdaten/abgleich?batch_id={batch}&state=new')

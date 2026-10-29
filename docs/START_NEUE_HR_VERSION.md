@@ -1,6 +1,6 @@
 # MD-App einrichten und verwenden
 
-Stand: 28. Oktober 2026. Die neue HR-Oberfläche ist der Standard. Für den Alltag
+Stand: 29. Oktober 2026. Die neue HR-Oberfläche ist der Standard. Für den Alltag
 gibt es **MD-Web.bat**, für die einmalige Installation **INSTALL_MD.bat**.
 
 **Node.js und npm werden nicht benötigt.** Alle fertigen Oberflächen-Dateien
@@ -24,6 +24,25 @@ bestehenden Umgebung abstimmen. Relative Vorlagenpfade beziehen sich auf die
 Word-Konfigurationsdatei. Unter **Hilfe → Einrichtung** zeigt die App fehlende
 Voraussetzungen. Fehlermeldungen bei der Installation im Konsolenfenster lesen;
 bei Bedarf den vorgesehenen Proxy über `MD_PIP_PROXY` setzen.
+
+Für Vorlagen im Unterordner `templates` lautet `instance/word_config.json` zum Beispiel:
+
+```json
+{
+  "templates": {
+    "review": "../templates/MD_Rückblick_2026.docx",
+    "outlook": "../templates/MD_Ausblick_2026.docx",
+    "probation": "../templates/MD_Rückblick_Probezeit_2026.docx"
+  }
+}
+```
+
+Die drei genannten DOCX-Dateien müssen dort tatsächlich liegen. Sie werden nicht
+mitgeliefert. Beide schliessenden Klammern gehören zur JSON-Datei. Windows darf
+keine zusätzliche Endung `.txt` angehängt haben. Nach einer Änderung den Server
+mit Strg+C beenden und `MD-Web.bat` erneut starten. **Hilfe → Einrichtung** zeigt
+den tatsächlichen Konfigurationspfad, Lesefehler und die aufgelösten Vorlagenpfade.
+Ein gesetztes `MD_WORD_CONFIG` hat Vorrang vor der Standarddatei in `instance`.
 
 Eine vorhandene `.venv` wird sowohl für Installation als auch Start verwendet.
 Ohne `.venv` werden die Pakete für das ausgewählte installierte Python eingerichtet.
@@ -62,6 +81,25 @@ Den ersten Word-Versand samt Empfängern sowie die erste Dossier-/SAP-Übergabe 
 zum Ziel prüfen. Diese Anbindungen sind nicht durch einen Linux-Test bestätigt.
 Bedienmängel können laufend korrigiert werden; falsche Zuordnung und unklare
 externe Übergaben beim betroffenen Vorgang zuerst klären.
+
+In Formularen verwenden Eingabefelder Arial in normaler Schriftstärke; Titel
+verwenden Arial Black. Hauptaktionen sind blau, weitere Aktionen haben einen
+sichtbaren blaugrauen Hintergrund. Verwerfen, Zurücknehmen und Entfernen sind rot.
+
+Begründungen und Prüfnotizen sind optional und haben keine Mindestlänge. Im
+regulären Rückblick sind nur die beiden Datumsfelder des Rückblickzeitraums und
+die Gesamtbeurteilung Pflichtinhalte. Der gesamte Zeitraum muss im Rückblickjahr
+und zwischen Eintritt und Austritt der zugeordneten Anstellung liegen. Fehlende
+Gesprächsdaten werden beim Übernehmen mit dem aktuellen Tagesdatum ergänzt und
+als Ergänzung vermerkt. Das Original-PDF bleibt unverändert.
+
+Leere Zusatzangaben, Ziele und Einschätzungen sind zulässig; unbekannte Antworten
+werden nicht als Ja oder Nein ausgelegt. Ausblick und Probezeitformular können
+leere Zeiträume aus dem ausdrücklich gewählten Fall übernehmen. Ein leerer
+Probezeit-Anstellungsentscheid bleibt leer. Bei ausdrücklich bestätigter
+Nichtdurchführung bleiben Beurteilung und Gesprächsdatum leer. Person, Anstellung
+und Fall müssen weiterhin eindeutig zugeordnet sein; die Bestätigung der Prüfung
+am Original sowie erforderliche Unterschriftennachweise bleiben bestehen.
 
 Bei D/E sind Rückblick und Ausblick jeweils zu unterschreiben. Der entsprechende
 Hinweis in der eigenen Ausblick-Wordvorlage muss diese Regel enthalten. Scans und

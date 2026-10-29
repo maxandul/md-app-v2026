@@ -165,6 +165,17 @@ class WordPackagesTest(unittest.TestCase):
         self.assertEqual(manifest['goal_warnings'], [])
         self.assertEqual(manifest['documents'][0]['performance_goals'], 1)
 
+    def test_partial_goals_without_competency_remain_in_word_output(self):
+        raw=render_word_form(Path(self.paths['review']),kind='review',fields={},
+                             performance_goals=[{'criteria':'Messung ohne Titel'}],
+                             development_goals=[{'steps':'Erster Schritt\nZweiter Schritt','target_date':'31.12.'}])
+        root=xml_for(raw);values=controls(root)
+        self.assertEqual(values['rb_ziel_vorjahr_1'],'')
+        self.assertEqual(values['rb_ziel_kriterien_1'],'Messung ohne Titel')
+        text=''.join(root.itertext())
+        self.assertIn('ohne Kompetenzzuordnung',text)
+        self.assertIn('Erster Schritt',text);self.assertIn('Zweiter Schritt',text);self.assertIn('31.12.',text)
+
     def test_read_config_resolves_relative_paths(self):
         config = self.root / 'word_config.json'
         config.write_text(json.dumps({'templates': {'review': 'review.docx'}}))

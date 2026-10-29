@@ -59,10 +59,20 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     if not app.testing:
         app.config['HR_GOAL_WORKFLOW'] = True
 
+    config_path = Path(os.environ.get("MD_WORD_CONFIG", "").strip() or str(Path(app.instance_path) / "word_config.json")).expanduser().resolve()
+    app.config['WORD_CONFIG_PATH'] = str(config_path)
+    app.config['WORD_CONFIG_LOADED'] = False
+    app.config['WORD_CONFIG_ERROR'] = ''
+    app.config['WORD_CONFIG_ENV_OVERRIDE'] = bool(os.environ.get('MD_WORD_CONFIG'))
     if "WORD_TEMPLATE_PATHS" not in app.config:
         from .services.word_packages import load_word_config
-        config_path = Path(os.environ.get("MD_WORD_CONFIG", str(Path(app.instance_path) / "word_config.json")))
-        app.config["WORD_TEMPLATE_PATHS"] = load_word_config(config_path)
+        try:
+            app.config["WORD_TEMPLATE_PATHS"] = load_word_config(config_path)
+            app.config['WORD_CONFIG_LOADED'] = config_path.is_file()
+        except ValueError as exc:
+            app.config["WORD_TEMPLATE_PATHS"] = {}
+            app.config['WORD_CONFIG_ERROR'] = str(exc)
+            app.logger.warning('%s', exc)
 
     validate_organisation(app.config)
     if not app.config.get("DOSSIER_HANDOFF_ROOT"):

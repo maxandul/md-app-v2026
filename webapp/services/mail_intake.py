@@ -574,9 +574,9 @@ def attachment_progress(connection, attachment):
     elif word:
         item['word_pdf_import_id']=word['id']
         if word['dismissed']:
-            item.update(progress='Begründet zurückgestellt; Original im Projekt, keine Roboterübergabe',next_step='Bei Bedarf Prüfung begründet wieder öffnen. Sonst Mailprüfung nach Bearbeitung aller übrigen Anhänge abschliessen.')
+            item.update(progress='zurückgestellt; Original im Projekt, keine Roboterübergabe',next_step='Bei Bedarf Prüfung wieder öffnen. Sonst Mailprüfung nach Bearbeitung aller übrigen Anhänge abschliessen.')
         elif word['status']=='pending':
-            item.update(progress='Original im Projekt; PDF-Prüfung offen, keine Roboterübergabe',next_step='PDF-Prüfung öffnen: Person/Anstellung, Zeitraum und Angaben vergleichen. OK: übernehmen. Nicht OK: Entwurf und Rückfrage oder begründet zurückstellen.')
+            item.update(progress='Original im Projekt; PDF-Prüfung offen, keine Roboterübergabe',next_step='PDF-Prüfung öffnen: Person/Anstellung, Zeitraum und Angaben vergleichen. OK: übernehmen. Nicht OK: Entwurf und Rückfrage oder zurückstellen.')
         elif word['status']=='historical':
             item.update(progress='Als historische Zielquelle im Projekt gespeichert; keine Roboterübergabe',next_step='Keine weitere Ablage. Ziele stehen für neue Word-Ausgaben bereit.')
         else:

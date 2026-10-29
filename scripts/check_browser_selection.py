@@ -14,12 +14,27 @@ def main():
     rows = ''.join(f'<tr><td><input type="checkbox" name="selected" value="{i}" '
                    f'{"disabled" if i == 1174 else ""}></td><td>Person {i:04}</td></tr>'
                    for i in range(1175))
-    page = f'''<!doctype html><html><meta charset="utf-8"><body>
+    page = f'''<!doctype html><html><meta charset="utf-8"><link rel="stylesheet" href="{(static / 'app.css').as_uri()}"><body>
 <form><div class="table-wrap"><table data-bulk-selection="selected">
 <thead><tr><th>Auswahl</th><th>Person</th></tr></thead><tbody>{rows}</tbody></table></div>
 <label><input type="checkbox" name="checked" required>Prüfung bestätigen</label></form>
 <form id="other" data-bulk-selection="source"><input type="checkbox" name="source">
 <input type="checkbox" name="source" data-bulk-skip><input type="checkbox" name="checked"></form>
+<h1 id="heading">Rückblick prüfen</h1>
+<form data-review-form id="review">
+<label>Dokument<select name="document_kind"><option value="review">Rückblick</option><option value="outlook">Ausblick</option></select></label>
+<select name="probation"><option value="nein">Regulär</option><option value="ja">Probezeit</option></select>
+<select name="conducted"><option value="">Leer</option><option value="nein">Nein</option></select>
+<select name="case_id"><option value="case" data-review-min="2025-03-01" data-review-max="2025-10-31">Fall</option></select>
+<label>Von<input name="period_start" type="date"></label><label>Bis<input name="period_end" type="date"></label>
+<label>Gesprächsdatum<input name="dialog_date" type="date"></label>
+<select name="rating"><option value="">Leer</option><option value="C">C</option></select>
+<label>Begründung<textarea name="no_md_reason"></textarea></label>
+<button type="button" id="secondary" class="button">Speichern</button>
+<button type="button" id="primary" class="button button--primary">Übernehmen</button>
+<button type="button" id="danger" class="button button--danger">Verwerfen</button>
+</form>
+<script src="{(static / 'word_pdf_review.js').as_uri()}"></script>
 <script src="{(static / 'bulk_selection.js').as_uri()}"></script>
 <script src="{(static / 'table_controls.js').as_uri()}"></script>
 <script>
@@ -55,6 +70,25 @@ try {{
   check(other.querySelectorAll('input[name="source"]:checked').length === 1, 'ambiguous source skipped');
   check(!other.querySelector('input[name="checked"]').checked, 'form confirmation unchanged');
   check(selected() === 0, 'selection groups remain independent');
+  const input = document.querySelector('[name="period_start"]');
+  const style = getComputedStyle(input);
+  check(style.fontFamily.startsWith('Arial') && style.fontWeight === '400', 'normal Arial in nested input');
+  check(getComputedStyle(document.querySelector('textarea')).fontWeight === '400', 'normal textarea weight');
+  check(getComputedStyle(document.querySelector('#heading')).fontFamily.startsWith('"Arial Black"'), 'title font');
+  const color = id => getComputedStyle(document.getElementById(id)).backgroundColor;
+  check(color('secondary') !== 'rgb(255, 255, 255)', 'visible secondary button');
+  check(new Set(['primary','secondary','danger'].map(color)).size === 3, 'three distinct button treatments');
+  const f = name => document.querySelector(`[name="${{name}}"]`);
+  const change = (name,value) => {{ f(name).value=value;f(name).dispatchEvent(new Event('change')); }};
+  check(input.required && f('period_end').required && f('rating').required, 'review required fields');
+  check(!f('dialog_date').required && !f('no_md_reason').required, 'optional date and reason');
+  change('period_start','2025-02-28');check(input.validity.rangeUnderflow, 'employment entry bound');
+  change('period_end','2025-11-01');check(f('period_end').validity.rangeOverflow, 'employment exit bound');
+  change('period_start','2025-03-01');change('period_end','2025-10-31');change('rating','C');
+  check(document.querySelector('#review').checkValidity(), 'blank optional inputs allowed');
+  change('conducted','nein');change('rating','');check(!f('rating').required, 'waiver has no rating');
+  change('document_kind','outlook');check(!input.required && !input.min && !input.max, 'outlook optional period');
+  change('document_kind','review');change('probation','ja');check(!input.required && !f('rating').required, 'probation optional fields');
   document.body.dataset.result = 'passed';
 }} catch (error) {{ document.body.dataset.result = 'failed'; document.body.dataset.error = error.message; }}
 </script></body></html>'''
@@ -72,7 +106,7 @@ try {{
             import re
             error = re.search(r'data-error="([^"]*)"', result.stdout)
             raise AssertionError(error.group(1) if error else result.stderr[-2000:] or 'No browser result')
-    print('Browser: 1175 rows, filtered selection across pages, clear all, disabled items and separate confirmations passed.')
+    print('Browser: selection across 1175 rows, Arial inputs, button variants, optional fields and date bounds passed.')
 
 
 if __name__ == '__main__':

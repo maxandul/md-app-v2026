@@ -225,12 +225,6 @@ def _store_current_document(
     ).fetchone()
     replacement_reason = replacement_reason.strip()
     if current:
-        if not replacement_reason:
-            raise ValueError(
-                "Für diesen Dokumenttyp besteht bereits eine aktuelle Version. "
-                "Die neue Version muss in der Einzelfallansicht mit einem "
-                "Ersetzungsgrund importiert werden."
-            )
         if current["handoff_status"] == "staged":
             raise ValueError(
                 "Die aktuelle Version wurde bereits für die Personaldossier-Ablage "
@@ -507,8 +501,6 @@ def import_official_pdf(
     from .part_responsibilities import has_assignments
     if has_assignments(connection,case_id=case['case_id']) and (document_kind=='no_md' or (scope and scope!=(case['official_scope'] or case['suggested_scope']))):
         raise ValueError('Der Umfang dieses früheren PDFs betrifft getrennt zugewiesene Teile. Bitte den gesamten MD-Umfang im Fall gesondert klären.')
-    if document_kind == "no_md" and not data.get("no_md_reason"):
-        raise ValueError("In der Kein-MD-Bestätigung fehlt der Grund.")
 
     # Nur genügend/ungenügend im Rückblick erfordert einen geprüften Scan.
     scan_required = document_kind == 'review' and data.get('rating', '').upper() in {'D', 'E'}

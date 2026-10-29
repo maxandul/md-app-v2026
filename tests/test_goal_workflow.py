@@ -197,7 +197,7 @@ class GoalWorkflowTest(unittest.TestCase):
             rev=self.confirm(source,employment_id=employment)
             case=self.db.execute('SELECT case_id FROM dialog_cases WHERE employee_pn=? ORDER BY id',(pn,)).fetchone()[0]
             assign_review(self.db,case,manager_pn='111116' if i<2 else '111118',form_org_source='employee',
-                period_start='2025-01-01',period_end='2025-12-31',expected_revision=0,reason='Geprüfte Verantwortung')
+                period_start='2025-01-01',period_end='2025-10-31' if pn=='111112' else '2025-12-31',expected_revision=0,reason='Geprüfte Verantwortung')
             _,fp,_=followups.inputs(self.db,rev,case,self.paths);selections.append((rev,case,fp))
         real=followups.create_word_package
         def interrupted(*args,**kwargs):

@@ -57,8 +57,8 @@
           <td>{% if event.review_due_date %}<strong>Rückblick:</strong> {{ event.review_due_date }}{% endif %}{% if event.outlook_due_date %}{% if event.review_due_date %}<br>{% endif %}<strong>Ausblick:</strong> {{ event.outlook_due_date }}{% endif %}{% if not event.review_due_date and not event.outlook_due_date %}–{% endif %}</td>
           <td>
             <span class="status">{{ {'open':'Offen','planned':'Geplant','in_progress':'In Bearbeitung','completed':'Abgeschlossen','no_md':'Kein MD','cancelled':'Aufgehoben'}.get(event.status,event.status) }}</span>
-{% if not event.cycle_id and event.status!='cancelled' %}<form action="{{ url_for('main.attach_dialog_event',event_id=event.id) }}" method="post"><label>Durchlauf<select name="cycle_id" required>{% for c in cycles if c.review_year==event.review_year and true %}<option value="{{ c.id }}">{{ c.review_year }}/{{ c.outlook_year }}</option>{% endfor %}</select></label><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Durchlauf zuordnen</button></form><p>Kein passender Durchlauf? Zuerst oben eröffnen.</p>{% endif %}
-{% if event.source=='manual' and event.status!='cancelled' %}<details><summary>Fehlanlage aufheben</summary><form action="{{ url_for('main.cancel_dialog_event',event_id=event.id) }}" method="post"><label>Begründung<input name="reason" minlength="10" required></label><button class="button">Unbenutztes Ereignis aufheben</button></form></details>{% endif %}
+{% if not event.cycle_id and event.status!='cancelled' %}<form action="{{ url_for('main.attach_dialog_event',event_id=event.id) }}" method="post"><label>Durchlauf<select name="cycle_id" required>{% for c in cycles if c.review_year==event.review_year and true %}<option value="{{ c.id }}">{{ c.review_year }}/{{ c.outlook_year }}</option>{% endfor %}</select></label><label>Begründung<input name="reason"></label><button class="button">Durchlauf zuordnen</button></form><p>Kein passender Durchlauf? Zuerst oben eröffnen.</p>{% endif %}
+{% if event.source=='manual' and event.status!='cancelled' %}<details><summary>Fehlanlage aufheben</summary><form action="{{ url_for('main.cancel_dialog_event',event_id=event.id) }}" method="post"><label>Begründung<input name="reason"></label><button class="button button--danger">Unbenutztes Ereignis aufheben</button></form></details>{% endif %}
             {% if event.sap_leading %}<br><span class="muted">Für SAP-Export ausgewählter Rückblick</span>
             {% elif event.required_scope in ['full', 'review_only'] and event.legacy_case_id %}<form action="{{ url_for('main.mark_leading_sap_event', event_id=event.id) }}" method="post"><button class="link-button compact-action" type="submit">Diesen Rückblick für SAP auswählen</button></form>
             {% elif event.required_scope in ['full', 'review_only'] %}<br><span class="muted">SAP-Auswahl nach Fallverknüpfung</span>{% endif %}
@@ -80,14 +80,14 @@
           <input type="hidden" name="scope" value="cycle"><input type="hidden" name="document_kind" value="review">
           <h3>Rückblick</h3><p>Reguläre Frist: 31. Januar</p>
           <label for="review-new-due">Neue Frist</label><input id="review-new-due" name="new_due_date" type="date" value="{{ selected_cycle.review_due_date if selected_cycle else '' }}" required>
-          <label for="review-deadline-reason">Begründung</label><input id="review-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird die Frist angepasst?">
+          <label for="review-deadline-reason">Begründung</label><input id="review-deadline-reason" name="reason" placeholder="Weshalb wird die Frist angepasst?">
           <button class="button" type="submit">Rückblickfrist anpassen</button>
         </form>
         <form class="content-card" action="{{ url_for('main.change_deadlines', cycle_id=selected_cycle_id) }}" method="post">
           <input type="hidden" name="scope" value="cycle"><input type="hidden" name="document_kind" value="outlook">
           <h3>Ausblick</h3><p>Reguläre Frist: 28. Februar</p>
           <label for="outlook-new-due">Neue Frist</label><input id="outlook-new-due" name="new_due_date" type="date" value="{{ selected_cycle.outlook_due_date if selected_cycle else '' }}" required>
-          <label for="outlook-deadline-reason">Begründung</label><input id="outlook-deadline-reason" name="reason" minlength="10" required placeholder="Weshalb wird die Frist angepasst?">
+          <label for="outlook-deadline-reason">Begründung</label><input id="outlook-deadline-reason" name="reason" placeholder="Weshalb wird die Frist angepasst?">
           <button class="button" type="submit">Ausblickfrist anpassen</button>
         </form>
       </div>
@@ -133,7 +133,7 @@
         <div><label for="manual-cycle">Zuordnung zum Durchlauf</label><select id="manual-cycle" name="cycle_id"><option value="">Nach Jahr einordnen (bei Bedarf anlegen)</option>{% for cycle in cycles %}<option value="{{ cycle.id }}"{% if cycle.id == selected_cycle_id %} selected{% endif %}>{{ cycle.review_year }}/{{ cycle.outlook_year }}</option>{% endfor %}</select></div>
         <div><label for="manual-review-due">Frist Rückblick</label><input id="manual-review-due" name="review_due_date" type="date"></div>
         <div><label for="manual-outlook-due">Frist Ausblick</label><input id="manual-outlook-due" name="outlook_due_date" type="date"></div>
-        <div class="form-grid__wide"><label for="manual-reason">Begründung</label><input id="manual-reason" name="reason" required></div>
+        <div class="form-grid__wide"><label for="manual-reason">Begründung</label><input id="manual-reason" name="reason"></div>
       </div>
       <button class="button button--primary" type="submit">Dialogereignis anlegen</button>
     </form>

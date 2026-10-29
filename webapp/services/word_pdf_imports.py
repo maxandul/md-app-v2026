@@ -66,7 +66,7 @@ def matching_cases(connection, data):
     # Führungskraft nur anzeigen: Wechsel darf die richtige Person nicht ausschliessen.
     pn=data.get('pn',''); kind=data.get('document_kind','')
     year=data.get('period_end','')[:4]
-    if not pn or not year.isdigit() or kind not in ('review','outlook'):
+    if not pn or kind not in ('review','outlook'):
         return []
     year_column='outlook_year' if kind=='outlook' else 'review_year'
     from webapp.migrations import available
@@ -77,45 +77,57 @@ def matching_cases(connection, data):
             if not connection.execute('''SELECT 1 FROM document_obligations o JOIN dialog_events de ON de.id=o.dialog_event_id
                 WHERE de.legacy_case_id=? AND o.document_kind=?''',(row['case_id'],kind)).fetchone():continue
             part=resolve(connection,row['case_id'],kind)
-            if part['period_end'][:4]==year:matches.append(part)
+            if not year.isdigit() or part['period_end'][:4]==year:matches.append(part)
         return matches
     return [dict(row) for row in connection.execute(f'''SELECT dc.*,c.review_year,c.outlook_year,e.first_name,e.last_name
         FROM dialog_cases dc JOIN cycles c ON c.id=dc.cycle_id JOIN employees e ON e.pn=dc.employee_pn
-        WHERE dc.employee_pn=? AND c.{year_column}=? ORDER BY dc.id''',(pn,int(year)))]
+        WHERE dc.employee_pn=? AND (?='' OR c.{year_column}=?) ORDER BY dc.id''',
+        (pn,year if year.isdigit() else '',int(year) if year.isdigit() else 0))]
+
+
+def _fill_context_value(reviewed, key, value, origin):
+    """Keep original extraction untouched and make every default traceable."""
+    if not reviewed['data'].get(key) and value:
+        reviewed['data'][key] = value
+        reviewed.setdefault('filled_fields', {})[key] = {'value':value,'origin':origin}
 
 
 def _validate(reviewed):
     data=reviewed['data']
     if data.get('document_kind') not in ('review','outlook') or not str(data.get('pn','')).isdigit():
         raise ValueError('Dokumenttyp und Personalnummer müssen geprüft sein.')
-    try:
-        start=date.fromisoformat(data['period_start']); end=date.fromisoformat(data['period_end'])
-        if data.get('conducted') != 'nein':
-            date.fromisoformat(data['dialog_date'])
-    except (ValueError,KeyError,TypeError) as exc:
-        raise ValueError('Bitte gültige Zeiträume und ein Gesprächsdatum erfassen.') from exc
-    if start>end:
+    regular_review = data['document_kind']=='review' and data.get('probation')!='ja'
+    for key in ('period_start','period_end','dialog_date','conducted'):
+        data.setdefault(key,'')
+    if regular_review and (not data['period_start'] or not data['period_end']):
+        raise ValueError('Bitte beide Datumsfelder «Rückblick auf: von … bis …» ausfüllen.')
+    for key in ('period_start','period_end','dialog_date'):
+        if data[key]:
+            try:
+                date.fromisoformat(data[key])
+            except (ValueError,TypeError):
+                raise ValueError('Bitte gültige Datumsangaben erfassen.') from None
+    if data['period_start'] and data['period_end'] and data['period_start']>data['period_end']:
         raise ValueError('Der Zeitraum endet vor seinem Beginn.')
-    if data.get('conducted') not in ('ja', 'nein'):
-        raise ValueError('Bitte die Durchführung anhand des PDF ausdrücklich mit Ja oder Nein bestätigen.')
+    if data.get('conducted') not in ('', 'ja', 'nein'):
+        raise ValueError('Ungültige Angabe zur Durchführung.')
     if data['conducted'] == 'nein':
-        if not data.get('no_md_reason', '').strip():
-            raise ValueError('Bitte die Begründung für die Nichtdurchführung aus dem PDF erfassen.')
         if any(data.get(k) for k in ('dialog_date', 'rating', 'employment_continues')) or reviewed.get('scan_required'):
             raise ValueError('Bei Nichtdurchführung Gesprächsdatum, Beurteilung, Anstellungsentscheid und Scan-Anforderung leer lassen.')
         if reviewed.get('assessments') or (data['document_kind']=='outlook' and (reviewed.get('performance_goals') or reviewed.get('development_goals'))):
             raise ValueError('Bei Nichtdurchführung sind aktuelle Einschätzungen oder vereinbarte Ziele widersprüchlich. Bitte am Original klären.')
-    for key in ('higher_manager_requested', 'sap_current', 'career_requested'):
+    for key in ('higher_manager_requested', 'sap_current', 'career_requested', 'employment_continues'):
         if data.get(key, '') not in ('', 'ja', 'nein'):
             raise ValueError('Ungültige Ja-/Nein-Angabe.')
     narratives = reviewed.get('narratives', {})
     if not isinstance(narratives, dict) or any(k not in NARRATIVE_FIELDS or not isinstance(v, str) for k, v in narratives.items()):
         raise ValueError('Ungültige Freitextangaben.')
-    if data.get('document_kind')=='review' and data['conducted']=='ja':
-        if data.get('probation')=='ja' and data.get('employment_continues') not in ('ja','nein'):
-            raise ValueError('Bitte den Anstellungsentscheid prüfen.')
-        if data.get('probation')!='ja' and data.get('rating') not in tuple('ABCDE'):
+    if data.get('rating','') not in ('','A','B','C','D','E'):
+        raise ValueError('Ungültige Gesamtbeurteilung.')
+    if data['document_kind']=='review' and data['conducted']!='nein':
+        if regular_review and data.get('rating') not in tuple('ABCDE'):
             raise ValueError('Bitte die Gesamtbeurteilung anhand des PDF prüfen und auswählen.')
+        _fill_context_value(reviewed,'dialog_date',date.today().isoformat(),'current_date')
     for key in ('performance_goals','development_goals'):
         goals=reviewed.get(key,[])
         if not isinstance(goals,list) or len(goals)>200:
@@ -123,10 +135,9 @@ def _validate(reviewed):
         for goal in goals:
             if not isinstance(goal,dict) or any(not isinstance(goal.get(k,''),str) for k in ('title','criteria','steps','target_date','competency')):
                 raise ValueError('Ungültige Zielangaben.')
-            if not goal.get('title','').strip():
-                raise ValueError('Bei einem ausgefüllten Ziel fehlt der Zieltext.')
-            if key=='development_goals' and goal.get('competency') not in COMPETENCY_TAGS.values():
-                raise ValueError('Bitte jedem Entwicklungsziel eine bekannte Kompetenz zuordnen.')
+            if key=='development_goals' and goal.get('competency') and goal['competency'] not in COMPETENCY_TAGS.values():
+                raise ValueError('Unbekannte Kompetenz beim Entwicklungsziel.')
+        reviewed[key]=[goal for goal in goals if any(goal.get(k,'').strip() for k in ('title','criteria','steps','target_date'))]
     if not isinstance(reviewed.get('assessments',{}),dict) or any(k not in COMPETENCY_TAGS.values() or not isinstance(v,str) for k,v in reviewed.get('assessments',{}).items()):
         raise ValueError('Ungültige Kompetenz-Einschätzung.')
 
@@ -142,53 +153,59 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
     reviewed.setdefault('narratives',{})
     for key in ('narratives', 'assessments'):
         reviewed[key] = {name: value.replace('\r\n','\n').replace('\r','\n').strip() for name,value in reviewed.get(key,{}).items()}
-    data=reviewed['data']; kind=data['document_kind']; pn=data['pn']; year=int(data['period_end'][:4])
+    data=reviewed['data']; kind=data['document_kind']; pn=data['pn']
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item or item['status']!='pending':
         raise ValueError('Dieser Rücklauf ist nicht mehr zur Prüfung offen.')
     if connection.execute('SELECT 1 FROM workflow_pdf_state WHERE import_id=? AND dismissed=1',(import_id,)).fetchone():
         raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
-    if not connection.execute('SELECT id FROM employment_assignments WHERE person_number=? AND assignment_number=?',(pn,assignment)).fetchone():
+    employment=connection.execute('SELECT * FROM employment_assignments WHERE person_number=? AND assignment_number=?',(pn,assignment)).fetchone()
+    if not employment:
         raise ValueError('Personalnummer und Anstellung sind nicht in den Stammdaten vorhanden.')
     case=None
+    part=None
     if historical:
         if data['conducted']=='nein':
             raise ValueError('Ein nicht durchgeführter Ausblick kann nicht als vereinbarte Zielquelle übernommen werden.')
         if kind!='outlook':
             raise ValueError('Als nachgereichte Zielquelle sind nur Ausblicke zulässig.')
-        if not reason.strip():
-            raise ValueError('Bitte die Übernahme als nachgereichten Ausblick begründen.')
+        if not data['period_end']:
+            raise ValueError('Bitte die Zielquelle einem Zieljahr zuordnen.')
+        year=int(data['period_end'][:4])
+        _fill_context_value(reviewed,'period_start',f'{year}-01-01','goal_year')
     else:
         case=_case_row(connection,case_id)
         expected=case['outlook_year'] if kind=='outlook' else case['review_year']
         from webapp.migrations import available
-        part=None
         if available(connection):
             from .part_responsibilities import resolve,case_parts
             part=resolve(connection,case_id,kind)
-            expected=int(part['period_end'][:4])
+            if kind!='review' or data.get('probation')=='ja':
+                expected=int(part['period_end'][:4])
             case={**dict(case),'manager_pn':part['manager_pn']}
-            if part['responsibility_revision'] and (part['period_start'],part['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
-                raise ValueError('Der Zeitraum weicht vom zugewiesenen Gesprächsteil ab. Bitte die Zuordnung am Original prüfen und begründen.')
             if len({p['manager_pn'] for p in case_parts(connection,case_id) if p['required']})>1 and reviewed.get('scope')!=(case['official_scope'] or case['suggested_scope']):
                 raise ValueError('Bei getrennter Zuständigkeit bleibt der gesamte MD-Umfang erhalten. Eine Umfangsänderung separat im Fall klären.')
+        if kind!='review' or data.get('probation')=='ja':
+            context=part or {'period_start':case['period_start'] if kind=='review' and case['period_start'] else f'{expected}-01-01',
+                            'period_end':case['period_end'] if kind=='review' and case['period_end'] else f'{expected}-12-31'}
+            for key in ('period_start','period_end'):
+                _fill_context_value(reviewed,key,context[key],'selected_case')
+        year=int(data['period_end'][:4])
         if case['employee_pn']!=pn or case['employment_assignment']!=assignment or expected!=year:
             raise ValueError('Personalnummer, Anstellung oder Zielzeitraum passen nicht zum gewählten Fall.')
         event_status=connection.execute('SELECT status FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
         if event_status and event_status['status']=='cancelled':
             raise ValueError('Dieses Ereignis wurde aufgehoben. Bitte die Fallzuordnung fachlich klären.')
-        if not case['active'] and len(reason.strip())<10:
-            raise ValueError('Nachzügler zu einem inaktiven Fall: Bitte die historische Zuordnung mit mindestens 10 Zeichen begründen. Der Fall wird dadurch nicht erneut für den Versand aktiviert.')
         from .sap_staging import available as staged
         if not staged(connection) and case['status'] and connection.execute('SELECT status FROM cycles WHERE id=?',(case['cycle_id'],)).fetchone()[0]=='abgeschlossen':
             raise ValueError('Dieser Durchlauf ist abgeschlossen. Öffne ihn für die Nachbearbeitung zuerst wieder in der Durchlaufübersicht.')
-        # Abweichende unterjährige Ereignisse nicht aufgrund des Jahres allein übernehmen.
-        if not (part and part['responsibility_revision']) and case['period_start'] and case['period_end'] and kind=='review' and (case['period_start'],case['period_end'])!=(data['period_start'],data['period_end']) and not reason.strip():
-            raise ValueError('Der Zeitraum weicht vom Fall ab. Bitte die Zuordnung begründen.')
-        if data.get('manager_pn')!=case['manager_pn'] and not reason.strip():
-            raise ValueError('Die Führungskraft weicht vom Fall ab. Bitte die Zuordnung begründen.')
         if part:
             case['_document_manager']=data.get('manager_pn') or part['manager_pn']
+    _validate(reviewed)
+    if kind=='review' and data.get('probation')!='ja':
+        from .form_data import validate_review_period
+        validate_review_period(data['period_start'],data['period_end'],expected,
+                               employment['entry_date'],employment['exit_date'])
     if case and kind=='review':
         event=connection.execute('SELECT event_type FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
         if event and (event['event_type']=='probation_review') != (data.get('probation')=='ja'):
@@ -198,9 +215,6 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
         has_waiver = connection.execute("SELECT 1 FROM official_documents WHERE case_id=? AND is_current=1 AND variant='administrative' AND document_kind IN ('review','outlook')", (case_id,)).fetchone()
         if (data['conducted']=='nein' or has_waiver) and reviewed.get('scope') != current_scope:
             raise ValueError('Bei Nichtdurchführung bleibt der bisherige MD-Umfang bestehen. Eine Umfangsänderung muss separat geklärt werden.')
-    original=json.loads(item['parsed_json'])
-    if (original.get('issues') or original.get('data',{}).get('pn')!=pn) and not reason.strip():
-        raise ValueError('Bitte die Klärung der Erkennungs- oder Zuordnungsprobleme dokumentieren.')
     source=Path(item['stored_path'])
     if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest()!=item['sha256']:
         raise ValueError('Das gespeicherte Original-PDF fehlt oder wurde verändert.')
@@ -213,10 +227,6 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
                     (previous['id'],json.dumps(reviewed,ensure_ascii=False),previous['case_id'],
                      f"Inhaltliche Dublette von Prüfung {previous['id']}. " + reason,user_id,now(),import_id))
             return None
-    if case and kind=='outlook':
-        existing_payload=json.loads(case['data_json'] or '{}').get(kind) or {}
-        if (existing_payload.get('performance_goals') or existing_payload.get('development_goals')) and not reason.strip():
-            raise ValueError('Im Fall sind bereits Ziele vorhanden. Bitte vor der Ersetzung einen Ersetzungsgrund erfassen.')
     if kind=='outlook' and data['conducted']=='nein' and connection.execute(
         'SELECT 1 FROM word_pdf_goal_versions WHERE employee_pn=? AND assignment_number=? AND goal_year=? AND is_current=1', (pn, assignment, year)).fetchone():
         raise ValueError('Für dieses Jahr besteht bereits eine vereinbarte Zielquelle. Die Nichtdurchführung muss zuerst fachlich geklärt werden.')
@@ -224,10 +234,8 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
     timestamp=now(); document_id=None
     with connection:
         # Alle Änderungen in einer Transaktion; kein partieller Ziel-/Dokumentimport.
-        if kind=='outlook' and data['conducted']=='ja':
+        if kind=='outlook' and data['conducted']!='nein':
             old=connection.execute('''SELECT * FROM word_pdf_goal_versions WHERE employee_pn=? AND assignment_number=? AND goal_year=? AND is_current=1''',(pn,assignment,year)).fetchone()
-            if old and not reason.strip():
-                raise ValueError('Für diese Anstellung und dieses Zieljahr besteht bereits eine Zielversion. Bitte Ersetzungsgrund erfassen.')
             if old:
                 if old['case_id'] and old['case_id']!=case_id:
                     raise ValueError('Die bisherige Zielquelle gehört zu einem anderen Fall. Bitte dort ersetzen, damit die Quellen nicht auseinanderlaufen.')
@@ -240,7 +248,7 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
                 raise ValueError('Bitte einen zum Dokument passenden MD-Umfang wählen.')
             block={**data,'source':'word_pdf','word_pdf_import_id':str(import_id),
                    'review_competencies':'|'.join(k for k,v in reviewed.get('assessments',{}).items() if v.strip()),
-                   'development_competencies':'|'.join(dict.fromkeys(g['competency'] for g in reviewed.get('development_goals',[]) if kind=='outlook'))}
+                   'development_competencies':'|'.join(dict.fromkeys(g.get('competency','') for g in reviewed.get('development_goals',[]) if kind=='outlook' and g.get('competency')))}
             not_conducted = data['conducted']=='nein'
             document_id=_store_current_document(connection,case=case,document_kind=kind,variant='administrative' if not_conducted else 'digital',original_filename=item['original_filename'],stored_path=source,digest=item['sha256'],received_at=item['created_at'],inspection=PdfInspection(inspection.text,block,inspection.page_count,inspection.fill_sign_detected,inspection.fill_sign_count),signature_checked=False,scan_required=False if not_conducted else (kind=='review' and data.get('rating') in ('D','E')),handoff_status='not_applicable' if not_conducted else 'needs_signature_check',replacement_reason=reason)
             payload=json.loads(case['data_json'] or '{}')

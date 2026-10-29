@@ -92,6 +92,7 @@ def view(db,document_id,*,include_history=True):
         JOIN employees e ON e.pn=d.employee_pn JOIN dialog_cases c ON c.case_id=d.case_id WHERE d.id=?''',(document_id,)).fetchone()
     if not row:raise ValueError('Der übernommene Rücklauf wurde nicht gefunden.')
     result=dict(row)
+    result['filled_fields']=json.loads(row['validation_json'] or '{}').get('filled_fields',{})
     result['required']=signatures_required(db,row['case_id'])
     result['signature_state']=row['signature_status'] if result['required'] else 'not_required'
     result['signature_label']=LABELS[result['signature_state']]
@@ -200,12 +201,12 @@ def inspect_signatures(db,document_id,*,revision,token,action,reason='',employee
                 raise ValueError('Bitte den konkreten Scan öffnen und beide Unterschriften sowie die vollständige inhaltliche Übereinstimmung bestätigen.')
             details.update(employee_signed=True,manager_signed=True,content_matches=True)
         elif action=='missing':
-            if not row['evidence'] or len(reason.strip())<10:raise ValueError('Bitte die fehlende Unterschrift am vorhandenen Scan konkret beschreiben.')
+            if not row['evidence']:raise ValueError('Bitte zuerst den betreffenden Scan zuordnen.')
         elif action=='requested':
             try:when=date.fromisoformat(requested_at)
             except (ValueError,TypeError):raise ValueError('Bitte das Datum der tatsächlich erfolgten Nachforderung angeben.')
-            if when>date.today() or not recipient.strip() or len(reason.strip())<10:
-                raise ValueError('Bitte tatsächliches Anforderungsdatum, Adressat und konkreten fehlenden Nachweis erfassen. Ein Entwurf genügt nicht.')
+            if when>date.today() or not recipient.strip():
+                raise ValueError('Bitte tatsächliches Anforderungsdatum und Adressat erfassen. Ein Entwurf genügt nicht.')
             details.update(requested_at=requested_at,recipient=recipient.strip(),responsible_manager=row['part']['manager_pn'])
         else:raise ValueError('Unbekannte Prüfentscheidung.')
         db.execute('UPDATE hr_return_reviews SET signature_status=?,revision=revision+1 WHERE document_id=?',(action,document_id))
@@ -299,7 +300,7 @@ def clarify_failed_handoff(db,document_id,*,revision,token,reason,not_delivered,
     try:
         row=fresh(db,document_id,revision,token)
         if not row['handoff'] or row['handoff']['status'] not in ('processing','uncertain'):raise ValueError('Keine unklare Übergabe vorhanden.')
-        if not not_delivered or len(reason.strip())<10:raise ValueError('Erst nach Prüfung der Ablage und Dossierverarbeitung bestätigen, dass keine Übergabe erfolgte; Klärung begründen.')
+        if not not_delivered:raise ValueError('Erst nach Prüfung der Ablage und Dossierverarbeitung bestätigen, dass keine Übergabe erfolgte.')
         db.execute("UPDATE hr_return_handoffs SET status='failed' WHERE document_id=?",(document_id,))
         db.execute('UPDATE hr_return_reviews SET revision=revision+1 WHERE document_id=?',(document_id,))
         decision(db,document_id,'handoff_not_delivered',reason,user_id)

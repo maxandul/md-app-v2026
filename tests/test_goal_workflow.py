@@ -217,7 +217,59 @@ class GoalWorkflowTest(unittest.TestCase):
         fake=FakeOutlook()
         for group in groups:self.act(group,adapter=fake)
         self.assertEqual(len(fake.calls),2)
-        self.assertEqual(sum(len(call['attachments']) for call in fake.calls),4)
+        self.assertEqual(sum(len(call['attachments']) for call in fake.calls),2)
+        all_documents=set()
+        for group,call in zip(groups,fake.calls):
+            expected={}
+            for output in delivery.members(self.db,group):
+                document=json.loads(output['manifest_json'])['documents'][0]
+                with ZipFile(output['stored_path']) as source:
+                    expected[document['filename']]=source.read(document['filename'])
+            self.assertEqual(call['recipient_email'],delivery.get(self.db,group)['recipient_email'])
+            with ZipFile(call['attachments'][0]) as archive:
+                self.assertEqual(set(archive.namelist()),set(expected))
+                self.assertTrue(all(name.endswith('.docx') and '/' not in name for name in archive.namelist()))
+                for name,raw in expected.items():self.assertEqual(archive.read(name),raw)
+                self.assertFalse(all_documents.intersection(archive.namelist()))
+                all_documents.update(archive.namelist())
+            saved=delivery.get(self.db,group)['attachment']
+            self.assertEqual(saved['document_count'],2)
+            self.assertEqual(saved['filename'],call['attachments'][0].name)
+            page=self.client.get(f'/arbeit/ziele/versand/{group}')
+            self.assertEqual(page.status_code,200)
+            self.assertIn('2 Rückblicke in einem ZIP',page.text)
+        self.assertEqual(len(all_documents),4)
+
+    def test_zip_failure_keeps_prepared_state_and_retry_does_not_duplicate_outlook(self):
+        _,_,_,group=self.ready();fake=FakeOutlook()
+        with patch.object(delivery,'ZipFile',side_effect=OSError('Kein Platz für ZIP')):
+            with self.assertRaisesRegex(ValueError,'gemeinsame Rückblick-ZIP'):
+                self.act(group,adapter=fake)
+        self.assertEqual(delivery.get(self.db,group)['status'],'prepared')
+        self.assertIsNone(delivery.get(self.db,group)['attachment'])
+        self.assertFalse(fake.calls)
+        self.assertFalse(list((self.root/'dispatches').iterdir()))
+        self.act(group,adapter=fake)
+        self.assertEqual(len(fake.calls),1)
+        self.assertEqual(len(fake.calls[0]['attachments']),1)
+        with self.assertRaises(ValueError):self.act(group,adapter=fake)
+        self.assertEqual(len(fake.calls),1)
+
+    def test_existing_outlook_draft_requires_cancellation_before_repackaging(self):
+        _,_,output,group=self.ready()
+        # A draft created by the earlier version already exists in Outlook.
+        with self.db:self.db.execute("UPDATE hr_goal_dispatches SET status='draft_created',outlook_entry_id='old-draft' WHERE id=?",(group,))
+        fake=FakeOutlook()
+        with self.assertRaisesRegex(ValueError,'kein zweiter Entwurf'):
+            self.act(group,adapter=fake)
+        self.assertFalse(fake.calls)
+        self.assertNotIn('Rückblicke in einem ZIP',self.client.get(f'/arbeit/ziele/versand/{group}').text)
+        self.act(group,action='cancelled',reason='Alten Entwurf in Outlook gelöscht')
+        groups,errors=delivery.prepare(self.db,[output],self.paths)
+        self.assertFalse(errors);self.assertNotEqual(groups,[group])
+        self.act(groups[0],adapter=fake)
+        self.assertEqual(len(fake.calls[0]['attachments']),1)
+        self.assertEqual(delivery.get(self.db,group)['status'],'cancelled')
 
     def test_mail_and_upload_share_original_revision_and_no_automatic_move(self):
         from tests.test_mail_goals import MailGoalsTest

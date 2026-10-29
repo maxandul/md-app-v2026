@@ -1,10 +1,15 @@
-"""Grouped Outlook drafts: a prepared group is neither a draft nor a sent mail."""
-from pathlib import Path
+"""Grouped Outlook drafts with one ZIP of approved reviews per recipient."""
+import hashlib
+import json
+from pathlib import Path, PurePosixPath
+from tempfile import NamedTemporaryFile
+from zipfile import BadZipFile, ZipFile, ZIP_DEFLATED
 from . import goal_review as review
 from . import goal_followups as followups
 from .part_responsibilities import stamp
 from .outlook_lock import package_lock, serialized_goal_delivery
 from .word_dispatch import _mail_html
+from .form_data import _filename_part
 from webapp.adapters.outlook import OutlookDraftAdapter
 
 
@@ -31,7 +36,7 @@ def prepare(connection,output_ids,template_paths,*,user_id=None):
         for (manager,email),items in groups.items():
             names='\n'.join(f"• {d['first_name']} {d['last_name']} (Ans. {d['employment_assignment']})" for _,d in items)
             subject=f'MD: {len(items)} aktualisierte Rückblicke'
-            body=f"Hallo {items[0][1]['manager_name']}\n\nIm Anhang erhältst du aktualisierte Rückblicke für:\n{names}\n\nBitte verwende diese Fassungen. Falls du bisherige Formulare bereits bearbeitet hast, gleiche die Inhalte vor dem Ersetzen ab.\n\nFreundliche Grüsse\nHR"
+            body=f"Hallo {items[0][1]['manager_name']}\n\nIm Anhang erhältst du ein ZIP mit den aktualisierten Rückblicken für:\n{names}\n\nBitte entpacke das ZIP und verwende diese Fassungen. Falls du bisherige Formulare bereits bearbeitet hast, gleiche die Inhalte vor dem Ersetzen ab.\n\nFreundliche Grüsse\nHR"
             cur=connection.execute('''INSERT INTO hr_goal_dispatches(manager_pn,recipient_email,subject,body_text,user_id,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?)''',(manager,email,subject,body,user_id,stamp(),stamp()))
             group_id=cur.lastrowid
@@ -50,12 +55,58 @@ def get(connection,dispatch_id):
     row=connection.execute('SELECT * FROM hr_goal_dispatches WHERE id=?',(dispatch_id,)).fetchone()
     if not row:
         raise ValueError('Versandgruppe nicht gefunden.')
-    return dict(row)
+    result=dict(row)
+    event=connection.execute("SELECT details_json FROM hr_goal_events WHERE dispatch_id=? AND action='outlook_started' ORDER BY id DESC LIMIT 1",(dispatch_id,)).fetchone()
+    result['attachment']=json.loads(event['details_json']).get('attachment') if event else None
+    return result
 
 
 def members(connection,dispatch_id):
     return [dict(r) for r in connection.execute('''SELECT o.* FROM hr_goal_outputs o
         JOIN hr_goal_dispatch_outputs m ON m.output_id=o.id WHERE m.dispatch_id=? ORDER BY o.id''',(dispatch_id,))]
+
+
+def _bundle_reviews(outputs, destination):
+    """Copy the exact approved DOCX bytes, without nesting individual ZIP files."""
+    temporary=None
+    try:
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        with NamedTemporaryFile(dir=destination.parent,prefix=destination.stem+'-',suffix='.tmp',delete=False) as handle:
+            temporary=Path(handle.name)
+        documents=[]
+        used=set()
+        with ZipFile(temporary,'w',ZIP_DEFLATED) as bundle:
+            for output in outputs:
+                manifest=json.loads(output['manifest_json'])
+                entries=manifest['documents']
+                if len(entries)!=1 or entries[0]['kind']!='review' or entries[0]['case_id']!=output['case_id']:
+                    raise ValueError('Eine Ausgabe enthält nicht den zugeordneten Rückblick.')
+                document=entries[0]
+                filename=PurePosixPath(document['filename']).name
+                if not filename.lower().endswith('.docx'):
+                    raise ValueError('Der Rückblick ist keine Word-Datei.')
+                with ZipFile(output['stored_path']) as source:
+                    raw=source.read(document['filename'])
+                if hashlib.sha256(raw).hexdigest()!=document['sha256']:
+                    raise ValueError('Eine Rückblick-Datei wurde verändert.')
+                # Windows treats names case-insensitively. Keep every document,
+                # even when older exports have identical or flattened names.
+                original=PurePosixPath(filename)
+                suffix=0
+                while filename.casefold() in used:
+                    suffix+=1
+                    filename=f'{original.stem}_Ausgabe_{output["id"]}_{suffix}.docx'
+                used.add(filename.casefold())
+                bundle.writestr(filename,raw)
+                documents.append({'output_id':output['id'],'filename':filename,'sha256':document['sha256']})
+        temporary.replace(destination)
+        return {'filename':destination.name,'sha256':hashlib.sha256(destination.read_bytes()).hexdigest(),
+                'document_count':len(documents),'documents':documents}
+    except (OSError,BadZipFile,KeyError,ValueError,RuntimeError) as exc:
+        raise ValueError(f'Das gemeinsame Rückblick-ZIP konnte nicht erstellt werden: {exc}') from exc
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 @serialized_goal_delivery
@@ -105,9 +156,11 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
                     json_each(p.manifest_json,'$.documents') j WHERE json_extract(j.value,'$.case_id')=?
                     AND json_extract(j.value,'$.kind') IN ('review','probation') AND d.status IN ('processing','draft_created','failed')''',(output['case_id'],)).fetchone():
                     raise ValueError('Für diese Person ist ein bisheriges Führungskräftepaket in Outlook offen.')
+            archive=Path(lock_root).parent/'dispatches'/f'MD_Rueckblicke_{_filename_part(group["manager_pn"])}_Versand_{dispatch_id}.zip'
+            attachment=_bundle_reviews(outputs,archive)
             connection.execute("UPDATE hr_goal_dispatches SET status='processing',subject=?,body_text=?,sender_email=?,updated_at=? WHERE id=?",
                                (subject.strip(),body.strip(),sender_email,stamp(),dispatch_id))
-            review.event(connection,'outlook_started',dispatch_id=dispatch_id,user_id=user_id)
+            review.event(connection,'outlook_started',dispatch_id=dispatch_id,user_id=user_id,attachment=attachment)
             connection.commit()
         except Exception:
             connection.rollback()
@@ -115,7 +168,7 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
         try:
             result=(adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,
                 recipient_email=group['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),
-                attachments=[Path(o['stored_path']) for o in outputs])
+                attachments=[archive])
             if not result.encryption_flag_verified:
                 raise ValueError('Verschlüsselungsmarkierung nicht bestätigt. Bestehenden Outlook-Vorgang prüfen.')
             with connection:

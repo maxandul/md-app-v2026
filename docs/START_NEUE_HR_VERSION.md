@@ -101,6 +101,13 @@ Nichtdurchführung bleiben Beurteilung und Gesprächsdatum leer. Person, Anstell
 und Fall müssen weiterhin eindeutig zugeordnet sein; die Bestätigung der Prüfung
 am Original sowie erforderliche Unterschriftennachweise bleiben bestehen.
 
+Bei neu erstellten Rückblicken aus nachgereichten Ausblicken erhält jede
+Führungskraft eine Mail mit **einem ZIP für alle ausgewählten Rückblicke**.
+Das ZIP enthält die geprüften Word-Dateien direkt. Einzelne Ausgaben bleiben
+in der App zur Prüfung verfügbar. Bereits erstellte Outlook-Entwürfe werden
+nicht nachträglich verändert. Einen noch offenen alten Entwurf bei Bedarf in
+Outlook löschen, in der App «Abbruch bestätigen» und den Versand erneut vorbereiten.
+
 Bei D/E sind Rückblick und Ausblick jeweils zu unterschreiben. Der entsprechende
 Hinweis in der eigenen Ausblick-Wordvorlage muss diese Regel enthalten. Scans und
 zusätzliche E-Mail-Anliegen weiterhin manuell prüfen.

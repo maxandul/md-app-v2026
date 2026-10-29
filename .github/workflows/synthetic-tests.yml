@@ -64,3 +64,5 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Check ZIP install and BAT startup without Node
         run: python scripts/check_windows_start.py
+      - name: Check grouped review ZIPs on Windows
+        run: python -m unittest tests.test_goal_bundle tests.test_goal_workflow.GoalWorkflowTest.test_five_sources_one_unclear_partial_failure_retry_and_two_recipients tests.test_goal_workflow.GoalWorkflowTest.test_zip_failure_keeps_prepared_state_and_retry_does_not_duplicate_outlook -q

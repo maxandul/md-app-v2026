@@ -5,63 +5,46 @@ from . import goal_followups as followups
 # A SQLite function derives status from the same domain objects as the detail
 # page. No independently closable task record, and no complete result list in
 # the browser. Register per request/connection; the synthetic volume test times it.
-def source_state(connection, source_id):
-    source=review.get(connection,source_id)
+def source_progress(connection, source_id, template_paths=None):
+    from . import goal_guidance
     from .goal_withdrawals import unresolved
-    if unresolved(connection,source_id):
-        return 'withdrawal'
-    if source['status']=='discarded':
-        return 'done'
-    if source['status'] in ('draft','waiting'):
-        return 'waiting' if source['status']=='waiting' else 'review'
-    cases=followups.targets(connection,source['revision_id'])
+    source = review.get(connection, source_id)
+    if unresolved(connection, source_id):
+        return dict(state='withdrawal', reason='Frühere Freigabe zurückgenommen: Auswirkungen klären.')
+    if source['status'] == 'discarded':
+        return dict(state='done', reason='Quelle verworfen.')
+    if source['status'] in ('draft', 'waiting'):
+        return dict(state='waiting' if source['status'] == 'waiting' else 'review',
+                    reason=source['note'] if source['status'] == 'waiting' else ' · '.join(goal_guidance.review_tasks(source)))
+    cases = followups.targets(connection, source['revision_id'])
     if not cases:
-        decision=followups.latest_decision(connection,source['revision_id'],None)
-        return 'done' if decision and decision['outcome']=='no_output' else 'followup'
-    states=[]
-    for case in cases:
-        try:
-            part=followups.resolve(connection,case['case_id'])
-            evidence=followups.return_evidence(connection,part)
-        except ValueError:
-            states.append('followup')
-            continue
-        decision=followups.latest_decision(connection,source['revision_id'],case['case_id'])
-        if followups.decision_effective(decision,evidence):
-            if decision['outcome'] in ('no_change','no_output','corrected'):
-                states.append('done')
-                continue
-            if decision['outcome'] in ('waiting','request_correction'):
-                states.append('waiting')
-                continue
-        dispatched=connection.execute('''SELECT d.status FROM hr_goal_outputs o
-            JOIN hr_goal_dispatch_outputs m ON m.output_id=o.id JOIN hr_goal_dispatches d ON d.id=m.dispatch_id
-            WHERE o.revision_id=? AND o.case_id=? AND d.status<>'cancelled' ORDER BY d.id DESC LIMIT 1''',
-            (source['revision_id'],case['case_id'])).fetchone()
-        if dispatched and dispatched['status']=='sent_confirmed':
-            states.append('done')
-        elif evidence:
-            states.append('followup')
-        elif dispatched:
-            states.append('blocked' if dispatched['status'] in ('processing','failed') else 'dispatch')
-        else:
-            states.append('followup')
-    for state in ('blocked','followup','dispatch','waiting'):
-        if state in states:
-            return state
-    return 'done'
+        decision = followups.latest_decision(connection, source['revision_id'], None)
+        return dict(state='done' if decision and decision['outcome'] == 'no_output' else 'followup',
+                    reason='Kein passender Rückblick vorhanden. Gesprächszuordnung prüfen oder Verzicht festhalten.')
+    rows = [goal_guidance.target(connection, source['revision_id'], case, template_paths) for case in cases]
+    # A ready part remains actionable even when another part needs clarification.
+    state = next((state for state in ('blocked', 'ready', 'followup', 'approve', 'dispatch', 'waiting')
+                  if any(row['state'] == state for row in rows)), 'done')
+    reasons = list(dict.fromkeys(row['error'] for row in rows if row['error'] and row['state'] != 'done'))
+    ready = sum(row['state'] == 'ready' for row in rows)
+    reason = (f'{ready} Rückblick(e) zur Erstellung bereit. ' if ready else '') + ' · '.join(reasons)
+    return dict(state=state, reason=reason, targets=rows)
 
 
-LABELS={'review':'Ziele prüfen','waiting':'Warten auf Rückmeldung','followup':'Folgeaktion prüfen',
+def source_state(connection, source_id, template_paths=None):
+    return source_progress(connection, source_id, template_paths)['state']
+
+
+LABELS={'review':'Ziele prüfen','waiting':'Warten auf Rückmeldung','followup':'Rücklauf / Zuordnung klären', 'ready':'Rückblicke erstellen', 'approve':'Erzeugte Dateien prüfen',
         'dispatch':'Versand fortsetzen','blocked':'Outlook-Ausgang klären','done':'Abgeschlossen','withdrawal':'Folgen der Rücknahme klären'}
 
 
-def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None,page=1,page_size=25):
+def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None,page=1,page_size=25,template_paths=None):
     cache={}
     def status(source_id):
         if source_id not in cache:
-            cache[source_id]=source_state(connection,source_id)
-        return cache[source_id]
+            cache[source_id]=source_progress(connection,source_id,template_paths)
+        return cache[source_id]['state']
     connection.create_function('hr_goal_state',1,status)
     conditions=[];params=[]
     if q:
@@ -86,6 +69,8 @@ def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None
     # prevents SQLite from evaluating the domain function for unrelated sources.
     candidates='''WITH candidates AS MATERIALIZED (SELECT s.id,s.original_filename,s.created_at,r.id AS revision_id,
         r.goal_year,r.status,p.first_name,p.last_name,ea.person_number,ea.assignment_number,ea.org_unit '''+base+where+') '
+    summary = {row['state']: row['n'] for row in connection.execute(candidates+
+        'SELECT hr_goal_state(id) AS state,COUNT(*) AS n FROM candidates GROUP BY hr_goal_state(id)',params)}
     state_where=''
     if state=='open':
         state_where=" WHERE hr_goal_state(id)<>'done'"
@@ -97,4 +82,7 @@ def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None
     rows=[dict(row) for row in connection.execute(candidates+'''SELECT *,hr_goal_state(id) AS task_state FROM candidates'''
         +state_where+' ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?',
         (*params,page_size,(page-1)*page_size))]
-    return {'rows':rows,'total':total,'page':page,'pages':pages,'page_size':page_size,'labels':LABELS}
+    for row in rows:
+        status(row['id'])
+        row['next_reason'] = cache[row['id']]['reason']
+    return {'summary':summary,'rows':rows,'total':total,'page':page,'pages':pages,'page_size':page_size,'labels':LABELS}

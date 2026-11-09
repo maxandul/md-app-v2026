@@ -8,6 +8,13 @@ from .word_packages import prior_goals, create_word_package
 from .form_data import _secondary_employment_text
 
 
+class PreparationError(ValueError):
+    """An existing preparation check with a destination for resolving it."""
+    def __init__(self, message, task):
+        super().__init__(message)
+        self.task = task
+
+
 def revision(connection, revision_id, *, allow_withdrawn=False):
     row=connection.execute("SELECT * FROM hr_goal_revisions WHERE id=? AND status='confirmed'",(revision_id,)).fetchone()
     if not row:
@@ -61,6 +68,7 @@ def return_evidence(connection, part):
 
 
 def inputs(connection, revision_id, case_id, template_paths, *, allow_return=False):
+    from .word_packages import check_sap_assignments
     rev=revision(connection,revision_id)
     part=resolve(connection,case_id)
     employment=connection.execute('SELECT * FROM employment_assignments WHERE id=?',(rev['employment_id'],)).fetchone()
@@ -72,15 +80,24 @@ def inputs(connection, revision_id, case_id, template_paths, *, allow_return=Fal
         raise ValueError('Diese Nachreichung betrifft reguläre Rückblicke, keinen Probezeit-Rückblick.')
     if part['period_end'][:4]!=str(rev['goal_year']):
         raise ValueError('Zieljahr und Rückblickzeitraum passen nicht zusammen.')
-    goals=prior_goals(connection,employee_pn=part['employee_pn'],assignment=part['employment_assignment'],year=rev['goal_year'])
+    try:
+        goals=prior_goals(connection,employee_pn=part['employee_pn'],assignment=part['employment_assignment'],year=rev['goal_year'])
+    except ValueError as exc:
+        raise PreparationError(str(exc), 'source') from exc
     if goals[2].get('hr_goal_revision_id')!=revision_id:
-        raise ValueError('Eine andere Zielquelle ist ausgewählt. Quellenwahl erneut prüfen.')
+        raise PreparationError('Eine andere Zielquelle ist ausgewählt. Quellenwahl erneut prüfen.', 'source')
     evidence=return_evidence(connection,part)
     if evidence and not allow_return:
-        raise ValueError('Rückblick eingegangen oder Eingang noch unklar: Korrekturbedarf klären.')
+        raise PreparationError('Rückblick eingegangen oder Eingang noch unklar: Korrekturbedarf klären.', 'clarify')
+    try:
+        check_sap_assignments(connection, part['cycle_id'], [part['manager_pn'], part['employee_pn']])
+    except ValueError as exc:
+        raise PreparationError(str(exc), 'sap') from exc
+    if part['period_end'] < part['period_start']:
+        raise PreparationError('Der Dokumentzeitraum endet vor seinem Beginn.', 'case')
     template=Path(template_paths.get('review',''))
     if not template.is_file():
-        raise ValueError('Die Word-Vorlage für Rückblicke fehlt.')
+        raise PreparationError('Die Word-Vorlage für Rückblicke fehlt.', 'templates')
     data={k:part[k] for k in ('case_id','cycle_id','employee_pn','employment_assignment','first_name','last_name','position',
         'manager_pn','manager_name','recipient_email','form_org_unit','form_org_source','period_start','period_end',
         'responsibility_revision','obligation_id')}

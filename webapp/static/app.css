@@ -315,3 +315,8 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
 .goal-pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 32rem; overflow: auto; font: inherit; }
 .goal-panel .check-label { display: flex; align-items: flex-start; gap: .6rem; }
 @media (max-width: 850px) { .goal-review-layout { grid-template-columns: 1fr; } .goal-pdf { height: 50vh; } }
+
+/* Shared, wrapping orientation for the goal intake workflow. */
+.goal-steps { display:flex; flex-wrap:wrap; gap:.5rem; list-style:none; padding:0; margin:1rem 0; }
+.goal-steps li { padding:.55rem .8rem; background:#f1f4f7; border-radius:.3rem; }
+.goal-steps [aria-current="step"] { background:#005ca9; color:#fff; font-weight:700; }

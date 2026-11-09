@@ -1,0 +1,5 @@
+<ol class="goal-steps" aria-label="Ablauf der Zielnachreichung">
+{% for label in ['Dokumente einlesen','Ziele prüfen und bestätigen','Rückblicke erstellen','Dateien prüfen','Versand vorbereiten und bestätigen'] %}
+<li{% if goal_step is defined and goal_step==loop.index %} aria-current="step"{% endif %}>{{ loop.index }} · {{ label }}</li>
+{% endfor %}
+</ol>

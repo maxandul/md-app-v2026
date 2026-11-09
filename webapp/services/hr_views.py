@@ -24,10 +24,10 @@ def task_select(kind, target, record_id, title, subject, source, where='1=1', **
     values.update(fields)
     return 'SELECT '+','.join(value+' AS '+key for key,value in values.items())+' FROM '+source+' WHERE '+where
 
-def task_query(db):
+def task_query(db, template_paths=None):
     cache={}
     def state(source_id):
-        if source_id not in cache:cache[source_id]=goal_queries.source_state(db,source_id)
+        if source_id not in cache:cache[source_id]=goal_queries.source_state(db,source_id,template_paths)
         return cache[source_id]
     db.create_function('hr_goal_state',1,state)
     statements=[
@@ -78,7 +78,7 @@ def task_query(db):
     ]
     return ' UNION ALL '.join(statements)
 
-def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='', due='', cycle_id=None, page_number=1, page_size=25):
+def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='', due='', cycle_id=None, page_number=1, page_size=25, template_paths=None):
     where=[];params=[]
     if state in ('open','waiting','done'):where.append('state=?');params.append(state)
     elif state!='all':raise ValueError('Unbekannte Arbeitsansicht.')
@@ -90,14 +90,15 @@ def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='',
     if manager:where.append('manager_pn=?');params.append(manager)
     if due=='overdue':where.append("state<>'done' AND due_date<>'' AND due_date<?");params.append(date.today().isoformat())
     elif due=='dated':where.append("due_date<>''")
-    sql='SELECT * FROM ('+task_query(db)+')'+(' WHERE '+' AND '.join(where) if where else '')
+    sql='SELECT * FROM ('+task_query(db,template_paths)+')'+(' WHERE '+' AND '.join(where) if where else '')
     result=page(db,sql,params,number=page_number,size=page_size,order="CASE WHEN due_date<>'' THEN 0 ELSE 1 END,due_date,stamp,kind,record_id,manager_pn")
     from . import return_review
     for row in result['rows']:
         if row['target']=='return':
             row['title']=return_review.next_action(return_review.view(db,row['record_id'],include_history=False))
         elif row['target']=='goal':
-            row['title']=goal_queries.LABELS[goal_queries.source_state(db,row['record_id'])]
+            row['goal_state']=goal_queries.source_state(db,row['record_id'],template_paths)
+            row['title']=goal_queries.LABELS[row['goal_state']]
     return result
 
 def people(db, *, q='', org_unit='', state='open', page_number=1, page_size=25):

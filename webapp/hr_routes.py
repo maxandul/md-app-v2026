@@ -1,6 +1,6 @@
 """Read-only entry points for the consolidated HR workspace."""
 from urllib.parse import urlsplit
-from flask import Blueprint, abort, render_template, request, url_for
+from flask import Blueprint, abort, current_app, render_template, request, url_for
 from .db import get_db
 from .goal_routes import protect
 from .services import hr_views as views
@@ -33,7 +33,11 @@ def render(template, data, **values):
 
 def task_link(row):
     target=row['target'];key=row['record_id']
-    if target=='goal':return url_for('goal_work.source',source_id=key,back=request.full_path)
+    if target=='goal':
+        if row.get('goal_state') not in ('review','withdrawal','done'):
+            source=get_db().execute('SELECT r.status FROM hr_goal_sources s JOIN hr_goal_revisions r ON r.source_id=s.id AND r.revision=s.revision WHERE s.id=?',(key,)).fetchone()
+            if source['status']=='confirmed':return url_for('goal_work.outputs',source=key,back=request.full_path)
+        return url_for('goal_work.source',source_id=key,back=request.full_path)
     if target=='return':return url_for('return_work.detail',document_id=key,back=request.full_path)
     if target=='pdf':return url_for('main.word_pdf_review',import_id=key)
     if target=='mail':return url_for('main.returns_overview',mail_q=row['context'],mail_status='all')+'#postfach'
@@ -50,7 +54,7 @@ def task_link(row):
 def work():
     args=year_filter(filters('q','kind','org_unit','manager','due'));args['state']=request.args.get('state','open')
     args['cycle_id']=request.args.get('cycle_id',type=int)
-    try:data=views.work(get_db(),**args)
+    try:data=views.work(get_db(),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],**args)
     except ValueError:abort(400,'Unbekannte Arbeitsansicht.')
     for row in data['rows']:row['href']=task_link(row)
     return render('hr/work.html',data,active_nav='work',filters=args,kinds=views.KINDS)

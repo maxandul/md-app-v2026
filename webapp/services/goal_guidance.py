@@ -4,10 +4,12 @@ from . import goal_review as review, goal_followups as followups
 
 def target(connection, revision_id, case, template_paths=None):
     row = {**case, 'revision_id': revision_id, 'part': None, 'evidence': [],
-           'decision': None, 'error': '', 'token': '', 'task': 'case', 'state': 'followup'}
+           'decision': None, 'error': '', 'token': '', 'task': 'case', 'state': 'followup',
+           'has_existing_return': False}
     try:
         row['part'] = followups.resolve(connection, case['case_id'])
         row['evidence'] = followups.return_evidence(connection, row['part'])
+        row['has_existing_return'] = any(e.get('document_id') or e.get('case_data') for e in row['evidence'])
         row['decision'] = followups.latest_decision(connection, revision_id, case['case_id'])
         decision = row['decision']
         if followups.decision_effective(decision, row['evidence']):
@@ -25,7 +27,9 @@ def target(connection, revision_id, case, template_paths=None):
                        error='Den tatsächlichen Stand des offenen Outlook-Vorgangs klären.')
             return row
         if row['evidence']:
-            raise followups.PreparationError('Rückblick eingegangen oder Eingang noch unklar: Korrekturbedarf klären.', 'clarify')
+            message = ('Ein Rückblick liegt bereits vor: Korrekturbedarf klären.' if row['has_existing_return'] else
+                       'Ungeprüften PDF-Eingang zuerst zuordnen oder als kein MD-Dokument ausschliessen. Eine Zugehörigkeit zu dieser Person ist damit noch nicht bestätigt.')
+            raise followups.PreparationError(message, 'clarify')
         fingerprint = None
         if template_paths is not None:
             _, fingerprint, _ = followups.inputs(connection, revision_id, case['case_id'], template_paths)

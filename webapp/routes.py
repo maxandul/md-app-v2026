@@ -1257,6 +1257,12 @@ def _reviewed_word_form(form):
 @bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
 def word_pdf_review(import_id):
     connection=get_db()
+    from urllib.parse import urlsplit
+    goal_back=request.values.get('back','')
+    parsed_back=urlsplit(goal_back)
+    if parsed_back.scheme or parsed_back.netloc or '\\' in goal_back or not (
+        parsed_back.path=='/arbeit/ziele' or parsed_back.path.startswith('/arbeit/ziele/')):
+        goal_back=''
     if current_app.config.get('HR_GOAL_WORKFLOW'):
         session.setdefault('goal_csrf',secrets.token_urlsafe(32))
         routed=connection.execute('SELECT source_id FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone()
@@ -1270,7 +1276,7 @@ def word_pdf_review(import_id):
     if parsed.get('data',{}).get('document_kind') == 'feedback':
         return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
-    if request.method=='POST':
+    if request.method=='POST' and request.form.get('action') not in ('not_md','reopen'):
         reviewed=_reviewed_word_form(request.form)
     if request.method=='POST' and request.form.get('refresh')!='yes':
         try:
@@ -1278,17 +1284,24 @@ def word_pdf_review(import_id):
             action=request.form.get('action','confirm')
             if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('destination')=='historical' and action=='confirm':
                 raise ValueError('Bitte den Ausblick über «Diesen Ausblick als Zielquelle bearbeiten» direkt prüfen und bestätigen.')
-            if action in ('draft','dismiss','reopen'):
+            if action in ('draft','dismiss','reopen','not_md'):
                 reason=request.form.get('reason','').strip()
-                if state['dismissed'] and action!='reopen':
+                if state['dismissed'] and action not in ('reopen','not_md'):
                     raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst wieder.')
-                reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
+                if action=='not_md':
+                    reason=reason or 'Am Original geprüft: kein MD-Dokument.'
+                    reviewed['_intake']={'classification':'not_md','classified_at':workflow.stamp()}
+                elif action=='reopen':
+                    reviewed.pop('_intake',None)
+                else:
+                    reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
                 connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
-                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                workflow.advance_pdf(connection,import_id,dismissed=int(action in ('dismiss','not_md')),reason=reason)
                 connection.commit()
                 audit('word_pdf_'+action,'word_pdf_import',str(import_id),reason=reason)
-                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
-                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.',
+                       'not_md':'Als kein MD-Dokument ausgeschlossen. Dieser Eingang blockiert keine Rückblicke mehr. Das Original bleibt erhalten; du kannst den Ausschluss wieder aufheben.'}[action],'success')
+                return redirect(url_for('main.word_pdf_review',import_id=import_id,**({'back':goal_back} if goal_back else {})))
             if state['dismissed']:
                 raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
             if request.form.get('checked')!='yes':
@@ -1347,7 +1360,7 @@ def word_pdf_review(import_id):
         for candidate in candidates:
             for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
                 evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    return render_template('word_pdf_review.html',active_nav='returns',goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')

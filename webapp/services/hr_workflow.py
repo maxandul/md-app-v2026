@@ -18,10 +18,12 @@ def pending_pdfs(db):
 
 def pdf_queue(db, *, query='', status='pending', page=1):
     where=[];args=[]
+    classification="COALESCE(json_extract(NULLIF(w.reviewed_json,''),'$._intake.classification'),'')"
     from webapp.migrations import available
     if available(db) and status=='pending':
         where.append('NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)')
-    if status=='dismissed':where.append('COALESCE(s.dismissed,0)=1')
+    if status=='not_md':where.extend(['COALESCE(s.dismissed,0)=1',classification+"='not_md'"])
+    elif status=='dismissed':where.extend(['COALESCE(s.dismissed,0)=1',classification+"<>'not_md'"])
     elif status=='pending':where.append("w.status='pending' AND COALESCE(s.dismissed,0)=0")
     elif status in ('imported','historical','duplicate'):where.append('w.status=?');args.append(status)
     elif status!='all':raise ValueError('Unbekannter Prüfstatus.')
@@ -32,13 +34,17 @@ def pdf_queue(db, *, query='', status='pending', page=1):
     source=' FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id'
     total=db.execute('SELECT COUNT(*)'+source+clause,args).fetchone()[0]
     pages=max(1,(total+24)//25);page=max(1,min(page,pages))
-    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,COALESCE(s.dismissed,0) AS dismissed"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
+    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,COALESCE(s.dismissed,0) AS dismissed,"+classification+" AS classification"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
     return dict(word_pdf_queue=rows,pdf_total=total,pdf_page=page,pdf_pages=pages,pdf_query=query,pdf_status=status)
 
 
 def pdf_state(db, item_id):
     row=db.execute('SELECT * FROM workflow_pdf_state WHERE import_id=?',(item_id,)).fetchone()
-    return dict(row) if row else {'revision':0,'dismissed':0,'reason':''}
+    result=dict(row) if row else {'revision':0,'dismissed':0,'reason':''}
+    item=db.execute('SELECT reviewed_json FROM word_pdf_imports WHERE id=?',(item_id,)).fetchone()
+    result['not_md']=bool(result['dismissed'] and item and
+        json.loads(item['reviewed_json'] or '{}').get('_intake',{}).get('classification')=='not_md')
+    return result
 
 
 def lock_pdf(db,item_id,revision):

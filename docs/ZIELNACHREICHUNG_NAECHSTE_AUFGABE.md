@@ -27,16 +27,25 @@ aktualisierten Rückblicken, der Dateiprüfung und dem bestätigten Versand.
 Eine vollständig fehlende Zuordnung kann weiterhin mehrere Personen betreffen.
 Das wird erklärt und zum auslösenden Eingang verlinkt. Ein eindeutig einer
 anderen Person zugeordneter PDF-Eingang blockiert deren Rückblick nicht.
-Eine pauschale Freigabe oder ein neuer Ausschlussmechanismus wird nicht eingeführt.
-Die vorhandenen Originalprüfungen und Entscheidungen bleiben erforderlich.
+Fachfremde PDFs können direkt oben in der Eingangsprüfung mit «Kein MD-Dokument –
+ausschliessen» gekennzeichnet werden, ohne MD-Felder auszufüllen. Der Ausschluss
+verwendet den vorhandenen rücknehmbaren Prüfstatus und wird in den Prüfmetadaten
+und im Audit protokolliert. Er gilt für diesen Eingang über alle Zielquellen.
+Die Eingangsübersicht bietet dafür den Filter «Kein MD-Dokument». Der Ausschluss
+lässt sich wieder aufheben, ohne die zuvor ausgelesenen oder gespeicherten Angaben
+zu verlieren. Bereits übernommene PDFs lassen sich so nicht ausschliessen.
+
+Solange nur ein ungeprüfter Eingang vorliegt, erscheint keine Entscheidung zum
+Rückblick. Die App führt zuerst zum Eingang und von dort zurück zur Auswahl.
+Entscheidungen bleiben für vorhandene Rückblicke oder bereits dokumentierte
+Rückfragen sichtbar. Die vorhandenen Originalprüfungen bleiben erforderlich.
 Darstellungsdaten werden nicht in die gespeicherten Rücklauf-Nachweise oder
 deren Prüfsummen aufgenommen. Keine Datenbankmigration ist erforderlich.
 
 ## Prüfung
 
-- Python-Regression offline: 346 Tests und 65 Subtests erfolgreich zum ersten
-  vollständigen Lauf, anschliessend acht gezielte Ablaufprüfungen erfolgreich
-  (davon zwei nach dem vollständigen Lauf ergänzt).
+- Python-Regression offline: 351 Tests und 65 Subtests erfolgreich. Elf gezielte
+  Ablaufprüfungen decken auch den rücknehmbaren Ausschluss fachfremder Eingänge ab.
 - JavaScript: elf vorhandene Prüfungen erfolgreich.
 - Volumentest: 1000 Personen, fünf Jahre, 10500 Gesprächsteile.
 - Visuelle Browserprüfung ausstehend: Der verfügbare externe Browser erreicht
@@ -55,3 +64,7 @@ deren Prüfsummen aufgenommen. Keine Datenbankmigration ist erforderlich.
    weiterhin erst nach Bestätigung des tatsächlichen Versands als versendet.
 5. Einen ungeklärten PDF-Eingang öffnen und zuordnen: Anschliessend ist er
    ausschliesslich bei den fachlich passenden Rückblicken zu berücksichtigen.
+6. Einen fachfremden Eingang ohne MD-Feldeingaben ausschliessen: Die Auswahl
+   wird wieder erstellbar, das Original bleibt erhalten und der Ausschluss lässt
+   sich unter «Kein MD-Dokument» wieder öffnen. Bei Wiederöffnung erscheint der
+   Eingang erneut in der Prüfung.

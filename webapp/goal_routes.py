@@ -239,6 +239,10 @@ def from_pdf(import_id):
     row=get_db().execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not row:
         abort(404)
+    from .services import hr_workflow
+    if hr_workflow.pdf_state(get_db(),import_id)['dismissed']:
+        flash('Diesen ausgeschlossenen oder zurückgestellten Eingang zuerst wieder öffnen.','error')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
     data=json.loads(row['reviewed_json'] or row['parsed_json'])
     data=data.get('data',data)
     if data.get('document_kind')!='outlook':
@@ -285,7 +289,7 @@ def evidence_details(db, evidence):
             detail['href']=url_for('return_work.detail',document_id=e['document_id'],back=request.full_path)
         elif e.get('pending_import_id'):
             item=db.execute('SELECT original_filename FROM word_pdf_imports WHERE id=?',(e['pending_import_id'],)).fetchone()
-            detail.update(filename=item['original_filename'],href=url_for('main.word_pdf_review',import_id=e['pending_import_id']))
+            detail.update(filename=item['original_filename'],href=url_for('main.word_pdf_review',import_id=e['pending_import_id'],back=request.full_path))
         elif e.get('unassigned_attachment_id'):
             item=db.execute('''SELECT a.original_filename,m.subject FROM inbound_mail_attachments a
                 JOIN inbound_mail_messages m ON m.id=a.mail_message_id WHERE a.id=?''',(e['unassigned_attachment_id'],)).fetchone()

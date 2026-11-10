@@ -1,10 +1,10 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% from "hr/_person.html" import person %}
 {% block title %}Word-PDF prüfen · MD-Verwaltung{% endblock %}
 {% block content %}
 <nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dashboard') }}">Übersicht</a><span aria-hidden="true">/</span><a href="{{ url_for('main.returns_overview') }}">Rückläufe</a><span aria-hidden="true">/</span><span>PDF-Prüfung</span></nav>
 <section class="page-head"><div><p class="kicker">Word-PDF</p><h1>{{ item.original_filename }}</h1><p class="lead">Original-PDF und erkannte Angaben vergleichen. Ältere Vorlagen können hier ergänzt und eindeutig zugeordnet werden.</p></div></section>
 <p><a class="button" href="{{ url_for('main.word_pdf_original', import_id=item.id) }}" target="_blank" rel="noopener">Original-PDF öffnen</a> <a href="{{ url_for('main.returns_overview') }}">Alle Rückläufe</a></p>
-{% if goal_back %}<p><a class="button button--secondary" href="{{ goal_back }}">Zurück zu den ausgewählten Rückblicken</a></p>{% endif %}
+{% if goal_back %}<p><a class="button button--secondary" href="{{ goal_back }}">{{ 'Zurück zu den ausgewählten Rückblicken' if goal_back.startswith('/arbeit/ziele') else 'Zurück zur aufrufenden Auswahl' }}</a></p>{% endif %}
 {% if item.status=='pending' %}
 <section class="content-card" aria-labelledby="pdf-classification-title">
 {% if pdf_state.not_md %}
@@ -26,7 +26,7 @@
 {% if parsed.get('automation') %}<section class="content-card"><h2>Verarbeitung dieses Eingangs</h2><p>{{ {'needs_review':'Manuelle Klärung nötig','signature_required':'Angaben automatisch übernommen; Unterschriftennachweis offen','handoff_pending':'Angaben automatisch übernommen; Bereitstellung offen','staged':'Automatisch übernommen und lokal für Dossier bereitgestellt','duplicate':'Bereits vorhandener Inhalt'}.get(parsed.automation.state,parsed.automation.state) }}</p>{% if parsed.automation.reasons %}<ul>{% for reason in parsed.automation.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}</section>{% endif %}
 {% if pdf_state.dismissed %}<p class="info-box">Zurückgestellt: {{ pdf_state.reason }}. Zum Weiterbearbeiten bitte unten wieder öffnen.</p>{% endif %}
 <form method="post" data-review-form>
-<input type="hidden" name="revision" value="{{ pdf_state.revision }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}">
+<input type="hidden" name="revision" value="{{ pdf_state.revision }}"><input type="hidden" name="back" value="{{ goal_back }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}">
 <fieldset {% if item.status != 'pending' %}disabled{% endif %}>
 {% set data = reviewed.data %}
 <section class="content-card"><h2>Person und Zeitraum</h2>
@@ -34,9 +34,25 @@
 {% if reviewed.get('filled_fields',{}).get('dialog_date') %}<p class="info-box">Das fehlende Gesprächsdatum wurde bei der Übernahme mit {{ reviewed.filled_fields.dialog_date.value }} ergänzt.</p>{% endif %}
 {% if return_review_enabled %}<label>Datenquelle<select name="source_role"><option value="digital" {% if reviewed.get('source_role','digital')=='digital' %}selected{% endif %}>Digitales PDF</option><option value="scan" {% if reviewed.get('source_role')=='scan' %}selected{% endif %}>Scan – alle benötigten Angaben vollständig am Original geprüft</option></select></label><p>Bei einem Scan fehlende oder unsichere Angaben konkret ergänzen und prüfen. Sind sie nicht zuverlässig klärbar, das digitale PDF anfordern. OCR-Erfolg allein genügt nicht.</p>{% endif %}
 <label>Dokumenttyp<select name="document_kind" required><option value="">Bitte wählen</option>{% for k,l in [('review','Rückblick'),('outlook','Ausblick')] %}<option value="{{ k }}" {% if data.get('document_kind')==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+{% if config.HR_GOAL_WORKFLOW %}
+<div class="form-grid intake-person-picker">
+<label>Mitarbeitende suchen<input type="search" data-lookup="employment" data-target="pdf-employment" data-url="{{ url_for('goal_work.lookup') }}" placeholder="Vorname oder Nachname"></label>
+<label>Person und Anstellung<select name="employment_id" id="pdf-employment" required><option value="">Bitte eindeutig auswählen</option>{% for c in employment_choices %}<option value="{{ c.id }}"{% if c.id|string==selected_employment|string %} selected{% endif %}>{{ c.label }}</option>{% endfor %}</select></label>
+<label>Führungskraft suchen<input type="search" data-lookup="manager" data-target="pdf-manager" data-url="{{ url_for('goal_work.lookup') }}" placeholder="Vorname oder Nachname"></label>
+<label>Im Dokument genannte Führungskraft<select name="manager_pn" id="pdf-manager"><option value="">Nicht erfasst / unklar</option>{% if manager_choice %}<option value="{{ manager_choice.pn }}" selected>{{ manager_choice.first_name }} {{ manager_choice.last_name }} · {{ manager_choice.org_unit }}</option>{% elif data.get('manager_pn') %}<option value="{{ data.manager_pn }}" selected>Nicht in Stammdaten gefunden – am Original klären</option>{% endif %}</select></label>
+
+</div>
+<input type="hidden" name="pn" value="{{ data.get('pn','') }}"><input type="hidden" name="assignment" value="{{ data.get('ans','') }}">
+{% for c in employment_choices if c.id|string==selected_employment|string %}<div class="intake-person-context"><span class="context-label">Vorschlag nach letzter Aktualisierung – am Original prüfen</span>{{ person(c) }}</div>{% endfor %}
+<p>Erkannte Angaben sind Vorschläge. Vergleiche Name, OE und Führungskraft am Original. Die aktuelle direkte Führungskraft hilft bei der Anstellungszuordnung; die Verantwortung des gewählten Gesprächsteils kann abweichen.</p>
+<button class="button" name="refresh" value="yes" formnovalidate>Person übernehmen und Gesprächsvorschläge aktualisieren</button>
+<details><summary>Erkannte technische Zuordnung</summary>Personalnummer {{ data.get('pn','Nicht erkannt') }} · Anstellung {{ data.get('ans','Nicht erkannt') }}</details>
+<div class="form-grid form-grid--three">{% for key,label in [('period_start','Zeitraum von'),('period_end','Zeitraum bis'),('dialog_date','Gesprächsdatum')] %}<label>{{ label }}<input name="{{ key }}" type="date" value="{{ data.get(key,'') }}"></label>{% endfor %}</div>
+{% else %}
 {% for key,label,type in [('pn','Personalnummer','text'),('manager_pn','Personalnummer Führungskraft','text'),('period_start','Zeitraum von','date'),('period_end','Zeitraum bis','date'),('dialog_date','Gesprächsdatum','date')] %}<label>{{ label }}<input name="{{ key }}" type="{{ type }}" value="{{ data.get(key,'') }}" {% if key == 'pn' or (key in ['period_start','period_end'] and data.get('document_kind')=='review' and data.get('probation')!='ja') %}required{% endif %}></label>{% endfor %}
 {% if assignments|length > 1 %}<p class="info-box">Mehrfachanstellung: Ans. anhand von Funktion, Organisationseinheit und Führungskraft manuell klären. Keine Anstellung raten. Bei Unklarheit Entwurf speichern und bei der Führungskraft nachfragen.</p><ul>{% for a in assignments %}<li>Ans. {{ a.assignment_number }} · {{ a.org_unit }}</li>{% endfor %}</ul>{% endif %}
 <label>Anstellung<input name="assignment" value="{{ request.form.get('assignment',reviewed.get('_draft',{}).get('assignment',data.get('ans',assignments[0].assignment_number if assignments|length==1 else ''))) }}" list="assignments" required></label><datalist id="assignments">{% for a in assignments %}<option value="{{ a.assignment_number }}">{% endfor %}</datalist>
+{% endif %}
 <label>Gesprächsteil durchgeführt<select name="conducted"><option value="">Nicht erfasst / unklar</option>{% for v in ['ja','nein'] %}<option value="{{ v }}" {% if data.get('conducted')==v %}selected{% endif %}>{{ v|capitalize }}</option>{% endfor %}</select></label>
 <label>Begründung der Nichtdurchführung (aus dem PDF)<textarea name="no_md_reason" rows="3">{{ data.get('no_md_reason','') }}</textarea></label>
 <p>Bei «Nein» entfällt nur dieser Gesprächsteil. Gesprächsdatum, Beurteilung, Anstellungsentscheid und Scan-Anforderung bleiben leer. Aktuelle Einschätzungen und neu vereinbarte Ziele müssen vor der Übernahme geklärt werden. Das PDF bleibt als administrativer Nachweis gespeichert; eine Unterschrift ist dafür nicht erforderlich.</p>
@@ -46,8 +62,8 @@
 </section>
 <section class="content-card"><h2>Zuordnung</h2>
 <label>Übernahme<select name="destination"><option value="case">Zu einem MD-Fall</option><option value="historical" {% if request.form.get('destination',reviewed.get('_draft',{}).get('destination'))=='historical' or item.status=='historical' %}selected{% endif %}>Nachgereichter Ausblick als Zielquelle</option></select></label>
-<label>Passender Fall<select name="case_id"><option value="">Bitte Fall wählen / Nachreichung ohne Fall</option>{% for c in candidates %}<option value="{{ c.case_id }}" data-review-min="{{ c.review_min }}" data-review-max="{{ c.review_max }}" {% if request.form.get('case_id',reviewed.get('_draft',{}).get('case_id',item.case_id))==c.case_id %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}{% if not c.active %} · Inaktiver Fall (Nachzügler){% endif %} · Ans. {{ c.employment_assignment }} · {{ c.review_year }}/{{ c.outlook_year }} · VG {{ c.manager_pn }} · {{ c.case_id }}</option>{% endfor %}</select></label>
-<p>Die Vorschläge berücksichtigen Personalnummer und Dokumentzeitraum. Bei korrigierten Angaben mit «Vorschläge aktualisieren» neu suchen.</p>
+<label>Passender Fall<select name="case_id"><option value="">Bitte Fall wählen / Nachreichung ohne Fall</option>{% for c in candidates %}<option value="{{ c.case_id }}" data-review-min="{{ c.review_min }}" data-review-max="{{ c.review_max }}" {% if request.form.get('case_id',reviewed.get('_draft',{}).get('case_id',item.case_id))==c.case_id %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}{% if not c.active %} · Inaktiver Fall (Nachzügler){% endif %} · Ans. {{ c.employment_assignment }} · {{ c.review_year }}/{{ c.outlook_year }} · Verantwortlich: {{ c.manager_name if config.HR_GOAL_WORKFLOW else c.manager_pn }}</option>{% endfor %}</select></label>
+<p>Die Vorschläge berücksichtigen die gewählte Person und den Dokumentzeitraum. Eine Vorlage aus dem Intranet ist auch ohne erfassten Versand zulässig. Bei korrigierten Angaben mit «Vorschläge aktualisieren» neu suchen.</p>
 <button class="button" name="refresh" value="yes" formnovalidate>Vorschläge aktualisieren</button>
 <label>MD-Umfang des Falls<select name="scope"><option value="">Bitte wählen / reine Nachreichung</option>{% for k,l in [('full','Rückblick und Ausblick'),('review_only','Nur Rückblick'),('outlook_only','Nur Ausblick')] %}<option value="{{ k }}" {% if reviewed.get('scope')==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
 </section>
@@ -85,5 +101,6 @@
 {% if return_review_enabled and item.status=='pending' and not pdf_state.dismissed and evidence_targets %}<section class="content-card"><h2>Als Unterschriftennachweis zu bereits übernommenen Angaben zuordnen</h2><p>Für einen zusätzlichen Scan keine Fachdaten doppelt übernehmen. Nach der Zuordnung folgt die Sichtprüfung beider Unterschriften und der inhaltlichen Übereinstimmung.</p>{% for target in evidence_targets %}<form method="post" action="{{ url_for('return_work.act',document_id=target.id) }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}"><input type="hidden" name="action" value="attach"><input type="hidden" name="revision" value="{{ target.revision }}"><input type="hidden" name="token" value="{{ target.token }}"><input type="hidden" name="import_id" value="{{ item.id }}"><input type="hidden" name="back" value="{{ request.full_path }}"><p>{{ target.first_name }} {{ target.last_name }} · Ans. {{ target.employment_assignment }} · {{ target.part.period_start }}–{{ target.part.period_end }}</p><button class="button">Diesem Rücklauf als Scan zuordnen</button></form>{% endfor %}</section>{% endif %}
 {% endif %}
 <details><summary>Ausgelesenen Originaltext anzeigen</summary><pre class="pdf-extracted-text">{{ parsed.text }}</pre></details>
+{% if config.HR_GOAL_WORKFLOW and not pdf_state.not_md %}<script src="{{ url_for('static',filename='goal_workflow.js') }}" defer></script>{% endif %}
 {% if not pdf_state.not_md %}<script src="{{ url_for('static', filename='word_pdf_review.js') }}" defer></script>{% endif %}
 {% endblock %}

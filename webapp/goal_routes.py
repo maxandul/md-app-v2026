@@ -51,7 +51,7 @@ def root(name):
 def back_link():
     value=request.values.get('back','')
     parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/ruecklaeufe','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
 
 
 def render(template,**kwargs):
@@ -111,11 +111,10 @@ def upload():
 def lookup():
     q='%'+request.args.get('q','').strip()+'%'
     if request.args.get('kind')=='manager':
-        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · PN '||pn||' · '||org_unit AS label FROM employees WHERE first_name||' '||last_name||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
+        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · '||org_unit AS label FROM employees WHERE first_name||' '||last_name||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
     else:
-        rows=get_db().execute('''SELECT ea.id,p.first_name||' '||p.last_name||' · PN '||ea.person_number||' · Ans. '||ea.assignment_number||' · '||ea.org_unit AS label
-            FROM employment_assignments ea JOIN persons p ON p.person_number=ea.person_number
-            WHERE p.first_name||' '||p.last_name||' '||ea.person_number LIKE ? ORDER BY p.last_name,p.first_name,ea.id LIMIT 25''',(q,)).fetchall()
+        from .services.intake_views import employment_choices
+        return {'results':employment_choices(get_db(),q=request.args.get('q',''))}
     return {'results':[dict(r) for r in rows]}
 
 

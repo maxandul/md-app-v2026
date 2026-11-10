@@ -435,6 +435,24 @@ def dispatch():
 
 @bp.get("/ruecklaeufe")
 def returns_overview():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .services import intake_views
+        tab=request.args.get('tab') or ('mail' if any(k.startswith('mail_') for k in request.args) else 'documents')
+        if tab not in ('documents','mail','returns'):abort(400,'Unbekannte Eingangsansicht.')
+        data={}
+        try:
+            if tab=='documents':
+                data=intake_views.documents(get_db(),query=request.args.get('pdf_q',''),
+                    status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int))
+            elif tab=='mail':
+                data=mail_inbox_overview(get_db(),query=request.args.get('mail_q',''),
+                    status=request.args.get('mail_status','open'),page=request.args.get('mail_page',1,type=int))
+                data['mail_status_labels']={'open':'Zu bearbeiten',**data['mail_status_labels']}
+            else:
+                data=intake_views.returns(get_db(),q=request.args.get('q',''),state=request.args.get('state','open'),page=request.args.get('page',1,type=int))
+        except ValueError as exc:abort(400,str(exc))
+        return render_template('intake/index.html',active_nav='returns',tab=tab,counts=intake_views.counts(get_db()),
+            pdf_states=intake_views.PDF_STATES,date_label=intake_views.date_label,mail_schedule=schedule_state(get_db()),**data)
     connection = get_db()
     cockpit = cockpit_overview(
         connection, selected_cycle_id=request.args.get("cycle_id", type=int)
@@ -1038,6 +1056,15 @@ def upload_pdf_returns():
     return redirect(url_for("main.returns_overview"))
 
 
+def _mail_return_url():
+    from urllib.parse import urlsplit
+    back=request.form.get('back','')
+    parsed=urlsplit(back)
+    if parsed.path=='/ruecklaeufe' and not parsed.scheme and not parsed.netloc and '\\' not in back:
+        return back
+    return url_for('main.returns_overview',tab='mail',_anchor='postfach') if current_app.config.get('HR_GOAL_WORKFLOW') else url_for('main.returns_overview')+'#postfach'
+
+
 @bp.post("/mail-inbox/schedule")
 def configure_mail_schedule():
     enabled = request.form.get('enabled') == '1'
@@ -1048,7 +1075,7 @@ def configure_mail_schedule():
         get_db().commit()
         audit('mail_scan_schedule_changed', 'mail_scan_schedule', '1', enabled=enabled)
         flash('Automatische Postfachprüfung aktiviert.' if enabled else 'Automatische Postfachprüfung deaktiviert.', 'success')
-    return redirect(url_for('main.returns_overview'))
+    return redirect(_mail_return_url())
 
 
 @bp.post('/mail-inbox/<int:message_id>/retry')
@@ -1065,7 +1092,7 @@ def retry_mail_message(message_id):
         flash('Postfach erneut geprüft. Bereits gesicherte Anhänge wurden beibehalten.','success')
     except (ValueError,OSError,RuntimeError) as exc:
         flash(str(exc),'error')
-    return redirect(url_for('main.returns_overview')+'#postfach')
+    return redirect(_mail_return_url())
 
 
 @bp.get('/mail-attachments/<int:attachment_id>/original')
@@ -1094,7 +1121,7 @@ def scan_mail_inbox():
         )
         if result["errors"]:
             flash(" ".join(result["errors"]), "error")
-    return redirect(url_for("main.returns_overview"))
+    return redirect(_mail_return_url())
 
 
 @bp.post("/mail-inbox/<int:message_id>/resolve")
@@ -1125,7 +1152,7 @@ def resolve_mail_message(message_id: int):
                 target_folder=result["target_folder"],
             )
             flash("Die Nachricht wurde in Outlook verschoben.", "success")
-    return redirect(url_for("main.returns_overview") + "#postfach")
+    return redirect(_mail_return_url())
 
 
 @bp.get('/documents/<int:document_id>/original')
@@ -1261,13 +1288,13 @@ def word_pdf_review(import_id):
     goal_back=request.values.get('back','')
     parsed_back=urlsplit(goal_back)
     if parsed_back.scheme or parsed_back.netloc or '\\' in goal_back or not (
-        parsed_back.path=='/arbeit/ziele' or parsed_back.path.startswith('/arbeit/ziele/')):
+        parsed_back.path in ('/ruecklaeufe','/arbeit/ziele') or parsed_back.path.startswith(('/arbeit/ziele/','/arbeit/dialogteile/aktionen/'))):
         goal_back=''
     if current_app.config.get('HR_GOAL_WORKFLOW'):
         session.setdefault('goal_csrf',secrets.token_urlsafe(32))
         routed=connection.execute('SELECT source_id FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone()
         if routed:
-            return redirect(url_for('goal_work.source',source_id=routed['source_id']))
+            return redirect(url_for('goal_work.source',source_id=routed['source_id'],**({'back':goal_back} if goal_back else {})))
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item:
         abort(404)
@@ -1276,10 +1303,20 @@ def word_pdf_review(import_id):
     if parsed.get('data',{}).get('document_kind') == 'feedback':
         return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
-    if request.method=='POST' and request.form.get('action') not in ('not_md','reopen'):
-        reviewed=_reviewed_word_form(request.form)
+    form=request.form.copy()
+    selection_error=''
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and form.get('action') not in ('not_md','reopen') and 'employment_id' in form:
+        selected=connection.execute('SELECT person_number,assignment_number FROM employment_assignments WHERE id=?',(form.get('employment_id'),)).fetchone()
+        if selected:
+            form['pn']=selected['person_number'];form['assignment']=selected['assignment_number']
+        elif form.get('employment_id') or form.get('action','confirm')=='confirm':
+            selection_error='Bitte eine eindeutige Person und Anstellung aus der Namenssuche wählen.'
+    if request.method=='POST' and form.get('action') not in ('not_md','reopen'):
+        reviewed=_reviewed_word_form(form)
+        if form.get('employment_id') and not selection_error:reviewed['data']['ans']=form.get('assignment','')
     if request.method=='POST' and request.form.get('refresh')!='yes':
         try:
+            if selection_error:raise ValueError(selection_error)
             workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
             action=request.form.get('action','confirm')
             if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('destination')=='historical' and action=='confirm':
@@ -1294,7 +1331,7 @@ def word_pdf_review(import_id):
                 elif action=='reopen':
                     reviewed.pop('_intake',None)
                 else:
-                    reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
+                    reviewed['_draft']={key:form.get(key,'') for key in ('assignment','case_id','destination','reason','employment_id')}
                 connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
                 workflow.advance_pdf(connection,import_id,dismissed=int(action in ('dismiss','not_md')),reason=reason)
                 connection.commit()
@@ -1308,7 +1345,7 @@ def word_pdf_review(import_id):
                 raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
             from copy import deepcopy
             confirmed_review=deepcopy(reviewed)
-            confirm_import(connection,import_id,reviewed=confirmed_review,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            confirm_import(connection,import_id,reviewed=confirmed_review,assignment=form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
             reviewed=confirmed_review
             if reviewed.get('filled_fields',{}).get('dialog_date'):
                 flash('Fehlendes Gesprächsdatum mit '+reviewed['data']['dialog_date']+' ergänzt.','success')
@@ -1325,7 +1362,7 @@ def word_pdf_review(import_id):
                 from .services import return_review
                 if return_review.available(connection):
                     flash('Angaben übernommen. Unterschriftennachweis und Bereitstellung hier weiterbearbeiten.','success')
-                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id']))
+                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id'],back=goal_back or url_for('main.returns_overview',tab='returns')))
                 try:
                     released = confirm_digital_signature(connection, document_id=doc['official_document_id'], handoff_dir=_handoff_dir())
                     message = 'Angaben übernommen. Rückblick D/E: unterschriebenen Scan anfordern und im Fall prüfen; noch keine Roboterübergabe.' if released['scan_required'] else 'Angaben übernommen und Kopie im Roboter-Ordner bereitgestellt. Original bleibt im Projekt. Keine Unterschriftenprüfung erforderlich.'
@@ -1349,6 +1386,19 @@ def word_pdf_review(import_id):
         except ValueError:
             candidate['review_min']=candidate['review_max']=''
 
+    from .services import intake_views
+    choices=intake_views.employment_choices(connection,person_number=reviewed.get('data',{}).get('pn','')) if reviewed.get('data',{}).get('pn') else []
+    selected_employment=form.get('employment_id',reviewed.get('_draft',{}).get('employment_id',''))
+    if not selected_employment:
+        matching=[c for c in choices if c['assignment_number']==str(form.get('assignment',reviewed.get('_draft',{}).get('assignment',reviewed.get('data',{}).get('ans',''))))]
+        if len(matching)==1:selected_employment=matching[0]['id']
+        elif len(choices)==1:selected_employment=choices[0]['id']
+    if selected_employment and not any(str(c['id'])==str(selected_employment) for c in choices):
+        choices+=intake_views.employment_choices(connection,employment_id=selected_employment)
+    manager_choice=connection.execute('SELECT pn,first_name,last_name,org_unit FROM employees WHERE pn=?',(reviewed.get('data',{}).get('manager_pn',''),)).fetchone()
+    for candidate in candidates:
+        manager=connection.execute('SELECT first_name,last_name FROM employees WHERE pn=?',(candidate['manager_pn'],)).fetchone()
+        candidate['manager_name']=(manager['first_name']+' '+manager['last_name']) if manager else 'Zuständigkeit klären'
     from .services.word_pdf import NARRATIVE_FIELDS
     from .services import return_review
     evidence_targets=[]
@@ -1360,7 +1410,7 @@ def word_pdf_review(import_id):
         for candidate in candidates:
             for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
                 evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
-    return render_template('word_pdf_review.html',active_nav='returns',goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    return render_template('word_pdf_review.html',active_nav='returns',employment_choices=choices,selected_employment=selected_employment,manager_choice=manager_choice,goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')

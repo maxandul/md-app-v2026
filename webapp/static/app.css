@@ -389,3 +389,10 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
 .task-workspace input:not([type="checkbox"]):not([type="radio"]), .task-workspace select { font-size:14px; padding:8px 10px; min-height:40px; }
 .task-workspace .form-grid > .button { justify-self:start; align-self:end; }
 .task-workspace [data-deadline-field][hidden] { display: none; }
+.intake-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px; border-bottom:1px solid #dce3e8; }
+.intake-tabs a { display:block; padding:12px 16px; color:var(--zh-dark-blue); text-decoration:none; border-bottom:3px solid transparent; }
+.intake-tabs a[aria-current="page"] { border-bottom-color:var(--zh-blue); background:white; font-weight:700; }
+.intake-tabs span { display:block; font-size:12px; font-weight:400; color:#53616b; }
+.intake-person-picker { grid-template-columns: minmax(180px,1fr) minmax(0,2fr); }
+.intake-person-context { margin-top:16px; padding:12px 16px; background:var(--zh-soft-blue); border-left:3px solid var(--zh-blue); }
+@media (max-width:760px) { .intake-person-picker { grid-template-columns:minmax(0,1fr); } }

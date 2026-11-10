@@ -109,7 +109,9 @@ def action_preview(key):
             args=request.args.to_dict();args[key]=number
             return url_for('parts.action_preview',key=batch['id'],**{k:v for k,v in args.items() if k!='key'})
         return dict(rows=rows[(page-1)*50:page*50],total=len(rows),page=page,pages=pages,page_url=href)
-    return render('parts/action_preview.html',batch=batch,selection=chosen,
+    from .services.hr_workflow import pending_pdfs
+    pending_inputs=pending_pdfs(get_db()) if batch['plan']['action']=='reminder' else []
+    return render('parts/action_preview.html',batch=batch,selection=chosen,pending_inputs=pending_inputs,
         included=page_rows(False),excluded=page_rows(True))
 
 

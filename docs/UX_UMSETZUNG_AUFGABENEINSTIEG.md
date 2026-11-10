@@ -86,3 +86,52 @@ Ausführung und Ergebnisrückmeldung sowie Erinnerungsausschlüsse. Der echte
 Outlook-Zugriff ist in der Browser-Testumgebung gesperrt.
 
 ![Ergebnis einer Fristanpassung mit ausschliesslich erfundenen Testpersonen](images/ux-fristen-test.png)
+
+## Dritte Etappe: Eingänge und Prüfung nach Aufgaben
+
+Die bisherige lange Eingangsseite ist im regulären HR-Modus in drei Ansichten
+aufgeteilt: «Dokumente prüfen», «Nachweise & Ablage» und «Postfach». Ihre offenen
+Zähler gelten über alle Jahre und Durchläufe. Die jeweilige Liste bleibt
+serverseitig paginiert. Feedback-Bündel und alte Zielquellen sind direkt verlinkt.
+
+Die Dokumentliste lässt sich nach Name oder Datei durchsuchen. Sie zeigt Name,
+OE und aktuelle direkte Führungskraft; ausgelesene Angaben bleiben ausdrücklich
+als ungeprüfte Vorschläge gekennzeichnet. Übernommene Rückläufe führen zur
+bestehenden Nachweis-/Ablagebearbeitung, historische Ziele zur Zielbearbeitung.
+Daten und Zeitpunkte werden im Eingangsbereich in Schweizer Schreibweise gezeigt.
+
+In der PDF-Prüfung werden Person und Anstellung über eine Namenssuche gewählt.
+Die Beschriftung enthält OE, Funktion und aktuelle direkte Führungskraft;
+technische Nummern stehen separat. Der Server leitet Personal- und
+Anstellungsnummer aus der gewählten Anstellung ab. Manipulierte versteckte
+Nummern können diese Auswahl nicht übersteuern. Eine leere oder ungültige Auswahl
+kann nicht bestätigt werden. Mehrfachanstellungen ohne eindeutige Grundlage
+werden nicht automatisch auf eine beliebige erste Anstellung reduziert. Die
+Gesprächsvorschläge nennen die tatsächlich zugeordnete Gesprächsverantwortung.
+
+Ein Rücklauf aus einer Intranet-Vorlage benötigt keinen erfassten Vorlagenversand.
+Die bestehenden fachlichen Prüfungen der Person, Anstellung, Zeiträume und Inhalte
+bleiben erhalten. Es wird kein Versand nachgetragen und keine neue Zuordnung
+allein aus einem Dateinamen abgeleitet. Fehlt ein passender Gesprächsvorgang,
+bleibt die bestehende manuelle Klärung notwendig.
+
+«Kein MD-Dokument» bleibt eine eigene reversible Aktion ohne Pflichtfelder für
+MD-Daten. Auch der Mailanhang zeigt den Ausschluss ausdrücklich. Die übrigen
+Anhänge und das Mailanliegen werden dadurch nicht automatisch abgeschlossen.
+Bei gesperrten Erinnerungen sind die ungeprüften PDF-Dateien konkret verlinkt;
+nach ihrer Bearbeitung ist die Erinnerungsvorschau erneut zu prüfen.
+
+Der Postfachbereich zeigt standardmässig alle offenen Mailanliegen einschliesslich
+Fehlern. Einstellungen und Verarbeitungserklärungen sind dort gebündelt.
+«Prüfung erledigt» verschiebt weiterhin keine Mail. Mailaktionen erhalten einen
+lokalen gefilterten Rückweg, externe Rücksprungziele werden verworfen. Alte
+Postfach-Lesezeichen und Suchparameter bleiben erreichbar.
+
+Validierung: zwölf zusätzliche Integrationstests zu getrennten Ansichten,
+Namenssuche, Seitennavigation, Mehrfachanstellungen, kanonischer Personenauswahl,
+Ausschluss und Originalerhalt, Rückläufen ohne Versand, offenen Mailfehlern sowie
+sicheren Rückwegen. Browserprüfung der Ansichten, Namenssuche, PDF-Personenwahl
+und alten Postfach-Lesezeichen mit ausschliesslich erfundenen Testpersonen.
+Keine Postfachprüfung, Nachricht oder externe Dossierübergabe im Browser ausgelöst.
+
+![Eingangsbereich mit ausschliesslich erfundenen Testpersonen](images/ux-eingaenge-test.png)

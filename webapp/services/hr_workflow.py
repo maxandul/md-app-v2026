@@ -28,13 +28,13 @@ def pdf_queue(db, *, query='', status='pending', page=1):
     elif status in ('imported','historical','duplicate'):where.append('w.status=?');args.append(status)
     elif status!='all':raise ValueError('Unbekannter Prüfstatus.')
     if query.strip():
-        where.append("(w.original_filename LIKE ? OR json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn') LIKE ?)")
-        args += ['%'+query.strip()+'%']*2
+        where.append("(w.original_filename LIKE ? OR json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn') LIKE ? OR COALESCE(p.first_name,'')||' '||COALESCE(p.last_name,'') LIKE ?)")
+        args += ['%'+query.strip()+'%']*3
     clause=' WHERE '+' AND '.join(where) if where else ''
-    source=' FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id'
+    source=" FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id LEFT JOIN persons p ON p.person_number=json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn')"
     total=db.execute('SELECT COUNT(*)'+source+clause,args).fetchone()[0]
     pages=max(1,(total+24)//25);page=max(1,min(page,pages))
-    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,COALESCE(s.dismissed,0) AS dismissed,"+classification+" AS classification"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
+    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,w.official_document_id,p.first_name,p.last_name,p.person_number, json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.document_kind') AS document_kind, json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.period_end') AS period_end, COALESCE(json_extract(NULLIF(w.reviewed_json,''),'$._draft.assignment'),json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.ans')) AS assignment_number,COALESCE(s.dismissed,0) AS dismissed,"+classification+" AS classification"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
     return dict(word_pdf_queue=rows,pdf_total=total,pdf_page=page,pdf_pages=pages,pdf_query=query,pdf_status=status)
 
 

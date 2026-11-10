@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 import sqlite3
 from datetime import datetime
@@ -557,6 +558,10 @@ def attachment_progress(connection, attachment):
                 next_step='Zielprüfung und Folgearbeit direkt öffnen. Die Mailablage ist davon unabhängig.')
             return item
     word=connection.execute('SELECT w.*, COALESCE(s.dismissed,0) AS dismissed FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.sha256=?',(item['sha256'],)).fetchone()
+    if word and word['dismissed'] and json.loads(word['reviewed_json'] or '{}').get('_intake',{}).get('classification')=='not_md':
+        item.update(word_pdf_import_id=word['id'],progress='Kein MD-Dokument – ausgeschlossen',
+            next_step='Dieser Anhang blockiert keine MD-Folgearbeit. Die übrigen Anhänge und allfällige Mailanliegen separat prüfen. Das Original bleibt erhalten.')
+        return item
     doc=connection.execute('SELECT * FROM official_documents WHERE id=? OR sha256=? ORDER BY id DESC LIMIT 1',(word['official_document_id'] if word else item.get('official_document_id'),item['sha256'])).fetchone()
     if doc:
         item.update(case_id=doc['case_id'],cycle_id=doc['cycle_id'])
@@ -625,6 +630,8 @@ def mail_inbox_overview(
         where.append("m.status = 'review_required' AND m.review_completed_at <> ''")
     elif status == "review_required":
         where.append("m.status = 'review_required' AND m.review_completed_at = ''")
+    elif status == 'open':
+        where.append("((m.status='review_required' AND m.review_completed_at='') OR m.status IN ('new','failed','ready_to_move'))")
     elif status in STATUS_LABELS:
         where.append("m.status = ?")
         params.append(status)

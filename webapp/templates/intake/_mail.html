@@ -1,0 +1,36 @@
+  <section class="content-section" id="postfach" aria-labelledby="mail-inbox-title">
+    <div class="section-heading"><div><p class="kicker">Postfacheingang</p><h2 id="mail-inbox-title">E-Mail-Anliegen bearbeiten</h2></div><span class="section-count">{{ mail_total }} protokolliert</span></div>
+    <form class="compact-filter" method="get" action="{{ url_for('main.returns_overview') }}#postfach">
+      <input type="hidden" name="tab" value="mail">
+      <div><label for="mail-search">Suche</label><input id="mail-search" name="mail_q" value="{{ mail_query }}" placeholder="Absender oder Betreff"></div>
+      <div><label for="mail-status">Status</label><select id="mail-status" name="mail_status"><option value="">Alle</option>{% for key, label in mail_status_labels.items() %}<option value="{{ key }}"{% if key == selected_mail_status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <button class="button button--small" type="submit">Filtern</button>
+    </form>
+    {% if mail_messages %}
+      <div class="table-wrap"><table><thead><tr><th>Eingang</th><th>Absender und Betreff</th><th>Anhänge</th><th>Status</th></tr></thead><tbody>
+      {% for message in mail_messages %}
+        <tr>
+          <td>{{ date_label(message.received_at,true) }}</td>
+          <td><strong>{{ message.sender_email }}</strong><br>{{ message.subject or 'Ohne Betreff' }}</td>
+          <td>
+            {% if message.attachments %}
+              {% for attachment in message.attachments %}
+                <div class="mail-attachment"><strong>{{ attachment.original_filename }}</strong><p><strong>{{ attachment.progress }}</strong><br>{{ attachment.next_step }}</p>{% if attachment.goal_source_id %}<a href="{{ url_for('goal_work.source',source_id=attachment.goal_source_id) }}">Ziele und Folgearbeit öffnen</a>{% elif attachment.original_available and attachment.original_filename.lower().endswith(('.docx','.docm')) %}<form method="post" action="{{ url_for('goal_work.from_mail',message_id=message.id) }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}"><button class="button button--small">Gesicherte Ziele direkt prüfen</button></form>{% elif attachment.word_pdf_import_id %}<a href="{{ url_for('main.word_pdf_review', import_id=attachment.word_pdf_import_id,back=request.full_path) }}">PDF-Prüfung und Original öffnen</a>{% elif attachment.original_available %}<a href="{{ url_for('main.mail_attachment_original',attachment_id=attachment.id) }}">Gesichertes Original herunterladen</a>{% endif %}{% if attachment.case_id %} · <a href="{{ url_for('main.case_detail',cycle_id=attachment.cycle_id,case_id=attachment.case_id) }}">Fall und Ablage öffnen</a>{% endif %}{% for goal_case in attachment.goal_cases|default([]) %}<p>Ziele verfügbar für {{ goal_case.first_name }} {{ goal_case.last_name }} · Ans. {{ goal_case.employment_assignment }}.</p><p><a href="{{ url_for('main.manager_detail',cycle_id=goal_case.cycle_id,manager_pn=goal_case.manager_pn) }}">Personenausgabe prüfen und korrigierte Formulare erzeugen</a> · <a href="{{ url_for('main.dispatch',cycle_id=goal_case.cycle_id) }}">Korrektur / Versand dokumentieren</a></p>{% endfor %}{% if attachment.error_message and not attachment.word_pdf_import_id and attachment.original_filename.lower().endswith(('.docx','.docm')) == false %}<br><span class="issue-text">{{ attachment.error_message }}</span>{% endif %}</div>
+              {% endfor %}
+            {% else %}<span class="muted">Keine verarbeiteten MD-Anhänge. Mail in Outlook lesen und Anliegen bearbeiten. Bei fehlendem Dokument dieses anfordern; Mailprüfung bis zur Klärung offen lassen.</span>{% endif %}
+          </td>
+          <td>
+            {% if message.status == 'ready_to_move' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><input type="hidden" name="back" value="{{ request.full_path }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}"><button class="button button--small" type="submit">Jetzt verschieben</button></form>
+            {% elif message.status == 'review_required' %}<span class="status status--warning">{{ message.status_label }}</span><form class="inline-action" action="{{ url_for('main.resolve_mail_message', message_id=message.id) }}" method="post"><input type="hidden" name="back" value="{{ request.full_path }}"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}"><label>Ergebnis der manuellen Klärung<input name="review_note" required placeholder="Was wurde geklärt, zurückgewiesen oder separat bearbeitet?"></label><button class="button button--small" type="submit">Prüfung als erledigt markieren</button></form>
+            {% elif message.status in ['failed','new'] %}<span class="status status--danger">Verarbeitung nicht abgeschlossen</span><form method="post" action="{{ url_for('main.retry_mail_message',message_id=message.id) }}"><button class="button button--small">Verarbeitung erneut versuchen</button></form><p>Bereits gespeicherte Anhänge bleiben erhalten. Mail muss noch im Posteingang liegen.</p>
+            {% else %}<span class="status">{{ message.status_label }}</span>{% endif %}
+            {% if message.review_note %}<p>Prüfergebnis: {{ message.review_note }}</p>{% endif %}
+            {% if message.error_message %}<br><span class="issue-text issue-text--blocking">{{ message.error_message }}</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table></div>
+      {% if mail_pages > 1 %}<nav class="pagination" aria-label="Seiten der MD-Nachrichten">{% if mail_page > 1 %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id if selected_cycle else '', mail_q=mail_query, mail_status=selected_mail_status, mail_page=mail_page-1) }}#postfach">Zurück</a>{% endif %}<span>Seite {{ mail_page }} von {{ mail_pages }}</span>{% if mail_page < mail_pages %}<a class="button button--small" href="{{ url_for('main.returns_overview', cycle_id=selected_cycle.id if selected_cycle else '', mail_q=mail_query, mail_status=selected_mail_status, mail_page=mail_page+1) }}#postfach">Weiter</a>{% endif %}</nav>{% endif %}
+    {% else %}<div class="empty-state">Noch keine Outlook-Nachrichten eingelesen.</div>{% endif %}
+  </section>
+

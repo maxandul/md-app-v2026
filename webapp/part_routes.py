@@ -26,7 +26,7 @@ def render(template,**values):
 def list_filters(values):
     result={k:values.get(k,'') for k in ('q','manager','kind','org_unit','due')}
     result['perspective']='managers' if values.get('perspective')=='managers' else 'people'
-    result.update(state=values.get('state','open'),year=values.get('year',type=int),
+    result.update(state=values.get('state','open'),year=values.get('year',type=int),cycle_id=values.get('cycle_id',type=int),
         page=values.get('page',1,type=int),page_size=values.get('page_size',25,type=int))
     return result
 
@@ -43,7 +43,7 @@ def index():
     if request.args.get('selection'):
         try:chosen=part_actions.selection(get_db(),request.args['selection'],selection_owner(),filters)
         except ValueError as exc:flash(str(exc),'error')
-    return render('parts/index.html',filters=filters,selection=chosen,
+    return render('parts/index.html',filters=filters,selection=chosen,selected_cycle=get_db().execute('SELECT * FROM cycles WHERE id=?',(filters['cycle_id'],)).fetchone(),
         page_url=lambda p:url_for('parts.index',**{**filters,'page':p},selection=chosen['id'] if chosen else ''),
         **part_queries.listing(get_db(),**filters))
 

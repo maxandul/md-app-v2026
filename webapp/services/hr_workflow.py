@@ -66,7 +66,7 @@ def closure_summary(db,cycle_id):
     def count(sql):return db.execute(sql,(cycle_id,)).fetchone()[0]
     from .return_review import available
     pending_handoffs=count("SELECT COUNT(*) FROM hr_return_status WHERE cycle_id=? AND is_current=1 AND NOT complete") if available(db) else count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0")
-    return {
+    result={
       'Offene Pflichtdokumente':count("SELECT COUNT(*) FROM document_obligations o JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.cycle_id=? AND e.status<>'cancelled' AND o.required=1 AND o.status NOT IN ('complete','waived')"),
       'Offene Dossierübergaben':pending_handoffs,
       'Offene Word-Versandvorgänge':count("SELECT COUNT(*) FROM word_dispatch_packages p LEFT JOIN word_mail_deliveries d ON d.package_id=p.id WHERE p.cycle_id=? AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='') AND COALESCE(d.status,'') NOT IN ('sent_confirmed','cancelled')"),
@@ -75,6 +75,17 @@ def closure_summary(db,cycle_id):
       'Ungeprüfte PDFs (durchlaufübergreifend)':len(pending_pdfs(db)),
       'Ereignisse ohne Durchlauf (gesamt)':db.execute("SELECT COUNT(*) FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'").fetchone()[0],
     }
+    result['Ungeklärte Postfachnachrichten (gesamt)']=db.execute("SELECT COUNT(*) FROM inbound_mail_messages WHERE (status='review_required' AND review_completed_at='') OR status IN ('failed','new','ready_to_move')").fetchone()[0]
+    from webapp.migrations import available as modern
+    if modern(db):
+        result['Offene Einzelausgaben']=count("SELECT COUNT(*) FROM word_person_corrections WHERE case_id IN (SELECT case_id FROM dialog_cases WHERE cycle_id=?) AND status NOT IN ('sent_confirmed','cancelled')")
+        result['Offene Zielnachreichungs-Versandvorgänge']=count("SELECT COUNT(DISTINCT d.id) FROM hr_goal_dispatches d JOIN hr_goal_dispatch_outputs m ON m.dispatch_id=d.id JOIN hr_goal_outputs o ON o.id=m.output_id JOIN dialog_cases c ON c.case_id=o.case_id WHERE c.cycle_id=? AND d.status NOT IN ('sent_confirmed','cancelled')")
+        result['Ungeklärte Erinnerungsvorgänge']=count("SELECT COUNT(*) FROM reminders r LEFT JOIN hr_reminder_resolutions rr ON rr.reminder_id=r.id WHERE r.cycle_id=? AND r.status IN ('prepared','draft_created','failed') AND rr.reminder_id IS NULL")
+        from .export_closure_views import export_plan
+        export=export_plan(db,cycle_id)
+        result['Noch nicht exportierte vollständige Rückblicke']=export['counts']['ready']
+        result['SAP-Rückblicke mit Klärungsbedarf']=export['counts']['attention']
+    return result
 
 
 def setup_checks(config,db):

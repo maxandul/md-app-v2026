@@ -9,7 +9,7 @@ from .deadlines import _valid_date
 from .outlook_lock import serialized_goal_delivery
 
 TTL = 24 * 60 * 60
-FILTER_KEYS = ('q', 'manager', 'kind', 'state', 'year', 'org_unit', 'due')
+FILTER_KEYS = ('q', 'manager', 'kind', 'state', 'year', 'org_unit', 'due', 'cycle_id')
 
 
 def packed(value):

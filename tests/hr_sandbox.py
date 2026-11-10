@@ -69,7 +69,7 @@ def create_review_app(directory: Path):
         if request.remote_addr not in ('127.0.0.1','::1'):
             abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
         allowed_read={'main.download_prepared_word_package','main.dispatch_package','main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','main.dialogs','main.master_data','main.import_detail','main.cycle_detail','main.dashboard','main.analytics','main.setup_guide','main.help_page','main.help_document','main.sap_exports','main.cycle_closure','main.word_pdf_review','main.word_pdf_original','main.document_original','main.feedback_collection','main.feedback_review','main.feedback_bundle_download','static'}
-        redelivery_endpoint=(request.endpoint or '').startswith('redelivery.')
+        redelivery_endpoint=(request.endpoint or '').startswith(('redelivery.','export_work.'))
         goal_endpoint=(request.endpoint or '').startswith('goal_work.')
         part_endpoint=(request.endpoint or '').startswith('parts.')
         sap_endpoint=(request.endpoint or '').startswith('sap_work.')

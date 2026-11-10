@@ -94,7 +94,7 @@ def _rating_code(value: Any, pn: str) -> str:
 
 
 def collect_sap_upload_rows(
-    connection: sqlite3.Connection, cycle_id: int
+    connection: sqlite3.Connection, cycle_id: int, *, _case_id: str | None = None
 ) -> list[SapUploadRow]:
     cycle = connection.execute(
         "SELECT id, review_year FROM cycles WHERE id = ?", (cycle_id,)
@@ -127,13 +127,14 @@ def collect_sap_upload_rows(
         JOIN employees e ON e.pn = dc.employee_pn
         LEFT JOIN dialog_events de ON de.legacy_case_id = dc.case_id
         WHERE dc.cycle_id = ?
-          AND dc.status = 'vollstaendig'
+          AND dc.status = 'vollstaendig' AND dc.active=1 AND COALESCE(de.status,'')<>'cancelled'
+          AND (? IS NULL OR dc.case_id=?)
           AND NOT EXISTS (
               SELECT 1 FROM sap_export_rows ser WHERE ser.dialog_event_id = de.id
           )
         ORDER BY CAST(dc.employee_pn AS INTEGER), dc.employee_pn, dc.manager_pn
         """,
-        (cycle_id,),
+        (cycle_id,_case_id,_case_id),
     ).fetchall()
 
     rows: list[SapUploadRow] = []
@@ -286,7 +287,7 @@ def create_sap_upload_file(
     )["path"]
 
 
-def create_sap_upload_batch(
+def _create_sap_upload_batch(
     connection: sqlite3.Connection,
     *,
     cycle_id: int,
@@ -294,6 +295,7 @@ def create_sap_upload_batch(
     output_dir: Path,
     user_id: int | None = None,
     created_at: datetime | None = None,
+    request_key: str = "",
 ) -> dict[str, Any]:
     cycle = connection.execute(
         "SELECT review_year FROM cycles WHERE id = ?", (cycle_id,)
@@ -341,6 +343,9 @@ def create_sap_upload_batch(
                     row.assessment_period_end.isoformat(), row.overall_rating,
                 ),
             )
+        if request_key:
+            connection.execute("INSERT INTO audit_log(user_id,action,object_type,object_id,details_json,created_at) VALUES (?,'sap_export_reviewed','sap_export_batch',?,?,?)",
+                (user_id,str(batch_id),json.dumps({'request_key':request_key}),created.isoformat()))
         connection.commit()
     except Exception:
         connection.rollback()
@@ -382,4 +387,27 @@ def get_sap_export_batch(connection: sqlite3.Connection, batch_id: int) -> sqlit
         raise LookupError("SAP-Exportbatch nicht gefunden.")
     if not Path(row["stored_path"]).is_file():
         raise ValueError("Die Datei dieses Exportbatches wurde lokal nicht gefunden.")
+    if hashlib.sha256(Path(row['stored_path']).read_bytes()).hexdigest()!=row['sha256']:
+        raise ValueError('Die gespeicherte Exportdatei stimmt nicht mehr mit ihrem Nachweis überein. Bitte die Datei separat klären.')
     return row
+
+
+from .outlook_lock import serialized_goal_delivery
+
+@serialized_goal_delivery
+def create_sap_upload_batch(connection, *, expected_fingerprint=None, request_key='', **values):
+    if expected_fingerprint is None:
+        return _create_sap_upload_batch(connection,**values)
+    connection.execute('BEGIN IMMEDIATE')
+    try:
+        previous=connection.execute("SELECT object_id FROM audit_log WHERE action='sap_export_reviewed' AND json_extract(details_json,'$.request_key')=?",(request_key,)).fetchone()
+        if previous:
+            batch=dict(get_sap_export_batch(connection,int(previous[0])));connection.rollback()
+            return {**batch,'path':Path(batch['stored_path'])}
+        from .export_closure_views import export_plan
+        plan=export_plan(connection,values['cycle_id'])
+        if plan['fingerprint']!=expected_fingerprint:raise ValueError('Die Exportgrundlage hat sich inzwischen geändert. Bitte die Vorschau erneut prüfen.')
+        if plan['error'] or not plan['ready']:raise ValueError(plan['error'] or 'Es liegen keine neuen exportierbaren Rückblicke vor.')
+        return _create_sap_upload_batch(connection,request_key=request_key,**values)
+    except Exception:
+        connection.rollback();raise

@@ -4,8 +4,9 @@ from .person_display import enrich
 from datetime import date
 
 
-def scope(*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',**unused):
+def scope(*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',cycle_id=None,**unused):
     where=["o.document_kind IN ('review','outlook')",'o.required=1'];params=[]
+    if cycle_id:where.append('o.cycle_id=?');params.append(cycle_id)
     if q:where.append("o.first_name||' '||o.last_name||' '||o.employee_pn LIKE ?");params.append('%'+q+'%')
     if manager:where.append("o.manager_pn||' '||COALESCE(m.first_name,'')||' '||COALESCE(m.last_name,'') LIKE ?");params.append('%'+manager+'%')
     if kind:where.append('o.document_kind=?');params.append(kind)
@@ -28,8 +29,8 @@ def selection_ids(connection, **filters):
     return [r[0] for r in connection.execute('SELECT o.id'+base+' ORDER BY o.id',params)]
 
 
-def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',perspective='people',page=1,page_size=25):
-    base,params=scope(q=q,manager=manager,kind=kind,state=state,year=year,org_unit=org_unit,due=due)
+def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',perspective='people',page=1,page_size=25,cycle_id=None):
+    base,params=scope(q=q,manager=manager,kind=kind,state=state,year=year,org_unit=org_unit,due=due,cycle_id=cycle_id)
     total=connection.execute('SELECT COUNT(*)'+base,params).fetchone()[0]
     page_size=page_size if page_size in (25,50,100) else 25
     pages=max(1,(total+page_size-1)//page_size);page=min(max(page or 1,1),pages)

@@ -2,7 +2,8 @@
 {% block title %}Gesprächsübersicht · MD{% endblock %}
 {% block content %}
 <section class="page-head"><h1>Gesprächsübersicht</h1><p>Offene Rückblicke und Ausblicke über alle Jahre. Person oder Führungskraft suchen; jeder Teil zeigt seine eigene Zuständigkeit.</p></section>
-<form method="get" class="content-card"><div class="form-grid form-grid--three">
+{% if selected_cycle %}<p>Durchlauf {{ selected_cycle.review_year }}/{{ selected_cycle.outlook_year }} · <a href="{{ url_for('parts.index') }}">Alle Durchläufe anzeigen</a></p>{% endif %}
+<form method="get" class="content-card">{% if filters.cycle_id %}<input type="hidden" name="cycle_id" value="{{ filters.cycle_id }}">{% endif %}<div class="form-grid form-grid--three">
 <label>Mitarbeitende suchen<input name="q" value="{{ filters.q }}"></label><label>Verantwortliche Führungskraft suchen<input name="manager" value="{{ filters.manager }}"></label>
 <label>Perspektive<select name="perspective"><option value="people">Nach Mitarbeitenden</option><option value="managers"{% if filters.perspective=='managers' %} selected{% endif %}>Nach verantwortlicher Führungskraft</option></select></label>
 <label>Frist<select name="due"><option value="">Alle Fristen</option><option value="overdue"{% if filters.due=='overdue' %} selected{% endif %}>Überfällig</option></select></label>

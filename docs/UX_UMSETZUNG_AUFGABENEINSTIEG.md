@@ -406,3 +406,69 @@ anderem weitere Wiederzustellungsquellen und die Vereinheitlichung von SAP-Expor
 und Abschluss; die Formularsteuerelement-Verwaltung V01 bleibt wie vereinbart später.
 
 ![Zusätzlicher Auftrag mit ausschliesslich erfundenen Testpersonen](images/ux-zusatzauftrag-test.png)
+
+## Etappe 9: SAP-Batches prüfen und Kampagnenabschluss dokumentieren
+
+Der SAP-Einstieg führt vor einer neuen Datei zur Personen- und Exportvorschau.
+Namen, OE, heutige direkte Führungskraft und tatsächliche Rückblickzuständigkeit
+stehen vor den technischen IDs. Die Liste zeigt neue Exportzeilen, offene
+Gesprächsfälle, bereits bereitgestellte Ereignisse und konkreten Klärungsbedarf.
+Suche, Standfilter und Seiten mit 25 Zeilen begrenzen ausdrücklich nur die Anzeige,
+nicht den Umfang des Batches. Beim Batch bleiben die bisherigen fachlichen
+Exportregeln erhalten: vollständiger Gesprächsfall, durchgeführter Rückblick,
+massgebendes SAP-Ereignis, numerische Zuordnung, Datum und Bewertung sowie auf das
+Rückblickjahr und Ein-/Austritt begrenzter Zeitraum. Inaktive und aufgehobene
+Aufträge sind ausdrücklich ausgeschlossen.
+
+Die Vorschau verwendet denselben Exportkollektor wie die tatsächliche Erstellung.
+Bei fehlender SAP-Auswahl oder ungültigen Exportangaben ist zuerst die konkrete
+Klärung erforderlich; es entsteht kein stillschweigender Teilbatch. Nach der
+Erstellung zeigt eine eigene Ansicht die gespeicherten Datensätze und bietet den
+Download derselben Datei an. Erstellung und Download bestätigen keine Verarbeitung
+in SAP. Namen in der Batchansicht stammen ausdrücklich aus heutigen Stammdaten,
+Exportwerte und technische Zuordnung aus dem gespeicherten Nachweis. Eine geänderte
+Dokumentfassung nach Export führt zur separaten Korrekturklärung, nicht zum
+automatischen erneuten Export. Gespeicherte Dateien werden vor erneutem Download
+gegen ihre Prüfsumme geprüft.
+
+Die geführte Batch-Erstellung ist signiert, sitzungsgebunden, eine Stunde gültig
+und CSRF-geschützt. Sie vergleicht den gesamten Prüfstand unter Outlook-Sperre und
+Schreibtransaktion erneut. Wiederholte Bestätigung findet denselben Batch über den
+in derselben Transaktion gespeicherten Auditverweis wieder. Bestehende interne
+Exportaufrufe bleiben kompatibel; alte UI-Erstellungsaktionen führen im neuen
+HR-Ablauf zunächst zur Prüfung.
+
+Der Kampagnenabschluss zeigt aktuelle Restaufgaben mit jeweiligen Klärungswegen,
+einschliesslich Einzelausgaben, Zielnachreichungs-Versand und ungeklärter
+Erinnerungsvorgänge. Übergreifende PDFs, ungeklärte Postfachnachrichten und Ereignisse ohne Durchlauf
+sind als übergreifend bezeichnet. Der Link zu den offenen Gesprächsteilen filtert nach dem
+gesamten Durchlauf, damit auch die Ausblicke des Folgejahrs enthalten sind; dieser
+Filter bleibt bei Seitennavigation und Sammelauswahl erhalten.
+
+Der Abschluss erledigt keine Gesprächspflichten und löst keine externe Ablage oder
+SAP-Verarbeitung aus. Restfälle bleiben im HR-Ablauf bearbeitbar. Bei verbleibenden
+Aufgaben sind Begründung und verantwortliche Person erforderlich. Die tatsächliche
+Dossier-/SAP-Verarbeitung wird ausserhalb der App geprüft. Eine signierte,
+sitzungsgebundene Abschlussgrundlage wird vor der Übernahme innerhalb derselben
+Sperre und Transaktion erneut verglichen – auch bei Änderungen mit gleicher
+Restfallzahl. Eine Aktualisierung erhält Begründung und Verantwortlichkeit.
+Klärungslinks öffnen neue Tabs. Der damalige Abschlussstand und die damalige
+Restfallverantwortung sind vom aktuellen Arbeitsstand getrennt sichtbar.
+Eine wiederholte alte Bestätigung schliesst einen inzwischen wieder geöffneten
+Durchlauf nicht erneut und behauptet keinen neuen Abschluss.
+
+Validierung: Integrationstests vergleichen Vorschau und tatsächliche Exportzeilen,
+prüfen echte Excel-Erstellung, wiederholte Erstellung und bytegleichen Download,
+veraltete Grundlagen, Dateiänderungen, fehlende SAP-Auswahl, inaktive Ereignisse,
+Restfallbegründung, gleichzahlige Änderungen, Wiederöffnung, Sitzungs-/CSRF-Grenzen,
+Weiterleitung alter UI-Aktionen und den Durchlauffilter bei Sammelauswahl.
+Browserprüfung ausschliesslich mit erfundenen Personen: Einstieg, Prüfung eines
+exportierbaren Rückblicks, Batch-Erstellung und gespeicherte Personenauswahl sowie
+Abschlussübersicht mit konkreten Restaufgaben. Kein SAP-Zugriff, keine echte
+Nachricht und kein produktiver Abschluss.
+
+Noch offen bleiben weitere Quellen für unveränderte Wiederzustellungen und die
+abschliessende Prüfung der zusammengeführten Bedienwege. Die Verwaltung der
+Formularsteuerelemente V01 bleibt wie vereinbart eine spätere Etappe.
+
+![Abschlussübersicht mit ausschliesslich erfundenen Testpersonen](images/ux-export-abschluss-test.png)

@@ -95,6 +95,8 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.register_blueprint(goal_bp)
     from .part_routes import bp as part_bp
     app.register_blueprint(part_bp)
+    from .export_routes import bp as export_bp
+    app.register_blueprint(export_bp)
     from .sap_routes import bp as sap_bp
     app.register_blueprint(sap_bp)
     from .return_routes import bp as return_bp

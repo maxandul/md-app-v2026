@@ -877,6 +877,8 @@ def cycle_detail(cycle_id: int):
 
 @bp.post("/cycles/<int:cycle_id>/status")
 def set_cycle_status(cycle_id: int):
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('status')=='abgeschlossen':
+        return redirect(url_for('export_work.close',cycle_id=cycle_id))
     try:
         old_status, new_status = change_cycle_status(
             get_db(), cycle_id=cycle_id,
@@ -1001,6 +1003,7 @@ def replace_case_pdf(cycle_id: int, case_id: str):
 
 @bp.post("/cycles/<int:cycle_id>/sap-export")
 def download_sap_export(cycle_id: int):
+    if current_app.config.get('HR_GOAL_WORKFLOW'):return redirect(url_for('export_work.export',cycle_id=cycle_id))
     try:
         batch = create_sap_upload_batch(
             get_db(),
@@ -1745,6 +1748,7 @@ def help_document(name):
 def cycle_closure(cycle_id):
     cycle=get_db().execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
     if not cycle:abort(404)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):return redirect(url_for('export_work.close',cycle_id=cycle_id))
     return render_template('cycle_closure.html',active_nav='dialogs',cycle=cycle,summary=workflow.closure_summary(get_db(),cycle_id))
 
 

@@ -326,7 +326,7 @@ class WebAppIntegrationTest(unittest.TestCase):
             "/dialoge": "Durchläufe und Dialogpflichten",
             "/versand": "Word-Vorlagen bereitstellen",
             "/ruecklaeufe": "PDFs prüfen und verarbeiten",
-            "/sap-export": "Massenuploads erstellen",
+            "/sap-export": "SAP-Export vorbereiten",
             "/auswertungen": "Prozess- und Organisationsauswertungen",
         }
         for path, heading in pages.items():

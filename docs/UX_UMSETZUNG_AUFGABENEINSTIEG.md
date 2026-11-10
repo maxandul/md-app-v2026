@@ -300,3 +300,48 @@ Das geführte Ersetzen bestehender Gesprächsaufträge und die übrigen noch off
 Bedienwege bleiben weitere Arbeit. V01 bleibt wie vereinbart später.
 
 ![Vorbereitung einer Wiederzustellung mit ausschliesslich erfundenen Testpersonen](images/ux-wiederzustellung-test.png)
+
+## Etappe 7: Bestehende Zuständigkeit je Gesprächsteil geführt ändern
+
+Der Einstieg «Gesprächsauftrag ändern / Verlauf» zeigt Namen, OE und die direkte
+Führungskraft sowie die davon gegebenenfalls abweichende Zuständigkeit für den
+gewählten Rückblick oder Ausblick. Zeitraum, verantwortliche Führungskraft und
+Formular-OE werden zuerst in einer Änderungsvorschau gegenübergestellt. Ein
+Grund ist erforderlich; die Vorschau verändert noch keine fachlichen Daten.
+
+Die Vorschau benennt ausdrücklich den unveränderten anderen Gesprächsteil und
+zeigt vorhandene Dateien, gespeicherte Versandnachweise, konkrete Rückläufe und
+ungeklärte Eingänge. Offene Outlook- und Erinnerungsvorgänge sowie vorhandene
+Rückläufe verlangen zuerst eine Klärung. Die verlinkte Klärung öffnet einen neuen
+Tab; «Vorschau aktualisieren» erhält die eingegebenen Angaben. Ein unbekannter
+Eingang wird weiterhin nicht als nachgewiesener Rücklauf einer Person behandelt.
+
+Die geprüfte Übernahme ersetzt ausschliesslich die Zuständigkeit innerhalb des
+bestehenden Gesprächsteils. Sie erzeugt keinen zweiten Auftrag und erledigt nicht
+den ganzen MD. Frühere Dateien, Nachrichten und Nachweise bleiben bestehen.
+Danach führt ein eigener Schritt zu neuen Unterlagen, mit ausschliesslich dem
+gewählten Teil vorausgewählt. Neue zusätzliche Gespräche bleiben ein gesonderter
+Vorgang und schliessen frühere Aufträge nicht automatisch.
+
+Die signierte Vorschau ist eine Stunde gültig, sitzungsgebunden und CSRF-geschützt.
+Die geführte Übernahme prüft ihren vollständigen Grundlagenstand unter derselben
+Sperre wie Outlook und innerhalb einer Schreibtransaktion erneut. Neue Eingänge,
+geänderte Stammdaten oder parallele Zuordnungsänderungen verlangen eine erneute
+Prüfung. Dieselbe Bestätigung bleibt auch bei Wiederholung idempotent. Im Verlauf
+werden die Namen zum Änderungszeitpunkt gespeichert; ältere Einträge mit nur einer
+Personalnummer kennzeichnen die ersatzweise verwendeten heutigen Stammdaten.
+
+Validierung: zwölf neue Integrationstests sowie der angepasste isolierte
+Bedienungstest prüfen Vorschau ohne fachliche Schreibzugriffe, Teilbegrenzung,
+Originalerhalt, tatsächliche Formularerzeugung, Wiederholungen, parallele Änderungen,
+späte Eingänge, offene Versand-/Erinnerungsvorgänge, Namen im Verlauf,
+Sitzungsgrenzen und signierte Angaben. Browserprüfung mit erfundenen Personen:
+Ausblick Eva Sommer → Luca Winter, Rückblick bleibt bei Eva; anschliessend ist
+nur der Ausblick zur Formularerstellung ausgewählt. Kein echter Outlook-Aufruf.
+
+Offen bleiben insbesondere neue zusätzliche Gesprächsaufträge mit gesonderter
+Erledigung eines alten Auftrags, weitere Wiederzustellungsquellen und die noch
+nicht vereinheitlichten Bedienwege etwa für SAP-Export und Abschluss. V01 bleibt
+wie vereinbart später.
+
+![Zuordnungsänderung mit ausschliesslich erfundenen Testpersonen](images/ux-zuordnung-test.png)

@@ -1,11 +1,14 @@
 """Part responsibility editing and navigation over existing cases."""
 import json
 import secrets
+import hashlib
+from itsdangerous import URLSafeTimedSerializer,BadSignature
 from urllib.parse import urlsplit
 from flask import Blueprint,abort,current_app,flash,redirect,render_template,request,session,url_for
 from .db import get_db
 from .goal_routes import protect,actor
-from .services import part_responsibilities as parts,part_queries,reminders,part_actions
+from .services import part_responsibilities as parts,part_queries,reminders,part_actions,part_changes,part_change_links
+from .services.intake_views import date_label
 
 bp=Blueprint('parts',__name__,url_prefix='/arbeit/dialogteile')
 bp.before_request(protect)
@@ -115,26 +118,59 @@ def action_preview(key):
         included=page_rows(False),excluded=page_rows(True))
 
 
+def change_signer():return URLSafeTimedSerializer(current_app.secret_key,salt='md-part-change')
+
+
+def change_proof(token,case_id,kind):
+    proof=change_signer().loads(token,max_age=3600)
+    if proof['owner']!=session.get('part_change_owner') or proof['case_id']!=case_id or proof['kind']!=kind:
+        raise ValueError('Diese Vorschau gehört zu einer anderen Auswahl oder Sitzung.')
+    return proof
+
+
 @bp.route('/<case_id>/<kind>',methods=['GET','POST'])
 def detail(case_id,kind):
     db=get_db()
-    try:part=parts.resolve(db,case_id,kind)
+    try:current=part_changes.context(db,case_id,kind)
     except ValueError:abort(404)
+    part=current['part']
+    session.setdefault('part_change_owner',secrets.token_urlsafe(32))
+    values={k:part[k] for k in ('manager_pn','form_org_source','period_start','period_end')};values['reason']=''
+    def show_preview(proposal,revision):
+        preview=part_changes.plan(db,case_id,kind=kind,expected_revision=revision,**proposal)
+        token=change_signer().dumps({'owner':session['part_change_owner'],'case_id':case_id,'kind':kind,
+            'revision':part['responsibility_revision'],'proposal':proposal,'fingerprint':preview['fingerprint'],'nonce':secrets.token_urlsafe(24)})
+        part_change_links.enrich(db,preview,url_for('parts.detail',case_id=case_id,kind=kind,back=back_link()))
+        return render('parts/change_preview.html',plan=preview,token=token,date_label=date_label)
     if request.method=='POST':
+        action=request.form.get('action','preview')
         try:
-            parts.assign(db,case_id,kind=kind,manager_pn=request.form.get('manager_pn',''),form_org_source=request.form.get('form_org_source',''),
-                period_start=request.form.get('period_start',''),period_end=request.form.get('period_end',''),expected_revision=request.form.get('revision',type=int),reason=request.form.get('reason',''),user_id=actor())
-            flash('Zuständigkeit, Zeitraum und Formular-OE für diesen Gesprächsteil gespeichert. Frühere Dateien und Versandnachweise bleiben erhalten.','success')
-        except ValueError as exc:flash(str(exc),'error')
-        return redirect(url_for('parts.detail',case_id=case_id,kind=kind,back=back_link()))
-    history=[]
-    for row in db.execute("SELECT * FROM hr_goal_events WHERE case_id=? AND action='responsibility_changed' ORDER BY id DESC",(case_id,)):
-        value=dict(row);value['details']=json.loads(value['details_json'])
-        if value['details'].get('kind','review')==kind:history.append(value)
-    pending=[dict(r) for r in db.execute('''SELECT r.* FROM reminders r JOIN reminder_obligations ro ON ro.reminder_id=r.id
-        WHERE ro.obligation_id=? AND r.status IN ('prepared','draft_created','failed')
-        AND NOT EXISTS(SELECT 1 FROM hr_reminder_resolutions rr WHERE rr.reminder_id=r.id) ORDER BY r.id''',(part['obligation_id'],))]
-    return render('parts/detail.html',part=part,history=history,pending_reminders=pending)
+            if action in ('apply','edit','refresh'):
+                proof=change_proof(request.form.get('change_token',''),case_id,kind)
+                values=proof['proposal']
+                if action=='refresh':
+                    flash('Aktuellen Stand neu eingelesen. Bitte diese Vorschau erneut prüfen.','info')
+                    return show_preview(values,part['responsibility_revision'])
+                if action=='apply':
+                    if request.form.get('checked')!='yes':raise ValueError('Bitte den konkret beschriebenen Ersatz dieser Teilzuständigkeit prüfen und bestätigen.')
+                    event_id=parts.assign(db,case_id,kind=kind,expected_revision=proof['revision'],user_id=actor(),
+                        expected_change_context=proof['fingerprint'],change_request=hashlib.sha256(request.form['change_token'].encode()).hexdigest(),**values)
+                    flash('Zuordnung dieses Gesprächsteils gespeichert. Die bisherige Zuständigkeit dafür ist abgelöst; die anderen Teile, frühere Dateien und Versandnachweise bleiben erhalten.','success')
+                    return redirect(url_for('parts.detail',case_id=case_id,kind=kind,back=back_link(),changed=event_id))
+            elif action=='preview':
+                values={k:request.form.get(k,'') for k in values}
+                return show_preview(values,request.form.get('revision',type=int))
+            else:raise ValueError('Unbekannte Änderungsaktion.')
+        except (BadSignature,KeyError,TypeError,ValueError) as exc:flash(str(exc) or 'Vorschau abgelaufen. Bitte neu prüfen.','error')
+        current=part_changes.context(db,case_id,kind);part=current['part']
+    history=part_changes.history(db,case_id,kind)
+    selected=db.execute('SELECT first_name,last_name,org_unit FROM employees WHERE pn=?',(values['manager_pn'],)).fetchone()
+    manager_label=(selected['first_name']+' '+selected['last_name']+' · '+selected['org_unit']) if selected else 'Auswahl erneut prüfen'
+    changed_event=next((r for r in history if r['id']==request.args.get('changed',type=int)),None)
+    pending=[r for r in current['effects']['reminders'] if r['status'] in ('prepared','draft_created','failed') and not r['resolution']]
+    part_change_links.enrich(db,current,request.full_path)
+    return render('parts/detail.html',part=part,context=current,values=values,manager_label=manager_label,
+        history=history,pending_reminders=pending,date_label=date_label,changed_event=changed_event)
 
 
 @bp.post('/erinnerung/<int:reminder_id>')

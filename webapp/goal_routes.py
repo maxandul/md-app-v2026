@@ -111,7 +111,7 @@ def upload():
 def lookup():
     q='%'+request.args.get('q','').strip()+'%'
     if request.args.get('kind')=='manager':
-        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · '||org_unit AS label FROM employees WHERE first_name||' '||last_name||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
+        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · '||org_unit AS label FROM employees WHERE active=1 AND first_name||' '||last_name||' '||org_unit||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
     else:
         from .services.intake_views import employment_choices
         return {'results':employment_choices(get_db(),q=request.args.get('q',''))}

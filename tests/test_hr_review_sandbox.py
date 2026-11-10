@@ -1,5 +1,6 @@
 """The guided walkthrough must never reach production configuration or Outlook."""
 import os
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -52,6 +53,12 @@ class HRReviewSandboxTest(unittest.TestCase):
             response=client.post(f'/arbeit/dialogteile/{case}/outlook',data={'csrf_token':csrf,'revision':'0',
                 'manager_pn':'900102','period_start':'2026-01-01','period_end':'2026-12-31','form_org_source':'manager','reason':'Test der Ausblick-Vertretung'},follow_redirects=True)
             self.assertEqual(response.status_code,200);self.assertIn('Luca Winter',response.text)
+            proof=re.search('name="change_token" value="([^"]+)"',response.text)
+            self.assertIsNotNone(proof)
+            response=client.post(f'/arbeit/dialogteile/{case}/outlook',data={'csrf_token':csrf,
+                'action':'apply','change_token':proof.group(1),'checked':'yes'},follow_redirects=True)
+            self.assertEqual(response.status_code,200)
+            self.assertIn('Nur für diesen Teil Unterlagen vorbereiten',response.text)
             with app.app_context():cycle=get_db().execute('SELECT cycle_id FROM dialog_cases WHERE case_id=?',(case,)).fetchone()[0]
             response=client.post(f'/cycles/{cycle}/cases/{case}/word-correction',data={'kind':['review','outlook']},follow_redirects=True)
             self.assertEqual(response.status_code,200)

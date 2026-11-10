@@ -200,7 +200,7 @@ def master_data():
 def _planning_back():
     from urllib.parse import urlsplit
     value=request.values.get('back','');parsed=urlsplit(value)
-    return value if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/durchlauf' or parsed.path.startswith('/stammdaten/abgleich')) else ''
+    return value if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/durchlauf' or parsed.path.startswith(('/stammdaten/abgleich','/arbeit/dialogteile/'))) else ''
 
 
 @bp.get("/dialoge")
@@ -456,7 +456,7 @@ def dispatch():
 def _dispatch_back(default=None):
     from urllib.parse import urlsplit
     value=request.values.get('back','');parsed=urlsplit(value)
-    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich'))):
+    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich','/arbeit/dialogteile/'))):
         return value
     return default or url_for('main.dispatch',view='overview',cycle_id='')
 
@@ -2055,7 +2055,7 @@ def person_word_correction(cycle_id, case_id):
                 from .services.redeliveries import validate_prepared
                 validate_prepared(db,row,current_app.config['WORD_TEMPLATE_PATHS'],kind='person')
             except (ValueError,OSError) as exc:row['redelivery_error']=str(exc)
-    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,redelivery_sources=db.execute("""SELECT DISTINCT p.id,p.created_at,m.first_name||' '||m.last_name AS manager_name FROM word_dispatch_packages p
+    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,preselected_kinds=set(request.args.getlist('kind')) & set(case['kinds']),redelivery_sources=db.execute("""SELECT DISTINCT p.id,p.created_at,m.first_name||' '||m.last_name AS manager_name FROM word_dispatch_packages p
         JOIN word_mail_deliveries d ON d.package_id=p.id LEFT JOIN employees m ON m.pn=p.manager_pn
         WHERE p.cycle_id=? AND d.status='sent_confirmed' AND p.discarded_at=''
         AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='')

@@ -197,6 +197,12 @@ def master_data():
     )
 
 
+def _planning_back():
+    from urllib.parse import urlsplit
+    value=request.values.get('back','');parsed=urlsplit(value)
+    return value if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/durchlauf' or parsed.path.startswith('/stammdaten/abgleich')) else ''
+
+
 @bp.get("/dialoge")
 def dialogs():
     connection = get_db()
@@ -263,6 +269,7 @@ def dialogs():
         employee_choices=connection.execute("SELECT a.id,a.assignment_number,a.org_unit,a.position,e.first_name,e.last_name,a.person_number FROM employment_assignments a JOIN employees e ON e.pn=a.person_number WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number").fetchall(),
         manager_choices=connection.execute("SELECT pn,first_name,last_name,org_unit FROM employees WHERE active=1 ORDER BY last_name,first_name,pn").fetchall(),
         event_types=EVENT_TYPE_LABELS,
+        planning_back=_planning_back(),
         scopes=SCOPE_LABELS,
         **data,
     )
@@ -377,13 +384,13 @@ def add_dialog_event():
         )
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")
-        return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+        return redirect(url_for("main.dialogs", cycle_id=cycle_id,back=_planning_back()))
     audit(
         "dialog_event_created", "dialog_event", str(event_id),
         cycle_id=cycle_id, event_type=request.form.get("event_type", ""),
     )
     flash(f"Dialogereignis {event_id} wurde angelegt.", "success")
-    return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+    return redirect(_planning_back() or (url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs")))
 
 
 @bp.post("/dialog-events/<int:event_id>/leading-sap")
@@ -449,7 +456,7 @@ def dispatch():
 def _dispatch_back(default=None):
     from urllib.parse import urlsplit
     value=request.values.get('back','');parsed=urlsplit(value)
-    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith('/versand/pakete/')):
+    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich'))):
         return value
     return default or url_for('main.dispatch',view='overview',cycle_id='')
 

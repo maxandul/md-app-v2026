@@ -2,7 +2,7 @@
 {% block title %}Einzelne Word-Formulare · MD-Verwaltung{% endblock %}
 {% block content %}
 {% macro shipping_back() %}{% if correction_back %}<input type="hidden" name="back" value="{{ correction_back }}">{% endif %}{% endmacro %}
-{% if correction_back %}<p><a href="{{ correction_back }}">Zurück zur Versandübersicht</a></p>{% endif %}
+{% if correction_back %}<p><a href="{{ correction_back }}">Zurück zur aufrufenden Auswahl</a></p>{% endif %}
 <nav class="breadcrumb" aria-label="Brotkrumen"><a href="{{ url_for('main.dispatch',cycle_id=case.cycle_id) }}">Versand</a><span> / </span><a href="{{ url_for('main.manager_detail',cycle_id=case.cycle_id,manager_pn=case.manager_pn) }}">Führungslinie</a><span> / </span><span>{{ case.first_name }} {{ case.last_name }}</span></nav>
 <section class="page-head"><h1>Einzelne Word-Formulare</h1><p>{{ case.first_name }} {{ case.last_name }}</p><details><summary>Technische Zuordnung</summary>Personalnummer {{ case.employee_pn }} · Anstellung {{ case.employment_assignment }}</details><p>{% if case.parts %}Empfänger gemäss Gesprächszuständigkeit; die gespeicherte Adresse steht bei jeder Ausgabe.{% else %}Empfänger: {{ case.recipient_email or 'E-Mail-Adresse fehlt' }}.{% endif %} Die Einzelausgabe enthält nur die ausgewählten Formulare. Der bisherige Gesamtversand bleibt erhalten.</p></section>
 {% if case.parts %}{% set part_rows=case.parts %}{% include 'parts/_summary.html' %}<p>Ausgewählte Teile mit unterschiedlichen Zuständigen werden als getrennte Ausgaben vorbereitet.</p>{% endif %}

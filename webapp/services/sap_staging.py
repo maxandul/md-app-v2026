@@ -136,7 +136,9 @@ def change_query(batch_id=None,*,q='',state='open'):
     where=['1'];params=[]
     if batch_id is not None:where.append('batch_id=?');params.append(batch_id)
     if q:where.append("first_name||' '||last_name||' '||person_number LIKE ?");params.append('%'+q+'%')
-    if state=='open':where.extend(['superseded_by IS NULL',"((data_status='pending' AND category<>'unchanged') OR followup_status='open')"])
+    if state=='followup':where.extend(['superseded_by IS NULL',"data_status='applied' AND followup_status='open'"])
+    elif state=='data':where.extend(['superseded_by IS NULL',"data_status='pending' AND category<>'unchanged'"])
+    elif state=='open':where.extend(['superseded_by IS NULL',"((data_status='pending' AND category<>'unchanged') OR followup_status='open')"])
     elif state in ('new','changed','missing','conflict','unchanged','excluded'):where.append('category=?');params.append(state)
     return ' FROM hr_sap_changes WHERE '+' AND '.join(where),params
 

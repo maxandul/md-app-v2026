@@ -179,3 +179,60 @@ des gefilterten Rückwegs mit ausschliesslich erfundenen Personen. Keine Nachric
 oder externe Übergabe im Browser ausgelöst.
 
 ![Versandübersicht mit ausschliesslich erfundenen Testpersonen](images/ux-versand-test.png)
+
+## Fünfte Etappe: Durchlaufstart und Stammdatenfolgen verbinden
+
+«Durchlauf beginnen oder fortsetzen» führt zu `/durchlauf`. Die Ansicht verbindet
+Stammdatenprüfung, Gesprächsaufträge/Fristen und Vorlagenversand. Vorhandene Jahre
+werden zur Fortsetzung angeboten. Eine erneute Anlage desselben Jahres öffnet den
+bestehenden Durchlauf; es entsteht kein zweiter Auftrag. Neue Durchläufe verwenden
+den zuletzt übernommenen Datenstand. Hat er sich seit dem Öffnen geändert, ist die
+Grundlage neu zu prüfen. Die vorhandene Fachfunktion legt Aufträge und Fristen an;
+dabei entstehen keine Word-Dateien oder Versandnachweise.
+
+Die Übersicht zeigt vorhandene Gesprächsteile und reguläre Ausgaben getrennt.
+Zählungen gelten nicht als inhaltliche Freigabe und ein früherer Versand bestätigt
+keine späteren Datenänderungen. Die Gesprächsliste lässt sich für das Rückblickjahr
+öffnen. Die SAP-Zähler beziehen sich ausdrücklich auf alle Abgleiche; der gewählte
+Durchlauf ist ein Arbeitskontext, keine Beschränkung der allgemeinen Datenübernahme.
+
+Der SAP-Abgleich hat getrennte Einstiege für «Datenprüfung offen» und «Daten
+übernommen – Gesprächsfolgen offen». Zähler und Filter folgen den bestehenden
+Abgleicheinträgen und berücksichtigen abgelöste Vorschauen nicht als offene Arbeit.
+In Vorschau, Einzelauswahl und Vergleich werden OE, Funktion und die Namen der
+Führungskräfte gezeigt; Nummern stehen in den Zuordnungsdetails. Im neuen Export
+enthaltene Namen werden als solche verwendet. Unbekannte Zuordnungen werden nicht
+geraten. Fehlende Exportpersonen werden mit ihrem bisherigen Kontext bezeichnet.
+
+Die Personendetailansicht führt von den geänderten Angaben über Gesprächsbedarf
+und Zuständigkeit zum dokumentierten Prüfergebnis. Geeignete Personendaten können
+von dort einzeln zur bestehenden Übernahmeprüfung gewählt werden. Gesprächsfolgen
+zeigen die betroffenen Personen und Jahre sowie die tatsächlich zugewiesene
+Verantwortung je Teil. Vorlagenaktualisierung, Versandprüfung und zusätzliche
+unterjährige Aufträge sind direkt erreichbar. Datenübernahme allein ändert oder
+schliesst diese Gesprächsaufträge nicht und stellt keine Unterlagen zu.
+
+Der Abschluss einer Folgeprüfung benennt ausdrücklich die fachlich zu prüfenden
+Wirkungen und verlangt ein konkretes Ergebnis. Er dokumentiert diese Prüfung;
+er führt weder Zuweisung noch Erstellung oder Versand automatisch aus. Die
+vorhandene Kontext-/Revisionsprüfung verhindert einen Abschluss auf veraltetem
+Daten- oder Gesprächsstand. Durchlaufkontext und gefilterter Rückweg bleiben bei
+Einzelauswahl, Übernahme und weiterer Bearbeitung erhalten. Nach Anlage eines
+zusätzlichen Ereignisses kann zur aufrufenden SAP-Folgeprüfung zurückgekehrt
+werden; diese bleibt dabei offen. Externe Rücksprungziele werden verworfen.
+
+Validierung: vollständige Python-Suite erfolgreich (405 Tests im Gesamtlauf),
+zwölf gezielte Integrationstests im abschliessenden Lauf sowie elf JavaScript-Tests.
+Geprüft wurden unter anderem unveränderte Leseansichten, Anlage/Wiederaufnahme,
+veralteter Importstand, kanonische Fortschrittszähler, abgelöste Einträge,
+Namenskontext, Einzelübernahme, erhaltene Gesprächsverantwortung, konkrete
+Abschlussvermerke und sichere Rückwege. Browserprüfung mit erfundenen Personen:
+Durchlaufeinstieg, Übernahme eines Führungs-/OE-Wechsels, weiterhin offene
+Gesprächsfolgen und Anschluss an die unterjährige Erfassung. Keine echte Nachricht,
+Postfachverarbeitung oder externe Dossierübergabe ausgelöst.
+
+Noch offen im umfassenden Aufgabenmodell: unveränderte Wiederzustellung,
+geführtes Ersetzen bestehender Gesprächsaufträge und die weitere Vereinheitlichung
+der übrigen Arbeitswege. Die Vorlagen-/Steuerelementverwaltung bleibt V01.
+
+![Stammdatenfolgeprüfung mit ausschliesslich erfundenen Testpersonen](images/ux-stammdaten-test.png)

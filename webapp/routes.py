@@ -399,6 +399,19 @@ def mark_leading_sap_event(event_id: int):
 
 @bp.get("/versand")
 def dispatch():
+    if current_app.config.get('HR_GOAL_WORKFLOW') and (request.args.get('view')=='overview' or
+            (request.args.get('view')!='regular' and 'cycle_id' not in request.args and not request.args.get('word_batch'))):
+        from .services import dispatch_views
+        from .services.intake_views import date_label
+        filters=dict(q=request.args.get('q',''),state=request.args.get('state','open'),kind=request.args.get('kind',''),year=request.args.get('year',type=int))
+        try:data=dispatch_views.listing(get_db(),page_number=request.args.get('page',1,type=int),**filters)
+        except ValueError as exc:abort(400,str(exc))
+        for row in data['rows']:
+            if row['kind']=='regular':row['href']=url_for('main.dispatch_package',package_id=row['id'],back=request.full_path)
+            elif row['kind']=='person':row['href']=url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'],back=request.full_path,_anchor='correction-'+str(row['id']))
+            else:row['href']=url_for('goal_work.dispatch',dispatch_id=row['id'],back=request.full_path)
+        return render_template('shipping/index.html',active_nav='dispatch',filters=filters,date_label=date_label,labels=dispatch_views.LABELS,kinds=dispatch_views.KINDS,
+            page_url=lambda page:url_for('main.dispatch',view='overview',cycle_id='',page=page,**filters),**data)
     data = cockpit_overview(
         get_db(), selected_cycle_id=request.args.get("cycle_id", type=int)
     )
@@ -431,6 +444,76 @@ def dispatch():
         hr_sender=current_app.config['HR_MAILBOX_EMAIL'],
         org_units=org_units, **data
     )
+
+
+def _dispatch_back(default=None):
+    from urllib.parse import urlsplit
+    value=request.values.get('back','');parsed=urlsplit(value)
+    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith('/versand/pakete/')):
+        return value
+    return default or url_for('main.dispatch',view='overview',cycle_id='')
+
+
+@bp.route('/versand/pakete/<int:package_id>',methods=['GET','POST'])
+def dispatch_package(package_id):
+    if not current_app.config.get('HR_GOAL_WORKFLOW'):abort(404)
+    db=get_db()
+    package=db.execute('''SELECT p.*,c.review_year,c.outlook_year,m.first_name||' '||m.last_name AS manager_name,
+        m.org_unit,m.email FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
+        LEFT JOIN employees m ON m.pn=p.manager_pn WHERE p.id=?''',(package_id,)).fetchone()
+    if not package:abort(404)
+    if request.method=='POST':
+        action=request.form.get('action','')
+        try:
+            if request.form.get('checked')!='yes':raise ValueError('Bitte die konkret beschriebene Prüfung ausdrücklich bestätigen.')
+            if action=='draft':
+                if current_app.config.get('HR_REVIEW_SANDBOX'):abort(403,'HR-Test: Outlook bleibt gesperrt.')
+                result=dispatch_word_packages(db,cycle_id=package['cycle_id'],package_ids=[package_id],
+                    template_paths=current_app.config['WORD_TEMPLATE_PATHS'],sender_email=current_app.config['HR_MAILBOX_EMAIL'],
+                    delivery_mode='draft',subject_template=request.form.get('subject_template',''),body_template=request.form.get('body_template',''),
+                    retry_confirmed=request.form.get('retry_confirmed')=='yes')
+                flash(f"{result['created']} Outlook-Entwurf erstellt · {result['failed']} fehlgeschlagen. Noch kein Versand bestätigt.",'error' if result['failed'] else 'success')
+                for error in result['errors']:flash(error,'error')
+            elif action=='sent_confirmed':
+                confirm_word_draft_sent(db,package_id)
+                flash('Tatsächlicher Versand dieser Ausgabe dokumentiert.','success')
+            elif action=='cancelled':
+                discard_word_draft(db,package_id)
+                flash('Nicht versandter Outlook-Vorgang als verworfen dokumentiert.','success')
+            elif action=='discard':
+                discard_word_package(db,package_id)
+                flash('Unbenutzte Ausgabe verworfen. Frühere Versandnachweise bleiben erhalten.','success')
+            elif action in ('resolve_sent','resolve_cancelled'):
+                from .services.word_dispatch import resolve_interrupted_delivery
+                resolve_interrupted_delivery(db,package_id,outcome='sent_confirmed' if action=='resolve_sent' else 'cancelled',reason=request.form.get('reason',''))
+                flash('Unterbrochenen Outlook-Vorgang geklärt. Keine neue Nachricht erstellt.','success')
+            else:raise ValueError('Unbekannte Aktion für diese Ausgabe.')
+            audit('word_package_focused_action','word_package',str(package_id),action_taken=action)
+        except (ValueError,LookupError,OSError) as exc:flash(str(exc),'error')
+        return redirect(url_for('main.dispatch_package',package_id=package_id,back=_dispatch_back()))
+    latest=db.execute("SELECT MAX(id) FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? AND discarded_at=''",(package['cycle_id'],package['manager_pn'])).fetchone()[0]
+    candidate=None
+    if latest==package_id:
+        candidate=next(iter(word_dispatch_candidates(db,cycle_id=package['cycle_id'],manager_pn=package['manager_pn'],template_paths=current_app.config['WORD_TEMPLATE_PATHS'])),None)
+    delivery=db.execute('SELECT * FROM word_mail_deliveries WHERE package_id=?',(package_id,)).fetchone()
+    manifest=json.loads(package['manifest_json'])
+    names={r['case_id']:r for r in db.execute('''SELECT c.case_id,p.first_name,p.last_name,a.org_unit AS employee_org_unit FROM dialog_cases c
+        JOIN persons p ON p.person_number=c.employee_pn LEFT JOIN dialog_events de ON de.legacy_case_id=c.case_id LEFT JOIN employment_assignments a ON a.id=de.employment_id WHERE c.case_id IN (SELECT json_extract(value,'$.case_id') FROM json_each(?))''',(json.dumps(manifest['documents']),))}
+    for doc in manifest['documents']:
+        person=names.get(doc['case_id'])
+        doc['person_name']=(person['first_name']+' '+person['last_name']) if person else 'Person nicht mehr in Stammdaten'
+        doc['org_unit']=doc.get('responsibility',{}).get('form_org_unit',person['employee_org_unit'] if person else '')
+    doc_pages=max(1,(len(manifest['documents'])+49)//50)
+    doc_page=min(max(request.args.get('doc_page',1,type=int),1),doc_pages)
+    sent=db.execute("""SELECT p.id,d.updated_at,d.recipient_email FROM word_dispatch_packages p JOIN word_mail_deliveries d ON d.package_id=p.id
+        WHERE p.cycle_id=? AND p.manager_pn=? AND d.status='sent_confirmed' ORDER BY d.updated_at DESC,p.id DESC LIMIT 1""",(package['cycle_id'],package['manager_pn'])).fetchone()
+    from .services.dispatch_views import LABELS
+    from .services.intake_views import date_label
+    return render_template('shipping/package.html',active_nav='dispatch',package=package,candidate=candidate,latest_id=latest,
+        manifest=manifest,documents=manifest['documents'][(doc_page-1)*50:doc_page*50],doc_page=doc_page,doc_pages=doc_pages,
+        doc_page_url=lambda page:url_for('main.dispatch_package',package_id=package_id,back=_dispatch_back(),doc_page=page),delivery=delivery,status=delivery['status'] if delivery else ('cancelled' if package['discarded_at'] else 'prepared'),labels=LABELS,last_sent=sent,
+        back=_dispatch_back(),default_word_subject=DEFAULT_WORD_SUBJECT,default_word_body=DEFAULT_WORD_BODY,
+        date_label=date_label,hr_sender=current_app.config['HR_MAILBOX_EMAIL'])
 
 
 @bp.get("/ruecklaeufe")
@@ -1498,10 +1581,17 @@ def preview_word_mail(cycle_id):
     cycle = get_db().execute('SELECT * FROM cycles WHERE id=?', (cycle_id,)).fetchone()
     if not cycle:
         abort(404)
-    manager = get_db().execute("""SELECT e.pn, e.first_name, e.salutation, TRIM(e.first_name || ' ' || e.last_name) AS name
-        FROM employees e WHERE e.pn=? AND EXISTS
-        (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
-        (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        manager=get_db().execute('''SELECT e.pn,e.first_name,e.salutation,TRIM(e.first_name||' '||e.last_name) AS name
+            FROM employees e WHERE e.pn=? AND EXISTS(SELECT 1 FROM hr_resolved_obligations o
+                WHERE o.cycle_id=? AND o.manager_pn=e.pn AND o.active=1 AND o.required=1
+                AND o.document_kind IN ('review','outlook') AND o.event_status<>'cancelled')''',
+            (request.form.get('preview_manager_pn',''),cycle_id)).fetchone()
+    else:
+        manager = get_db().execute("""SELECT e.pn, e.first_name, e.salutation, TRIM(e.first_name || ' ' || e.last_name) AS name
+            FROM employees e WHERE e.pn=? AND EXISTS
+            (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
+            (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
     if not manager:
         return {'error': 'Bitte eine Führungskraft für die Vorschau auswählen.'}, 400
     row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'],
@@ -1944,12 +2034,12 @@ def person_word_correction(cycle_id, case_id):
             for correction_id in correction_ids:audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
             for error in errors:flash(error,'error')
             if correction_ids:flash(f'{len(correction_ids)} Ausgabe(n) nach zuständiger Führungskraft erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
-            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
+            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id,**({'back':_dispatch_back()} if request.values.get('back') else {}))+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
         except (ValueError,LookupError,OSError) as exc:
             flash(str(exc),'error')
     rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]
     for row in rows: row['manifest'] = json.loads(row['manifest_json'])
-    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows)
+    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,correction_back=_dispatch_back() if request.args.get('back') else '')
 
 
 @bp.get('/word-corrections/<int:correction_id>/download')
@@ -1969,4 +2059,4 @@ def person_correction_action(correction_id):
         audit('person_word_correction_action','word_correction',str(correction_id),action_taken=request.form.get('action'))
         flash('Outlook-Entwurf erstellt; in Outlook prüfen und versenden.' if request.form.get('action')=='draft' else 'Outlook-Stand der Einzelausgabe dokumentiert.','success')
     except (ValueError,OSError) as exc: flash(str(exc),'error')
-    return redirect(url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'])+'#correction-'+str(correction_id))
+    return redirect(url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'],**({'back':_dispatch_back()} if request.form.get('back') else {}))+'#correction-'+str(correction_id))

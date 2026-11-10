@@ -138,7 +138,7 @@ def prepare_word_batch(connection, *, cycle_id, manager_pns, template_paths, out
     return batch, {'packages':packages,'skipped':skipped}
 
 
-def word_dispatch_candidates(connection, *, cycle_id, template_paths):
+def word_dispatch_candidates(connection, *, cycle_id, template_paths, manager_pn=None):
     rows = connection.execute('''SELECT p.*, e.email AS recipient_email,
         TRIM(e.first_name || ' ' || e.last_name) AS manager_name,
         e.first_name AS manager_first_name, e.salutation AS manager_salutation,
@@ -147,8 +147,8 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
         LEFT JOIN employees e ON e.pn=p.manager_pn
         LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
-        WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
-        ORDER BY manager_name,p.manager_pn''', (cycle_id,)).fetchall()
+        WHERE p.cycle_id=? AND (? IS NULL OR p.manager_pn=?) AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
+        ORDER BY manager_name,p.manager_pn''', (cycle_id,manager_pn,manager_pn)).fetchall()
     result = []
     for row in rows:
         item = dict(row)

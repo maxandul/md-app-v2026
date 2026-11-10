@@ -18,12 +18,12 @@ bp=Blueprint('goal_work',__name__,url_prefix='/arbeit/ziele')
 
 @bp.before_app_request
 def protect_legacy_goal_aliases():
-    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs','main.feedback_collection'}
+    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs','main.feedback_collection','main.dispatch_package'}
     if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and request.endpoint in aliases:
         token=request.form.get('csrf_token','') or request.headers.get('X-CSRF-Token','')
         expected=session.get('goal_csrf','')
         if not expected or not secrets.compare_digest(token,expected):
-            abort(400,'Die Seite ist abgelaufen. Bitte Zielnachreichungen neu öffnen.')
+            abort(400,'Die Seite ist abgelaufen. Bitte neu laden.')
 
 
 @bp.before_request
@@ -51,11 +51,11 @@ def root(name):
 def back_link():
     value=request.values.get('back','')
     parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/ruecklaeufe','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/ruecklaeufe','/versand','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
 
 
 def render(template,**kwargs):
-    return render_template(template,active_nav='goal_work',csrf_token=session['goal_csrf'],back=back_link(),
+    return render_template(template,active_nav='dispatch' if template in ('goal_work/dispatch.html','goal_work/dispatches.html') else 'goal_work',csrf_token=session['goal_csrf'],back=back_link(),
         state_labels={'prepared':'Vorbereitet','processing':'Outlook-Übernahme läuft','draft_created':'Outlook-Entwurf erstellt',
           'failed':'Outlook-Ausgang klären','sent_confirmed':'Versand bestätigt','cancelled':'Verworfen',
           'no_change':'Keine Korrektur nötig','waiting':'Rückfrage offen','request_correction':'Korrigierter Rücklauf angefordert',
@@ -416,7 +416,7 @@ def dispatches():
     page=max(1,request.args.get('page',1,type=int));state=request.args.get('state','open')
     where="WHERE status NOT IN ('sent_confirmed','cancelled')" if state=='open' else ''
     total=get_db().execute('SELECT COUNT(*) FROM hr_goal_dispatches '+where).fetchone()[0]
-    rows=get_db().execute('SELECT * FROM hr_goal_dispatches '+where+' ORDER BY id DESC LIMIT 25 OFFSET ?',((page-1)*25,)).fetchall()
+    rows=get_db().execute("SELECT d.*,m.first_name||' '||m.last_name AS manager_name FROM hr_goal_dispatches d LEFT JOIN employees m ON m.pn=d.manager_pn "+where+' ORDER BY d.id DESC LIMIT 25 OFFSET ?',((page-1)*25,)).fetchall()
     return render('goal_work/dispatches.html',rows=rows,total=total,page=page,state=state)
 
 
@@ -425,6 +425,8 @@ def dispatch(dispatch_id):
     db=get_db()
     try:
         group=delivery.get(db,dispatch_id)
+        manager=db.execute("SELECT first_name||' '||last_name FROM employees WHERE pn=?",(group['manager_pn'],)).fetchone()
+        group['manager_name']=manager[0] if manager else group['recipient_email']
     except ValueError:
         abort(404)
     if request.method=='POST':

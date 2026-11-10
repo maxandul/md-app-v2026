@@ -135,3 +135,47 @@ und alten Postfach-Lesezeichen mit ausschliesslich erfundenen Testpersonen.
 Keine Postfachprüfung, Nachricht oder externe Dossierübergabe im Browser ausgelöst.
 
 ![Eingangsbereich mit ausschliesslich erfundenen Testpersonen](images/ux-eingaenge-test.png)
+
+## Vierte Etappe: Versand fortsetzen und Nachweise erhalten
+
+«Versand» öffnet eine gemeinsame, serverseitig paginierte Übersicht über reguläre
+Pakete, Einzelausgaben und Rückblicke mit nachgereichten Zielen. Gesucht wird nach
+Namen, Empfänger oder OE; Versandstand, Art und Rückblickjahr sind filterbar.
+Die aktuelle Versandadresse ist vor der Outlook-Übergabe sichtbar, danach die
+zum Vorgang gespeicherte Adresse. Einzelausgaben verwenden die tatsächlich im
+Manifest gespeicherte Gesprächszuständigkeit statt der ursprünglichen Führungslinie.
+
+Für ein reguläres Paket gibt es eine eigene Detailansicht: Dateien herunterladen,
+enthaltene Personen und Gesprächsteile prüfen, personalisierte Nachricht ansehen
+oder bearbeiten, genau diesen Outlook-Entwurf erstellen und anschliessend den
+wirklichen Versand dokumentieren. Die Prüfaussage benennt Dateien, Empfänger und
+Nachricht ausdrücklich. Sie führt keinen zusätzlichen dauerhaften Freigabestatus
+ein. Dateiliste und Versandübersicht haben getrennte Seitennavigation.
+
+Fehlgeschlagene und unterbrochene Outlook-Vorgänge haben konkrete Klärungsaktionen.
+Die Detailansicht verschickt keine Nachricht direkt. Die bestehende Sammelbearbeitung
+bleibt für den regulären Durchlauf erreichbar. Die Nachrichtenvorschau berücksichtigt
+auch Führungskräfte, die nur für einen neu zugewiesenen Gesprächsteil zuständig sind.
+
+Eine erneut erzeugte Ausgabe setzt einen früher bestätigten Versand nicht zurück.
+Die neue Ausgabe verlinkt den bisherigen Nachweis; der Verlauf enthält auch
+abgelöste und ausdrücklich verworfene Dateien. «Offen» bezeichnet die gespeicherten
+Versandvorgänge. Spätere Stammdatenänderungen sind weiterhin im Durchlauf zu prüfen;
+ein früherer Versand ist keine Bestätigung dieser späteren Änderungen.
+
+Die neue Oberfläche nutzt die bestehenden Versand-, Datei- und Quellenprüfungen
+sowie Outlook-Sperren. Vor jeder Entwurfserstellung werden diese erneut ausgeführt.
+Unbekannte Aktionen und fehlende explizite Prüfaussagen werden abgewiesen. Neue
+POST-Aktionen sind mit CSRF geschützt. Gefilterte Rückwege bleiben bei Paket-,
+Einzel- und Zielversand erhalten; externe Rücksprungziele werden verworfen.
+
+Validierung: 395 Python-Tests und elf JavaScript-Tests erfolgreich. Zwölf neue
+Integrationstests zu den drei Versandarten, Namen und
+abweichender Gesprächszuständigkeit, Zustandsübergängen, erhaltenem Versandnachweis,
+veralteten Quelldaten, manipulierten Dateien, abgelösten Ausgaben, Seitenwechseln,
+CSRF, Sandbox-Sperre und Rückwegen. Browserprüfung der Namenssuche, Versandart,
+Paketansicht, enthaltenen Personen, bearbeiteten personalisierten Vorschau und
+des gefilterten Rückwegs mit ausschliesslich erfundenen Personen. Keine Nachricht
+oder externe Übergabe im Browser ausgelöst.
+
+![Versandübersicht mit ausschliesslich erfundenen Testpersonen](images/ux-versand-test.png)

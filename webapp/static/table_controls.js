@@ -1,6 +1,35 @@
 (() => {
   'use strict';
 
+  document.querySelectorAll('.table-wrap').forEach((wrap) => {
+    // Keyboard users must be able to pan wide tables without reaching the
+    // scrollbar after the final row. Keep focused row actions fully visible.
+    const update = () => {
+      if (wrap.scrollWidth > wrap.clientWidth) {
+        wrap.setAttribute('tabindex', '0');
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', 'Tabelle – mit den Pfeiltasten seitlich verschieben');
+      } else {
+        wrap.removeAttribute('tabindex');
+        wrap.removeAttribute('role');
+        wrap.removeAttribute('aria-label');
+      }
+    };
+    wrap.addEventListener('focusin', (event) => {
+      if (event.target === wrap) return;
+      const bounds = wrap.getBoundingClientRect();
+      const focused = event.target.getBoundingClientRect();
+      if (focused.right > bounds.right - 6) wrap.scrollLeft += focused.right - bounds.right + 6;
+      else if (focused.left < bounds.left + 6) wrap.scrollLeft -= bounds.left + 6 - focused.left;
+    });
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(update);
+      observer.observe(wrap);
+      wrap.querySelectorAll('table').forEach((table) => observer.observe(table));
+    } else window.addEventListener('resize', update);
+    update();
+  });
+
   document.querySelectorAll('table').forEach((table, tableIndex) => {
     if (table.hasAttribute('data-server-paginated')) return;
     const body = table.tBodies[0];

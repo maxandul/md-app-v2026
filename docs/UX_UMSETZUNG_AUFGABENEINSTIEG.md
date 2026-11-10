@@ -551,9 +551,58 @@ mit echten Outlook-Nachrichten oder dem externen SAP-/Dossierprozess.
 | V01 | Wie vereinbart später | Verwaltung erwarteter Formularsteuerelemente und Formularversionen |
 
 Die technisch integrierten Bedienwege und der synthetische Volumentest sind geprüft.
-Die abschliessende fachliche Bedienabnahme mit Tastatur, schmalem Fenster und
-Vergrösserung über sämtliche Fachformulare bleibt vor einer vollständigen
-UX-Abnahme ausdrücklich offen. Die Änderung ist weiterhin ein Entwurfsstand,
-keine Behauptung, alle Fachansichten seien bereits vollständig umgestaltet.
+Die ergänzende Browserprüfung der zentralen Aufgabenwege ist unten dokumentiert.
+Sie ist keine Behauptung, sämtliche bestehenden Fachansichten seien bereits neu
+gestaltet oder eine vollständige Barrierefreiheitsprüfung sei erfolgt.
 
 ![Vorbereitete Wiederzustellung einer Zielnachreichung mit erfundenen Testpersonen](images/ux-weitere-wiederzustellung-test.png)
+
+## Abschliessende Browserprüfung der zentralen Aufgabenwege
+
+Geprüft am 10.11.2026 in Chromium mit ausschliesslich synthetischen Personen,
+isolierter Datenbank und gesperrtem echtem Outlook-/Postfachzugriff. Zusätzlich
+zu den fünf fachlichen Beispielen wurden 120 erfundene Anstellungen mit offenen
+Rückblicken über die bestehenden Import- und Ereignisdienste angelegt. Die
+Gesprächsauswahl zeigt diese auf fünf Seiten mit je 25 Zeilen.
+
+| Prüfung | Beobachtetes Ergebnis |
+|---|---|
+| Start mit Tastatur bei 200 % | «Zum Inhalt» ist sichtbar fokussiert; Eingabe überspringt die Navigation, der nächste Tab erreicht die erste Aufgabenaktion |
+| Auswahl auf zwei Ergebnisseiten | Leertaste wählt je eine Person auf Seite 1 und 2; die Fristvorschau nennt genau diese beiden Personen und die alte sowie neue Frist |
+| Rückweg aus Vorschau und Teilansicht | Suchbegriff, Seite 2 und gespeicherte Auswahl bleiben im Rücklink erhalten |
+| Wechsel von «Volumen» zu «Lena» | Neue Auswahl mit 0 gespeicherten Einträgen, keine versteckte Übernahme der bisherigen Auswahl |
+| 200 % Zoom, 681 CSS-Pixel | Keine horizontale Überbreite der Seite; Tabellenaktionen bleiben nach Tastaturfokus vollständig im Tabellenausschnitt |
+| 300 % Zoom, 454 CSS-Pixel | Navigation bricht um; Teiländerung, Zielnachreichung, gespeicherte Wiederzustellung, SAP-Vorschau, Abschluss, Durchlaufplanung, Stammdatenabgleich und Versandübersicht ohne horizontale Seitenüberbreite |
+| Umfangreiches PDF-Prüfformular bei 300 % | Personenwahl und normale Formularfelder bleiben innerhalb der Seite; breite Zieltabellen scrollen innerhalb ihres Ausschnitts |
+| SAP und Abschluss | Vorschau zeigt Namen, Exportwerte und Klärungswege; Abschluss zeigt offene Aufgaben und unterscheidet den Durchlauf von übergreifenden Eingängen |
+| Rückkehr zur normalen Darstellung | Start bei 100 % Zoom und 1363 CSS-Pixeln wiederhergestellt |
+
+Die schmale Darstellung wurde durch echten Browserzoom erreicht; eine gesonderte
+Prüfung auf einem Mobilgerät wird damit nicht behauptet. In der Testumgebung
+wurden weder Nachrichten versandt noch Daten nach SAP geschrieben.
+
+Dabei behoben:
+
+- Überbreite Tabellen erhalten bei Bedarf einen benannten Tastaturfokus. Beim
+  Fokus auf einen enthaltenen Link oder ein Feld wird der horizontale Ausschnitt
+  so verschoben, dass das Element vollständig sichtbar wird. Das gilt auch für
+  serverseitig paginierte Tabellen und Tabellen mit weniger als 51 Zeilen.
+- Das PDF-Prüfformular konnte wegen der Standard-Mindestbreite eines Fieldsets
+  die ganze Seite verbreitern. Die Mindestbreite ist aufgehoben; Formularfelder
+  passen sich nun dem verfügbaren Platz an.
+
+Validierung dieses Abschlusses: 53 Python-Tests für Eingänge, Sammelauswahl,
+Teiländerungen, Versandansichten und Export/Abschluss sowie alle elf bestehenden
+JavaScript-Tests erfolgreich; JavaScript-Syntax und `git diff --check` fehlerfrei.
+Der vorherige Gesamtlauf mit 469 Python-Tests und 70 Subtests bleibt dokumentiert.
+Die konkreten Darstellungsfehler wurden zusätzlich im Browser reproduziert und
+nach der Korrektur erneut geprüft.
+
+Die zusammenhängende technische Bedienprüfung ist damit abgeschlossen. Offen
+bleiben eine fachliche Rückmeldung aus dem tatsächlichen HR-Alltag und die
+Prüfung der Windows-/Outlook- und externen Ablage-/SAP-Anbindung in ihrer
+Zielumgebung. U13/U16 und V01 behalten den oben ausgewiesenen Umfang.
+
+![Vollständig sichtbare Tabellenaktion mit Tastaturfokus bei 200 Prozent Zoom](images/ux-tastatur-tabelle.png)
+
+![PDF-Prüfformular innerhalb der Seite bei 300 Prozent Zoom](images/ux-schmales-pruefformular.png)

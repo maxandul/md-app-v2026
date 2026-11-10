@@ -36,6 +36,10 @@ def prepare(connection, *, case, kinds, template_paths, output_dir):
         part=selected[0]
         case={**case,**{k:part[k] for k in ('manager_pn','recipient_email','manager_first_name','manager_salutation')}}
     path, manifest = create_word_package(connection, cycle_id=case['cycle_id'], manager_pn=case['manager_pn'], case_id=case['case_id'], document_kinds=kinds, template_paths=template_paths, output_dir=output_dir)
+    from webapp.migrations import available
+    if available(connection):
+        from .saved_redeliveries import person_snapshot
+        manifest['redelivery_snapshot']=person_snapshot(connection,manifest,template_paths)
     labels = {'review':'Rückblick','probation':'Probezeit-Rückblick','outlook':'Ausblick'}
     names = ', '.join(labels[d['kind']] for d in manifest['documents'])
     greeting = {'frau':'Liebe','herr':'Lieber'}.get((case['manager_salutation'] or '').casefold(),'Hallo')

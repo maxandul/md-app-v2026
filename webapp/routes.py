@@ -2054,6 +2054,8 @@ def person_word_correction(cycle_id, case_id):
         row['manifest'] = json.loads(row['manifest_json'])
         row['created_label']=date_label(row['created_at'],True)
         row['redelivery_error']=''
+        meta=row['manifest'].get('redelivery') or {}
+        row['redelivery_source_url']=(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id,_anchor='correction-'+str(meta['source_id'])) if meta.get('source_kind')=='person' else url_for('main.dispatch_package',package_id=meta['source_package_id']) if meta else '')
         if row['manifest'].get('redelivery') and row['status']=='prepared':
             try:
                 from .services.redeliveries import validate_prepared

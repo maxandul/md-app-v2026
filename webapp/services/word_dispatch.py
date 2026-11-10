@@ -18,7 +18,7 @@ from .word_packages import create_word_package, prior_goals, preparation_templat
 
 
 def _stamp():
-    return datetime.now().astimezone().isoformat(timespec='seconds')
+    return datetime.now().astimezone().isoformat(timespec='microseconds')
 
 
 def _hash(path):

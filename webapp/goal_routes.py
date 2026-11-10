@@ -447,5 +447,11 @@ def dispatch(dispatch_id):
         except (ValueError,OSError) as exc:
             row['error']=str(exc)
         outputs.append(row)
+    group['redelivery_error']=''
+    if group.get('redelivery') and group['status']=='prepared':
+        try:
+            from .services.saved_redeliveries import validate_prepared
+            validate_prepared(db,group,current_app.config['WORD_TEMPLATE_PATHS'],kind='goals',dispatch_dir=root('dispatches'))
+        except (ValueError,OSError) as exc:group['redelivery_error']=str(exc)
     events=db.execute('SELECT * FROM hr_goal_events WHERE dispatch_id=? ORDER BY id',(dispatch_id,)).fetchall()
     return render('goal_work/dispatch.html',group=group,outputs=outputs,events=events)

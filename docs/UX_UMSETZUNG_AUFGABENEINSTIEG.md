@@ -472,3 +472,88 @@ abschliessende Prüfung der zusammengeführten Bedienwege. Die Verwaltung der
 Formularsteuerelemente V01 bleibt wie vereinbart eine spätere Etappe.
 
 ![Abschlussübersicht mit ausschliesslich erfundenen Testpersonen](images/ux-export-abschluss-test.png)
+
+## Etappe 10: Wiederzustellung aus Einzelausgaben und Zielnachreichungen
+
+Bestätigte personenbezogene Einzelausgaben und bestätigte Zielnachreichungs-Gruppen
+bieten jetzt einen direkten Einstieg zur unveränderten Wiederzustellung. Die
+Vorschau nennt Empfänger, Namen, Gesprächsteile und den gesamten gespeicherten
+Dateiumfang. Der komplette ZIP-Anhang wird bytegleich kopiert. Auch unmittelbar
+vor Outlook wird weder Word gerendert noch das Zielnachreichungs-ZIP neu aufgebaut.
+Lokale Ergänzungen der Führungskraft bleiben ausdrücklich ausserhalb dieses Anhangs.
+
+Die Vorbereitung nutzt vorhandene Einzelausgabe- bzw. Zielnachreichungs-Versanddaten
+und speichert Herkunft, Anlass und Dateinachweis im vorhandenen Manifest bzw.
+Ereignisverlauf. Der ursprüngliche Versandnachweis und die Gesprächspflichten
+bleiben erhalten. Bestehende vorbereitete Vorgänge werden wiedergefunden.
+Die geführte Vorbereitung ist signiert, sitzungsgebunden, eine Stunde gültig und
+CSRF-geschützt. Sie prüft den aktuellen Stand unter der gemeinsamen Outlook-Sperre
+und innerhalb einer Schreibtransaktion erneut. Ein abgebrochener Wiederzustellungs-
+Vorgang verhindert nach tatsächlicher Outlook-Klärung keine neue ausdrückliche
+Anforderung; dieselbe alte Bestätigung erzeugt weiterhin keinen zweiten Vorgang.
+
+Neue Einzelausgaben speichern einen lesend ermittelten, auf ihre tatsächlichen
+Gesprächsteile begrenzten Grundlagenstand. Eine reine Ausblick-Ausgabe wird dadurch
+nicht von einer Änderung am anderen Rückblickteil abhängig. Für ältere Einzelausgaben
+ohne diesen belastbaren Nachweis wird keine unveränderte Grundlage behauptet; der
+konkrete Hinweis verweist auf aktuelle Formulare. Zielnachreichungs-Gruppen verwenden
+die bereits vorhandenen geprüften Ausgabegrundlagen und den Nachweis des tatsächlich
+an Outlook übergebenen gemeinsamen ZIP-Anhangs.
+
+Geänderte Zuständigkeiten, Ziele, Stammdaten und Vorlagen, spätere überlappende
+Ausgaben, bereits abgeschlossene oder nicht mehr vorgesehene Teile sowie mögliche
+oder bestätigte Rückläufe verlangen zuerst eine Klärung. Die gemeinsame Sperre
+berücksichtigt dabei auch die eigene Zielnachreichungs-Wiederzustellung korrekt,
+ohne andere offene Outlook-Vorgänge zu übergehen. Vor Outlook werden der kopierte
+Anhang, sein Umfang und sein Empfänger erneut geprüft. Konkrete Eingangslinks bleiben
+auch dann sichtbar, wenn schon eine Wiederzustellung vorbereitet war und erst danach
+ein Rücklauf eingegangen ist; dies gilt ebenfalls für die reguläre Wiederzustellung.
+
+Bei der Bedienprüfung fielen unterschiedlich formatierte UTC- und lokale Versandzeiten
+auf. Die gemeinsame Zeitanzeige verwendet für zeitzonenbehaftete Zeitangaben jetzt
+Schweizer Ortszeit; neue Word-Versandzeitpunkte werden mit Mikrosekunden gespeichert.
+Gleichzeitige ältere Einzelausgaben werden zusätzlich anhand ihrer Reihenfolge
+unterschieden. Der dokumentierte Zeitpunkt selbst wird nicht umgeschrieben.
+
+Validierung: Gesamtlauf mit 469 Python-Tests und 70 Subtests sowie elf JavaScript-Tests
+erfolgreich. Der abschliessende gezielte Lauf mit 13 Tests ist ebenfalls erfolgreich.
+Zusätzliche Integrationstests verbieten Word-Rendering und Neuaufbau
+des gemeinsamen ZIPs ausdrücklich per Mock. Sie prüfen Bytegleichheit, tatsächliche
+Outlook-Anhangübergabe an den isolierten Adapter, Erhalt der ursprünglichen Pflichten
+und Versandstände, Wiederholungen, Abbruch und erneute Anforderung, neue überlappende
+Ausgaben, geänderte Empfänger, späte Eingänge, Dateiänderungen, Quellen ohne
+Grundlagenstand, unabhängige Gesprächsteile, Sitzungs-/CSRF-Grenzen, Download und
+konkrete Klärungslinks. Die Zeitanzeige hat einen eigenen Regressionstest.
+Browserprüfung mit erfundenen Personen: bestätigte Zielnachreichungs-Gruppe öffnen,
+Wiederzustellung prüfen und vorbereiten; danach dasselbe für eine reine Ausblick-
+Einzelausgabe. Beide enden im vorhandenen Versandablauf mit erhaltenem Ausgangsnachweis.
+Kein echter Versand ausgelöst.
+
+### Zusammenhängende Prüfung des Aufgabenbestands
+
+Die bisherigen Integrationstests laufen gemeinsam auf dem Stand dieser Etappe.
+Der synthetische Browserbestand wurde über den tatsächlichen Ziel-Parser, die
+Quellenübernahme, Rückblick-Erzeugung, Dateifreigabe und Gruppenbildung bis zum
+mit FakeOutlook dokumentierten Ausgangsversand aufgebaut. Die neue Wiederzustellung
+setzt genau an diesem Bestand an. Dieser Nachweis ersetzt keine Produktionsprüfung
+mit echten Outlook-Nachrichten oder dem externen SAP-/Dossierprozess.
+
+| Aufgaben | Stand der Nutzerführung | Verbleibende Grenze |
+|---|---|---|
+| U01, U09 | Durchlaufvorbereitung und Stammdatenfolgen geführt | Fachliche Zuordnungsentscheidungen bleiben ausdrücklich bei HR |
+| U02, U11, U14 | Eingangsprüfung und Rückläufe mit konkreten Folgeschritten | Externe Ablage wird nicht allein aus einer lokalen Datei abgeleitet |
+| U03 | Reguläre Pakete, Einzelausgaben und Zielnachreichungs-Gruppen als Quellen | Alte Einzelausgaben ohne prüfbaren Grundlagenstand werden zur Neuerstellung geführt; neue Quellen werden jeweils vollständig übernommen |
+| U04, U10 | Teilzuständigkeit ändern oder zusätzlichen Auftrag anlegen; vollständige Ersetzung ausdrücklich entscheiden | Teilweise Ersetzung eines ganzen alten Auftrags bleibt eine gesonderte Klärung |
+| U05, U07, U08 | Seitenübergreifende Auswahl, Fristen und Erinnerungen mit Vorschau | Versand wird erst nach tatsächlicher Outlook-Prüfung bestätigt |
+| U06 | Quellenübernahme bis zum eigenen Rückblick-Versand und Wiederzustellung verbunden | Bestehende Rückläufe führen zur Korrekturklärung statt zu neuen leeren Vorlagen |
+| U12, U15 | SAP-Vorschau, gespeicherter Batch und dokumentierter Abschluss | Keine automatische Bestätigung externer Verarbeitung |
+| U13, U16 | Bisherige Feedback-Bündelung und Auswertung bleiben erreichbar | Diese Fachansichten sind noch nicht vollständig neu gestaltet |
+| V01 | Wie vereinbart später | Verwaltung erwarteter Formularsteuerelemente und Formularversionen |
+
+Die technisch integrierten Bedienwege und der synthetische Volumentest sind geprüft.
+Die abschliessende fachliche Bedienabnahme mit Tastatur, schmalem Fenster und
+Vergrösserung über sämtliche Fachformulare bleibt vor einer vollständigen
+UX-Abnahme ausdrücklich offen. Die Änderung ist weiterhin ein Entwurfsstand,
+keine Behauptung, alle Fachansichten seien bereits vollständig umgestaltet.
+
+![Vorbereitete Wiederzustellung einer Zielnachreichung mit erfundenen Testpersonen](images/ux-weitere-wiederzustellung-test.png)

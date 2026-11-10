@@ -1,5 +1,6 @@
 """Paged intake views, with recognition kept separate from confirmed assignment."""
 from datetime import datetime
+from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 from . import hr_workflow, hr_views, person_display, return_review
 
 
@@ -9,7 +10,12 @@ PDF_STATES = {'pending':'Prüfung offen','dismissed':'Zurückgestellt','not_md':
 
 def date_label(value, with_time=False):
     if not value:return 'Nicht hinterlegt'
-    try:return datetime.fromisoformat(str(value).replace('Z','+00:00')).strftime('%d.%m.%Y %H:%M' if with_time else '%d.%m.%Y')
+    try:
+        parsed=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+        if with_time and parsed.tzinfo is not None:
+            try:parsed=parsed.astimezone(ZoneInfo('Europe/Zurich'))
+            except ZoneInfoNotFoundError:parsed=parsed.astimezone()
+        return parsed.strftime('%d.%m.%Y %H:%M' if with_time else '%d.%m.%Y')
     except ValueError:return str(value)
 
 

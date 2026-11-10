@@ -146,6 +146,9 @@ def prepare(connection,package_id,*,case_id='',expected_fingerprint,request_key,
 
 def validate_prepared(connection,row,template_paths,*,kind):
     manifest=json.loads(row['manifest_json']);meta=manifest['redelivery']
+    if meta.get('source_kind')=='person':
+        from .saved_redeliveries import validate_prepared as saved_validate
+        return saved_validate(connection,row,template_paths,kind='person',dispatch_dir=Path('.'))
     plan=source(connection,meta['source_package_id'],template_paths,case_id=meta['case_id'],allowed_latest=row['id'] if kind=='regular' else None)
     validate(connection,plan,exclude=('package' if kind=='regular' else 'person',row['id']))
     if dispatch._hash(row['stored_path'])!=manifest['sha256']:raise ValueError('Die vorbereitete Wiederzustellung wurde verändert.')

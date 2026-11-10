@@ -31,7 +31,7 @@ def check_goal_workflow(connection, case_ids, *, documents=None, exclude=None):
         if connection.execute('''SELECT 1 FROM hr_goal_dispatches d
             JOIN hr_goal_dispatch_outputs m ON m.dispatch_id=d.id
             JOIN hr_goal_outputs o ON o.id=m.output_id
-            WHERE o.case_id=? AND d.status IN ('processing','draft_created','failed')''',(case_id,)).fetchone():
+            WHERE o.case_id=? AND d.id<>? AND d.status IN ('processing','draft_created','failed')''',(case_id,exclude[1] if exclude and exclude[0]=='goals' else -1)).fetchone():
             raise ValueError('Für diese Person ist ein Zielnachreichungs-Versand in Outlook offen. Diesen zuerst klären.')
     import json
     for kind,query in (

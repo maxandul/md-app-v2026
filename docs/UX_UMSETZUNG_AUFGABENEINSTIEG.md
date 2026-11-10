@@ -345,3 +345,64 @@ nicht vereinheitlichten Bedienwege etwa für SAP-Export und Abschluss. V01 bleib
 wie vereinbart später.
 
 ![Zuordnungsänderung mit ausschliesslich erfundenen Testpersonen](images/ux-zuordnung-test.png)
+
+## Etappe 8: Zusätzliche Gespräche und bisherige Aufträge ausdrücklich entscheiden
+
+Aus einem vorhandenen Gesprächsteil führt «Zusätzliches / unterjähriges Gespräch
+erfassen» zu einem eigenen Ablauf für dieselbe Person, Anstellung und denselben
+Jahresbezug. Namen, OE, direkte Führungskraft und bisherige Gesprächsverantwortung
+bleiben sichtbar. Für eine reine Korrektur verweist der Ablauf auf die Änderung
+der vorhandenen Teilzuständigkeit.
+
+Gesprächsart, neue Teile, Zeitraum, Fristen, Führungskraft und Formular-OE werden
+zuerst geprüft. Der gewählte Zeitraum gilt – wie im bestehenden unterjährigen
+Ereignismodell – für alle neuen Teile. Bei unterschiedlichen Zeiträumen sind
+separate Aufträge erforderlich. Eine ausdrückliche Auswahl entscheidet zwischen
+Beibehalten des bisherigen Auftrags und vollständiger Ersetzung. Eine teilweise
+Ersetzung ist hier nicht vorgesehen. Die neue Auswahl muss alle noch vorgesehenen
+Teile des alten Auftrags umfassen, damit dieser als erübrigt markiert werden kann.
+
+Vorhandene Rückläufe und ungeklärte Eingänge sowie offene Outlook- und
+Erinnerungsvorgänge blockieren die vollständige Ersetzung. Die konkreten Nachweise
+und Vorgänge sind aus der Vorschau erreichbar. Das ausdrückliche Hinzufügen eines
+weiteren Auftrags bleibt möglich; es verändert den bisherigen Auftrag nicht.
+Eine bereits bestehende entsprechende Gesprächsanlage wird angezeigt und verlinkt.
+
+Die Übernahme legt den neuen Auftrag und die gegebenenfalls gewählte Aufhebung des
+gesamten alten Auftrags in einer gemeinsamen Transaktion an. Eine Ausnahme rollt
+beide Änderungen zurück. Die bestehende interne Ereigniserstellung kann dafür ihr
+Commit dem aufrufenden Ablauf überlassen; ihr bisheriges Standardverhalten bleibt
+erhalten. Die Vorschau ist signiert, eine Stunde gültig, sitzungsgebunden und
+CSRF-geschützt. Der geprüfte Stand wird unter der vorhandenen Outlook-Sperre erneut
+verglichen. Wiederholte Bestätigung findet denselben neuen Auftrag wieder.
+
+Bei vollständiger Ersetzung werden die alten Pflichten als nicht mehr angefordert
+geführt; das alte Ereignis ist aufgehoben und sein Fall inaktiv. Seine bisherigen
+Dateien, Zuordnungen und Versandnachweise bleiben erhalten. Noch vorbereitete alte
+Pakete können nicht anschliessend als unveränderter aktueller Stand versandt
+werden. Die Entscheidung einschliesslich Grund, Namen und Verweis auf den neuen
+Auftrag bleibt beim alten Auftrag sichtbar. Der neue Gesprächsbezug wird nicht als
+neue direkte Führungslinie aktiviert. Eine SAP-führende Auswahl wird nicht auf den
+neuen Rückblick übertragen; sie bleibt ein eigener fachlicher Schritt.
+
+Das Ergebnis zeigt den aktuellen neuen Auftrag und führt zu seinen vorausgewählten
+Formularteilen. Die Anlage selbst erzeugt weder Word-Dateien noch Nachrichten.
+Der ursprüngliche Versand wird nicht zurückgerufen.
+
+Validierung: Gesamtlauf mit 441 Python-Tests und 70 Subtests erfolgreich; der
+abschliessende gezielte Lauf umfasst zusätzlich Tests zum blockierten Versand alter
+vorbereiteter Pakete, zu SAP-Auswahl und Verlauf sowie offenen Erinnerungen.
+Geprüft werden ausserdem echte Formularerzeugung, Erhalt des alten Auftrags,
+vollständige Ersetzung, Rückabwicklung, Wiederholungen, Dubletten, parallele
+Änderungen, späte Rückläufe und Sitzungs-/CSRF-Grenzen. Browserprüfung mit erfundenen
+Personen: zusätzlicher Abschluss bei Übertritt anlegen, bisherigen regulären
+Auftrag beibehalten und die Formularvorbereitung für den neuen Rückblick öffnen.
+Kein echter Outlook-Aufruf.
+
+Umfang: geführte Ergänzung oder vollständige Ersetzung aus einem vorhandenen
+Auftrag im selben Jahresbezug. Die Erfassung ohne vorhandenen Ausgangsauftrag ist
+weiterhin über die bestehende Ereigniserfassung möglich. Noch offen bleiben unter
+anderem weitere Wiederzustellungsquellen und die Vereinheitlichung von SAP-Export
+und Abschluss; die Formularsteuerelement-Verwaltung V01 bleibt wie vereinbart später.
+
+![Zusätzlicher Auftrag mit ausschliesslich erfundenen Testpersonen](images/ux-zusatzauftrag-test.png)

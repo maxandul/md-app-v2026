@@ -170,7 +170,8 @@ def detail(case_id,kind):
     pending=[r for r in current['effects']['reminders'] if r['status'] in ('prepared','draft_created','failed') and not r['resolution']]
     part_change_links.enrich(db,current,request.full_path)
     return render('parts/detail.html',part=part,context=current,values=values,manager_label=manager_label,
-        history=history,pending_reminders=pending,date_label=date_label,changed_event=changed_event)
+        history=history,pending_reminders=pending,date_label=date_label,changed_event=changed_event,
+        additions=[json.loads(r[0]) for r in db.execute("SELECT details_json FROM hr_goal_events WHERE action='additional_conversation_created' AND case_id=? ORDER BY id DESC",(case_id,))])
 
 
 @bp.post('/erinnerung/<int:reminder_id>')
@@ -179,3 +180,53 @@ def resolve_reminder(reminder_id):
     except ValueError as exc:flash(str(exc),'error')
     else:flash('Tatsächlicher Erinnerungsstand dokumentiert.','success')
     return redirect(back_link())
+
+
+@bp.route('/<case_id>/zusaetzlich',methods=['GET','POST'])
+def additional(case_id):
+    from .services import additional_conversations as additions
+    db=get_db()
+    try:context=additions.context(db,case_id)
+    except ValueError as exc:flash(str(exc),'error');return redirect(back_link())
+    first=context['parts'][0]['part']
+    session.setdefault('additional_owner',secrets.token_urlsafe(32))
+    signer=URLSafeTimedSerializer(current_app.secret_key,salt='md-additional-conversation')
+    values=dict(manager_pn=first['manager_pn'],event_type='interim',required_scope='review_only',
+        period_start=first['period_start'],period_end=first['period_end'],review_due_date='',outlook_due_date='',
+        form_org_source='employee',disposition='',reason='')
+    def preview():
+        plan=additions.plan(db,case_id,values)
+        token=signer.dumps({'owner':session['additional_owner'],'case_id':case_id,'proposal':values,
+            'fingerprint':plan['fingerprint'],'nonce':secrets.token_urlsafe(24)})
+        for c in plan['parts']:part_change_links.enrich(db,c,back_link())
+        return render('parts/additional_preview.html',plan=plan,token=token,types=additions.TYPES,scopes=additions.SCOPES,date_label=date_label)
+    if request.method=='POST':
+        action=request.form.get('action','preview')
+        try:
+            if action in ('apply','edit','refresh'):
+                proof=signer.loads(request.form.get('change_token',''),max_age=3600)
+                if proof['owner']!=session['additional_owner'] or proof['case_id']!=case_id:raise ValueError('Diese Vorschau gehört zu einer anderen Sitzung oder Person.')
+                values=proof['proposal']
+                if action=='refresh':return preview()
+                if action=='apply':
+                    if request.form.get('checked')!='yes':raise ValueError('Bitte den neuen Auftrag und die Entscheidung zum bisherigen Auftrag prüfen.')
+                    new_id=additions.apply(db,case_id,values,expected=proof['fingerprint'],
+                        request_key=hashlib.sha256(request.form['change_token'].encode()).hexdigest(),user_id=actor())
+                    return redirect(url_for('parts.additional_result',case_id=case_id,new_case_id=new_id,back=back_link()))
+            elif action=='preview':
+                values={k:request.form.get(k,'') for k in values}
+                return preview()
+            else:raise ValueError('Unbekannte Aktion.')
+        except (BadSignature,ValueError,KeyError,TypeError) as exc:flash(str(exc) or 'Vorschau abgelaufen. Bitte neu prüfen.','error')
+    for c in context['parts']:part_change_links.enrich(db,c,back_link())
+    manager=db.execute('SELECT first_name,last_name,org_unit FROM employees WHERE pn=?',(values['manager_pn'],)).fetchone()
+    return render('parts/additional.html',context=context,values=values,types=additions.TYPES,scopes=additions.SCOPES,
+        manager_label=(manager['first_name']+' '+manager['last_name']+' · '+manager['org_unit']) if manager else 'Auswahl erneut prüfen',date_label=date_label)
+
+
+@bp.get('/<case_id>/zusaetzlich/<new_case_id>')
+def additional_result(case_id,new_case_id):
+    row=get_db().execute("SELECT details_json FROM hr_goal_events WHERE case_id=? AND action='additional_conversation_created' AND json_extract(details_json,'$.new_case_id')=?",(case_id,new_case_id)).fetchone()
+    if not row:abort(404)
+    details=json.loads(row[0])
+    return render('parts/additional_result.html',details=details,new_parts=parts.case_parts(get_db(),new_case_id),date_label=date_label)

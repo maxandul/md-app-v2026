@@ -61,7 +61,7 @@ def resolve(connection, case_id, kind='review'):
 
 @serialized_goal_delivery
 def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_start, period_end,
-                  expected_revision, reason, user_id=None):
+                  expected_revision, reason, user_id=None, expected_change_context=None, change_request=''):
     if form_org_source not in ('employee','manager'):
         raise ValueError('Bitte OE-Quelle für die Zuordnung angeben.')
     try:
@@ -69,14 +69,23 @@ def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_sta
             raise ValueError()
     except (ValueError,TypeError):
         raise ValueError('Bitte einen gültigen Zeitraum angeben.') from None
+    if change_request:
+        existing=connection.execute("SELECT id FROM hr_goal_events WHERE case_id=? AND action='responsibility_changed' AND json_extract(details_json,'$.change_request')=? AND json_extract(details_json,'$.kind')=?",(case_id,change_request,kind)).fetchone()
+        if existing:return existing[0]
     connection.execute('BEGIN IMMEDIATE')
     try:
+        if expected_change_context is not None:
+            from .part_changes import plan
+            preview=plan(connection,case_id,kind=kind,manager_pn=manager_pn,form_org_source=form_org_source,
+                period_start=period_start,period_end=period_end,expected_revision=expected_revision,reason=reason)
+            if preview['fingerprint']!=expected_change_context:raise ValueError('Die Grundlage hat sich inzwischen geändert. Bitte eine neue Änderungsvorschau prüfen.')
+            if preview['blockers']:raise ValueError(' '.join(preview['blockers']))
         part=resolve(connection,case_id,kind)
         if kind=='review' and part['event_type']!='probation_review':
             validate_review_period(period_start,period_end,part['review_year'],part['entry_date'],part['exit_date'])
         if part['responsibility_revision']!=expected_revision:
             raise ValueError('Die Zuständigkeit wurde inzwischen geändert. Bitte neu laden.')
-        manager=connection.execute('SELECT org_unit FROM employees WHERE pn=?',(manager_pn,)).fetchone()
+        manager=connection.execute('SELECT org_unit,first_name,last_name,email FROM employees WHERE pn=?',(manager_pn,)).fetchone()
         if not manager:
             raise ValueError('Bitte eine Führungskraft aus der Liste wählen.')
         org=part['employee_org_unit'] if form_org_source=='employee' else manager['org_unit']
@@ -90,9 +99,10 @@ def assign(connection, case_id, *, kind, manager_pn, form_org_source, period_sta
             (part['obligation_id'],manager_pn,form_org_source,org,period_start,period_end,expected_revision+1,reason.strip(),user_id,stamp()))
         from .sap_staging import available as staged
         if staged(connection):connection.execute("UPDATE hr_part_responsibilities SET origin='manual' WHERE obligation_id=?",(part['obligation_id'],))
-        connection.execute('''INSERT INTO hr_goal_events(case_id,action,details_json,user_id,created_at)
-            VALUES (?,'responsibility_changed',?,?,?)''',(case_id,json.dumps({'kind':kind,'before':part,'manager_pn':manager_pn,'org_unit':org,'period_start':period_start,'period_end':period_end,'reason':reason},ensure_ascii=False),user_id,stamp()))
+        event=connection.execute('''INSERT INTO hr_goal_events(case_id,action,details_json,user_id,created_at)
+            VALUES (?,'responsibility_changed',?,?,?)''',(case_id,json.dumps({'kind':kind,'before':part,'manager_pn':manager_pn,'org_unit':org,'period_start':period_start,'period_end':period_end,'reason':reason,'manager_name':manager['first_name']+' '+manager['last_name'],'recipient_email':manager['email'],'change_request':change_request},ensure_ascii=False),user_id,stamp()))
         connection.commit()
+        return event.lastrowid
     except Exception:
         connection.rollback()
         raise

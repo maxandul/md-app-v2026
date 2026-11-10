@@ -8,7 +8,7 @@ from flask import Blueprint,abort,current_app,flash,g,redirect,render_template,r
 from .auth import login_required
 from .db import get_db
 from .services import goal_review as review, goal_followups as followups, goal_delivery as delivery, goal_queries
-from .services import goal_withdrawals as withdrawals
+from .services import goal_withdrawals as withdrawals, goal_guidance
 from .services.part_responsibilities import assign_review
 from .services.word_packages import goal_sources_fingerprint
 from .services.goal_batches import save_upload
@@ -18,12 +18,12 @@ bp=Blueprint('goal_work',__name__,url_prefix='/arbeit/ziele')
 
 @bp.before_app_request
 def protect_legacy_goal_aliases():
-    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs','main.feedback_collection'}
+    aliases={'main.legacy_goal_upload','main.create_goal_batch','main.upload_goal_batch_file','main.legacy_goal_preview','main.upload_sap_import','main.add_dialog_event','main.word_pdf_review','main.upload_word_pdfs','main.feedback_collection','main.dispatch_package'}
     if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and request.endpoint in aliases:
         token=request.form.get('csrf_token','') or request.headers.get('X-CSRF-Token','')
         expected=session.get('goal_csrf','')
         if not expected or not secrets.compare_digest(token,expected):
-            abort(400,'Die Seite ist abgelaufen. Bitte Zielnachreichungen neu öffnen.')
+            abort(400,'Die Seite ist abgelaufen. Bitte neu laden.')
 
 
 @bp.before_request
@@ -51,11 +51,11 @@ def root(name):
 def back_link():
     value=request.values.get('back','')
     parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/ruecklaeufe','/versand','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
 
 
 def render(template,**kwargs):
-    return render_template(template,active_nav='goal_work',csrf_token=session['goal_csrf'],back=back_link(),
+    return render_template(template,active_nav='dispatch' if template in ('goal_work/dispatch.html','goal_work/dispatches.html') else 'goal_work',csrf_token=session['goal_csrf'],back=back_link(),
         state_labels={'prepared':'Vorbereitet','processing':'Outlook-Übernahme läuft','draft_created':'Outlook-Entwurf erstellt',
           'failed':'Outlook-Ausgang klären','sent_confirmed':'Versand bestätigt','cancelled':'Verworfen',
           'no_change':'Keine Korrektur nötig','waiting':'Rückfrage offen','request_correction':'Korrigierter Rücklauf angefordert',
@@ -68,11 +68,13 @@ def index():
     args={k:request.args.get(k,'') for k in ('q','org_unit')}
     args.update(state=request.args.get('state','open'),year=request.args.get('year',type=int),
                 batch_id=request.args.get('batch_id',type=int),page=request.args.get('page',1,type=int),page_size=request.args.get('page_size',25,type=int))
-    result=goal_queries.listing(get_db(),**args)
+    result=goal_queries.listing(get_db(),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],**args)
     def page_url(page):
         return url_for('goal_work.index',**{**args,'page':page})
+    def state_url(state):
+        return url_for('goal_work.index',**{**args,'state':state,'page':1})
     group=get_db().execute('SELECT * FROM hr_goal_batches WHERE id=?',(args['batch_id'],)).fetchone()
-    return render('goal_work/index.html',filters=args,group=group,page_url=page_url,**result)
+    return render('goal_work/index.html',filters=args,group=group,page_url=page_url,state_url=state_url,**result)
 
 
 def accept_uploads(uploads,goal_year=None):
@@ -109,11 +111,10 @@ def upload():
 def lookup():
     q='%'+request.args.get('q','').strip()+'%'
     if request.args.get('kind')=='manager':
-        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · PN '||pn||' · '||org_unit AS label FROM employees WHERE first_name||' '||last_name||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
+        rows=get_db().execute("SELECT pn AS id,first_name||' '||last_name||' · '||org_unit AS label FROM employees WHERE active=1 AND first_name||' '||last_name||' '||org_unit||' '||pn LIKE ? ORDER BY last_name,first_name,pn LIMIT 25",(q,)).fetchall()
     else:
-        rows=get_db().execute('''SELECT ea.id,p.first_name||' '||p.last_name||' · PN '||ea.person_number||' · Ans. '||ea.assignment_number||' · '||ea.org_unit AS label
-            FROM employment_assignments ea JOIN persons p ON p.person_number=ea.person_number
-            WHERE p.first_name||' '||p.last_name||' '||ea.person_number LIKE ? ORDER BY p.last_name,p.first_name,ea.id LIMIT 25''',(q,)).fetchall()
+        from .services.intake_views import employment_choices
+        return {'results':employment_choices(get_db(),q=request.args.get('q',''))}
     return {'results':[dict(r) for r in rows]}
 
 
@@ -136,11 +137,13 @@ def source(source_id):
     if request.method=='POST':
         try:
             action=request.form.get('action')
-            review.save(db,source_id,expected_revision=request.form.get('revision',type=int),status='confirmed' if action=='confirm_next' else action,
+            review.save(db,source_id,expected_revision=request.form.get('revision',type=int),status='confirmed' if action in ('confirm_next','confirm_outputs') else action,
                 employment_id=request.form.get('employment_id',type=int),goal_year=request.form.get('goal_year',type=int),
                 goals=form_goals(),note=request.form.get('note',''),checked=request.form.get('checked')=='yes',
                 expected_sources=request.form.get('sources_fingerprint',''),user_id=actor())
-            flash('Zielversion bestätigt. Prüfe jetzt die Folgeaktion.' if action in ('confirmed','confirm_next') else 'Bearbeitungsstand gespeichert.','success')
+            flash('Zielversion bestätigt. Prüfe jetzt die Folgeaktion.' if action in ('confirmed','confirm_next','confirm_outputs') else 'Bearbeitungsstand gespeichert.','success')
+            if action=='confirm_outputs':
+                return redirect(url_for('goal_work.outputs',source=source_id,back=back_link()))
             if action=='confirm_next':
                 group=parse_qs(urlsplit(back_link()).query).get('batch_id',[None])[0]
                 next_source=db.execute('''SELECT s.id FROM hr_goal_sources s
@@ -169,7 +172,8 @@ def source(source_id):
         FROM employment_assignments ea JOIN persons p ON p.person_number=ea.person_number WHERE ea.id=?''',(item['employment_id'],)).fetchone()
     return render('goal_work/source.html',item=item,known_sources=known,fingerprint=goal_sources_fingerprint(known),
                   history=history,origins=origins,selected=selected,competencies=review.COMPETENCY_TAGS.values(),
-                  context=context,confirmed_ids=confirmed_ids,context_group=group,withdrawals=withdrawn,can_withdraw=can_withdraw)
+                  context=context,confirmed_ids=confirmed_ids,context_group=group,withdrawals=withdrawn,can_withdraw=can_withdraw,
+                  review_tasks=goal_guidance.review_tasks(item))
 
 
 @bp.route('/<int:source_id>/ruecknahme',methods=['GET','POST'])
@@ -234,6 +238,10 @@ def from_pdf(import_id):
     row=get_db().execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not row:
         abort(404)
+    from .services import hr_workflow
+    if hr_workflow.pdf_state(get_db(),import_id)['dismissed']:
+        flash('Diesen ausgeschlossenen oder zurückgestellten Eingang zuerst wieder öffnen.','error')
+        return redirect(url_for('main.word_pdf_review',import_id=import_id))
     data=json.loads(row['reviewed_json'] or row['parsed_json'])
     data=data.get('data',data)
     if data.get('document_kind')!='outlook':
@@ -252,6 +260,43 @@ def selected_sources():
     if len(values)>100 or any(not x.isdigit() for x in values):
         abort(400,'Bitte höchstens 100 Zielquellen auswählen.')
     return list(dict.fromkeys(int(x) for x in values))
+
+
+def target_task(row, source):
+    if row['task']=='source':
+        return url_for('main.goal_sources',pn=source['person_number'],assignment=source['assignment_number'],year=source['goal_year']), 'Zielquelle auswählen'
+    if row['task']=='sap' and row['part']:
+        cycle=get_db().execute('SELECT sap_import_id FROM cycles WHERE id=?',(row['part']['cycle_id'],)).fetchone()
+        return url_for('main.import_detail',import_id=cycle['sap_import_id']), 'SAP-Konflikte anzeigen'
+    if row['task']=='templates':
+        return url_for('main.administration'), 'Word-Vorlage einrichten'
+    if row['task']=='dispatch' and row.get('dispatch'):
+        return url_for('goal_work.dispatch',dispatch_id=row['dispatch']['id'],back=request.full_path), 'Versand öffnen'
+    if row['task']=='outputs':
+        return '#generated-outputs', 'Erzeugte Datei prüfen'
+    if row['task']=='clarify':
+        return '#clarify-'+str(row['revision_id'])+'-'+row['case_id'], 'Rücklauf / Rückfrage klären'
+    return url_for('main.case_detail',cycle_id=row['cycle_id'],case_id=row['case_id']), 'Gesprächszuordnung prüfen'
+
+
+def evidence_details(db, evidence):
+    # Presentation metadata is deliberately separate from immutable evidence tokens.
+    result=[]
+    for e in evidence:
+        detail=dict(e)
+        if e.get('document_id'):
+            detail['href']=url_for('return_work.detail',document_id=e['document_id'],back=request.full_path)
+        elif e.get('pending_import_id'):
+            item=db.execute('SELECT original_filename FROM word_pdf_imports WHERE id=?',(e['pending_import_id'],)).fetchone()
+            detail.update(filename=item['original_filename'],href=url_for('main.word_pdf_review',import_id=e['pending_import_id'],back=request.full_path))
+        elif e.get('unassigned_attachment_id'):
+            item=db.execute('''SELECT a.original_filename,m.subject FROM inbound_mail_attachments a
+                JOIN inbound_mail_messages m ON m.id=a.mail_message_id WHERE a.id=?''',(e['unassigned_attachment_id'],)).fetchone()
+            detail.update(filename=item['original_filename'],assignment_uncertain=True,
+                          href=url_for('main.returns_overview',cycle_id='',mail_q=item['subject'],mail_status='all')+'#postfach',
+                          original_href=url_for('main.mail_attachment_original',attachment_id=e['unassigned_attachment_id']))
+        result.append(detail)
+    return result
 
 
 @bp.route('/ausgaben',methods=['GET','POST'])
@@ -311,17 +356,10 @@ def outputs():
                 errors.append(f"{item['original_filename']}: Ziele zuerst bestätigen.")
                 continue
             for case in followups.targets(db,item['revision_id']):
-                row={**case,'revision_id':item['revision_id'],'source_id':source_id,'error':'','token':'','part':None,'evidence':[]}
-                try:
-                    row['part']=followups.resolve(db,case['case_id']);row['evidence']=followups.return_evidence(db,row['part'])
-                    row['decision']=followups.latest_decision(db,item['revision_id'],case['case_id'])
-                    data,fp,_=followups.inputs(db,item['revision_id'],case['case_id'],paths)
-                    if followups.decision_effective(row['decision'],row['evidence']) and row['decision']['outcome'] in ('no_change','no_output','waiting','request_correction','corrected'):
-                        raise ValueError('Folgeentscheidung dokumentiert; siehe Klärung.')
-                    row['token']=review.dump([item['revision_id'],case['case_id'],fp])
-                except (ValueError,OSError) as exc:
-                    row['error']=str(exc)
-                row['evidence_token']=review.digest(row['evidence'])
+                row=goal_guidance.target(db,item['revision_id'],case,paths)
+                row['source_id']=source_id
+                row['task_link'],row['task_label']=target_task(row,item)
+                row['evidence_details']=evidence_details(db,row['evidence'])
                 rows.append(row)
             for r in db.execute('SELECT * FROM hr_goal_outputs WHERE revision_id=? ORDER BY id DESC',(item['revision_id'],)):
                 output=dict(r);output['inputs']=json.loads(r['inputs_json']);output['error']='';output['dispatch']=followups.output_dispatch(db,r['id'])
@@ -334,7 +372,9 @@ def outputs():
                     groups[output['dispatch']['id']]=output['dispatch']
         except ValueError as exc:
             errors.append(str(exc))
-    return render('goal_work/outputs.html',sources=sources,source_ids=ids,rows=rows,outputs=saved,groups=groups.values(),errors=errors,empty_evidence=review.digest([]))
+    return render('goal_work/outputs.html',sources=sources,source_ids=ids,rows=rows,outputs=saved,groups=groups.values(),errors=errors,empty_evidence=review.digest([]),
+                  ready_count=sum(bool(row['token']) for row in rows),
+                  pending_sources=sum(source['status']!='confirmed' for source in sources))
 
 
 @bp.post('/entscheidung/<int:revision_id>')
@@ -376,7 +416,7 @@ def dispatches():
     page=max(1,request.args.get('page',1,type=int));state=request.args.get('state','open')
     where="WHERE status NOT IN ('sent_confirmed','cancelled')" if state=='open' else ''
     total=get_db().execute('SELECT COUNT(*) FROM hr_goal_dispatches '+where).fetchone()[0]
-    rows=get_db().execute('SELECT * FROM hr_goal_dispatches '+where+' ORDER BY id DESC LIMIT 25 OFFSET ?',((page-1)*25,)).fetchall()
+    rows=get_db().execute("SELECT d.*,m.first_name||' '||m.last_name AS manager_name FROM hr_goal_dispatches d LEFT JOIN employees m ON m.pn=d.manager_pn "+where+' ORDER BY d.id DESC LIMIT 25 OFFSET ?',((page-1)*25,)).fetchall()
     return render('goal_work/dispatches.html',rows=rows,total=total,page=page,state=state)
 
 
@@ -385,6 +425,8 @@ def dispatch(dispatch_id):
     db=get_db()
     try:
         group=delivery.get(db,dispatch_id)
+        manager=db.execute("SELECT first_name||' '||last_name FROM employees WHERE pn=?",(group['manager_pn'],)).fetchone()
+        group['manager_name']=manager[0] if manager else group['recipient_email']
     except ValueError:
         abort(404)
     if request.method=='POST':
@@ -405,5 +447,11 @@ def dispatch(dispatch_id):
         except (ValueError,OSError) as exc:
             row['error']=str(exc)
         outputs.append(row)
+    group['redelivery_error']=''
+    if group.get('redelivery') and group['status']=='prepared':
+        try:
+            from .services.saved_redeliveries import validate_prepared
+            validate_prepared(db,group,current_app.config['WORD_TEMPLATE_PATHS'],kind='goals',dispatch_dir=root('dispatches'))
+        except (ValueError,OSError) as exc:group['redelivery_error']=str(exc)
     events=db.execute('SELECT * FROM hr_goal_events WHERE dispatch_id=? ORDER BY id',(dispatch_id,)).fetchall()
     return render('goal_work/dispatch.html',group=group,outputs=outputs,events=events)

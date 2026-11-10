@@ -18,27 +18,33 @@ def pending_pdfs(db):
 
 def pdf_queue(db, *, query='', status='pending', page=1):
     where=[];args=[]
+    classification="COALESCE(json_extract(NULLIF(w.reviewed_json,''),'$._intake.classification'),'')"
     from webapp.migrations import available
     if available(db) and status=='pending':
         where.append('NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)')
-    if status=='dismissed':where.append('COALESCE(s.dismissed,0)=1')
+    if status=='not_md':where.extend(['COALESCE(s.dismissed,0)=1',classification+"='not_md'"])
+    elif status=='dismissed':where.extend(['COALESCE(s.dismissed,0)=1',classification+"<>'not_md'"])
     elif status=='pending':where.append("w.status='pending' AND COALESCE(s.dismissed,0)=0")
     elif status in ('imported','historical','duplicate'):where.append('w.status=?');args.append(status)
     elif status!='all':raise ValueError('Unbekannter Prüfstatus.')
     if query.strip():
-        where.append("(w.original_filename LIKE ? OR json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn') LIKE ?)")
-        args += ['%'+query.strip()+'%']*2
+        where.append("(w.original_filename LIKE ? OR json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn') LIKE ? OR COALESCE(p.first_name,'')||' '||COALESCE(p.last_name,'') LIKE ?)")
+        args += ['%'+query.strip()+'%']*3
     clause=' WHERE '+' AND '.join(where) if where else ''
-    source=' FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id'
+    source=" FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id LEFT JOIN persons p ON p.person_number=json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn')"
     total=db.execute('SELECT COUNT(*)'+source+clause,args).fetchone()[0]
     pages=max(1,(total+24)//25);page=max(1,min(page,pages))
-    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,COALESCE(s.dismissed,0) AS dismissed"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
+    rows=db.execute("SELECT w.id,w.original_filename,w.status,w.created_at,w.official_document_id,p.first_name,p.last_name,p.person_number, json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.document_kind') AS document_kind, json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.period_end') AS period_end, COALESCE(json_extract(NULLIF(w.reviewed_json,''),'$._draft.assignment'),json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.ans')) AS assignment_number,COALESCE(s.dismissed,0) AS dismissed,"+classification+" AS classification"+source+clause+' ORDER BY w.id DESC LIMIT 25 OFFSET ?',[*args,(page-1)*25]).fetchall()
     return dict(word_pdf_queue=rows,pdf_total=total,pdf_page=page,pdf_pages=pages,pdf_query=query,pdf_status=status)
 
 
 def pdf_state(db, item_id):
     row=db.execute('SELECT * FROM workflow_pdf_state WHERE import_id=?',(item_id,)).fetchone()
-    return dict(row) if row else {'revision':0,'dismissed':0,'reason':''}
+    result=dict(row) if row else {'revision':0,'dismissed':0,'reason':''}
+    item=db.execute('SELECT reviewed_json FROM word_pdf_imports WHERE id=?',(item_id,)).fetchone()
+    result['not_md']=bool(result['dismissed'] and item and
+        json.loads(item['reviewed_json'] or '{}').get('_intake',{}).get('classification')=='not_md')
+    return result
 
 
 def lock_pdf(db,item_id,revision):
@@ -60,7 +66,7 @@ def closure_summary(db,cycle_id):
     def count(sql):return db.execute(sql,(cycle_id,)).fetchone()[0]
     from .return_review import available
     pending_handoffs=count("SELECT COUNT(*) FROM hr_return_status WHERE cycle_id=? AND is_current=1 AND NOT complete") if available(db) else count("SELECT COUNT(*) FROM official_documents WHERE cycle_id=? AND is_current=1 AND variant='digital' AND signature_checked=0")
-    return {
+    result={
       'Offene Pflichtdokumente':count("SELECT COUNT(*) FROM document_obligations o JOIN dialog_events e ON e.id=o.dialog_event_id WHERE e.cycle_id=? AND e.status<>'cancelled' AND o.required=1 AND o.status NOT IN ('complete','waived')"),
       'Offene Dossierübergaben':pending_handoffs,
       'Offene Word-Versandvorgänge':count("SELECT COUNT(*) FROM word_dispatch_packages p LEFT JOIN word_mail_deliveries d ON d.package_id=p.id WHERE p.cycle_id=? AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='') AND COALESCE(d.status,'') NOT IN ('sent_confirmed','cancelled')"),
@@ -69,6 +75,17 @@ def closure_summary(db,cycle_id):
       'Ungeprüfte PDFs (durchlaufübergreifend)':len(pending_pdfs(db)),
       'Ereignisse ohne Durchlauf (gesamt)':db.execute("SELECT COUNT(*) FROM dialog_events WHERE cycle_id IS NULL AND status<>'cancelled'").fetchone()[0],
     }
+    result['Ungeklärte Postfachnachrichten (gesamt)']=db.execute("SELECT COUNT(*) FROM inbound_mail_messages WHERE (status='review_required' AND review_completed_at='') OR status IN ('failed','new','ready_to_move')").fetchone()[0]
+    from webapp.migrations import available as modern
+    if modern(db):
+        result['Offene Einzelausgaben']=count("SELECT COUNT(*) FROM word_person_corrections WHERE case_id IN (SELECT case_id FROM dialog_cases WHERE cycle_id=?) AND status NOT IN ('sent_confirmed','cancelled')")
+        result['Offene Zielnachreichungs-Versandvorgänge']=count("SELECT COUNT(DISTINCT d.id) FROM hr_goal_dispatches d JOIN hr_goal_dispatch_outputs m ON m.dispatch_id=d.id JOIN hr_goal_outputs o ON o.id=m.output_id JOIN dialog_cases c ON c.case_id=o.case_id WHERE c.cycle_id=? AND d.status NOT IN ('sent_confirmed','cancelled')")
+        result['Ungeklärte Erinnerungsvorgänge']=count("SELECT COUNT(*) FROM reminders r LEFT JOIN hr_reminder_resolutions rr ON rr.reminder_id=r.id WHERE r.cycle_id=? AND r.status IN ('prepared','draft_created','failed') AND rr.reminder_id IS NULL")
+        from .export_closure_views import export_plan
+        export=export_plan(db,cycle_id)
+        result['Noch nicht exportierte vollständige Rückblicke']=export['counts']['ready']
+        result['SAP-Rückblicke mit Klärungsbedarf']=export['counts']['attention']
+    return result
 
 
 def setup_checks(config,db):

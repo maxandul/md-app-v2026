@@ -341,6 +341,7 @@ def _create_manual_event(
     cycle_id: int | None = None,
     form_org_source: str = "employee",
     created_at: datetime | None = None,
+    commit: bool = True,
 ) -> str:
     if event_type not in EVENT_TYPE_LABELS:
         raise ValueError("Unbekannte Dialogart.")
@@ -485,7 +486,7 @@ def _create_manual_event(
         outlook_due_date=outlook_due_date or default_outlook_due,
         created_at=timestamp,
     )
-    connection.commit()
+    if commit:connection.commit()
     return event_id
 
 

@@ -177,7 +177,7 @@ def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[
 @bp.get("/")
 def dashboard():
     if current_app.config.get("HR_GOAL_WORKFLOW") and request.args.get("view")!="cycles":
-        return redirect(url_for("hr.work"))
+        return redirect(url_for("hr.start"))
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",
@@ -195,6 +195,12 @@ def master_data():
         active_nav="master_data",
         **dashboard_data(get_db()),
     )
+
+
+def _planning_back():
+    from urllib.parse import urlsplit
+    value=request.values.get('back','');parsed=urlsplit(value)
+    return value if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/durchlauf' or parsed.path.startswith(('/stammdaten/abgleich','/arbeit/dialogteile/'))) else ''
 
 
 @bp.get("/dialoge")
@@ -263,6 +269,7 @@ def dialogs():
         employee_choices=connection.execute("SELECT a.id,a.assignment_number,a.org_unit,a.position,e.first_name,e.last_name,a.person_number FROM employment_assignments a JOIN employees e ON e.pn=a.person_number WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number").fetchall(),
         manager_choices=connection.execute("SELECT pn,first_name,last_name,org_unit FROM employees WHERE active=1 ORDER BY last_name,first_name,pn").fetchall(),
         event_types=EVENT_TYPE_LABELS,
+        planning_back=_planning_back(),
         scopes=SCOPE_LABELS,
         **data,
     )
@@ -377,13 +384,13 @@ def add_dialog_event():
         )
     except (TypeError, ValueError) as exc:
         flash(str(exc), "error")
-        return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+        return redirect(url_for("main.dialogs", cycle_id=cycle_id,back=_planning_back()))
     audit(
         "dialog_event_created", "dialog_event", str(event_id),
         cycle_id=cycle_id, event_type=request.form.get("event_type", ""),
     )
     flash(f"Dialogereignis {event_id} wurde angelegt.", "success")
-    return redirect(url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs"))
+    return redirect(_planning_back() or (url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs")))
 
 
 @bp.post("/dialog-events/<int:event_id>/leading-sap")
@@ -399,6 +406,19 @@ def mark_leading_sap_event(event_id: int):
 
 @bp.get("/versand")
 def dispatch():
+    if current_app.config.get('HR_GOAL_WORKFLOW') and (request.args.get('view')=='overview' or
+            (request.args.get('view')!='regular' and 'cycle_id' not in request.args and not request.args.get('word_batch'))):
+        from .services import dispatch_views
+        from .services.intake_views import date_label
+        filters=dict(q=request.args.get('q',''),state=request.args.get('state','open'),kind=request.args.get('kind',''),year=request.args.get('year',type=int))
+        try:data=dispatch_views.listing(get_db(),page_number=request.args.get('page',1,type=int),**filters)
+        except ValueError as exc:abort(400,str(exc))
+        for row in data['rows']:
+            if row['kind']=='regular':row['href']=url_for('main.dispatch_package',package_id=row['id'],back=request.full_path)
+            elif row['kind']=='person':row['href']=url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'],back=request.full_path,_anchor='correction-'+str(row['id']))
+            else:row['href']=url_for('goal_work.dispatch',dispatch_id=row['id'],back=request.full_path)
+        return render_template('shipping/index.html',active_nav='dispatch',filters=filters,date_label=date_label,labels=dispatch_views.LABELS,kinds=dispatch_views.KINDS,
+            page_url=lambda page:url_for('main.dispatch',view='overview',cycle_id='',page=page,**filters),**data)
     data = cockpit_overview(
         get_db(), selected_cycle_id=request.args.get("cycle_id", type=int)
     )
@@ -433,8 +453,96 @@ def dispatch():
     )
 
 
+def _dispatch_back(default=None):
+    from urllib.parse import urlsplit
+    value=request.values.get('back','');parsed=urlsplit(value)
+    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich','/arbeit/dialogteile/'))):
+        return value
+    return default or url_for('main.dispatch',view='overview',cycle_id='')
+
+
+@bp.route('/versand/pakete/<int:package_id>',methods=['GET','POST'])
+def dispatch_package(package_id):
+    if not current_app.config.get('HR_GOAL_WORKFLOW'):abort(404)
+    db=get_db()
+    package=db.execute('''SELECT p.*,c.review_year,c.outlook_year,m.first_name||' '||m.last_name AS manager_name,
+        m.org_unit,m.email FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
+        LEFT JOIN employees m ON m.pn=p.manager_pn WHERE p.id=?''',(package_id,)).fetchone()
+    if not package:abort(404)
+    if request.method=='POST':
+        action=request.form.get('action','')
+        try:
+            if request.form.get('checked')!='yes':raise ValueError('Bitte die konkret beschriebene Prüfung ausdrücklich bestätigen.')
+            if action=='draft':
+                if current_app.config.get('HR_REVIEW_SANDBOX'):abort(403,'HR-Test: Outlook bleibt gesperrt.')
+                result=dispatch_word_packages(db,cycle_id=package['cycle_id'],package_ids=[package_id],
+                    template_paths=current_app.config['WORD_TEMPLATE_PATHS'],sender_email=current_app.config['HR_MAILBOX_EMAIL'],
+                    delivery_mode='draft',subject_template=request.form.get('subject_template',''),body_template=request.form.get('body_template',''),
+                    retry_confirmed=request.form.get('retry_confirmed')=='yes')
+                flash(f"{result['created']} Outlook-Entwurf erstellt · {result['failed']} fehlgeschlagen. Noch kein Versand bestätigt.",'error' if result['failed'] else 'success')
+                for error in result['errors']:flash(error,'error')
+            elif action=='sent_confirmed':
+                confirm_word_draft_sent(db,package_id)
+                flash('Tatsächlicher Versand dieser Ausgabe dokumentiert.','success')
+            elif action=='cancelled':
+                discard_word_draft(db,package_id)
+                flash('Nicht versandter Outlook-Vorgang als verworfen dokumentiert.','success')
+            elif action=='discard':
+                discard_word_package(db,package_id)
+                flash('Unbenutzte Ausgabe verworfen. Frühere Versandnachweise bleiben erhalten.','success')
+            elif action in ('resolve_sent','resolve_cancelled'):
+                from .services.word_dispatch import resolve_interrupted_delivery
+                resolve_interrupted_delivery(db,package_id,outcome='sent_confirmed' if action=='resolve_sent' else 'cancelled',reason=request.form.get('reason',''))
+                flash('Unterbrochenen Outlook-Vorgang geklärt. Keine neue Nachricht erstellt.','success')
+            else:raise ValueError('Unbekannte Aktion für diese Ausgabe.')
+            audit('word_package_focused_action','word_package',str(package_id),action_taken=action)
+        except (ValueError,LookupError,OSError) as exc:flash(str(exc),'error')
+        return redirect(url_for('main.dispatch_package',package_id=package_id,back=_dispatch_back()))
+    latest=db.execute("SELECT MAX(id) FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? AND discarded_at=''",(package['cycle_id'],package['manager_pn'])).fetchone()[0]
+    candidate=None
+    if latest==package_id:
+        candidate=next(iter(word_dispatch_candidates(db,cycle_id=package['cycle_id'],manager_pn=package['manager_pn'],template_paths=current_app.config['WORD_TEMPLATE_PATHS'])),None)
+    delivery=db.execute('SELECT * FROM word_mail_deliveries WHERE package_id=?',(package_id,)).fetchone()
+    manifest=json.loads(package['manifest_json'])
+    names={r['case_id']:r for r in db.execute('''SELECT c.case_id,p.first_name,p.last_name,a.org_unit AS employee_org_unit FROM dialog_cases c
+        JOIN persons p ON p.person_number=c.employee_pn LEFT JOIN dialog_events de ON de.legacy_case_id=c.case_id LEFT JOIN employment_assignments a ON a.id=de.employment_id WHERE c.case_id IN (SELECT json_extract(value,'$.case_id') FROM json_each(?))''',(json.dumps(manifest['documents']),))}
+    for doc in manifest['documents']:
+        person=names.get(doc['case_id'])
+        doc['person_name']=(person['first_name']+' '+person['last_name']) if person else 'Person nicht mehr in Stammdaten'
+        doc['org_unit']=doc.get('responsibility',{}).get('form_org_unit',person['employee_org_unit'] if person else '')
+    doc_pages=max(1,(len(manifest['documents'])+49)//50)
+    doc_page=min(max(request.args.get('doc_page',1,type=int),1),doc_pages)
+    sent=db.execute("""SELECT p.id,d.updated_at,d.recipient_email FROM word_dispatch_packages p JOIN word_mail_deliveries d ON d.package_id=p.id
+        WHERE p.cycle_id=? AND p.manager_pn=? AND d.status='sent_confirmed' ORDER BY d.updated_at DESC,p.id DESC LIMIT 1""",(package['cycle_id'],package['manager_pn'])).fetchone()
+    from .services.dispatch_views import LABELS
+    from .services.intake_views import date_label
+    return render_template('shipping/package.html',active_nav='dispatch',package=package,candidate=candidate,latest_id=latest,
+        manifest=manifest,documents=manifest['documents'][(doc_page-1)*50:doc_page*50],doc_page=doc_page,doc_pages=doc_pages,
+        doc_page_url=lambda page:url_for('main.dispatch_package',package_id=package_id,back=_dispatch_back(),doc_page=page),delivery=delivery,status=delivery['status'] if delivery else ('cancelled' if package['discarded_at'] else 'prepared'),labels=LABELS,last_sent=sent,
+        back=_dispatch_back(),default_word_subject=('Erneut: MD-Unterlagen Durchlauf {years}' if manifest.get('redelivery') else DEFAULT_WORD_SUBJECT),default_word_body=('{greeting}\n\nWie gewünscht erhältst du die bereits zugestellten Formulare nochmals unverändert. Wenn du die erste Fassung bereits bearbeitet hast, arbeite mit deinem bisherigen Bearbeitungsstand weiter. Der Anhang enthält diese lokalen Ergänzungen nicht.\n\nFreundliche Grüsse\nHR' if manifest.get('redelivery') else DEFAULT_WORD_BODY),
+        date_label=date_label,hr_sender=current_app.config['HR_MAILBOX_EMAIL'])
+
+
 @bp.get("/ruecklaeufe")
 def returns_overview():
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        from .services import intake_views
+        tab=request.args.get('tab') or ('mail' if any(k.startswith('mail_') for k in request.args) else 'documents')
+        if tab not in ('documents','mail','returns'):abort(400,'Unbekannte Eingangsansicht.')
+        data={}
+        try:
+            if tab=='documents':
+                data=intake_views.documents(get_db(),query=request.args.get('pdf_q',''),
+                    status=request.args.get('pdf_status','pending'),page=request.args.get('pdf_page',1,type=int))
+            elif tab=='mail':
+                data=mail_inbox_overview(get_db(),query=request.args.get('mail_q',''),
+                    status=request.args.get('mail_status','open'),page=request.args.get('mail_page',1,type=int))
+                data['mail_status_labels']={'open':'Zu bearbeiten',**data['mail_status_labels']}
+            else:
+                data=intake_views.returns(get_db(),q=request.args.get('q',''),state=request.args.get('state','open'),page=request.args.get('page',1,type=int))
+        except ValueError as exc:abort(400,str(exc))
+        return render_template('intake/index.html',active_nav='returns',tab=tab,counts=intake_views.counts(get_db()),
+            pdf_states=intake_views.PDF_STATES,date_label=intake_views.date_label,mail_schedule=schedule_state(get_db()),**data)
     connection = get_db()
     cockpit = cockpit_overview(
         connection, selected_cycle_id=request.args.get("cycle_id", type=int)
@@ -769,6 +877,8 @@ def cycle_detail(cycle_id: int):
 
 @bp.post("/cycles/<int:cycle_id>/status")
 def set_cycle_status(cycle_id: int):
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('status')=='abgeschlossen':
+        return redirect(url_for('export_work.close',cycle_id=cycle_id))
     try:
         old_status, new_status = change_cycle_status(
             get_db(), cycle_id=cycle_id,
@@ -893,6 +1003,7 @@ def replace_case_pdf(cycle_id: int, case_id: str):
 
 @bp.post("/cycles/<int:cycle_id>/sap-export")
 def download_sap_export(cycle_id: int):
+    if current_app.config.get('HR_GOAL_WORKFLOW'):return redirect(url_for('export_work.export',cycle_id=cycle_id))
     try:
         batch = create_sap_upload_batch(
             get_db(),
@@ -1038,6 +1149,15 @@ def upload_pdf_returns():
     return redirect(url_for("main.returns_overview"))
 
 
+def _mail_return_url():
+    from urllib.parse import urlsplit
+    back=request.form.get('back','')
+    parsed=urlsplit(back)
+    if parsed.path=='/ruecklaeufe' and not parsed.scheme and not parsed.netloc and '\\' not in back:
+        return back
+    return url_for('main.returns_overview',tab='mail',_anchor='postfach') if current_app.config.get('HR_GOAL_WORKFLOW') else url_for('main.returns_overview')+'#postfach'
+
+
 @bp.post("/mail-inbox/schedule")
 def configure_mail_schedule():
     enabled = request.form.get('enabled') == '1'
@@ -1048,7 +1168,7 @@ def configure_mail_schedule():
         get_db().commit()
         audit('mail_scan_schedule_changed', 'mail_scan_schedule', '1', enabled=enabled)
         flash('Automatische Postfachprüfung aktiviert.' if enabled else 'Automatische Postfachprüfung deaktiviert.', 'success')
-    return redirect(url_for('main.returns_overview'))
+    return redirect(_mail_return_url())
 
 
 @bp.post('/mail-inbox/<int:message_id>/retry')
@@ -1065,7 +1185,7 @@ def retry_mail_message(message_id):
         flash('Postfach erneut geprüft. Bereits gesicherte Anhänge wurden beibehalten.','success')
     except (ValueError,OSError,RuntimeError) as exc:
         flash(str(exc),'error')
-    return redirect(url_for('main.returns_overview')+'#postfach')
+    return redirect(_mail_return_url())
 
 
 @bp.get('/mail-attachments/<int:attachment_id>/original')
@@ -1094,7 +1214,7 @@ def scan_mail_inbox():
         )
         if result["errors"]:
             flash(" ".join(result["errors"]), "error")
-    return redirect(url_for("main.returns_overview"))
+    return redirect(_mail_return_url())
 
 
 @bp.post("/mail-inbox/<int:message_id>/resolve")
@@ -1125,7 +1245,7 @@ def resolve_mail_message(message_id: int):
                 target_folder=result["target_folder"],
             )
             flash("Die Nachricht wurde in Outlook verschoben.", "success")
-    return redirect(url_for("main.returns_overview") + "#postfach")
+    return redirect(_mail_return_url())
 
 
 @bp.get('/documents/<int:document_id>/original')
@@ -1257,11 +1377,17 @@ def _reviewed_word_form(form):
 @bp.route('/word-pdf-imports/<int:import_id>', methods=['GET','POST'])
 def word_pdf_review(import_id):
     connection=get_db()
+    from urllib.parse import urlsplit
+    goal_back=request.values.get('back','')
+    parsed_back=urlsplit(goal_back)
+    if parsed_back.scheme or parsed_back.netloc or '\\' in goal_back or not (
+        parsed_back.path in ('/ruecklaeufe','/arbeit/ziele') or parsed_back.path.startswith(('/arbeit/ziele/','/arbeit/dialogteile/aktionen/'))):
+        goal_back=''
     if current_app.config.get('HR_GOAL_WORKFLOW'):
         session.setdefault('goal_csrf',secrets.token_urlsafe(32))
         routed=connection.execute('SELECT source_id FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone()
         if routed:
-            return redirect(url_for('goal_work.source',source_id=routed['source_id']))
+            return redirect(url_for('goal_work.source',source_id=routed['source_id'],**({'back':goal_back} if goal_back else {})))
     item=connection.execute('SELECT * FROM word_pdf_imports WHERE id=?',(import_id,)).fetchone()
     if not item:
         abort(404)
@@ -1270,32 +1396,49 @@ def word_pdf_review(import_id):
     if parsed.get('data',{}).get('document_kind') == 'feedback':
         return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
-    if request.method=='POST':
-        reviewed=_reviewed_word_form(request.form)
+    form=request.form.copy()
+    selection_error=''
+    if current_app.config.get('HR_GOAL_WORKFLOW') and request.method=='POST' and form.get('action') not in ('not_md','reopen') and 'employment_id' in form:
+        selected=connection.execute('SELECT person_number,assignment_number FROM employment_assignments WHERE id=?',(form.get('employment_id'),)).fetchone()
+        if selected:
+            form['pn']=selected['person_number'];form['assignment']=selected['assignment_number']
+        elif form.get('employment_id') or form.get('action','confirm')=='confirm':
+            selection_error='Bitte eine eindeutige Person und Anstellung aus der Namenssuche wählen.'
+    if request.method=='POST' and form.get('action') not in ('not_md','reopen'):
+        reviewed=_reviewed_word_form(form)
+        if form.get('employment_id') and not selection_error:reviewed['data']['ans']=form.get('assignment','')
     if request.method=='POST' and request.form.get('refresh')!='yes':
         try:
+            if selection_error:raise ValueError(selection_error)
             workflow.lock_pdf(connection,import_id,request.form.get('revision','0'))
             action=request.form.get('action','confirm')
             if current_app.config.get('HR_GOAL_WORKFLOW') and request.form.get('destination')=='historical' and action=='confirm':
                 raise ValueError('Bitte den Ausblick über «Diesen Ausblick als Zielquelle bearbeiten» direkt prüfen und bestätigen.')
-            if action in ('draft','dismiss','reopen'):
+            if action in ('draft','dismiss','reopen','not_md'):
                 reason=request.form.get('reason','').strip()
-                if state['dismissed'] and action!='reopen':
+                if state['dismissed'] and action not in ('reopen','not_md'):
                     raise ValueError('Diese Prüfung ist zurückgestellt. Öffne sie zuerst wieder.')
-                reviewed['_draft']={key:request.form.get(key,'') for key in ('assignment','case_id','destination','reason')}
+                if action=='not_md':
+                    reason=reason or 'Am Original geprüft: kein MD-Dokument.'
+                    reviewed['_intake']={'classification':'not_md','classified_at':workflow.stamp()}
+                elif action=='reopen':
+                    reviewed.pop('_intake',None)
+                else:
+                    reviewed['_draft']={key:form.get(key,'') for key in ('assignment','case_id','destination','reason','employment_id')}
                 connection.execute('UPDATE word_pdf_imports SET reviewed_json=? WHERE id=?',(json.dumps(reviewed,ensure_ascii=False),import_id))
-                workflow.advance_pdf(connection,import_id,dismissed=int(action=='dismiss'),reason=reason)
+                workflow.advance_pdf(connection,import_id,dismissed=int(action in ('dismiss','not_md')),reason=reason)
                 connection.commit()
                 audit('word_pdf_'+action,'word_pdf_import',str(import_id),reason=reason)
-                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.'}[action],'success')
-                return redirect(url_for('main.word_pdf_review',import_id=import_id))
+                flash({'draft':'Prüfentwurf gespeichert. Es wurden noch keine Fachdaten übernommen.','dismiss':'Prüfung zurückgestellt. Das Original bleibt erhalten; unter «Zurückgestellt» kannst du sie wieder öffnen.','reopen':'Prüfung wieder geöffnet.',
+                       'not_md':'Als kein MD-Dokument ausgeschlossen. Dieser Eingang blockiert keine Rückblicke mehr. Das Original bleibt erhalten; du kannst den Ausschluss wieder aufheben.'}[action],'success')
+                return redirect(url_for('main.word_pdf_review',import_id=import_id,**({'back':goal_back} if goal_back else {})))
             if state['dismissed']:
                 raise ValueError('Diese Prüfung ist zurückgestellt. Bitte zuerst wieder öffnen.')
             if request.form.get('checked')!='yes':
                 raise ValueError('Bitte die Prüfung am Original-PDF bestätigen.')
             from copy import deepcopy
             confirmed_review=deepcopy(reviewed)
-            confirm_import(connection,import_id,reviewed=confirmed_review,assignment=request.form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
+            confirm_import(connection,import_id,reviewed=confirmed_review,assignment=form.get('assignment','').strip(),case_id=request.form.get('case_id','').strip(),historical=request.form.get('destination')=='historical',reason=request.form.get('reason','').strip(),user_id=g.user['id'] if g.user else None)
             reviewed=confirmed_review
             if reviewed.get('filled_fields',{}).get('dialog_date'):
                 flash('Fehlendes Gesprächsdatum mit '+reviewed['data']['dialog_date']+' ergänzt.','success')
@@ -1312,7 +1455,7 @@ def word_pdf_review(import_id):
                 from .services import return_review
                 if return_review.available(connection):
                     flash('Angaben übernommen. Unterschriftennachweis und Bereitstellung hier weiterbearbeiten.','success')
-                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id']))
+                    return redirect(url_for('return_work.detail',document_id=doc['official_document_id'],back=goal_back or url_for('main.returns_overview',tab='returns')))
                 try:
                     released = confirm_digital_signature(connection, document_id=doc['official_document_id'], handoff_dir=_handoff_dir())
                     message = 'Angaben übernommen. Rückblick D/E: unterschriebenen Scan anfordern und im Fall prüfen; noch keine Roboterübergabe.' if released['scan_required'] else 'Angaben übernommen und Kopie im Roboter-Ordner bereitgestellt. Original bleibt im Projekt. Keine Unterschriftenprüfung erforderlich.'
@@ -1336,6 +1479,19 @@ def word_pdf_review(import_id):
         except ValueError:
             candidate['review_min']=candidate['review_max']=''
 
+    from .services import intake_views
+    choices=intake_views.employment_choices(connection,person_number=reviewed.get('data',{}).get('pn','')) if reviewed.get('data',{}).get('pn') else []
+    selected_employment=form.get('employment_id',reviewed.get('_draft',{}).get('employment_id',''))
+    if not selected_employment:
+        matching=[c for c in choices if c['assignment_number']==str(form.get('assignment',reviewed.get('_draft',{}).get('assignment',reviewed.get('data',{}).get('ans',''))))]
+        if len(matching)==1:selected_employment=matching[0]['id']
+        elif len(choices)==1:selected_employment=choices[0]['id']
+    if selected_employment and not any(str(c['id'])==str(selected_employment) for c in choices):
+        choices+=intake_views.employment_choices(connection,employment_id=selected_employment)
+    manager_choice=connection.execute('SELECT pn,first_name,last_name,org_unit FROM employees WHERE pn=?',(reviewed.get('data',{}).get('manager_pn',''),)).fetchone()
+    for candidate in candidates:
+        manager=connection.execute('SELECT first_name,last_name FROM employees WHERE pn=?',(candidate['manager_pn'],)).fetchone()
+        candidate['manager_name']=(manager['first_name']+' '+manager['last_name']) if manager else 'Zuständigkeit klären'
     from .services.word_pdf import NARRATIVE_FIELDS
     from .services import return_review
     evidence_targets=[]
@@ -1347,7 +1503,7 @@ def word_pdf_review(import_id):
         for candidate in candidates:
             for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
                 evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
-    return render_template('word_pdf_review.html',active_nav='returns',item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    return render_template('word_pdf_review.html',active_nav='returns',employment_choices=choices,selected_employment=selected_employment,manager_choice=manager_choice,goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')
@@ -1435,10 +1591,17 @@ def preview_word_mail(cycle_id):
     cycle = get_db().execute('SELECT * FROM cycles WHERE id=?', (cycle_id,)).fetchone()
     if not cycle:
         abort(404)
-    manager = get_db().execute("""SELECT e.pn, e.first_name, e.salutation, TRIM(e.first_name || ' ' || e.last_name) AS name
-        FROM employees e WHERE e.pn=? AND EXISTS
-        (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
-        (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
+    if current_app.config.get('HR_GOAL_WORKFLOW'):
+        manager=get_db().execute('''SELECT e.pn,e.first_name,e.salutation,TRIM(e.first_name||' '||e.last_name) AS name
+            FROM employees e WHERE e.pn=? AND EXISTS(SELECT 1 FROM hr_resolved_obligations o
+                WHERE o.cycle_id=? AND o.manager_pn=e.pn AND o.active=1 AND o.required=1
+                AND o.document_kind IN ('review','outlook') AND o.event_status<>'cancelled')''',
+            (request.form.get('preview_manager_pn',''),cycle_id)).fetchone()
+    else:
+        manager = get_db().execute("""SELECT e.pn, e.first_name, e.salutation, TRIM(e.first_name || ' ' || e.last_name) AS name
+            FROM employees e WHERE e.pn=? AND EXISTS
+            (SELECT 1 FROM dialog_cases dc WHERE dc.cycle_id=? AND dc.manager_pn=e.pn AND dc.active=1)""",
+            (request.form.get('preview_manager_pn', ''), cycle_id)).fetchone()
     if not manager:
         return {'error': 'Bitte eine Führungskraft für die Vorschau auswählen.'}, 400
     row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'],
@@ -1585,6 +1748,7 @@ def help_document(name):
 def cycle_closure(cycle_id):
     cycle=get_db().execute('SELECT * FROM cycles WHERE id=?',(cycle_id,)).fetchone()
     if not cycle:abort(404)
+    if current_app.config.get('HR_GOAL_WORKFLOW'):return redirect(url_for('export_work.close',cycle_id=cycle_id))
     return render_template('cycle_closure.html',active_nav='dialogs',cycle=cycle,summary=workflow.closure_summary(get_db(),cycle_id))
 
 
@@ -1881,12 +2045,27 @@ def person_word_correction(cycle_id, case_id):
             for correction_id in correction_ids:audit('person_word_correction_prepared','word_correction',str(correction_id),case_id=case_id)
             for error in errors:flash(error,'error')
             if correction_ids:flash(f'{len(correction_ids)} Ausgabe(n) nach zuständiger Führungskraft erzeugt. Dateien und Nachricht prüfen, dann Outlook-Entwurf erstellen.','success')
-            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id)+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
+            return redirect(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id,**({'back':_dispatch_back()} if request.values.get('back') else {}))+('#correction-'+str(correction_ids[0]) if correction_ids else ''))
         except (ValueError,LookupError,OSError) as exc:
             flash(str(exc),'error')
     rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]
-    for row in rows: row['manifest'] = json.loads(row['manifest_json'])
-    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows)
+    from .services.intake_views import date_label
+    for row in rows:
+        row['manifest'] = json.loads(row['manifest_json'])
+        row['created_label']=date_label(row['created_at'],True)
+        row['redelivery_error']=''
+        meta=row['manifest'].get('redelivery') or {}
+        row['redelivery_source_url']=(url_for('main.person_word_correction',cycle_id=cycle_id,case_id=case_id,_anchor='correction-'+str(meta['source_id'])) if meta.get('source_kind')=='person' else url_for('main.dispatch_package',package_id=meta['source_package_id']) if meta else '')
+        if row['manifest'].get('redelivery') and row['status']=='prepared':
+            try:
+                from .services.redeliveries import validate_prepared
+                validate_prepared(db,row,current_app.config['WORD_TEMPLATE_PATHS'],kind='person')
+            except (ValueError,OSError) as exc:row['redelivery_error']=str(exc)
+    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,preselected_kinds=set(request.args.getlist('kind')) & set(case['kinds']),redelivery_sources=db.execute("""SELECT DISTINCT p.id,p.created_at,m.first_name||' '||m.last_name AS manager_name FROM word_dispatch_packages p
+        JOIN word_mail_deliveries d ON d.package_id=p.id LEFT JOIN employees m ON m.pn=p.manager_pn
+        WHERE p.cycle_id=? AND d.status='sent_confirmed' AND p.discarded_at=''
+        AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='')
+        AND EXISTS(SELECT 1 FROM json_each(p.manifest_json,'$.documents') j WHERE json_extract(j.value,'$.case_id')=?) ORDER BY p.id DESC""",(cycle_id,case_id)).fetchall(),correction_back=_dispatch_back() if request.args.get('back') else '')
 
 
 @bp.get('/word-corrections/<int:correction_id>/download')
@@ -1906,4 +2085,4 @@ def person_correction_action(correction_id):
         audit('person_word_correction_action','word_correction',str(correction_id),action_taken=request.form.get('action'))
         flash('Outlook-Entwurf erstellt; in Outlook prüfen und versenden.' if request.form.get('action')=='draft' else 'Outlook-Stand der Einzelausgabe dokumentiert.','success')
     except (ValueError,OSError) as exc: flash(str(exc),'error')
-    return redirect(url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'])+'#correction-'+str(correction_id))
+    return redirect(url_for('main.person_word_correction',cycle_id=row['cycle_id'],case_id=row['case_id'],**({'back':_dispatch_back()} if request.form.get('back') else {}))+'#correction-'+str(correction_id))

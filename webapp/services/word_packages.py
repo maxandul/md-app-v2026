@@ -167,6 +167,18 @@ def feedback_cases(connection,cycle,manager_pn,cases):
         (cycle['sap_import_id'],c['employee_pn'],c['employment_assignment'],manager_pn)).fetchone()]
 
 
+def check_sap_assignments(connection, cycle_id, numbers):
+    """Shared preflight for both the next-action preview and actual rendering."""
+    cycle = connection.execute('SELECT sap_import_id FROM cycles WHERE id=?', (cycle_id,)).fetchone()
+    numbers = list(dict.fromkeys(numbers))
+    conflicts = connection.execute(
+        f"SELECT COUNT(*) FROM sap_import_issues WHERE sap_import_id=? AND status='open' AND severity='blocking' AND person_number IN ({','.join('?' for _ in numbers)})",
+        (cycle['sap_import_id'], *numbers),
+    ).fetchone()[0]
+    if conflicts:
+        raise ValueError('Vor der Word-Erzeugung müssen die offenen SAP-Zuordnungskonflikte geklärt werden.')
+
+
 def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manager_pn: str,
                         template_paths: dict, output_dir: Path, case_id: str = "", document_kinds: list[str] | None = None,
                         resolved_review: bool = False) -> tuple[Path, dict]:
@@ -205,12 +217,7 @@ def create_word_package(connection: sqlite3.Connection, *, cycle_id: int, manage
     if not cases:
         raise LookupError("Keine aktiven MD-Fälle für diese Auswahl gefunden.")
     numbers = list(dict.fromkeys([manager_pn, *(row["employee_pn"] for row in cases)]))
-    conflicts = connection.execute(
-        f"SELECT COUNT(*) FROM sap_import_issues WHERE sap_import_id = ? AND status = 'open' AND severity = 'blocking' AND person_number IN ({','.join('?' for _ in numbers)})",
-        (cycle["sap_import_id"], *numbers),
-    ).fetchone()[0]
-    if conflicts:
-        raise ValueError("Vor der Word-Erzeugung müssen die offenen SAP-Zuordnungskonflikte geklärt werden.")
+    check_sap_assignments(connection, cycle_id, numbers)
     export_id = "WORD-" + uuid.uuid4().hex
     directory = output_dir / export_id
     directory.mkdir(parents=True)

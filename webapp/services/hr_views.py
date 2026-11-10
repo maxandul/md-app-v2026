@@ -1,6 +1,6 @@
 """Paged read models over canonical HR objects; no separately closable tasks."""
 from datetime import date
-from . import goal_queries, part_responsibilities
+from . import goal_queries, part_responsibilities, person_display
 
 STATES = {'open':'Zu bearbeiten','waiting':'Warten auf Rückmeldung','done':'Verlauf','all':'Alle'}
 KINDS = ('Ziele','Rücklauf','PDF-Prüfung','Postfach','Gesprächsteil','Versand','Feedback','Stammdaten','Zuordnung','SAP-Export')
@@ -24,10 +24,10 @@ def task_select(kind, target, record_id, title, subject, source, where='1=1', **
     values.update(fields)
     return 'SELECT '+','.join(value+' AS '+key for key,value in values.items())+' FROM '+source+' WHERE '+where
 
-def task_query(db):
+def task_query(db, template_paths=None):
     cache={}
     def state(source_id):
-        if source_id not in cache:cache[source_id]=goal_queries.source_state(db,source_id)
+        if source_id not in cache:cache[source_id]=goal_queries.source_state(db,source_id,template_paths)
         return cache[source_id]
     db.create_function('hr_goal_state',1,state)
     statements=[
@@ -78,7 +78,7 @@ def task_query(db):
     ]
     return ' UNION ALL '.join(statements)
 
-def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='', due='', cycle_id=None, page_number=1, page_size=25):
+def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='', due='', cycle_id=None, page_number=1, page_size=25, template_paths=None):
     where=[];params=[]
     if state in ('open','waiting','done'):where.append('state=?');params.append(state)
     elif state!='all':raise ValueError('Unbekannte Arbeitsansicht.')
@@ -87,17 +87,20 @@ def work(db, *, q='', state='open', kind='', year=None, org_unit='', manager='',
     if q:where.append("subject||' '||context||' '||person_number LIKE ?");params.append('%'+q+'%')
     if year:where.append('year=?');params.append(year)
     if org_unit:where.append('org_unit=?');params.append(org_unit)
-    if manager:where.append('manager_pn=?');params.append(manager)
+    if manager:
+        where.append("EXISTS(SELECT 1 FROM employees m WHERE m.pn=manager_pn AND m.first_name||' '||m.last_name||' '||m.pn LIKE ?)");params.append('%'+manager+'%')
     if due=='overdue':where.append("state<>'done' AND due_date<>'' AND due_date<?");params.append(date.today().isoformat())
     elif due=='dated':where.append("due_date<>''")
-    sql='SELECT * FROM ('+task_query(db)+')'+(' WHERE '+' AND '.join(where) if where else '')
+    sql='SELECT * FROM ('+task_query(db,template_paths)+')'+(' WHERE '+' AND '.join(where) if where else '')
     result=page(db,sql,params,number=page_number,size=page_size,order="CASE WHEN due_date<>'' THEN 0 ELSE 1 END,due_date,stamp,kind,record_id,manager_pn")
     from . import return_review
     for row in result['rows']:
         if row['target']=='return':
             row['title']=return_review.next_action(return_review.view(db,row['record_id'],include_history=False))
         elif row['target']=='goal':
-            row['title']=goal_queries.LABELS[goal_queries.source_state(db,row['record_id'])]
+            row['goal_state']=goal_queries.source_state(db,row['record_id'],template_paths)
+            row['title']=goal_queries.LABELS[row['goal_state']]
+    person_display.enrich(db,result['rows'])
     return result
 
 def people(db, *, q='', org_unit='', state='open', page_number=1, page_size=25):
@@ -108,7 +111,9 @@ def people(db, *, q='', org_unit='', state='open', page_number=1, page_size=25):
     sql="""SELECT p.*,(SELECT COUNT(*) FROM employment_assignments e WHERE e.person_number=p.person_number) AS assignments,
         (SELECT COUNT(*) FROM hr_resolved_obligations o WHERE o.employee_pn=p.person_number AND o.required=1 AND o.active=1 AND o.event_status<>'cancelled' AND o.status NOT IN ('complete','waived')) AS open_parts
         FROM persons p"""+(' WHERE '+' AND '.join(where) if where else '')
-    return page(db,sql,params,number=page_number,size=page_size,order='last_name,first_name,person_number')
+    result=page(db,sql,params,number=page_number,size=page_size,order='last_name,first_name,person_number')
+    person_display.enrich(db,result['rows'])
+    return result
 
 def managers(db, *, q='', state='open', page_number=1, page_size=25):
     sql="""WITH scope AS (SELECT manager_pn FROM hr_resolved_obligations UNION SELECT manager_pn FROM word_feedback_submissions UNION SELECT manager_pn FROM feedback_bundles),
@@ -134,6 +139,7 @@ def parts(db, *, person='', manager='', year=None, state='open', kind='', org_un
     result=page(db,sql,params,number=page_number,size=page_size,order="o.status IN ('complete','waived'),c.review_year DESC,o.last_name,o.first_name,o.assignment_number,o.id")
     for row in result['rows']:
         row['part']=part_responsibilities.resolve(db,row['case_id'],row['document_kind']) if row['case_id'] else None
+    person_display.enrich(db,result['rows'])
     return result
 
 def feedback(db, *, q='', manager='', year=None, state='all', page_number=1, page_size=25):

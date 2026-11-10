@@ -18,7 +18,7 @@ from .word_packages import create_word_package, prior_goals, preparation_templat
 
 
 def _stamp():
-    return datetime.now().astimezone().isoformat(timespec='seconds')
+    return datetime.now().astimezone().isoformat(timespec='microseconds')
 
 
 def _hash(path):
@@ -138,7 +138,7 @@ def prepare_word_batch(connection, *, cycle_id, manager_pns, template_paths, out
     return batch, {'packages':packages,'skipped':skipped}
 
 
-def word_dispatch_candidates(connection, *, cycle_id, template_paths):
+def word_dispatch_candidates(connection, *, cycle_id, template_paths, manager_pn=None):
     rows = connection.execute('''SELECT p.*, e.email AS recipient_email,
         TRIM(e.first_name || ' ' || e.last_name) AS manager_name,
         e.first_name AS manager_first_name, e.salutation AS manager_salutation,
@@ -147,8 +147,8 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         FROM word_dispatch_packages p JOIN cycles c ON c.id=p.cycle_id
         LEFT JOIN employees e ON e.pn=p.manager_pn
         LEFT JOIN word_mail_deliveries d ON d.package_id=p.id
-        WHERE p.cycle_id=? AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
-        ORDER BY manager_name,p.manager_pn''', (cycle_id,)).fetchall()
+        WHERE p.cycle_id=? AND (? IS NULL OR p.manager_pn=?) AND p.id=(SELECT MAX(p2.id) FROM word_dispatch_packages p2 WHERE p2.cycle_id=p.cycle_id AND p2.manager_pn=p.manager_pn AND p2.discarded_at='')
+        ORDER BY manager_name,p.manager_pn''', (cycle_id,manager_pn,manager_pn)).fetchall()
     result = []
     for row in rows:
         item = dict(row)
@@ -161,6 +161,7 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
         item['can_discard'] = row['delivery_status'] in (None, 'cancelled')
         item['filename'] = Path(row['stored_path']).name
         manifest = json.loads(row['manifest_json'])
+        item['redelivery'] = manifest.get('redelivery')
         item['goal_warnings'] = manifest.get('goal_warnings', [])
         item['performance_goal_count'] = sum(d.get('performance_goals', 0) for d in manifest['documents'])
         item['development_goal_count'] = sum(d.get('development_goals', 0) for d in manifest['documents'])
@@ -186,6 +187,9 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths):
                     raise ValueError('Die Grundlagen haben sich geändert; diese noch nicht versendete Ausgabe ist veraltet. Vor einem Versand neu erzeugen; Einzelkorrekturen bereits versendeter Pakete kannst du unten dokumentieren.')
             if not row['recipient_email']:
                 raise ValueError('Geschäftliche E-Mail-Adresse fehlt.')
+            if manifest.get('redelivery') and row['delivery_status'] not in ('sent_confirmed','cancelled'):
+                from .redeliveries import validate_prepared
+                validate_prepared(connection,row,template_paths,kind='regular')
             item['readiness_error'] = ''
         except (ValueError,OSError) as exc:
             item['readiness_error'] = str(exc)
@@ -307,6 +311,10 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
             raise ValueError((row or {}).get('readiness_error') or 'Die Auswahl enthält eine abgelöste oder bereits bearbeitete Word-Ausgabe.')
         if row['delivery_status']=='failed' and not retry_confirmed:
             raise ValueError('Bitte vor einem erneuten Versuch in Outlook prüfen, ob bereits eine Nachricht angelegt oder versendet wurde, und die Wiederholung bestätigen.')
+        manifest=json.loads(row['manifest_json'])
+        if manifest.get('redelivery'):
+            from .redeliveries import validate_prepared
+            validate_prepared(connection,row,template_paths,kind='regular')
         row['subject'],row['body_html'] = word_message(row,sender_email=sender_email,subject_template=subject_template,body_template=body_template)
         from .outlook_lock import check_goal_workflow
         documents=json.loads(row['manifest_json'])['documents']

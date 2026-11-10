@@ -4,6 +4,7 @@ Aktueller Einstieg: **MD-Web.bat**. Die neue HR-Oberfläche ist der Standard.
 
 | Dokument | Zweck |
 |---|---|
+| [Aufgaben und UX – Konzeptentwurf](AUFGABEN_UND_UX_KONZEPT.md) | Arbeitsaufträge, vorgeschlagene Navigation, Personenanzeige, Formulare, grosse Listen und zwei Seitenabläufe; noch keine implementierte Oberfläche |
 | [Direkter Einstieg](../START_HIER.txt) | Installation und täglicher Start über MD-Web.bat |
 | [Neue HR-Version starten](START_NEUE_HR_VERSION.md) | Neuinstallation, Konfiguration, Betrieb und Updates |
 | [E2-Prüfergebnisse](UMSETZUNG_E2_RELEASE.md) | Sechs Originale, Parserkorrekturen, begrenzte Automatik und offene Nachweise |

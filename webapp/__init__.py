@@ -95,12 +95,16 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.register_blueprint(goal_bp)
     from .part_routes import bp as part_bp
     app.register_blueprint(part_bp)
+    from .export_routes import bp as export_bp
+    app.register_blueprint(export_bp)
     from .sap_routes import bp as sap_bp
     app.register_blueprint(sap_bp)
     from .return_routes import bp as return_bp
     app.register_blueprint(return_bp)
     from .hr_routes import bp as hr_bp
     app.register_blueprint(hr_bp)
+    from .redelivery_routes import bp as redelivery_bp
+    app.register_blueprint(redelivery_bp)
 
     @app.after_request
     def retain_action_filters(response):

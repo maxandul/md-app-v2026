@@ -24,7 +24,7 @@ class StandardAppTest(unittest.TestCase):
                 self.assertTrue(app.config['HR_GOAL_WORKFLOW'])
                 self.assertFalse(app.config['HR_RETURN_AUTOMATION'])
                 client = app.test_client()
-                self.assertEqual(client.get('/').location, '/arbeit')
+                self.assertEqual(client.get('/').location, '/start')
                 for path in ('/arbeit', '/mitarbeitende', '/fuehrungskraefte',
                              '/stammdaten/abgleich', '/versand?workflow=workbook'):
                     response = client.get(path)
@@ -32,7 +32,7 @@ class StandardAppTest(unittest.TestCase):
                     self.assertNotIn('HTML-Arbeitsmappe', response.text)
                 with app.app_context():
                     db = get_db()
-                    self.assertEqual(db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0], 5)
+                    self.assertEqual(db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0], 6)
                     db.execute("INSERT INTO audit_log(action, object_type, object_id, details_json, created_at) VALUES ('restart-marker','test','1','{}','2026-10-28')")
                     db.commit()
                 restarted = create_app(settings, instance_path=str(root))

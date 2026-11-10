@@ -1,9 +1,12 @@
 """Paged views of existing obligations, not a second task ledger."""
 from .part_responsibilities import resolve
+from .person_display import enrich
+from datetime import date
 
 
-def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit='',page=1,page_size=25):
+def scope(*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',cycle_id=None,**unused):
     where=["o.document_kind IN ('review','outlook')",'o.required=1'];params=[]
+    if cycle_id:where.append('o.cycle_id=?');params.append(cycle_id)
     if q:where.append("o.first_name||' '||o.last_name||' '||o.employee_pn LIKE ?");params.append('%'+q+'%')
     if manager:where.append("o.manager_pn||' '||COALESCE(m.first_name,'')||' '||COALESCE(m.last_name,'') LIKE ?");params.append('%'+manager+'%')
     if kind:where.append('o.document_kind=?');params.append(kind)
@@ -11,16 +14,32 @@ def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit
     if year:
         where.append("COALESCE(substr(o.assigned_period_end,1,4),substr(o.legacy_period_end,1,4),CAST(CASE WHEN o.document_kind='outlook' THEN c.outlook_year ELSE c.review_year END AS TEXT))=?")
         params.append(str(year))
-    if state!='all':where.extend(["o.status NOT IN ('complete','waived')","o.event_status<>'cancelled'",'o.active=1'])
+    if due=='overdue':
+        where.append("o.due_date<>'' AND o.due_date<? AND o.status NOT IN ('complete','waived') AND o.active=1 AND o.event_status<>'cancelled'");params.append(date.today().isoformat())
+    if state in ('received','complete','waived','scan_pending','rejected','open') and state!='open':
+        where.append('o.status=?');params.append(state)
+    elif state!='all':where.extend(["o.status NOT IN ('complete','waived')","o.event_status<>'cancelled'",'o.active=1'])
     base=''' FROM hr_resolved_obligations o LEFT JOIN employees m ON m.pn=o.manager_pn
         LEFT JOIN cycles c ON c.id=o.cycle_id WHERE '''+' AND '.join(where)
+    return base,params
+
+
+def selection_ids(connection, **filters):
+    base,params=scope(**filters)
+    return [r[0] for r in connection.execute('SELECT o.id'+base+' ORDER BY o.id',params)]
+
+
+def listing(connection,*,q='',manager='',kind='',state='open',year=None,org_unit='',due='',perspective='people',page=1,page_size=25,cycle_id=None):
+    base,params=scope(q=q,manager=manager,kind=kind,state=state,year=year,org_unit=org_unit,due=due,cycle_id=cycle_id)
     total=connection.execute('SELECT COUNT(*)'+base,params).fetchone()[0]
     page_size=page_size if page_size in (25,50,100) else 25
     pages=max(1,(total+page_size-1)//page_size);page=min(max(page or 1,1),pages)
+    ordering=('manager_name,' if perspective=='managers' else '')+'o.last_name,o.first_name,o.employee_pn,o.assignment_number,o.id'
     rows=[dict(r) for r in connection.execute('''SELECT o.*,COALESCE(m.first_name||' '||m.last_name,'PN '||o.manager_pn) AS manager_name'''
-        +base+' ORDER BY o.last_name,o.first_name,o.employee_pn,o.assignment_number,o.id LIMIT ? OFFSET ?',[*params,page_size,(page-1)*page_size])]
+        +base+' ORDER BY '+ordering+' LIMIT ? OFFSET ?',[*params,page_size,(page-1)*page_size])]
     for row in rows:
         row['part']=resolve(connection,row['case_id'],row['document_kind']) if row['case_id'] else None
+    enrich(connection, rows)
     return {'rows':rows,'total':total,'page':page,'pages':pages,'page_size':page_size}
 
 

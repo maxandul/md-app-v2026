@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dialoge · MD-Verwaltung{% endblock %}
 {% block content %}
+{% if planning_back %}<nav class="breadcrumb"><a href="{{ planning_back }}">Zurück zur aufrufenden Aufgabe</a></nav>{% endif %}
 <details class="info-box"><summary>Welcher Rückblick geht an SAP?</summary><p>Pro Person, Anstellung und Rückblickjahr wird ein Rückblick als Quelle der SAP-Beurteilung ausgewählt. Bei mehreren Rückblicken (zum Beispiel Probezeit und Jahresgespräch) prüft HR, welcher massgeblich ist. «Diesen Rückblick für SAP auswählen» ersetzt die bisherige Auswahl für dieselbe Person, Anstellung und dasselbe Jahr. Die Auswahl allein löst keinen Export aus. Bereits exportierte Ereignisse lassen sich nicht auf diesem Weg korrigieren.</p></details>
   <section class="page-head page-head--compact">
     <p class="kicker">Dialoge</p><h1>Durchläufe und Dialogpflichten</h1>
@@ -119,7 +120,7 @@
   <details class="legacy-box" id="manual-event" open>
     <summary>Unterjähriges oder nicht aus SAP ableitbares Ereignis erfassen</summary>
     <p>Wähle die Person anhand von Name, OE und Anstellung sowie die zuständige Führungskraft. Auch eine stellvertretende Führungskraft aus einer anderen OE ist möglich.</p>
-    <form action="{{ url_for('main.add_dialog_event') }}" method="post"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}">
+    <form action="{{ url_for('main.add_dialog_event') }}" method="post"><input type="hidden" name="csrf_token" value="{{ goal_csrf_token }}">{% if planning_back %}<input type="hidden" name="back" value="{{ planning_back }}">{% endif %}
       <div class="form-grid form-grid--three">
         <div><label for="employee-search">Mitarbeitende suchen</label><input id="employee-search" type="search" data-filter-select="manual-employee" value="{{ request.args.get('person','') }}" placeholder="Name, OE oder Funktion"><label for="manual-employee">Person und Anstellung</label><select id="manual-employee" name="employment_id" required><option value="">Bitte auswählen</option>{% for employee in employee_choices %}<option value="{{ employee.id }}" data-org="{{ employee.org_unit }}">{{ employee.last_name }} {{ employee.first_name }} · {{ employee.org_unit or 'OE fehlt' }} · {{ employee.position }} · Ans. {{ employee.assignment_number }} · PN {{ employee.person_number }}</option>{% endfor %}</select></div>
         <div><label for="manager-search">Führungskraft suchen</label><input id="manager-search" type="search" data-filter-select="manual-manager" placeholder="Name oder OE"><label for="manual-manager">Verantwortliche Führungskraft</label><select id="manual-manager" name="manager_pn" required><option value="">Bitte auswählen</option>{% for manager in manager_choices %}<option value="{{ manager.pn }}" data-org="{{ manager.org_unit }}">{{ manager.last_name }} {{ manager.first_name }} · {{ manager.org_unit or 'OE fehlt' }} · PN {{ manager.pn }}</option>{% endfor %}</select></div>

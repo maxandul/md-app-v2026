@@ -1,6 +1,6 @@
 """Read-only entry points for the consolidated HR workspace."""
 from urllib.parse import urlsplit
-from flask import Blueprint, abort, render_template, request, url_for
+from flask import Blueprint, abort, current_app, render_template, request, url_for, redirect, flash
 from .db import get_db
 from .goal_routes import protect
 from .services import hr_views as views
@@ -33,7 +33,11 @@ def render(template, data, **values):
 
 def task_link(row):
     target=row['target'];key=row['record_id']
-    if target=='goal':return url_for('goal_work.source',source_id=key,back=request.full_path)
+    if target=='goal':
+        if row.get('goal_state') not in ('review','withdrawal','done'):
+            source=get_db().execute('SELECT r.status FROM hr_goal_sources s JOIN hr_goal_revisions r ON r.source_id=s.id AND r.revision=s.revision WHERE s.id=?',(key,)).fetchone()
+            if source['status']=='confirmed':return url_for('goal_work.outputs',source=key,back=request.full_path)
+        return url_for('goal_work.source',source_id=key,back=request.full_path)
     if target=='return':return url_for('return_work.detail',document_id=key,back=request.full_path)
     if target=='pdf':return url_for('main.word_pdf_review',import_id=key)
     if target=='mail':return url_for('main.returns_overview',mail_q=row['context'],mail_status='all')+'#postfach'
@@ -46,11 +50,22 @@ def task_link(row):
     if target=='sap_export':return url_for('main.sap_exports',cycle_id=row['cycle_id'])
     return url_for('main.dispatch',cycle_id=row['cycle_id'])
 
+@bp.get('/start')
+def start():
+    args=dict(page_size=25,template_paths=current_app.config['WORD_TEMPLATE_PATHS'])
+    data=views.work(get_db(),**args)
+    for row in data['rows']:row['href']=task_link(row)
+    return render_template('hr/start.html',active_nav='start',**data)
+
+@bp.get('/daten')
+def data_hub():
+    return render_template('hr/data.html',active_nav='data')
+
 @bp.get('/arbeit')
 def work():
     args=year_filter(filters('q','kind','org_unit','manager','due'));args['state']=request.args.get('state','open')
     args['cycle_id']=request.args.get('cycle_id',type=int)
-    try:data=views.work(get_db(),**args)
+    try:data=views.work(get_db(),template_paths=current_app.config['WORD_TEMPLATE_PATHS'],**args)
     except ValueError:abort(400,'Unbekannte Arbeitsansicht.')
     for row in data['rows']:row['href']=task_link(row)
     return render('hr/work.html',data,active_nav='work',filters=args,kinds=views.KINDS)
@@ -94,3 +109,38 @@ def handoffs():
         elif row['target']=='feedback_bundle':row['href']=url_for('main.feedback_bundle_download',bundle_id=row['id'])
         else:row['href']=url_for('main.case_detail',cycle_id=row['cycle_id'],case_id=row['case_id'])
     return render('hr/handoffs.html',data,active_nav='handoffs',filters=args)
+
+
+@bp.route('/durchlauf',methods=['GET','POST'])
+def cycle_plan():
+    from datetime import date
+    from .services import planning_views
+    from .services.cycles import create_cycle
+    from .services.intake_views import date_label
+    from .auth import audit
+    db=get_db()
+    imports=db.execute('SELECT * FROM sap_imports ORDER BY id DESC LIMIT 1').fetchone()
+    if request.method=='POST':
+        year=request.form.get('review_year',type=int)
+        existing=db.execute('SELECT id FROM cycles WHERE review_year=?',(year,)).fetchone()
+        if existing:
+            flash('Dieser Durchlauf besteht bereits. Setze ihn hier fort.','info')
+            return redirect(url_for('hr.cycle_plan',cycle_id=existing[0]))
+        try:
+            if not imports or request.form.get('sap_import_id',type=int)!=imports['id']:
+                raise ValueError('Der übernommene Datenstand hat sich geändert oder fehlt. Bitte erneut prüfen.')
+            if year is None:raise ValueError('Bitte ein gültiges Rückblickjahr angeben.')
+            cycle_id=create_cycle(db,review_year=year,sap_import_id=imports['id'])
+        except ValueError as exc:
+            flash(str(exc),'error');return redirect(url_for('hr.cycle_plan',new='yes'))
+        audit('cycle_created','cycle',str(cycle_id),review_year=year)
+        flash('Durchlauf eröffnet. Prüfe jetzt Gesprächsaufträge und Fristen. Es wurden noch keine Vorlagen versandt.','success')
+        return redirect(url_for('hr.cycle_plan',cycle_id=cycle_id))
+    cycles=db.execute('SELECT * FROM cycles ORDER BY review_year DESC,id DESC').fetchall()
+    requested=request.args.get('cycle_id',type=int)
+    cycle=next((c for c in cycles if c['id']==requested),None) if requested else next((c for c in cycles if c['status']!='abgeschlossen'),cycles[0] if cycles else None)
+    if requested and not cycle:abort(404)
+    if request.args.get('new')=='yes':cycle=None
+    return render_template('hr/cycle_plan.html',active_nav='start',cycle=cycle,cycles=cycles,latest_import=imports,
+        counts=planning_views.cycle_progress(db,cycle['id']) if cycle else None,sap_progress=planning_views.sap_progress(db),
+        now_year=request.args.get('year',date.today().year,type=int),date_label=date_label)

@@ -56,6 +56,8 @@ def get(connection,dispatch_id):
     if not row:
         raise ValueError('Versandgruppe nicht gefunden.')
     result=dict(row)
+    from .saved_redeliveries import provenance
+    result['redelivery']=provenance(connection,dispatch_id)
     event=connection.execute("SELECT details_json FROM hr_goal_events WHERE dispatch_id=? AND action='outlook_started' ORDER BY id DESC LIMIT 1",(dispatch_id,)).fetchone()
     result['attachment']=json.loads(event['details_json']).get('attachment') if event else None
     return result
@@ -157,7 +159,12 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
                     AND json_extract(j.value,'$.kind') IN ('review','probation') AND d.status IN ('processing','draft_created','failed')''',(output['case_id'],)).fetchone():
                     raise ValueError('Für diese Person ist ein bisheriges Führungskräftepaket in Outlook offen.')
             archive=Path(lock_root).parent/'dispatches'/f'MD_Rueckblicke_{_filename_part(group["manager_pn"])}_Versand_{dispatch_id}.zip'
-            attachment=_bundle_reviews(outputs,archive)
+            if group.get('redelivery'):
+                from .saved_redeliveries import validate_prepared
+                plan=validate_prepared(connection,group,template_paths,kind='goals',dispatch_dir=Path(lock_root).parent/'dispatches')
+                archive=Path(group['redelivery']['stored_path'])
+                attachment={**plan['attachment'],'filename':archive.name}
+            else:attachment=_bundle_reviews(outputs,archive)
             connection.execute("UPDATE hr_goal_dispatches SET status='processing',subject=?,body_text=?,sender_email=?,updated_at=? WHERE id=?",
                                (subject.strip(),body.strip(),sender_email,stamp(),dispatch_id))
             review.event(connection,'outlook_started',dispatch_id=dispatch_id,user_id=user_id,attachment=attachment)

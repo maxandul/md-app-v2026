@@ -17,6 +17,7 @@ HR soll mit einem konkreten Anliegen einsteigen können: «Ich habe alte Ausblic
 5. Zulässige Teile eines Auftrags bleiben bearbeitbar, während andere Teile geklärt werden. Technisch notwendige Transaktionsgrenzen werden ausdrücklich angezeigt.
 6. Bestätigungen benennen eine konkrete Entscheidung oder Wirkung. Routinemässiges Weiterklicken verlangt keine zusätzliche Freigabe.
 7. Corporate Design gibt den gestalterischen Rahmen vor. Innerhalb dieses Rahmens werden Informationshierarchie, Arbeitsflächen und Interaktionsmuster verbessert.
+8. Ein gültiger Rücklauf benötigt keinen Versandnachweis im System. Auch über das Intranet bezogene und ausserhalb der App ausgefüllte Vorlagen gehören zum regulären Eingang.
 
 ## 2. Personen verständlich und eindeutig anzeigen
 
@@ -82,6 +83,10 @@ Die Tabelle beschreibt Arbeitsaufträge, keine Liste von sechzehn Hauptmenüpunk
 
 **Wirkung und Wiederaufnahme:** Original und Herkunft bleiben nachvollziehbar. Nur reine, vollständig verarbeitete MD-Mails ohne weitere offene Anliegen dürfen automatisch verschoben werden. Fremdanlagen oder zusätzliche Anliegen verhindern dies. «Mailprüfung erledigt» verschiebt keine Mail, auch nicht beim nächsten Scan. Offene Folgearbeit bleibt bestehen.
 
+**Rücklauf ohne vorherigen Systemversand:** Die Vorlagen sind auch im Intranet verfügbar. Ein Eingang darf deshalb weder eine von der App erzeugte Datei noch eine Ausgabe-ID oder einen erfassten Versand voraussetzen. Dokumentart, Person/Anstellung, Anlass, Zeitraum und fachlicher Inhalt bestimmen die Zuordnung. Namen, OE und Führungskraft unterstützen die Auswahl; die interne Zuordnung bleibt eindeutig. Eine fehlende Systemausgabe ist für sich allein kein Konflikt und kein Grund, ein gültiges Dokument zurückzuweisen oder erneut ausfüllen zu lassen.
+
+Ein passendes bestehendes Gespräch wird verwendet, ohne ein zweites Gespräch oder einen fiktiven Versand zu erzeugen. Fehlt ein passender Gesprächsauftrag, schlägt die App die fachliche Zuordnung bzw. Anlage mit HR-Prüfung vor. Mehrere passende Gespräche werden ausdrücklich zur Auswahl gestellt. Tatsächliche Widersprüche bei Person, Zeitraum, Inhalt oder Version sind weiter zu klären. Herkunft und Versandhistorie bleiben getrennt: «Vorlage aus dem Intranet» nur bei bekanntem Bezug, sonst «Keine Systemausgabe zugeordnet / Herkunft nicht bekannt». Diese Anzeige ist Information, keine allgemeine Prüfblockade. Eingegangene Dokumente unterdrücken nach den bestehenden fachlichen Regeln unpassende Fehlend-Erinnerungen, auch ohne Versandnachweis.
+
 ### U03 – Unterlagen nochmals zustellen
 
 **Story:** Als HR-Verantwortliche möchte ich einer Führungskraft bereits gültige Unterlagen nochmals zustellen.
@@ -91,6 +96,8 @@ Die Tabelle beschreibt Arbeitsaufträge, keine Liste von sechzehn Hauptmenüpunk
 **Entscheidungen und Ausnahmen:** Haben sich Ziele, Zuständigkeit oder Inhalte geändert, bietet die App U04 oder U06 an. Ein offener Outlook-Vorgang wird fortgesetzt oder geklärt. Bereits bearbeitete Word-Dateien werden nicht still ersetzt.
 
 **Wirkung und Wiederaufnahme:** Neuer Zustellnachweis, kein neues Gespräch und keine zusätzliche Pflicht. Die bisherige Versandhistorie bleibt bestehen. Vorschlag für die neue UI; ein gemeinsamer unveränderter Wiederzustellungsweg ist im Code noch gesondert zu prüfen.
+
+Wenn bisher ausschliesslich eine Intranetvorlage verwendet wurde, gibt es möglicherweise keine geeignete gespeicherte Systemausgabe zum erneuten Zustellen. Die App bietet dann ausdrücklich «Passende Vorlage erstellen und zustellen» an. Ein fehlender früherer Systemversand wird nicht nachträglich erfunden.
 
 ### U04 – Gesprächsauftrag ändern oder ersetzen
 
@@ -131,6 +138,8 @@ Die Tabelle beschreibt Arbeitsaufträge, keine Liste von sechzehn Hauptmenüpunk
 **Entscheidungen und Ausnahmen:** «Rücklauf fehlt», «Eingang ungeprüft», «Nachweis fehlt», «HR-Prüfung offen» und «Bereitstellung offen» sind unterschiedliche Gründe. Ein abgeschlossener Rückblick bedeutet nicht automatisch einen abgeschlossenen Ausblick. Offene Altjahre bleiben auffindbar und werden nicht unbemerkt ausgeblendet.
 
 **Wirkung und Wiederaufnahme:** Reine Übersicht ändert keine Daten. Zählungen unterscheiden Personen, Gespräche, Gesprächsteile und Aufgaben. Die Perspektive nach aktueller direkter Führungskraft ist ausdrücklich von derjenigen nach tatsächlicher Gesprächsverantwortung zu unterscheiden.
+
+Ein Gespräch kann den Stand «Rücklauf eingegangen» oder «Abgeschlossen» besitzen, obwohl keine Systemzustellung erfasst ist. Die Übersicht zeigt dies ohne widersprüchliche Warnung oder Aufforderung, den angeblich fehlenden Versand nachzuerfassen.
 
 ### U08 – An ausstehende Gespräche erinnern
 
@@ -295,6 +304,8 @@ Ein Auftrag kann mehrere Bearbeitungsstände enthalten. «18 bereit, 2 offen» i
 
 Fachstand, Versandstand und technische Bereitstellung sind getrennte Dimensionen. Ein kompakter Überblick zeigt den wichtigsten offenen Grund und die nächste Handlung; Details können weitere Gründe enthalten. «PDF eingegangen», «inhaltlich übernommen», «Unterschriftenprüfung offen» und «bereitgestellt» werden nicht zu einem unspezifischen «erledigt» zusammengefasst.
 
+«Kein Systemversand erfasst» ist kein Beleg für einen fehlenden Rücklauf. Die Statusfolge ist daher keine zwingende Kette «erst erstellt, dann versendet, dann eingegangen». Gültige Intranet-Rückläufe können unmittelbar in die Eingangsprüfung einsteigen und nach fachlicher Prüfung weiterverarbeitet werden. Dasselbe gilt für geeignete Vorjahresausblicke als Zielquellen und für die spätere Bereitstellung bzw. SAP-Exportfähigkeit.
+
 Farben unterstützen den Text. Farbe allein trägt keine Statusinformation. Blau kennzeichnet die nächste Hauptaktion, neutrale Darstellung Nebenaktionen, ein Warn-/Gefahrenstil fachlich einschneidende Aktionen. Eine Seite erhält pro aktuellem Arbeitsschritt eine klar erkennbare Hauptaktion.
 
 ### Ergebnis, Unterbruch und technische Probleme
@@ -375,6 +386,8 @@ Die Navigation benötigt weder ein zweites Pflichtenregister noch unabhängig sc
 12. Dateierstellung, Outlook-Entwurf, tatsächlicher Versand, lokale Dossierbereitstellung und SAP-Dateiexport sind verständlich unterscheidbar.
 13. Eine Detailprüfung erhält gültige Eingaben und führt zu Filtern, Seite und Arbeitskontext zurück. Gleichzeitige Änderung wird mit verständlicher Wiederaufnahme gemeldet.
 14. Die beiden Seitenentwürfe sind mit Tastatur, schmalerem Fenster, Vergrösserung und einem synthetischen Bestand mit mehr als 100 Treffern nutzbar.
+15. Ein gültiges Intranet-PDF ohne Systemausgabe und Versandnachweis lässt sich einem vorhandenen Gespräch zuordnen, prüfen und weiterverarbeiten. Es entstehen weder ein doppelter Gesprächsauftrag noch ein erfundener Versand oder eine Erinnerung an einen bereits eingegangenen Gesprächsteil.
+16. Ein Intranet-Rücklauf ohne passenden Gesprächsauftrag führt zu einer eindeutigen, fachlich geprüften Zuordnung/Anlage; mehrere passende Gespräche führen zur Auswahl. Fehlender Versand allein löst keine Konfliktmeldung aus. Inhaltliche Widersprüche werden weiterhin ausgewiesen.
 
 ## 10. Umsetzung in überprüfbaren Schritten
 
@@ -389,3 +402,28 @@ Die Navigation benötigt weder ein zweites Pflichtenregister noch unabhängig sc
 Vor der UI-Implementierung sind drei Punkte zu konkretisieren: Wie wird ein ersetzter Gesprächsauftrag inklusive offener Entwürfe eindeutig abgeschlossen? Welche beliebigen Teilmengen können Fristenänderung und unveränderte Wiederzustellung bereits unterstützen? Welcher belastbare Nachweis schliesst eine externe Dossierkorrektur ab? Diese Punkte sind Code-/Fachabgleich, keine pauschale Aufforderung zur erneuten Freigabe des gesamten Konzepts.
 
 Der nächste sinnvolle Arbeitsschritt sind die konkreten Seitenentwürfe mit Beispieldaten aus Etappe B. Änderungen aus PR #14 bleiben ein eigenständig überprüfbarer Zwischenstand; ihre Veröffentlichung wird nicht mit der Abnahme dieses umfassenderen Entwurfs gleichgesetzt.
+
+## 11. Späteres Verwaltungsthema: Vorlagen und Formularsteuerelemente
+
+**Status:** Für spätere Diskussion aufgenommen; kein zusätzlicher Implementierungsauftrag innerhalb der jetzigen UI-Konzeption. Der Rücklauf ohne Systemversand gilt unabhängig davon bereits als verbindliche fachliche Anforderung.
+
+**Verwaltungsfall V01:** Als für Vorlagen verantwortliche Person möchte ich erkennen, welche Formularsteuerelemente pro Formularart und Version erwartet werden, und eine geänderte Vorlage vor ihrer Verwendung auf Verträglichkeit mit Erstellung und Auslesung prüfen können.
+
+| Bestandteil der späteren Übersicht | Zweck |
+|---|---|
+| Formularart und Version | Rückblick, Ausblick, Probezeit, Feedback und gegebenenfalls weitere Vorlagen getrennt führen |
+| Fachliche Feldbezeichnung und Zweck | Beispielsweise «Zeitraum von»: Wozu dient das Feld bei Erzeugung, Rücklauf oder Auswertung? |
+| Technischer Tag/Bezeichner und Zuordnung | Erwartetes Word-Inhaltssteuerelement und Bezug zum internen Datenfeld; PDF-Auslesung gesondert zuordnen |
+| Datentyp und Struktur | Text, Datum, Auswahl/Markierung, Zielgruppe; erwartete Anzahl oder zulässige Wiederholung |
+| Erwartete Existenz und Befüllung | «Steuerelement muss in der Vorlage vorkommen» getrennt von «Nutzer muss einen Wert erfassen» und «App befüllt dieses Feld» |
+| Tatsächlich gefundene Elemente | Fehlende, unerwartete, doppelte, umbenannte oder typfalsche Elemente konkret anzeigen |
+| Kompatibilität | Unterstützte Erstellung und Rücklaufauslesung für diese Version getrennt ausweisen; unklaren Stand nicht als kompatibel behaupten |
+| Verwendung und Herkunft | Für neue Systemausgaben freigegebene Vorlage, veröffentlichte Intranetfassung sowie ältere weiter einlesbare Fassungen unterscheiden |
+
+Als spätere Bedienfolge bietet sich an: Vorlage einlesen → Elementinventar mit erwarteter Version vergleichen → Änderungen prüfen → mit Beispieldaten ausfüllen → daraus erzeugtes PDF einlesen und Sollwerte vergleichen → geeignete Version für neue Ausgaben freigeben. Das Ersetzen einer Vorlagendatei allein bestätigt noch keine funktionierende PDF-Auslesung. Word-Steuerelemente werden durch den PDF-Export nicht automatisch zu gleichnamigen PDF-Formularfeldern.
+
+Ältere Rückläufe bleiben nach einem Vorlagenwechsel verarbeitbar, soweit ihre Fassung unterstützt oder ihr Inhalt zuverlässig manuell prüfbar ist. Eine unbekannte Version führt zur konkreten Prüfung, nicht zu einer pauschalen Zurückweisung. Ein nicht vorhandener Versionsmarker darf nicht durch den vermuteten Intranet-Veröffentlichungszeitpunkt ersetzt werden. Bereits erstellte Dateien und zugehörige Prüfstände bleiben ihrer damaligen Fassung zugeordnet.
+
+**Technischer Anknüpfungspunkt, noch keine vollständige Inventarisierung:** `services/word_templates.py` erwartet bei einzelnen Befüllungen eindeutige Tags und meldet fehlende oder mehrfach vorhandene Felder. Dazu gehören beispielsweise `rb_name`, `rb_datum_von` oder wiederholte Zielgruppen. Diese Erwartungen sowie die getrennten Regeln in `services/word_pdf.py` können später in eine nachvollziehbare Übersicht überführt werden. Frei umbenennbare Tags oder automatisch kompatible neue Versionen werden damit nicht versprochen.
+
+Vor einer Umsetzung sind Umfang der erfassten Vorlagen, Umgang mit alten Versionen, Pflege der Feldzuordnungen und Zuständigkeit für die Freigabe zu klären. Die Übersicht gehört in die Vorlagenverwaltung/Hilfsnavigation und soll die tägliche Rücklaufbearbeitung nicht mit technischen Feldnamen belasten.

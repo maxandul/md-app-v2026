@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import json
 import sqlite3
 from datetime import date, datetime
 from typing import Any
@@ -36,11 +37,11 @@ def _message(candidate: dict[str, Any], sender_email: str) -> tuple[str, str]:
 
 def reminder_candidates(
     connection: sqlite3.Connection, *, cycle_id: int, today: date | None = None,
-    sender_email: str = DEFAULT_SENDER,
+    sender_email: str = DEFAULT_SENDER, obligation_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     cutoff = (today or date.today()).isoformat()
     if available(connection):
-        return _part_candidates(connection,cycle_id,cutoff,sender_email)
+        return _part_candidates(connection,cycle_id,cutoff,sender_email,obligation_ids)
     rows = connection.execute(
         """
         WITH overdue AS (
@@ -120,10 +121,15 @@ def reminder_candidates(
 
 
 @serialized_goal_delivery
-def create_reminder_drafts(
+def create_reminder_drafts(connection, **kwargs):
+    return _create_reminder_drafts(connection, **kwargs)
+
+
+def _create_reminder_drafts(
     connection: sqlite3.Connection, *, cycle_id: int, manager_pns: list[str],
     sender_email: str = DEFAULT_SENDER, adapter: OutlookDraftAdapter | None = None,
     created_at: datetime | None = None, today: date | None = None,
+    obligation_ids: list[int] | None = None, expected_candidates=None, action_preview_id=None,
 ) -> dict[str, Any]:
     sender_email = configured_sender(sender_email)
     from .hr_workflow import pending_pdfs
@@ -134,9 +140,12 @@ def create_reminder_drafts(
         raise ValueError("Bitte wähle mindestens eine überfällige Führungskraft aus.")
     available = {
         item["manager_pn"]: item for item in reminder_candidates(
-            connection, cycle_id=cycle_id, today=today, sender_email=sender_email
+            connection, cycle_id=cycle_id, today=today, sender_email=sender_email, obligation_ids=obligation_ids
         ) if item["manager_pn"] in selected
     }
+    if expected_candidates is not None:
+        if json.dumps(available, sort_keys=True) != json.dumps(expected_candidates, sort_keys=True):
+            raise ValueError('Die Erinnerungsvorschau ist nicht mehr aktuell. Bitte erneut prüfen.')
     if selected.difference(available):
         raise ValueError("Mindestens eine Auswahl ist nicht mehr überfällig oder gültig.")
     if any(item["draft_open"] for item in available.values()):
@@ -148,9 +157,9 @@ def create_reminder_drafts(
     timestamp = (created_at or datetime.now().astimezone()).isoformat(timespec="seconds")
     results = {"created": 0, "failed": 0, "errors": []}
     for manager_pn in sorted(selected):
-        current={r['manager_pn']:r for r in reminder_candidates(connection,cycle_id=cycle_id,today=today,sender_email=sender_email)}
+        current={r['manager_pn']:r for r in reminder_candidates(connection,cycle_id=cycle_id,today=today,sender_email=sender_email,obligation_ids=obligation_ids)}
         item=current.get(manager_pn)
-        if not item or item.get('basis')!=available[manager_pn].get('basis') or (not item['ready'] and item.get('readiness_error')):
+        if not item or json.dumps(item,sort_keys=True)!=json.dumps(available[manager_pn],sort_keys=True) or (not item['ready'] and item.get('readiness_error')):
             raise ValueError('Zuständigkeit, Frist oder Rücklaufstand geändert. Erinnerungsauswahl erneut prüfen.')
         cursor = connection.execute(
             """
@@ -165,6 +174,8 @@ def create_reminder_drafts(
             ),
         )
         reminder_id = cursor.lastrowid
+        if action_preview_id:
+            connection.execute('INSERT INTO hr_part_action_reminders VALUES (?,?)',(action_preview_id,reminder_id))
         for obligation_id in item["obligation_ids"]:
             due_date = connection.execute(
                 "SELECT due_date FROM document_obligations WHERE id = ?", (obligation_id,)
@@ -203,11 +214,14 @@ def create_reminder_drafts(
                 (draft.entry_id, timestamp, reminder_id),
             )
             results["created"] += 1
+        connection.commit()
     connection.commit()
     return results
 
 
-def _part_candidates(connection,cycle_id,cutoff,sender_email):
+def _part_candidates(connection,cycle_id,cutoff,sender_email,obligation_ids=None):
+    import json
+    selection=' AND o.id IN (SELECT value FROM json_each(?))' if obligation_ids is not None else ''
     from .hr_workflow import pending_pdfs
     pending=bool(pending_pdfs(connection)) or bool(connection.execute('''SELECT 1 FROM inbound_mail_attachments a
         WHERE a.file_kind='md_pdf' AND a.status IN ('stored','review_required','failed') AND a.official_document_id IS NULL
@@ -217,7 +231,7 @@ def _part_candidates(connection,cycle_id,cutoff,sender_email):
         COALESCE(e.email,'') AS recipient_email FROM hr_resolved_obligations o
         LEFT JOIN employees e ON e.pn=o.manager_pn WHERE o.cycle_id=? AND o.required=1 AND o.active=1
         AND o.document_kind IN ('review','outlook') AND o.status IN ('open','rejected','scan_pending')
-        AND o.event_status<>'cancelled' AND o.due_date<>'' AND o.due_date<? ORDER BY o.last_name,o.first_name,o.id''',(cycle_id,cutoff)).fetchall()
+        AND o.event_status<>'cancelled' AND o.due_date<>'' AND o.due_date<?'''+selection+' ORDER BY o.last_name,o.first_name,o.id',[cycle_id,cutoff]+([json.dumps(obligation_ids)] if obligation_ids is not None else [])).fetchall()
     groups={}
     for row in rows:groups.setdefault(row['manager_pn'],[]).append(dict(row))
     result=[]

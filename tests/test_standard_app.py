@@ -32,7 +32,7 @@ class StandardAppTest(unittest.TestCase):
                     self.assertNotIn('HTML-Arbeitsmappe', response.text)
                 with app.app_context():
                     db = get_db()
-                    self.assertEqual(db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0], 5)
+                    self.assertEqual(db.execute('SELECT COUNT(*) FROM schema_migrations').fetchone()[0], 6)
                     db.execute("INSERT INTO audit_log(action, object_type, object_id, details_json, created_at) VALUES ('restart-marker','test','1','{}','2026-10-28')")
                     db.commit()
                 restarted = create_app(settings, instance_path=str(root))

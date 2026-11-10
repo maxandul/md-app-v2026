@@ -388,3 +388,4 @@ progress::-moz-progress-bar { background: var(--zh-blue); }
 .task-workspace .form-grid label { margin: 0; }
 .task-workspace input:not([type="checkbox"]):not([type="radio"]), .task-workspace select { font-size:14px; padding:8px 10px; min-height:40px; }
 .task-workspace .form-grid > .button { justify-self:start; align-self:end; }
+.task-workspace [data-deadline-field][hidden] { display: none; }

@@ -12,7 +12,7 @@ bp.before_request(protect)
 
 def back_link():
     value=request.values.get('back','');parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/arbeit','/cycles/','/mitarbeitende','/fuehrungskraefte','/stammdaten/abgleich')) else url_for('parts.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/arbeit','/cycles/','/mitarbeitende','/fuehrungskraefte','/stammdaten/abgleich')) else url_for('parts.index')
 
 
 def render(template,**values):
@@ -21,7 +21,8 @@ def render(template,**values):
 
 @bp.get('')
 def index():
-    filters={k:request.args.get(k,'') for k in ('q','manager','kind','org_unit')}
+    filters={k:request.args.get(k,'') for k in ('q','manager','kind','org_unit','due')}
+    filters['perspective']='managers' if request.args.get('perspective')=='managers' else 'people'
     filters.update(state=request.args.get('state','open'),year=request.args.get('year',type=int),page=request.args.get('page',1,type=int),page_size=request.args.get('page_size',25,type=int))
     return render('parts/index.html',filters=filters,page_url=lambda p:url_for('parts.index',**{**filters,'page':p}),**part_queries.listing(get_db(),**filters))
 

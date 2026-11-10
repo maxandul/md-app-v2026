@@ -24,7 +24,7 @@ class StandardAppTest(unittest.TestCase):
                 self.assertTrue(app.config['HR_GOAL_WORKFLOW'])
                 self.assertFalse(app.config['HR_RETURN_AUTOMATION'])
                 client = app.test_client()
-                self.assertEqual(client.get('/').location, '/arbeit')
+                self.assertEqual(client.get('/').location, '/start')
                 for path in ('/arbeit', '/mitarbeitende', '/fuehrungskraefte',
                              '/stammdaten/abgleich', '/versand?workflow=workbook'):
                     response = client.get(path)

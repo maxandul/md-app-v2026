@@ -1,0 +1,5 @@
+{% from 'hr/_person.html' import person %}
+<div class="table-wrap"><table data-server-paginated><thead><tr><th>Nächste Aktion</th><th>Person / Quelle</th><th>Gespräch / Verantwortung</th><th>Frist / Stand</th></tr></thead><tbody>
+{% for row in rows %}<tr><td><a href="{{ row.href }}">{{ row.title }}</a><br><span class="muted">{{ row.kind }}</span></td><td>{{ person(row,name=row.subject) }}</td><td>{{ row.context }}{% if row.year %}<br>{{ row.year }}{% endif %}{% if row.manager_pn %}<br>Verantwortlich: {{ row.responsible_name }}{% endif %}</td><td>{{ row.due_date or 'Keine Frist hinterlegt' }}<br>{{ {'open':'Zu bearbeiten','waiting':'Warten auf Rückmeldung','done':'Verlauf'}.get(row.state,row.state) }}</td></tr>
+{% else %}<tr><td colspan="4">Keine passenden Aufgaben. Prüfe die Filter oder wechsle in den Verlauf.</td></tr>{% endfor %}
+</tbody></table></div>

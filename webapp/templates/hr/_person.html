@@ -1,0 +1,9 @@
+{% macro person(row, name='', numbers=true, show_name=true) %}
+<div class="person-identity">
+  {% if show_name %}<strong>{{ name or ((row.first_name or '') ~ ' ' ~ (row.last_name or ''))|trim or 'Zuordnung offen' }}</strong>{% endif %}
+  {% for context in row.current_contexts|default([]) %}
+  <span class="person-identity__context">{{ context.org_unit or 'OE offen' }}{% if context.position %} · {{ context.position }}{% endif %}<br>Direkt vorgesetzt: {{ context.manager_name if context.manager_person_number else 'Zuordnung offen' }}</span>
+  {% else %}{% if row.org_unit %}<span class="person-identity__context">{{ row.org_unit }}</span>{% endif %}{% endfor %}
+  {% if numbers and (row.person_number or row.employee_pn) %}<details class="identity-details"><summary>Zuordnungsdetails</summary>Personalnummer {{ row.person_number or row.employee_pn }}{% if row.assignment_number or row.employment_assignment %} · Anstellung {{ row.assignment_number or row.employment_assignment }}{% endif %}</details>{% endif %}
+</div>
+{% endmacro %}

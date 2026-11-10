@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% from 'hr/_person.html' import person %}
 {% block title %}Zielnachreichungen · MD{% endblock %}
 {% block content %}
 <nav class="breadcrumbs" aria-label="Pfad"><a href="{{ url_for('main.worklist',cycle_id='') }}">Arbeit</a> / Zielnachreichungen</nav>
-<div class="page-heading"><p class="kicker">Arbeit · alle Jahre</p><h1>Zielnachreichungen</h1><p>Alte Ausblicke prüfen, betroffene Rückblicke aktualisieren und den Versand nachvollziehen.</p></div>
+<div class="page-heading"><p class="kicker">Arbeit · alle Jahre</p><h1>Alte Ziele übernehmen</h1><p>Alte Ausblicke prüfen, betroffene Rückblicke aktualisieren und den Versand nachvollziehen.</p></div>
 <p class="goal-actions"><a class="button button--secondary" href="{{ url_for('main.returns_overview',cycle_id='') }}">Eingänge</a> <a class="button button--secondary" href="{{ url_for('goal_work.dispatches') }}">Versand fortsetzen</a></p>
 {% if group %}<div class="notice"><strong>{{ group.title }}</strong> · Eingang {{ group.created_at }} · <a href="{{ url_for('goal_work.index') }}">Alle Zielnachreichungen</a></div>{% endif %}
 <section class="goal-panel" aria-labelledby="goal-overview-title">
@@ -25,7 +25,7 @@
 <p><strong>{{ total }} Zielquellen</strong> · Seite {{ page }} von {{ pages }}. Offene Altjahre bleiben ohne Jahresfilter sichtbar.</p>
 <form method="get" action="{{ url_for('goal_work.outputs') }}"><input type="hidden" name="back" value="{{ request.full_path }}">
 {% if rows %}<div class="table-wrap"><table data-server-paginated data-bulk-selection="source" data-bulk-page><thead><tr><th>Auswahl</th><th>Person / Anstellung</th><th>Zieljahr / Original</th><th>Nächste Aktion</th></tr></thead><tbody>
-{% for row in rows %}<tr><td>{% if row.status=='confirmed' %}<input type="checkbox" name="source" value="{{ row.id }}" aria-label="Zielquelle für {{ row.first_name }} {{ row.last_name }} auswählen">{% else %}<a href="{{ url_for('goal_work.source',source_id=row.id,back=request.full_path) }}">Ziele prüfen</a>{% endif %}</td><td><strong>{{ row.first_name or 'Zuordnung' }} {{ row.last_name or 'offen' }}</strong><br>{{ row.person_number or 'PN offen' }} · Ans. {{ row.assignment_number or 'offen' }}<br>{{ row.org_unit or '' }}</td><td>{{ row.goal_year or 'Jahr klären' }}<br>{{ row.original_filename }}</td><td><a href="{{ (url_for('goal_work.outputs',source=row.id,back=request.full_path) if row.status=='confirmed' and row.task_state not in ('done','withdrawal') else url_for('goal_work.source',source_id=row.id,back=request.full_path)) }}">{{ labels[row.task_state] }}</a>{% if row.next_reason %}<p>{{ row.next_reason }}</p>{% endif %}</td></tr>{% endfor %}
+{% for row in rows %}<tr><td>{% if row.status=='confirmed' %}<input type="checkbox" name="source" value="{{ row.id }}" aria-label="Zielquelle für {{ row.first_name }} {{ row.last_name }} auswählen">{% else %}<a href="{{ url_for('goal_work.source',source_id=row.id,back=request.full_path) }}">Ziele prüfen</a>{% endif %}</td><td>{{ person(row) }}</td><td>{{ row.goal_year or 'Jahr klären' }}<br>{{ row.original_filename }}</td><td><a href="{{ (url_for('goal_work.outputs',source=row.id,back=request.full_path) if row.status=='confirmed' and row.task_state not in ('done','withdrawal') else url_for('goal_work.source',source_id=row.id,back=request.full_path)) }}">{{ labels[row.task_state] }}</a>{% if row.next_reason %}<p>{{ row.next_reason }}</p>{% endif %}</td></tr>{% endfor %}
 </tbody></table></div><p>Die Auswahl gilt nur für diese Seite. Bei einem Filterwechsel wird sie aufgehoben.</p><button class="button">Rückblicke der Auswahl vorbereiten</button>
 {% else %}<div class="empty-state">Keine Zielquellen für diese Auswahl. <a href="{{ url_for('goal_work.index',state='all') }}">Filter zurücksetzen und Verlauf anzeigen</a></div>{% endif %}
 </form>

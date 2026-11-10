@@ -6,7 +6,7 @@
   <title>{% block title %}MD-Verwaltung{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-<body>
+<body{% if config.HR_GOAL_WORKFLOW and (g.user or config.AUTH_DISABLED) %} class="task-workspace"{% endif %}>
   <a class="skip-link" href="#main-content">Zum Inhalt</a>
   <div class="accent" aria-hidden="true"></div>
   <header class="app-header">
@@ -25,6 +25,9 @@
     </div>
     {% if g.user or config.AUTH_DISABLED %}
 
+      {% if config.HR_GOAL_WORKFLOW %}
+      {% include 'hr/_navigation.html' %}
+      {% else %}
       {% set work_nav=['work','overview','returns','dispatch','goal_work','parts','feedback','handoffs','sap_export','dialogs'] %}
       <nav class="main-nav" aria-label="Hauptnavigation"><div class="app-shell main-nav__inner">
         <a href="{{ url_for('hr.work') }}" {% if active_nav in work_nav %}class="is-active" aria-current="page"{% endif %}>Arbeit</a>
@@ -42,12 +45,13 @@
         {% endfor %}
       </div></nav>
       {% endif %}
+      {% endif %}
 
     {% endif %}
   </header>
 
   <div class="app-shell page-layout">
-  <main id="main-content">
+  <main id="main-content"{% if active_nav in ['start','data'] %} data-chapters="off"{% endif %}>
     {% if config.get('HR_REVIEW_SANDBOX') %}<div class="message message--error" role="status"><strong>HR-TEST · ausschliesslich erfundene Personen und Testvorlagen.</strong> Eigene Testdatenbank. Outlook, Postfachzugriff und externe Übergaben sind gesperrt. Bitte keine echten Personaldokumente hochladen.</div>{% endif %}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}

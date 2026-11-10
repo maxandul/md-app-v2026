@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Daten & Auswertung · MD{% endblock %}
+{% block content %}
+<section class="page-head"><h1>Daten & Auswertung</h1><p>Stammdaten pflegen, Ergebnisse auswerten und geprüfte Unterlagen weitergeben.</p></section>
+<div class="task-groups">
+<section class="task-group"><h2>Stammdaten</h2><p>SAP-Daten einlesen, Änderungen prüfen und Folgen für Gespräche bearbeiten.</p><a href="{{ url_for('sap_work.index') }}">Stammdaten abgleichen</a><a href="{{ url_for('hr.people',state='all') }}">Mitarbeitende und Anstellungen suchen</a></section>
+<section class="task-group"><h2>Weitergabe</h2><p>Export und Dossierbereitstellung haben einen eigenen Bearbeitungsstand.</p><a href="{{ url_for('main.sap_exports') }}">Daten für SAP exportieren</a><a href="{{ url_for('hr.handoffs') }}">Dossierübergaben prüfen</a></section>
+<section class="task-group"><h2>Überblick</h2><p>Den Arbeitsstand und Ergebnisse über Gesprächsteile hinweg auswerten.</p><a href="{{ url_for('main.analytics') }}">Auswertungen öffnen</a><a href="{{ url_for('parts.index') }}">Gesprächsstand ansehen</a></section>
+</div>
+{% endblock %}

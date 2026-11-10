@@ -50,6 +50,17 @@ def task_link(row):
     if target=='sap_export':return url_for('main.sap_exports',cycle_id=row['cycle_id'])
     return url_for('main.dispatch',cycle_id=row['cycle_id'])
 
+@bp.get('/start')
+def start():
+    args=dict(page_size=25,template_paths=current_app.config['WORD_TEMPLATE_PATHS'])
+    data=views.work(get_db(),**args)
+    for row in data['rows']:row['href']=task_link(row)
+    return render_template('hr/start.html',active_nav='start',**data)
+
+@bp.get('/daten')
+def data_hub():
+    return render_template('hr/data.html',active_nav='data')
+
 @bp.get('/arbeit')
 def work():
     args=year_filter(filters('q','kind','org_unit','manager','due'));args['state']=request.args.get('state','open')

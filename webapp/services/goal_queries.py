@@ -85,4 +85,6 @@ def listing(connection, *, q='',state='open',year=None,org_unit='',batch_id=None
     for row in rows:
         status(row['id'])
         row['next_reason'] = cache[row['id']]['reason']
+    from .person_display import enrich
+    enrich(connection, rows)
     return {'summary':summary,'rows':rows,'total':total,'page':page,'pages':pages,'page_size':page_size,'labels':LABELS}

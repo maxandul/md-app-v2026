@@ -177,7 +177,7 @@ def _manager_pns_for_org_unit(connection, cycle_id: int, org_unit: str) -> list[
 @bp.get("/")
 def dashboard():
     if current_app.config.get("HR_GOAL_WORKFLOW") and request.args.get("view")!="cycles":
-        return redirect(url_for("hr.work"))
+        return redirect(url_for("hr.start"))
     selected_cycle_id = request.args.get("cycle_id", type=int)
     return render_template(
         "dashboard.html",

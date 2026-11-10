@@ -1,7 +1,7 @@
 /* A local table of contents for screens with several chapters. */
 (() => {
   const main = document.getElementById('main-content');
-  if (!main) return;
+  if (!main || main.dataset.chapters === 'off') return;
   const headings = [...main.querySelectorAll('h2')].filter(heading =>
     !heading.closest('details, [hidden], [data-preview-result]'));
   if (headings.length < 2 || main.scrollHeight < window.innerHeight * 1.3) return;

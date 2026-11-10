@@ -24,14 +24,14 @@ class ConsolidationTest(unittest.TestCase):
     def test_all_entry_points_render_without_changing_domain_records(self):
         tables=('official_documents','document_obligations','dialog_cases','word_feedback_submissions')
         before={t:[tuple(r) for r in self.db.execute('SELECT * FROM '+t)] for t in tables}
-        paths=('/arbeit','/mitarbeitende','/fuehrungskraefte','/arbeit/feedback','/arbeit/uebergaben',
+        paths=('/start','/daten','/arbeit/dialogteile','/arbeit','/mitarbeitende','/fuehrungskraefte','/arbeit/feedback','/arbeit/uebergaben',
                '/auswertungen','/mitarbeitende/'+self.person_pn(),'/fuehrungskraefte/111116')
         for path in paths:
             with self.subTest(path=path):self.assertEqual(self.client.get(path).status_code,200)
         for table in tables:self.assertEqual(before[table],[tuple(r) for r in self.db.execute('SELECT * FROM '+table)])
 
     def test_new_default_and_old_bookmarks_preserve_filters(self):
-        self.assertEqual(urlsplit(self.client.get('/').location).path,'/arbeit')
+        self.assertEqual(urlsplit(self.client.get('/').location).path,'/start')
         planning=self.client.get('/?view=cycles')
         self.assertEqual(planning.status_code,200);self.assertIn('/cycles',planning.text)
         self.assertIn('view=cycles',self.client.get('/arbeit').text)
@@ -40,7 +40,7 @@ class ConsolidationTest(unittest.TestCase):
         self.assertEqual(parse_qs(urlsplit(response.location).query)['state'],['waiting'])
         page=self.client.get('/arbeit?q=keine-passende-Person')
         self.assertIn('Keine passenden Aufgaben',page.text)
-        self.assertIn('Mitarbeitende',page.text);self.assertIn('Führungskräfte',page.text)
+        self.assertIn('Gespräche',page.text);self.assertIn('Daten &amp; Auswertung',page.text)
 
     def test_part_views_use_separate_managers_and_keep_feedback_scope(self):
         self.assign('outlook')
@@ -189,3 +189,54 @@ class ConsolidationTest(unittest.TestCase):
         self.assertEqual(work['total'],10000);self.assertEqual(len(work['rows']),100)
         self.assertTrue(any('LIMIT 100 OFFSET 100' in s for s in statements))
         print(f'F volume: 1000 people / 5 years / 10000 parts; two paged queries {elapsed:.3f}s (CI, not HR workstation)')
+
+    def test_task_start_links_and_name_based_manager_filter(self):
+        page=self.client.get('/start')
+        self.assertIn('Was möchtest du erledigen?',page.text)
+        self.assertIn('Alte Ziele übernehmen',page.text)
+        self.assertIn('data-chapters="off"',page.text)
+        self.assertNotIn('aria-label="Arbeitsbereiche"',page.text)
+        manager=self.db.execute("SELECT first_name,last_name FROM employees WHERE pn='111116'").fetchone()
+        name=manager['first_name']+' '+manager['last_name']
+        rows=views.work(self.db,kind='Gesprächsteil',manager=name)['rows']
+        self.assertTrue(rows)
+        self.assertTrue(all(r['manager_pn']=='111116' for r in rows))
+        self.assertTrue(all(r['responsible_name']==name for r in rows))
+
+    def test_current_manager_and_part_responsibility_are_distinct(self):
+        from webapp.services import person_display,part_queries
+        self.assign('outlook')
+        rows=part_queries.listing(self.db,q=self.person_pn(),state='all')['rows']
+        outlook=next(r for r in rows if r['document_kind']=='outlook')
+        self.assertEqual(outlook['manager_pn'],'111114')
+        self.assertEqual(outlook['current_contexts'][0]['manager_person_number'],'111116')
+        self.assertNotEqual(outlook['responsible_name'],outlook['current_contexts'][0]['manager_name'])
+        # Multiple employments must never inherit the first reporting line.
+        original=self.db.execute('SELECT * FROM employment_assignments WHERE person_number=?',(self.person_pn(),)).fetchone()
+        with self.db:
+            self.db.execute('''INSERT INTO employment_assignments(person_number,assignment_number,org_unit,active,last_import_id,updated_at)
+                VALUES (?,'99','Zweite OE',1,?,'2026-01-01')''',(self.person_pn(),original['last_import_id']))
+            second=self.db.execute('SELECT last_insert_rowid()').fetchone()[0]
+            self.db.execute('''INSERT INTO manager_assignments(employment_id,manager_person_number,source,active,created_at,updated_at)
+                VALUES (?,'111114','manual',1,'2026-01-01','2026-01-01')''',(second,))
+        row={'person_number':self.person_pn(),'assignment_number':'99'}
+        person_display.enrich(self.db,[row])
+        self.assertEqual([c['org_unit'] for c in row['current_contexts']],['Zweite OE'])
+        self.assertEqual(row['current_contexts'][0]['manager_person_number'],'111114')
+        del row['assignment_number']
+        person_display.enrich(self.db,[row])
+        self.assertEqual(len(row['current_contexts']),2)
+
+    def test_monitor_filters_and_back_link_keep_the_selected_context(self):
+        from webapp.services import part_queries
+        with self.db:
+            self.db.execute("UPDATE document_obligations SET due_date='2000-01-01' WHERE dialog_event_id IN (SELECT id FROM dialog_events WHERE legacy_case_id=?)",(self.case_id,))
+        rows=part_queries.listing(self.db,q=self.person_pn(),due='overdue')['rows']
+        self.assertEqual(len(rows),2)
+        with self.db:
+            self.db.execute("UPDATE document_obligations SET status='complete' WHERE id=?",(rows[0]['id'],))
+        self.assertEqual(part_queries.listing(self.db,q=self.person_pn(),due='overdue')['total'],1)
+        self.assertEqual(part_queries.listing(self.db,q=self.person_pn(),state='complete')['total'],1)
+        self.assertEqual(self.client.get('/arbeit/dialogteile?perspective=managers&due=overdue').status_code,200)
+        response=self.client.get(f'/arbeit/dialogteile/{self.case_id}/review',query_string={'back':'/start'})
+        self.assertIn('href="/start"',response.text)

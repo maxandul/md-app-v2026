@@ -51,7 +51,7 @@ def root(name):
 def back_link():
     value=request.values.get('back','')
     parsed=urlsplit(value)
-    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
+    return value if not parsed.netloc and not parsed.scheme and '\\' not in value and parsed.path.startswith(('/start','/arbeit','/mitarbeitende','/fuehrungskraefte')) else url_for('goal_work.index')
 
 
 def render(template,**kwargs):

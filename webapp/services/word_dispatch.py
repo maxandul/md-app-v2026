@@ -161,6 +161,7 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths, manager_pn
         item['can_discard'] = row['delivery_status'] in (None, 'cancelled')
         item['filename'] = Path(row['stored_path']).name
         manifest = json.loads(row['manifest_json'])
+        item['redelivery'] = manifest.get('redelivery')
         item['goal_warnings'] = manifest.get('goal_warnings', [])
         item['performance_goal_count'] = sum(d.get('performance_goals', 0) for d in manifest['documents'])
         item['development_goal_count'] = sum(d.get('development_goals', 0) for d in manifest['documents'])
@@ -186,6 +187,9 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths, manager_pn
                     raise ValueError('Die Grundlagen haben sich geändert; diese noch nicht versendete Ausgabe ist veraltet. Vor einem Versand neu erzeugen; Einzelkorrekturen bereits versendeter Pakete kannst du unten dokumentieren.')
             if not row['recipient_email']:
                 raise ValueError('Geschäftliche E-Mail-Adresse fehlt.')
+            if manifest.get('redelivery') and row['delivery_status'] not in ('sent_confirmed','cancelled'):
+                from .redeliveries import validate_prepared
+                validate_prepared(connection,row,template_paths,kind='regular')
             item['readiness_error'] = ''
         except (ValueError,OSError) as exc:
             item['readiness_error'] = str(exc)
@@ -307,6 +311,10 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
             raise ValueError((row or {}).get('readiness_error') or 'Die Auswahl enthält eine abgelöste oder bereits bearbeitete Word-Ausgabe.')
         if row['delivery_status']=='failed' and not retry_confirmed:
             raise ValueError('Bitte vor einem erneuten Versuch in Outlook prüfen, ob bereits eine Nachricht angelegt oder versendet wurde, und die Wiederholung bestätigen.')
+        manifest=json.loads(row['manifest_json'])
+        if manifest.get('redelivery'):
+            from .redeliveries import validate_prepared
+            validate_prepared(connection,row,template_paths,kind='regular')
         row['subject'],row['body_html'] = word_message(row,sender_email=sender_email,subject_template=subject_template,body_template=body_template)
         from .outlook_lock import check_goal_workflow
         documents=json.loads(row['manifest_json'])['documents']

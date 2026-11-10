@@ -32,7 +32,8 @@ def revision(connection, revision_id, *, allow_withdrawn=False):
 def return_evidence(connection, part):
     """Unassigned pending returns are uncertainty, never proof of absence."""
     evidence=[]
-    for row in connection.execute("SELECT id,sha256,handoff_status,handoff_at,replaces_document_id FROM official_documents WHERE case_id=? AND document_kind IN ('review','no_md') AND is_current=1 ORDER BY id",(part['case_id'],)):
+    kind=part.get('kind','review')
+    for row in connection.execute("SELECT id,sha256,handoff_status,handoff_at,replaces_document_id FROM official_documents WHERE case_id=? AND document_kind IN (?,'no_md') AND is_current=1 ORDER BY id",(part['case_id'],kind)):
         evidence.append({'document_id':row['id'],'sha256':row['sha256'],'handoff_status':row['handoff_status'],
                          'handoff_at':row['handoff_at'],'replaces_document_id':row['replaces_document_id']})
     pending=connection.execute('''SELECT w.* FROM word_pdf_imports w LEFT JOIN workflow_pdf_state s ON s.import_id=w.id
@@ -44,7 +45,9 @@ def return_evidence(connection, part):
         data=parsed.get('data') or {}
         if row['case_id'] and row['case_id']!=part['case_id']:
             continue
-        if data.get('document_kind') in ('outlook','feedback'):
+        incoming_kind=data.get('document_kind')
+        if incoming_kind=='probation':incoming_kind='review'
+        if incoming_kind in ('review','outlook','feedback') and incoming_kind!=kind:
             continue
         if data.get('pn') and str(data['pn'])!=part['employee_pn']:
             continue
@@ -54,7 +57,7 @@ def return_evidence(connection, part):
             continue
         evidence.append({'pending_import_id':row['id'],'sha256':row['sha256'],
                          'assignment_uncertain':not (data.get('pn') and data.get('ans') and data.get('period_end'))})
-    payload=json.loads(part['data_json'] or '{}').get('review') or {}
+    payload=json.loads(part['data_json'] or '{}').get(kind) or {}
     if any(payload.get(k) for k in ('conducted','dialog_date','word_pdf_import_id','overall_rating','overall_rating_code')) and not evidence:
         evidence.append({'case_data':review.digest(payload)})
     # Unprocessed mail PDFs may not yet have made it into the PDF staging queue.

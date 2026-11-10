@@ -101,6 +101,8 @@ def create_app(test_config: dict | None = None, *, instance_path: str | None = N
     app.register_blueprint(return_bp)
     from .hr_routes import bp as hr_bp
     app.register_blueprint(hr_bp)
+    from .redelivery_routes import bp as redelivery_bp
+    app.register_blueprint(redelivery_bp)
 
     @app.after_request
     def retain_action_filters(response):

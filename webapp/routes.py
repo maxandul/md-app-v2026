@@ -519,7 +519,7 @@ def dispatch_package(package_id):
     return render_template('shipping/package.html',active_nav='dispatch',package=package,candidate=candidate,latest_id=latest,
         manifest=manifest,documents=manifest['documents'][(doc_page-1)*50:doc_page*50],doc_page=doc_page,doc_pages=doc_pages,
         doc_page_url=lambda page:url_for('main.dispatch_package',package_id=package_id,back=_dispatch_back(),doc_page=page),delivery=delivery,status=delivery['status'] if delivery else ('cancelled' if package['discarded_at'] else 'prepared'),labels=LABELS,last_sent=sent,
-        back=_dispatch_back(),default_word_subject=DEFAULT_WORD_SUBJECT,default_word_body=DEFAULT_WORD_BODY,
+        back=_dispatch_back(),default_word_subject=('Erneut: MD-Unterlagen Durchlauf {years}' if manifest.get('redelivery') else DEFAULT_WORD_SUBJECT),default_word_body=('{greeting}\n\nWie gewünscht erhältst du die bereits zugestellten Formulare nochmals unverändert. Wenn du die erste Fassung bereits bearbeitet hast, arbeite mit deinem bisherigen Bearbeitungsstand weiter. Der Anhang enthält diese lokalen Ergänzungen nicht.\n\nFreundliche Grüsse\nHR' if manifest.get('redelivery') else DEFAULT_WORD_BODY),
         date_label=date_label,hr_sender=current_app.config['HR_MAILBOX_EMAIL'])
 
 
@@ -2045,8 +2045,21 @@ def person_word_correction(cycle_id, case_id):
         except (ValueError,LookupError,OSError) as exc:
             flash(str(exc),'error')
     rows = [dict(r) for r in db.execute('SELECT * FROM word_person_corrections WHERE case_id=? ORDER BY id DESC',(case_id,))]
-    for row in rows: row['manifest'] = json.loads(row['manifest_json'])
-    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,correction_back=_dispatch_back() if request.args.get('back') else '')
+    from .services.intake_views import date_label
+    for row in rows:
+        row['manifest'] = json.loads(row['manifest_json'])
+        row['created_label']=date_label(row['created_at'],True)
+        row['redelivery_error']=''
+        if row['manifest'].get('redelivery') and row['status']=='prepared':
+            try:
+                from .services.redeliveries import validate_prepared
+                validate_prepared(db,row,current_app.config['WORD_TEMPLATE_PATHS'],kind='person')
+            except (ValueError,OSError) as exc:row['redelivery_error']=str(exc)
+    return render_template('person_word_correction.html',active_nav='dispatch',case=case,corrections=rows,redelivery_sources=db.execute("""SELECT DISTINCT p.id,p.created_at,m.first_name||' '||m.last_name AS manager_name FROM word_dispatch_packages p
+        JOIN word_mail_deliveries d ON d.package_id=p.id LEFT JOIN employees m ON m.pn=p.manager_pn
+        WHERE p.cycle_id=? AND d.status='sent_confirmed' AND p.discarded_at=''
+        AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x WHERE x.cycle_id=p.cycle_id AND x.manager_pn=p.manager_pn AND x.discarded_at='')
+        AND EXISTS(SELECT 1 FROM json_each(p.manifest_json,'$.documents') j WHERE json_extract(j.value,'$.case_id')=?) ORDER BY p.id DESC""",(cycle_id,case_id)).fetchall(),correction_back=_dispatch_back() if request.args.get('back') else '')
 
 
 @bp.get('/word-corrections/<int:correction_id>/download')

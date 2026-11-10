@@ -13,7 +13,7 @@ def listing(db, *, q='',state='open',kind='',year=None,page_number=1):
     query='''SELECT 'regular' AS kind,p.id,p.cycle_id,'' AS case_id,p.manager_pn,
         COALESCE(d.recipient_email,m.email,'') AS recipient_email,
         COALESCE(m.first_name||' '||m.last_name,'Name nicht hinterlegt') AS manager_name,
-        COALESCE(m.org_unit,'') AS org_unit,'Vorlagen für den Durchlauf' AS context,
+        COALESCE(m.org_unit,'') AS org_unit,CASE WHEN json_extract(p.manifest_json,'$.redelivery') IS NOT NULL THEN 'Unveränderte Wiederzustellung' ELSE 'Vorlagen für den Durchlauf' END AS context,
         COALESCE(d.status,CASE WHEN p.discarded_at<>'' THEN 'cancelled' ELSE 'prepared' END) AS status,COALESCE(d.updated_at,p.created_at) AS stamp,
         c.review_year||'/'||c.outlook_year AS years,json_array(c.review_year) AS review_years,
         (p.discarded_at='' AND p.id=(SELECT MAX(x.id) FROM word_dispatch_packages x
@@ -27,7 +27,7 @@ def listing(db, *, q='',state='open',kind='',year=None,page_number=1):
         UNION ALL SELECT 'person',p.id,c.cycle_id,p.case_id,
         json_extract(p.manifest_json,'$.manager_pn'),p.recipient_email,
         COALESCE(m.first_name||' '||m.last_name,'Name nicht hinterlegt'),COALESCE(m.org_unit,''),
-        e.first_name||' '||e.last_name,p.status,p.updated_at,
+        CASE WHEN json_extract(p.manifest_json,'$.redelivery') IS NOT NULL THEN 'Unveränderte Wiederzustellung · ' ELSE '' END||e.first_name||' '||e.last_name,p.status,p.updated_at,
         cy.review_year||'/'||cy.outlook_year,json_array(cy.review_year),1,NULL,''
         FROM word_person_corrections p JOIN dialog_cases c ON c.case_id=p.case_id
         JOIN cycles cy ON cy.id=c.cycle_id JOIN persons e ON e.person_number=c.employee_pn

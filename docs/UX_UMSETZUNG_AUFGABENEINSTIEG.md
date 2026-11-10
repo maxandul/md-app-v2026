@@ -236,3 +236,67 @@ geführtes Ersetzen bestehender Gesprächsaufträge und die weitere Vereinheitli
 der übrigen Arbeitswege. Die Vorlagen-/Steuerelementverwaltung bleibt V01.
 
 ![Stammdatenfolgeprüfung mit ausschliesslich erfundenen Testpersonen](images/ux-stammdaten-test.png)
+
+## Sechste Etappe: gespeicherte Unterlagen unverändert nochmals zustellen
+
+Aus einer als versandt bestätigten regulären Ausgabe lässt sich das ganze Paket
+oder der gespeicherte Formularumfang einer einzelnen Person erneut bereitstellen.
+Die Links stehen bei der Ausgabe und in der personenbezogenen Formularansicht.
+Die Vorschau nennt Empfänger, enthaltene Personen, konkrete Dateien und Beilagen.
+Bei einer Gesamtzustellung kann direkt zur Prüfung einer einzelnen Person
+gewechselt werden. Es gibt keine frei eingegebene Empfängeradresse.
+
+Das vollständige Paket wird bytegleich kopiert. Bei der einzelnen Person werden
+nur ihre vorhandenen Word-Dateien und die gemeinsamen Beilagen aus dem Original
+in ein neues Versand-ZIP übernommen; die Bytes jedes Dokuments bleiben gleich.
+Es wird keine Word-Vorlage neu befüllt, auch nicht während der Versandprüfung.
+Lokale Bearbeitungen der Führungskraft sind ausdrücklich nicht enthalten und
+werden durch die Wiederzustellung nicht automatisch ersetzt.
+
+Neue Versandvorgänge nutzen die vorhandenen Paket- bzw. Einzelausgaberecords mit
+Herkunftsverweis und Anlass im Manifest. Die frühere Ausgabe und ihr Versandnachweis
+bleiben bestehen. Es entstehen keine neuen Gesprächsaufträge oder Pflichten und
+keine neue Datenbankmigration. Wiederholte Vorbereitung desselben Auftrags findet
+seinen Vorgang wieder, auch nach einem bereits bestätigten Versand. Bereits offene
+Wiederzustellungen werden zur Fortsetzung angeboten.
+
+Nur die aktuelle, nicht verworfene und bereits versandte Ausgangsausgabe ist
+geeignet. Die aktuelle Grundlage wird vor Vorbereitung und erneut vor Outlook
+geprüft. Bei einer Person wird ihr gespeicherter Grundlagenumfang verglichen;
+eine sachfremde Änderung bei einer anderen Person blockiert sie nicht pauschal.
+Geänderte eigene Namen, Ziele, Zuständigkeit oder Vorlagen, veränderte Dateien und
+neuere Ausgaben führen zur konkreten Klärung. Ältere Personenausgaben ohne
+prüfbaren gespeicherten Grundlagenstand werden nicht als unverändert bestätigt.
+
+Vorhandene Rückläufe, abgeschlossene oder nicht mehr vorgesehene Teile sowie
+möglicherweise passende ungeprüfte Eingänge verhindern die leere Wiederzustellung.
+Die Eingangsprüfung wird für Rückblick und Ausblick getrennt angewandt. Konkrete
+PDF-Dateien und Rückläufe sind verlinkt. Ein unbekannter Eingang bleibt ungeklärt;
+er wird keiner Person als belegter Rücklauf zugeschrieben. Ein ausdrücklich
+fachfremd ausgeschlossener Eingang blockiert die Wiederzustellung nicht mehr.
+
+Die vorhandenen Outlook-Sperren, Verschlüsselungsprüfung, Entwurfs-/Fehlerklärung
+und tatsächliche Versandbestätigung gelten auch für diese Vorgänge. Neue Eingänge
+zwischen Vorbereitung und Outlook verhindern einen veralteten Versand. Die
+Vorbereitungsvorschau ist signiert, zeitlich begrenzt, an die Sitzung und den
+geprüften Umfang gebunden und mit CSRF geschützt. Sie löst keinen Outlook-Aufruf
+aus. Der Anlass bleibt intern; die Nachricht nennt die unveränderte Wiederzustellung.
+
+Validierung: Gesamtlauf mit 421 Python-Tests und 70 Subtests sowie elf
+JavaScript-Tests erfolgreich; vierzehn zusätzliche Integrationstests decken
+Bytegleichheit, exakt begrenzte Personenauswahl, Originalerhalt, Wiederholungen,
+Versandzustände, geänderte Grundlagen, späte und fachfremde Eingänge, Dateimanipulation,
+Sitzungsgrenzen, CSRF und übergreifende Outlook-Sperren ab. Der abschliessende
+gezielte Lauf ist ebenfalls erfolgreich. Die Tests verbieten das erneute Rendern
+von Word-Dateien während Vorbereitung und Zustellung ausdrücklich per Mock.
+Browserprüfung mit erfundenen Personen: gesperrte Gesamtzustellung, Auswahl einer
+zulässigen Person, Dateiumfang, Beilagen, Anlass und Übergang in den eigenen
+vorbereiteten Versandvorgang. Keine echte Nachricht ausgelöst.
+
+Umfang dieser Etappe: gespeicherte reguläre Pakete und personenbezogene Auswahl
+daraus. Eigenständige Zielnachreichungs-Versandgruppen und frühere Einzelausgaben
+sind noch keine auswählbaren Quellen dieser unveränderten Wiederzustellung.
+Das geführte Ersetzen bestehender Gesprächsaufträge und die übrigen noch offenen
+Bedienwege bleiben weitere Arbeit. V01 bleibt wie vereinbart später.
+
+![Vorbereitung einer Wiederzustellung mit ausschliesslich erfundenen Testpersonen](images/ux-wiederzustellung-test.png)

@@ -69,6 +69,7 @@ def create_review_app(directory: Path):
         if request.remote_addr not in ('127.0.0.1','::1'):
             abort(403,'Der HR-Test ist nur auf diesem Gerät erreichbar.')
         allowed_read={'main.download_prepared_word_package','main.dispatch_package','main.case_detail','main.returns_overview','main.worklist','main.person_word_correction','main.manager_detail','main.dispatch','main.dialogs','main.master_data','main.import_detail','main.cycle_detail','main.dashboard','main.analytics','main.setup_guide','main.help_page','main.help_document','main.sap_exports','main.cycle_closure','main.word_pdf_review','main.word_pdf_original','main.document_original','main.feedback_collection','main.feedback_review','main.feedback_bundle_download','static'}
+        redelivery_endpoint=(request.endpoint or '').startswith('redelivery.')
         goal_endpoint=(request.endpoint or '').startswith('goal_work.')
         part_endpoint=(request.endpoint or '').startswith('parts.')
         sap_endpoint=(request.endpoint or '').startswith('sap_work.')
@@ -76,9 +77,9 @@ def create_review_app(directory: Path):
         return_endpoint=(request.endpoint or '').startswith('return_work.')
         allowed_prepare={'main.preview_word_mail','main.dispatch_package','main.person_word_correction','main.download_word_package','main.prepare_word_packages','main.change_deadlines','main.add_dialog_event','main.attach_dialog_event','main.cancel_dialog_event','main.add_cycle','main.word_pdf_review','main.upload_word_pdfs'}
         if request.method=='POST':
-            if not (goal_endpoint or part_endpoint or sap_endpoint or return_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
+            if not (redelivery_endpoint or goal_endpoint or part_endpoint or sap_endpoint or return_endpoint or request.endpoint in allowed_prepare) or (request.endpoint=='goal_work.dispatch' and request.form.get('action')=='draft'):
                 abort(403,'HR-Test: Outlook, Postfachzugriff und externe Übergaben sind gesperrt.')
-        elif not goal_endpoint and not part_endpoint and not sap_endpoint and not workspace_endpoint and not return_endpoint and request.endpoint not in allowed_read:
+        elif not redelivery_endpoint and not goal_endpoint and not part_endpoint and not sap_endpoint and not workspace_endpoint and not return_endpoint and request.endpoint not in allowed_read:
             return redirect(url_for('hr.work'))
 
     with app.app_context():

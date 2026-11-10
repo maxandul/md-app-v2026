@@ -83,23 +83,29 @@ def act(connection, *, correction_id, action, template_paths, sender_email, subj
             raise ValueError('Für diese Person ist noch ein Outlook-Vorgang offen. Diesen zuerst klären.')
         manifest = json.loads(row['manifest_json'])
         check_goal_workflow(connection,[row['case_id']],documents=manifest['documents'],exclude=('person',correction_id))
-        case = person(connection,row['case_id'],manifest['cycle_id'])
-        if case.get('parts'):
-            selected=[p for p in case['parts'] if p['kind'] in {('review' if d['kind']=='probation' else d['kind']) for d in manifest['documents']}]
-            if not selected or any(p['manager_pn']!=manifest['manager_pn'] for p in selected):
-                raise ValueError('Zuständigkeit geändert. Bitte die betroffenen Formulare neu erzeugen.')
-            case={**case,**{k:selected[0][k] for k in ('manager_pn','recipient_email','manager_first_name','manager_salutation')}}
-        if case['recipient_email'] != row['recipient_email']:
-            raise ValueError('Empfänger hat sich geändert. Bitte neu erzeugen.')
-        if not sender_email or '@' not in sender_email or not row['recipient_email'] or '@' not in row['recipient_email']:
-            raise ValueError('HR-Absender oder E-Mail-Adresse der Führungskraft fehlt.')
-        if not subject.strip() or not body.strip(): raise ValueError('Betreff und Nachricht ausfüllen.')
-        if hashlib.sha256(Path(row['stored_path']).read_bytes()).hexdigest() != manifest['sha256']:
-            raise ValueError('Datei verändert. Bitte neu erzeugen.')
-        with TemporaryDirectory(prefix='md-correction-check-') as tmp:
-            _, current = create_word_package(connection,cycle_id=case['cycle_id'],manager_pn=case['manager_pn'],case_id=case['case_id'],document_kinds=[d['kind'] for d in manifest['documents']],template_paths=template_paths,output_dir=Path(tmp))
-            if current['documents'] != manifest['documents']:
-                raise ValueError('Grundlagen dieser Formulare haben sich geändert. Bitte neu erzeugen.')
+        if manifest.get('redelivery'):
+            if not checked:raise ValueError('Bitte Anhang, Empfänger und Nachricht der Wiederzustellung ausdrücklich prüfen.')
+            from .redeliveries import validate_prepared
+            validate_prepared(connection,row,template_paths,kind='person')
+            if not sender_email or '@' not in sender_email or not subject.strip() or not body.strip():raise ValueError('Absender, Betreff und Nachricht sind erforderlich.')
+        else:
+            case = person(connection,row['case_id'],manifest['cycle_id'])
+            if case.get('parts'):
+                selected=[p for p in case['parts'] if p['kind'] in {('review' if d['kind']=='probation' else d['kind']) for d in manifest['documents']}]
+                if not selected or any(p['manager_pn']!=manifest['manager_pn'] for p in selected):
+                    raise ValueError('Zuständigkeit geändert. Bitte die betroffenen Formulare neu erzeugen.')
+                case={**case,**{k:selected[0][k] for k in ('manager_pn','recipient_email','manager_first_name','manager_salutation')}}
+            if case['recipient_email'] != row['recipient_email']:
+                raise ValueError('Empfänger hat sich geändert. Bitte neu erzeugen.')
+            if not sender_email or '@' not in sender_email or not row['recipient_email'] or '@' not in row['recipient_email']:
+                raise ValueError('HR-Absender oder E-Mail-Adresse der Führungskraft fehlt.')
+            if not subject.strip() or not body.strip(): raise ValueError('Betreff und Nachricht ausfüllen.')
+            if hashlib.sha256(Path(row['stored_path']).read_bytes()).hexdigest() != manifest['sha256']:
+                raise ValueError('Datei verändert. Bitte neu erzeugen.')
+            with TemporaryDirectory(prefix='md-correction-check-') as tmp:
+                _, current = create_word_package(connection,cycle_id=case['cycle_id'],manager_pn=case['manager_pn'],case_id=case['case_id'],document_kinds=[d['kind'] for d in manifest['documents']],template_paths=template_paths,output_dir=Path(tmp))
+                if current['documents'] != manifest['documents']:
+                    raise ValueError('Grundlagen dieser Formulare haben sich geändert. Bitte neu erzeugen.')
         connection.execute("UPDATE word_person_corrections SET status='processing',subject=?,body_text=?,updated_at=? WHERE id=?",(subject.strip(),body.strip(),_stamp(),correction_id));connection.commit()
         try:
             result = (adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,recipient_email=row['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),attachments=[Path(row['stored_path'])])

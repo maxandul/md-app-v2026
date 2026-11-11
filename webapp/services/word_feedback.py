@@ -35,16 +35,17 @@ def inspect_feedback(path, filename=''):
     inspection = inspect_pdf(path)
     flat = re.sub(r'\s+', ' ', inspection.text)
     candidates = set(re.findall(r'(?:Personalnummer\s+Vorgesetzte/r|PN\s+VG)\s*:\s*(\d+)\b', flat, re.I))
-    file_match = re.search(r'_Feedback_an_.+_(\d+)\.pdf$', filename, re.I)
-    if file_match:
-        candidates.add(file_match[1])
+    if inspection.data.get('document','').upper() == 'FEEDBACK':
+        candidates.update({inspection.data.get('manager_pn', '')} - {''})
+    from .return_identity import filename_pn
+    number = filename_pn(filename, feedback=True)
+    if number:
+        candidates.add(number)
     issues = ['Führungskraft und Rückblickjahr am Original prüfen. Das Gesprächsdatum bestimmt nicht automatisch das Rückblickjahr.']
     if len(candidates) != 1:
         issues.append('Personalnummer der Führungskraft fehlt oder ist widersprüchlich.')
     if not inspection.text.strip():
         issues.append('Bild-PDF/Scan: keine automatische Texterkennung. Angaben manuell anhand des Originals erfassen.')
-    if inspection.data.get('document','').upper() == 'FEEDBACK':
-        candidates = {inspection.data.get('manager_pn', '')} - {''}
     fields = {}
     context = ''
     for page in read_cells(path):

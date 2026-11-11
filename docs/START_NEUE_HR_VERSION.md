@@ -112,6 +112,39 @@ Bei D/E sind Rückblick und Ausblick jeweils zu unterschreiben. Der entsprechend
 Hinweis in der eigenen Ausblick-Wordvorlage muss diese Regel enthalten. Scans und
 zusätzliche E-Mail-Anliegen weiterhin manuell prüfen.
 
+## Rücklaufprüfung und Dossierbereitstellung
+
+Bei eindeutiger PN und Anstellung sind Person und passender Gesprächsteil in der
+PDF-Prüfung vorausgewählt. Die PN kann aus einem standardmässig benannten
+Rückblick-/Ausblick-PDF ergänzt werden; die Herkunft wird angezeigt. Widersprüche
+zwischen Dateiname und Dokument sowie Mehrfachanstellungen müssen geklärt werden.
+Bei Feedback bezieht sich die PN auf die beurteilte Führungskraft. Die Angaben
+weiterhin mit dem Original vergleichen. Der MD-Umfang stammt aus dem bestehenden
+Fall; ein einzelner eingereichter Teil ändert ihn nicht. Umfangsänderungen separat
+im Fall vornehmen.
+
+Neu erstellte Word-Dateien, auch bei Zielnachreichungen, verwenden den Standardnamen
+mit der PN unmittelbar vor `.docx`. Mehrere gleichnamige Fälle werden im ZIP durch
+`Fall_…`-Unterordner getrennt. Bereits gespeicherte Ausgaben und Outlook-Entwürfe
+bleiben unverändert.
+
+«Für Dossier bereitstellen» kopiert das geprüfte PDF direkt nach
+`DOSSIER_HANDOFF_ROOT`. Den vom RPA-Roboter überwachten Eingangsordner in der
+lokalen Organisationskonfiguration eintragen und die App neu starten. Das Ziel
+wird vor der Bereitstellung angezeigt; danach zeigt die App den tatsächlich
+verwendeten Dateipfad. Der lokale Standard `instance/data/dossier_ready` wird
+nicht automatisch an einen anderen Ort weitergeleitet. Bereits bereitgestellte
+Dateien wechseln bei einer Konfigurationsänderung nicht nachträglich den Ordner.
+Vor einer manuellen Weitergabe prüfen, ob der Roboter sie bereits abgeholt hat.
+Das Original bleibt in der App. Die Bereitstellung bestätigt noch keine Ablage
+im Personaldossier durch den RPA-Roboter.
+
+Bei einem Postfacheingang führt die Rücklaufseite zur zugehörigen Mailprüfung.
+Den Nachrichtentext in Outlook auf zusätzliche Anliegen prüfen. «Prüfung als
+erledigt markieren» dokumentiert den Abschluss in der App und verschiebt keine
+Mail. Eine noch im Posteingang liegende Mail anschliessend in Outlook in den
+konfigurierten MD-Zielordner verschieben.
+
 ## Sicherung und spätere Updates
 
 Die App erstellt unter Administration eine Sicherung von Datenbank, Dokumentablage

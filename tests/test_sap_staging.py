@@ -170,6 +170,7 @@ class SapStagingTest(unittest.TestCase):
         path=pdf_fixtures.sample_pdf(self.root/'return.pdf',kind='review',year=2025)
         incoming=pdfs.stage_pdf(self.db,path,filename=path.name,directory=self.root/'intake')[0]
         reviewed=pdf_fixtures.WordPdfImportsTest.reviewed(self,incoming)
+        reviewed.pop('scope')  # The existing manual event supplies its scope.
         doc=pdfs.confirm_import(self.db,incoming,reviewed=reviewed,assignment='1',case_id=event,historical=False,reason='Unterjährigen Rücklauf am Original und Zeitraum geprüft')
         self.assertEqual(self.db.execute('SELECT case_id FROM official_documents WHERE id=?',(doc,)).fetchone()[0],event)
 

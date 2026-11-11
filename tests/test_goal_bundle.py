@@ -10,10 +10,10 @@ from webapp.services.goal_delivery import _bundle_reviews
 
 
 class GoalBundleTest(unittest.TestCase):
-    def test_flat_archive_keeps_both_case_insensitive_duplicate_names(self):
+    def test_folders_keep_both_case_insensitive_duplicate_names(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);outputs=[];contents=[b'first approved document',b'second approved document']
-            for number,(filename,raw) in enumerate(zip(['Fall_1/Rückblick.docx','Fall_2/rückblick.docx'],contents),1):
+            for number,(filename,raw) in enumerate(zip(['Fall_1/Rückblick_2025_Test_Person_111113.docx','Fall_2/rückblick_2025_Test_Person_111113.docx'],contents),1):
                 source=root/f'source-{number}.zip'
                 with ZipFile(source,'w') as archive:
                     archive.writestr(filename,raw)
@@ -25,7 +25,8 @@ class GoalBundleTest(unittest.TestCase):
             with ZipFile(target) as archive:
                 names=archive.namelist()
                 self.assertEqual(len({name.casefold() for name in names}),2)
-                self.assertTrue(all('/' not in name and name.endswith('.docx') for name in names))
+                self.assertEqual(names, ['Rückblick_2025_Test_Person_111113.docx', 'Fall_1/rückblick_2025_Test_Person_111113.docx'])
+                self.assertTrue(all(name.endswith('_111113.docx') for name in names))
                 self.assertEqual([archive.read(name) for name in names],contents)
             self.assertEqual(metadata['document_count'],2)
             self.assertEqual(metadata['sha256'],hashlib.sha256(target.read_bytes()).hexdigest())

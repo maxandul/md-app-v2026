@@ -91,13 +91,13 @@ def _bundle_reviews(outputs, destination):
                     raw=source.read(document['filename'])
                 if hashlib.sha256(raw).hexdigest()!=document['sha256']:
                     raise ValueError('Eine Rückblick-Datei wurde verändert.')
-                # Windows treats names case-insensitively. Keep every document,
-                # even when older exports have identical or flattened names.
+                # Keep the standard filename ending in PN. Separate colliding
+                # cases by folder, as in the regular Word package.
                 original=PurePosixPath(filename)
                 suffix=0
                 while filename.casefold() in used:
                     suffix+=1
-                    filename=f'{original.stem}_Ausgabe_{output["id"]}_{suffix}.docx'
+                    filename=f'Fall_{suffix}/{original.name}'
                 used.add(filename.casefold())
                 bundle.writestr(filename,raw)
                 documents.append({'output_id':output['id'],'filename':filename,'sha256':document['sha256']})

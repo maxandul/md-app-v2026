@@ -43,7 +43,8 @@
 
 </div>
 <input type="hidden" name="pn" value="{{ data.get('pn','') }}"><input type="hidden" name="assignment" value="{{ data.get('ans','') }}">
-{% for c in employment_choices if c.id|string==selected_employment|string %}<div class="intake-person-context"><span class="context-label">Vorschlag nach letzter Aktualisierung – am Original prüfen</span>{{ person(c) }}</div>{% endfor %}
+{% for c in employment_choices if c.id|string==selected_employment|string %}<div class="intake-person-context"><span class="context-label">Erkannte Person und Anstellung – am Original prüfen</span>{{ person(c) }}</div>{% endfor %}
+{% if parsed.get("identity_hints",{}).get("pn") %}<p class="info-box">Die Personalnummer wurde aus dem Dateinamen ergänzt. Bitte Name und PN am Original vergleichen.</p>{% endif %}
 <p>Erkannte Angaben sind Vorschläge. Vergleiche Name, OE und Führungskraft am Original. Die aktuelle direkte Führungskraft hilft bei der Anstellungszuordnung; die Verantwortung des gewählten Gesprächsteils kann abweichen.</p>
 <button class="button" name="refresh" value="yes" formnovalidate>Person übernehmen und Gesprächsvorschläge aktualisieren</button>
 <details><summary>Erkannte technische Zuordnung</summary>Personalnummer {{ data.get('pn','Nicht erkannt') }} · Anstellung {{ data.get('ans','Nicht erkannt') }}</details>
@@ -62,10 +63,11 @@
 </section>
 <section class="content-card"><h2>Zuordnung</h2>
 <label>Übernahme<select name="destination"><option value="case">Zu einem MD-Fall</option><option value="historical" {% if request.form.get('destination',reviewed.get('_draft',{}).get('destination'))=='historical' or item.status=='historical' %}selected{% endif %}>Nachgereichter Ausblick als Zielquelle</option></select></label>
-<label>Passender Fall<select name="case_id"><option value="">Bitte Fall wählen / Nachreichung ohne Fall</option>{% for c in candidates %}<option value="{{ c.case_id }}" data-review-min="{{ c.review_min }}" data-review-max="{{ c.review_max }}" {% if request.form.get('case_id',reviewed.get('_draft',{}).get('case_id',item.case_id))==c.case_id %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}{% if not c.active %} · Inaktiver Fall (Nachzügler){% endif %} · Ans. {{ c.employment_assignment }} · {{ c.review_year }}/{{ c.outlook_year }} · Verantwortlich: {{ c.manager_name if config.HR_GOAL_WORKFLOW else c.manager_pn }}</option>{% endfor %}</select></label>
+<label>Passender Fall<select name="case_id"><option value="">Bitte Fall wählen / Nachreichung ohne Fall</option>{% for c in candidates %}<option value="{{ c.case_id }}" data-review-min="{{ c.review_min }}" data-review-max="{{ c.review_max }}" {% if selected_case==c.case_id %}selected{% endif %}>{{ c.first_name }} {{ c.last_name }}{% if not c.active %} · Inaktiver Fall (Nachzügler){% endif %} · Ans. {{ c.employment_assignment }} · {{ c.review_year }}/{{ c.outlook_year }} · Verantwortlich: {{ c.manager_name if config.HR_GOAL_WORKFLOW else c.manager_pn }} · {{ c.scope_label }}</option>{% endfor %}</select></label>
 <p>Die Vorschläge berücksichtigen die gewählte Person und den Dokumentzeitraum. Eine Vorlage aus dem Intranet ist auch ohne erfassten Versand zulässig. Bei korrigierten Angaben mit «Vorschläge aktualisieren» neu suchen.</p>
 <button class="button" name="refresh" value="yes" formnovalidate>Vorschläge aktualisieren</button>
-<label>MD-Umfang des Falls<select name="scope"><option value="">Bitte wählen / reine Nachreichung</option>{% for k,l in [('full','Rückblick und Ausblick'),('review_only','Nur Rückblick'),('outlook_only','Nur Ausblick')] %}<option value="{{ k }}" {% if reviewed.get('scope')==k %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+<p>Der MD-Umfang wird aus dem gewählten Fall übernommen. Ein einzelner eingereichter Gesprächsteil ändert den Umfang nicht. Änderungen am Umfang bitte separat im Fall vornehmen.</p>
+{% if not selected_case %}<p class="info-box">{% if parsed.get("identity_conflicts") %}Dateiname und Dokument enthalten widersprüchliche Personalnummern. Bitte die Person und den Fall am Original klären.{% elif not selected_employment %}Person oder Anstellung ist noch nicht eindeutig erkannt. Bitte anhand von Name, PN, OE und Führungskraft zuordnen.{% elif not candidates %}Für diese Person und den Dokumentzeitraum wurde kein passender Fall gefunden. Bitte Person und Zeitraum prüfen.{% else %}Der passende Gesprächsteil ist noch nicht eindeutig. Bitte Anstellung, Zeitraum und zuständige Führungskraft vergleichen und den Fall wählen.{% endif %}</p>{% endif %}
 </section>
 <section class="content-card"><h2>Weitere Angaben</h2>
 <p>Nur ausdrücklich beantwortete Fragen übernehmen. Fehlende oder unklare Antworten bleiben offen. Bei alten Vorlagen am Original prüfen.</p>

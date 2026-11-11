@@ -37,6 +37,10 @@ def process_new(db, import_id, *, handoff_dir):
         if not item or item['status']!='pending' or item['reviewed_json']:
             db.rollback()
             return {'state':'unchanged','reasons':[]}
+        conflicts = json.loads(item['parsed_json']).get('identity_conflicts', [])
+        if conflicts:
+            db.rollback()
+            return record(db,import_id,'needs_review',conflicts)
         if db.execute('SELECT 1 FROM workflow_pdf_state WHERE import_id=?',(import_id,)).fetchone():
             raise ValueError('Die manuelle Bearbeitung dieses Eingangs hat bereits begonnen.')
         if db.execute('SELECT 1 FROM hr_goal_origins WHERE pdf_import_id=?',(import_id,)).fetchone():

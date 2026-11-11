@@ -101,7 +101,12 @@ class WordWorkflowAuditTest(unittest.TestCase):
 
     def test_scan_action_available_after_signature_and_removed_after_handoff(self):
         from webapp.services.word_pdf_imports import stage_pdf, confirm_import
+        from webapp.services.documents import update_scope_obligations
         import json
+        # Scope is decided in the case before a return is reviewed.
+        with self.db:
+            self.db.execute("UPDATE dialog_cases SET official_scope='review_only' WHERE case_id=?",(self.case_id,))
+            update_scope_obligations(self.db,case_id=self.case_id,scope='review_only',timestamp='2026-11-11')
         path=sample_pdf(self.root/'review.pdf')
         item=stage_pdf(self.db,path,filename='review.pdf',directory=self.root/'queue')[0]
         parsed=json.loads(self.db.execute('SELECT parsed_json FROM word_pdf_imports WHERE id=?',(item,)).fetchone()[0])

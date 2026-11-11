@@ -40,7 +40,14 @@ def detail(document_id):
         LEFT JOIN workflow_pdf_state s ON s.import_id=w.id WHERE w.status='pending' AND COALESCE(s.dismissed,0)=0
         AND NOT EXISTS(SELECT 1 FROM hr_goal_origins o WHERE o.pdf_import_id=w.id)
         AND json_extract(COALESCE(NULLIF(w.reviewed_json,''),w.parsed_json),'$.data.pn')=? ORDER BY w.id DESC LIMIT 25''',(row['employee_pn'],)).fetchall()
-    return render_template('returns/detail.html',item=row,alternatives=alternatives,pending=pending,csrf_token=session['goal_csrf'],back=back_link(),active_nav='returns')
+    messages=get_db().execute('''SELECT DISTINCT m.id,m.subject,m.status,m.review_completed_at
+        FROM inbound_mail_messages m JOIN inbound_mail_attachments a ON a.mail_message_id=m.id
+        JOIN word_pdf_imports w ON w.sha256=a.sha256
+        WHERE w.official_document_id=? OR w.id IN (SELECT import_id FROM hr_return_evidence WHERE document_id=?)''',
+        (document_id,document_id)).fetchall()
+    destination=row['handoff']['destination'] if row['handoff'] else ''
+    target_changed=bool(row['locally_staged'] and destination and Path(destination).parent!=Path(current_app.config['DOSSIER_HANDOFF_ROOT']))
+    return render_template('returns/detail.html',item=row,alternatives=alternatives,pending=pending,messages=messages,target_changed=target_changed,csrf_token=session['goal_csrf'],back=back_link(),active_nav='returns')
 
 
 @bp.get('/<int:document_id>/scan')
@@ -79,7 +86,7 @@ def act(document_id):
             flash('Prüfentscheidung gespeichert. Es wurde keine Nachricht versendet.','success')
         elif action=='handoff':
             service.handoff(db,document_id,directory=Path(current_app.config['DOSSIER_HANDOFF_ROOT']),**common)
-            flash('Für Dossier bereitgestellt. Die externe Verarbeitung wird damit nicht bestätigt.','success')
+            flash('PDF im konfigurierten Übergabeordner bereitgestellt: '+str(current_app.config['DOSSIER_HANDOFF_ROOT'])+'. Die Ablage im Personaldossier durch den RPA-Roboter ist damit noch nicht bestätigt.','success')
         elif action=='clarify':
             service.clarify_failed_handoff(db,document_id,reason=request.form.get('reason',''),not_delivered=request.form.get('not_delivered')=='yes',**common)
             flash('Übergabe geklärt. Die gespeicherte Unterschriftenprüfung bleibt erhalten.','success')

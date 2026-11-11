@@ -111,8 +111,8 @@ def parse_word_pdf_text(text: str, *, page_count: int = 0) -> dict:
     else:
         data["document_kind"] = "review" if "rückblick" in kinds else "outlook"
         data['probation'] = 'ja' if re.search(r'Rückblick auf (?:die )?Probezeit', flat, re.I) else 'nein'
-        data["pn"] = _single(r"\bPN\s*:\s*(\d+)\b", flat, "Personalnummer", issues)
-        data["manager_pn"] = _single(r"\bPN\s+VG\s*:\s*(\d+)\b", flat, "Personalnummer VG", issues, required=False)
+        data["pn"] = _single(r"\b(?:PN|Personalnummer)\s*:\s*(\d+)\b", flat, "Personalnummer", issues)
+        data["manager_pn"] = _single(r"\b(?:PN\s+VG|Personalnummer\s+Vorgesetzte/r)\s*:\s*(\d+)\b", flat, "Personalnummer VG", issues, required=False)
         periods = set(re.findall(
             rf"(?:Rückblick|Ausblick)\s+auf\s*:\s*({DATE})?\s+bis\s*({DATE})?", flat,
             re.IGNORECASE,

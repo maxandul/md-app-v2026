@@ -1395,6 +1395,9 @@ def word_pdf_review(import_id):
     parsed=json.loads(item['parsed_json'])
     if parsed.get('data',{}).get('document_kind') == 'feedback':
         return redirect(url_for('main.feedback_review', import_id=import_id), code=307 if request.method=='POST' else 302)
+    if not parsed.get('identity_hints') and not parsed.get('identity_conflicts'):
+        from .services.return_identity import supplement_identity
+        supplement_identity(parsed, item['original_filename'])
     reviewed=json.loads(item['reviewed_json']) if item['reviewed_json'] else parsed
     form=request.form.copy()
     selection_error=''
@@ -1488,10 +1491,25 @@ def word_pdf_review(import_id):
         elif len(choices)==1:selected_employment=choices[0]['id']
     if selected_employment and not any(str(c['id'])==str(selected_employment) for c in choices):
         choices+=intake_views.employment_choices(connection,employment_id=selected_employment)
+    selected_case = str(form.get('case_id', reviewed.get('_draft', {}).get('case_id', item['case_id'] or '')))
+    if not selected_case and not parsed.get('identity_conflicts'):
+        selected_assignment = next((c['assignment_number'] for c in choices if str(c['id'])==str(selected_employment)), '')
+        proposals = [c for c in candidates if selected_assignment and c['employment_assignment']==selected_assignment
+                     and c['active'] and c.get('event_status') not in ('cancelled', 'no_md')
+                     and (not c.get('event_type') or (c['event_type']=='probation_review')==(reviewed.get('data',{}).get('probation')=='ja'))]
+        # Exact period/manager may resolve multiple events, but never discard
+        # all candidates or guess from the newest record.
+        for keys in (('period_start', 'period_end'), ('manager_pn',)):
+            exact = [c for c in proposals if all(reviewed.get('data',{}).get(k) and c[k]==reviewed['data'][k] for k in keys)]
+            if len(proposals)>1 and exact:
+                proposals=exact
+        if len(proposals)==1:
+            selected_case=proposals[0]['case_id']
     manager_choice=connection.execute('SELECT pn,first_name,last_name,org_unit FROM employees WHERE pn=?',(reviewed.get('data',{}).get('manager_pn',''),)).fetchone()
     for candidate in candidates:
         manager=connection.execute('SELECT first_name,last_name FROM employees WHERE pn=?',(candidate['manager_pn'],)).fetchone()
         candidate['manager_name']=(manager['first_name']+' '+manager['last_name']) if manager else 'Zuständigkeit klären'
+        candidate['scope_label'] = SCOPE_LABELS.get(candidate['official_scope'] or candidate['suggested_scope'], 'Umfang klären')
     from .services.word_pdf import NARRATIVE_FIELDS
     from .services import return_review
     evidence_targets=[]
@@ -1503,7 +1521,7 @@ def word_pdf_review(import_id):
         for candidate in candidates:
             for document in connection.execute("SELECT id FROM official_documents WHERE case_id=? AND document_kind=? AND variant='digital' AND is_current=1",(candidate['case_id'],reviewed.get('data',{}).get('document_kind',''))):
                 evidence_targets.append(return_review.view(connection,document['id'],include_history=False))
-    return render_template('word_pdf_review.html',active_nav='returns',employment_choices=choices,selected_employment=selected_employment,manager_choice=manager_choice,goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
+    return render_template('word_pdf_review.html',active_nav='returns',employment_choices=choices,selected_employment=selected_employment,selected_case=selected_case,manager_choice=manager_choice,goal_back=goal_back,item=item,parsed=parsed,reviewed=reviewed,pdf_state=state,candidates=candidates,evidence_targets=evidence_targets,return_document_id=return_document_id,assignments=assignments,competencies=COMPETENCY_TAGS,narrative_fields=NARRATIVE_FIELDS, scan_cases=connection.execute("SELECT d.case_id,d.cycle_id,e.first_name,e.last_name,d.employee_pn,c.employment_assignment,c.period_start,c.period_end FROM official_documents d JOIN dialog_cases c ON c.case_id=d.case_id JOIN employees e ON e.pn=d.employee_pn WHERE d.is_current=1 AND d.variant='digital' AND d.scan_required=1 AND d.handoff_status='waiting_scan'").fetchall())
 
 
 @bp.post('/word-pdf-imports/<int:import_id>/scan')

@@ -39,6 +39,9 @@ def stage_pdf(connection, path: Path, *, filename: str, directory: Path, auto_ha
         parsed['data']['document_kind']='review' if block['document'].upper()=='RUECKBLICK' else 'outlook'
         parsed['scope']=block.get('scope','')
         parsed['issues'].append('Frühere Arbeitsmappenfassung: Angaben, Durchführung und alle Inhalte vollständig am Original prüfen.')
+    if parsed.get('data', {}).get('document_kind') != 'feedback':
+        from .return_identity import supplement_identity
+        supplement_identity(parsed, filename)
     directory.mkdir(parents=True,exist_ok=True)
     stored=directory/(digest+'-'+uuid.uuid4().hex[:12]+'.pdf')
     try:
@@ -175,16 +178,18 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
         _fill_context_value(reviewed,'period_start',f'{year}-01-01','goal_year')
     else:
         case=_case_row(connection,case_id)
+        current_scope = case['official_scope'] or case['suggested_scope']
+        if reviewed.get('scope') and reviewed['scope'] != current_scope:
+            raise ValueError('Der gesamte MD-Umfang bleibt wie im bestehenden Fall. Eine Umfangsänderung separat im Fall klären.')
+        reviewed['scope'] = current_scope
         expected=case['outlook_year'] if kind=='outlook' else case['review_year']
         from webapp.migrations import available
         if available(connection):
-            from .part_responsibilities import resolve,case_parts
+            from .part_responsibilities import resolve
             part=resolve(connection,case_id,kind)
             if kind!='review' or data.get('probation')=='ja':
                 expected=int(part['period_end'][:4])
             case={**dict(case),'manager_pn':part['manager_pn']}
-            if len({p['manager_pn'] for p in case_parts(connection,case_id) if p['required']})>1 and reviewed.get('scope')!=(case['official_scope'] or case['suggested_scope']):
-                raise ValueError('Bei getrennter Zuständigkeit bleibt der gesamte MD-Umfang erhalten. Eine Umfangsänderung separat im Fall klären.')
         if kind!='review' or data.get('probation')=='ja':
             context=part or {'period_start':case['period_start'] if kind=='review' and case['period_start'] else f'{expected}-01-01',
                             'period_end':case['period_end'] if kind=='review' and case['period_end'] else f'{expected}-12-31'}
@@ -210,11 +215,6 @@ def confirm_import(connection, import_id: int, *, reviewed: dict, assignment: st
         event=connection.execute('SELECT event_type FROM dialog_events WHERE legacy_case_id=?',(case_id,)).fetchone()
         if event and (event['event_type']=='probation_review') != (data.get('probation')=='ja'):
             raise ValueError('Probezeitformular und Ereignisart des Falls passen nicht zusammen.')
-    if case:
-        current_scope = case['official_scope'] or case['suggested_scope']
-        has_waiver = connection.execute("SELECT 1 FROM official_documents WHERE case_id=? AND is_current=1 AND variant='administrative' AND document_kind IN ('review','outlook')", (case_id,)).fetchone()
-        if (data['conducted']=='nein' or has_waiver) and reviewed.get('scope') != current_scope:
-            raise ValueError('Bei Nichtdurchführung bleibt der bisherige MD-Umfang bestehen. Eine Umfangsänderung muss separat geklärt werden.')
     source=Path(item['stored_path'])
     if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest()!=item['sha256']:
         raise ValueError('Das gespeicherte Original-PDF fehlt oder wurde verändert.')

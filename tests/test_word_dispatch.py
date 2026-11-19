@@ -17,6 +17,7 @@ class FakeOutlook:
         self.calls=[]
         self.fail=fail
     def create_encrypted_draft(self, **message):
+        message['attachment_bytes'] = {p.name: p.read_bytes() for p in message['attachments']}
         self.calls.append(message)
         if self.fail:
             raise RuntimeError('Outlook nicht verfügbar')
@@ -285,7 +286,7 @@ class WordDispatchTest(unittest.TestCase):
         result=self.send([item['id']],adapter)
         self.assertEqual(result['created'],1);self.assertEqual(result['sent'],0)
         self.assertEqual(adapter.calls[0]['recipient_email'],item['recipient_email'])
-        self.assertEqual(adapter.calls[0]['attachments'],[Path(item['stored_path'])])
+        self.assert_attachments_match(item,adapter.calls[0])
         self.assertIn('MD-Unterlagen Durchlauf',adapter.calls[0]['subject'])
         self.assertNotIn('Arbeitsmappe',adapter.calls[0]['body_html'])
         with self.assertRaises(ValueError):
@@ -342,15 +343,24 @@ class WordDispatchTest(unittest.TestCase):
         self.assertEqual(len(adapter.calls),2)
         for item in items:
             call=next(call for call in adapter.calls if call['recipient_email']==item['recipient_email'])
-            self.assertEqual(call['attachments'],[Path(item['stored_path'])])
             manifest=json.loads(item['manifest_json'])
             expected={row['case_id'] for row in self.db.execute('SELECT case_id FROM dialog_cases WHERE manager_pn=?',(item['manager_pn'],))}
             self.assertTrue({doc['case_id'] for doc in manifest['documents']}.issubset(expected))
-            with ZipFile(call['attachments'][0]) as archive:
-                self.assertEqual(set(archive.namelist()),{doc['filename'] for doc in manifest['documents'] + manifest['attachments']})
+            self.assert_attachments_match(item,call)
+            with ZipFile(item['stored_path']) as archive:
                 feedback=next(doc for doc in manifest['attachments'] if doc['kind']=='feedback')
                 values=fixtures.controls(fixtures.xml_for(archive.read(feedback['filename'])))
                 self.assertEqual(values['fb_pn_vg'],item['manager_pn'])
+
+    def assert_attachments_match(self,item,call):
+        path=Path(item['stored_path'])
+        with ZipFile(path) as archive:
+            names=archive.namelist()
+            basenames={Path(name).name for name in names}
+            if len(names)<=5 and len(basenames)==len(names):
+                self.assertEqual(call['attachment_bytes'],{Path(name).name:archive.read(name) for name in names})
+            else:
+                self.assertEqual(call['attachment_bytes'],{path.name:path.read_bytes()})
 
     def test_open_draft_must_be_resolved_before_new_generation(self):
         self.prepare();item=self.candidates()[0];self.send([item['id']],FakeOutlook())

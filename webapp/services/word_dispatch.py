@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, date
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
+from .mail_attachments import individual_attachments, outlook_attachments, package_documents
 
 from webapp.adapters.outlook import OutlookDraftAdapter
 from .form_data import _secondary_employment_text
@@ -201,7 +202,7 @@ def word_dispatch_candidates(connection, *, cycle_id, template_paths, manager_pn
 DEFAULT_WORD_SUBJECT = 'MD-Unterlagen Durchlauf {years}'
 DEFAULT_WORD_BODY = """{greeting}
 
-Der jährliche Mitarbeitenden-Dialog steht an. Im angehängten ZIP findest du:
+Der jährliche Mitarbeitenden-Dialog steht an. Im Anhang findest du:
 
 - Ein Formular MD Feedback und MD Reflexion zum Verteilen an deine Mitarbeitenden.
 - Ein Formular MD Rückblick pro Mitarbeiter/in.
@@ -224,7 +225,7 @@ Für den Rückversand als PDF an [{sender_email}](mailto:{sender_email}) gelten 
 
 **Hinweise:**
 
-- Speichere das ZIP, entpacke es (Rechtsklick > Alle extrahieren...) und nutze die Wordvorlagen. Beim Speichern als PDF kannst du den vorgegebenen Dateinamen übernehmen. Sende nur die PDFs zurück ans HR.
+- {attachment_instructions} Beim Speichern als PDF kannst du den vorgegebenen Dateinamen übernehmen. Sende nur die PDFs zurück ans HR.
 - Die Dokumente im Anhang sind automatisch generiert. Mitarbeitende in der Probezeit, kurz vor dem Austritt oder mit vakanten Vorgesetzten sind weitgehend berücksichtigt worden. Dennoch können nicht alle Eventualitäten vollständig vorweggenommen werden. Hier findest du Infos zu den [Spezialfällen](https://ktzuerich.sharepoint.com/sites/vd/SitePages/Mitarbeitenden-Dialog-%28MD%29.aspx#spezialf%C3%A4lle).
 - Sofern wir im letzten Durchlauf den Ausblick als Word-Datei korrekt erhalten haben, konnten wir die Ziele in den aktuellen Rückblick übernehmen. Falls bei dir keine Ziele übernommen wurden, kannst du uns die Ausblicke nachreichen und wir senden dir die ergänzten Rückblicke.
 - Gemäss der [Allgemeinen Nutzungsrichtlinie M365](https://ktzuerich.sharepoint.com/:b:/r/sites/gd/Freigegebene%20Dokumente/Informationssicherheit/Allgemeine-Nutzungsrichtlinie-Microsoft365-Stand-1.%20Februar%202023.pdf?d=we6c7c63a52394d86a99cc39a42edac14&csf=1&web=1&e=S8GSP1) müssen E-Mails mit vertraulichem Inhalt verschlüsselt versendet werden.
@@ -270,6 +271,14 @@ def word_message(row, *, sender_email, subject_template='', body_template=''):
     greeting = {'frau': 'Liebe', 'herr': 'Lieber'}.get(salutation, 'Hallo') if first_name else 'Hallo'
     if first_name:
         greeting += ' ' + first_name
+    manifest = json.loads(row.get('manifest_json') or '{}')
+    documents = package_documents(manifest)
+    if not documents:
+        attachment_instructions = 'Speichere die Word-Dateien. Falls du ein ZIP erhältst, entpacke es zuerst.'
+    elif individual_attachments(documents):
+        attachment_instructions = 'Speichere die angehängten Word-Dateien.'
+    else:
+        attachment_instructions = 'Speichere das ZIP und entpacke es (Rechtsklick > Alle extrahieren...).'
     values = {'manager_name':row['manager_name'] or row['manager_pn'],
               'manager_first_name':first_name, 'greeting':greeting,
               'years':f"{row['review_year']}/{row['outlook_year']}",
@@ -277,17 +286,17 @@ def word_message(row, *, sender_email, subject_template='', body_template=''):
               'review_due':due(row['review_due_date']),
               'outlook_due':due(row['outlook_due_date']),
               'sender_email':sender_email,
-              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden als ZIP.'}
+              'attachment_instructions':attachment_instructions,
+              'introduction':'Im Anhang erhältst du die personalisierten Word-Vorlagen für deine Mitarbeitenden.'}
     try:
         subject = (subject_template.strip() or DEFAULT_WORD_SUBJECT).format_map(values)
         body = (body_template.strip() or DEFAULT_WORD_BODY).format_map(values)
-        manifest=json.loads(row.get('manifest_json') or '{}')
         if not body_template.strip() and any(d.get('responsibility') for d in manifest.get('documents',[])):
             labels={'review':'Rückblick','outlook':'Ausblick','probation':'Probezeit-Rückblick'}
             entries='\n'.join('- '+labels[d['kind']]+': '+d['filename'] for d in manifest['documents'])
             body=(f"{greeting}\n\nIm Anhang erhältst du die Word-Formulare für die dir zugewiesenen Gesprächsteile:\n{entries}\n\n"
                   f"Frist Rückblick: {values['review_due']}; Frist Ausblick: {values['outlook_due']}. Individuell vereinbarte Fristen bleiben massgeblich.\n\n"
-                  f"Bitte speichere und entpacke das ZIP und sende die bearbeiteten PDFs S/MIME-verschlüsselt an {sender_email}. Beachte die Unterschriften- und Rücksendehinweise im jeweiligen Formular.\n\n"
+                  f"{attachment_instructions} Sende die bearbeiteten PDFs S/MIME-verschlüsselt an {sender_email}. Beachte die Unterschriften- und Rücksendehinweise im jeweiligen Formular.\n\n"
                   "Eine vorübergehende MD-Vertretung ändert die Feedback-Zuordnung nicht. Eine beigefügte Feedbackvorlage gilt für deine regulären Mitarbeitenden, nicht automatisch für vertretene Gesprächsteile.\n\nFreundliche Grüsse\nHR")
     except (ValueError,KeyError,IndexError,AttributeError) as exc:
         raise ValueError(f'Ungültiger Platzhalter im Word-E-Mailtext: {exc}') from exc
@@ -317,7 +326,8 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
             validate_prepared(connection,row,template_paths,kind='regular')
         row['subject'],row['body_html'] = word_message(row,sender_email=sender_email,subject_template=subject_template,body_template=body_template)
         from .outlook_lock import check_goal_workflow
-        documents=json.loads(row['manifest_json'])['documents']
+        documents=manifest['documents']
+        row['mail_documents'] = package_documents(manifest)
         check_goal_workflow(connection,[d['case_id'] for d in documents],documents=documents,exclude=('package',package_id))
     outlook = adapter or OutlookDraftAdapter()
     result = {'created':0,'sent':0,'failed':0,'errors':[]}
@@ -343,7 +353,8 @@ def _dispatch_word_packages(connection, *, cycle_id, package_ids, template_paths
             raise
         try:
             method = outlook.send_encrypted if delivery_mode=='send' else outlook.create_encrypted_draft
-            response = method(sender_email=sender_email,recipient_email=row['recipient_email'],subject=row['subject'],body_html=row['body_html'],attachments=[Path(row['stored_path'])])
+            with outlook_attachments(row['stored_path'], row['mail_documents']) as attachments:
+                response = method(sender_email=sender_email,recipient_email=row['recipient_email'],subject=row['subject'],body_html=row['body_html'],attachments=attachments)
             if not response.encryption_flag_verified:
                 raise ValueError('Outlook hat die Verschlüsselungsmarkierung nicht bestätigt. Bitte Nachricht in Outlook prüfen.')
         except Exception as exc:

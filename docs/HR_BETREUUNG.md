@@ -27,7 +27,10 @@ zur Weiterleitung an Mitarbeitende. Das Feedback enthält bereits Name und
 Personalnummer der Führungskraft. `NameMA` im Dateinamen ersetzen die Mitarbeitenden.
 
 Word-Pakete werden direkt auf dem Server gespeichert; Outlook greift darauf zu.
-Ein Download ist nur eine zusätzliche Kopie. ZIP-Dateien nicht nach `dossier_ready`
+Outlook erhält bis zu fünf Word-Dateien mit unterschiedlichen Namen als einzelne
+Anhänge. Bei mehr Dateien oder gleichen Dateinamen erhält Outlook das ZIP. Ein
+Download ist eine zusätzliche Kopie des gespeicherten ZIP. ZIP-Dateien nicht nach
+`dossier_ready`
 kopieren: Hier stellt die App die geprüften Rücklauf-PDFs automatisch bereit.
 `data/dossier_ready` in der Organisationsdatei verweist auf einen Unterordner der
 Dateiablage `instance`, nicht auf einen Ordner im Projektverzeichnis.
@@ -46,6 +49,16 @@ Teilliste kann fehlende Zuordnungen in offenen Durchläufen deaktivieren. Konfli
 an der SAP-Quelle klären und neu importieren. Das Rückblickjahr bezeichnet das
 beurteilte Jahr; der Ausblick gilt für das Folgejahr. Nach Eröffnung Fälle, Umfang,
 Führungslinien und Fristen prüfen. Phasenwechsel lösen keinen Versand aus.
+
+## Rückblick Probezeit ergänzen
+
+Öffne unter **Mitarbeitende** die Person und wähle beim offenen Ausblick
+**Rückblick Probezeit ergänzen**. Die App schlägt Eintritt und Probezeitende der
+gewählten Anstellung als Zeitraum vor. Prüfe die Daten, die zuständige Führungskraft
+und die Rücklauffrist. Der bisherige Ausblick bleibt als eigener Auftrag bestehen.
+Nach dem Speichern führt **Word-Vorlage für den Probezeitrückblick erstellen**
+zur Einzelausgabe für die Führungskraft. Erstelle dort einen Outlook-Entwurf
+und bestätige den Versand nach dem Versenden in Outlook.
 
 ## Wie bearbeite ich Rückläufe und Unterbrechungen?
 

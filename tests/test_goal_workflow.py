@@ -217,7 +217,7 @@ class GoalWorkflowTest(unittest.TestCase):
         fake=FakeOutlook()
         for group in groups:self.act(group,adapter=fake)
         self.assertEqual(len(fake.calls),2)
-        self.assertEqual(sum(len(call['attachments']) for call in fake.calls),2)
+        self.assertEqual(sum(len(call['attachments']) for call in fake.calls),4)
         all_documents=set()
         for group,call in zip(groups,fake.calls):
             expected={}
@@ -226,18 +226,17 @@ class GoalWorkflowTest(unittest.TestCase):
                 with ZipFile(output['stored_path']) as source:
                     expected[document['filename']]=source.read(document['filename'])
             self.assertEqual(call['recipient_email'],delivery.get(self.db,group)['recipient_email'])
-            with ZipFile(call['attachments'][0]) as archive:
-                self.assertEqual(set(archive.namelist()),set(expected))
-                self.assertTrue(all(name.endswith('.docx') and '/' not in name for name in archive.namelist()))
-                for name,raw in expected.items():self.assertEqual(archive.read(name),raw)
-                self.assertFalse(all_documents.intersection(archive.namelist()))
-                all_documents.update(archive.namelist())
+            self.assertEqual(call['attachment_bytes'], expected)
+            self.assertFalse(all_documents.intersection(expected))
+            all_documents.update(expected)
             saved=delivery.get(self.db,group)['attachment']
             self.assertEqual(saved['document_count'],2)
-            self.assertEqual(saved['filename'],call['attachments'][0].name)
+            self.assertTrue(saved['as_individual_files'])
+            with ZipFile(self.root/'dispatches'/saved['filename']) as archive:
+                self.assertEqual({name:archive.read(name) for name in archive.namelist()},expected)
             page=self.client.get(f'/arbeit/ziele/versand/{group}')
             self.assertEqual(page.status_code,200)
-            self.assertIn('2 Rückblicke in einem ZIP',page.text)
+            self.assertIn('2 Rückblicke als einzelne Word-Anhänge',page.text)
         self.assertEqual(len(all_documents),4)
 
     def test_zip_failure_keeps_prepared_state_and_retry_does_not_duplicate_outlook(self):

@@ -23,12 +23,15 @@ class PersonCorrectionsTest(unittest.TestCase):
         row = self.db.execute('SELECT * FROM word_person_corrections WHERE id=?',(id,)).fetchone()
         with ZipFile(row['stored_path']) as archive:
             self.assertEqual(len(archive.namelist()),1)
-            self.assertTrue(archive.namelist()[0].startswith('Rückblick_'))
+            filename=archive.namelist()[0]
+            self.assertTrue(filename.startswith('Rückblick_'))
+            raw=archive.read(filename)
         fake = FakeOutlook()
         self.act(id,adapter=fake)
         self.assertEqual(len(fake.calls),1)
         self.assertEqual(fake.calls[0]['recipient_email'],'person-111116@example.invalid')
-        self.assertEqual(fake.calls[0]['attachments'],[Path(row['stored_path'])])
+        self.assertEqual(fake.calls[0]['attachment_bytes'],{filename:raw})
+        self.assertFalse(fake.calls[0]['attachments'][0].exists())
         with self.assertRaises(ValueError):self.act(id,adapter=fake)
         self.act(id,action='sent_confirmed',checked=True)
         self.assertEqual(self.db.execute('SELECT status FROM word_person_corrections WHERE id=?',(id,)).fetchone()[0],'sent_confirmed')

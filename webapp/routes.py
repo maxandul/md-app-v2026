@@ -266,7 +266,12 @@ def dialogs():
             )
             if selected_cycle_id else []
         ),
-        employee_choices=connection.execute("SELECT a.id,a.assignment_number,a.org_unit,a.position,e.first_name,e.last_name,a.person_number FROM employment_assignments a JOIN employees e ON e.pn=a.person_number WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number").fetchall(),
+        employee_choices=connection.execute("""
+            SELECT a.id,a.assignment_number,a.org_unit,a.position,a.entry_date,a.probation_end,
+                   e.first_name,e.last_name,a.person_number
+            FROM employment_assignments a JOIN employees e ON e.pn=a.person_number
+            WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number
+        """).fetchall(),
         manager_choices=connection.execute("SELECT pn,first_name,last_name,org_unit FROM employees WHERE active=1 ORDER BY last_name,first_name,pn").fetchall(),
         event_types=EVENT_TYPE_LABELS,
         planning_back=_planning_back(),
@@ -389,6 +394,15 @@ def add_dialog_event():
         "dialog_event_created", "dialog_event", str(event_id),
         cycle_id=cycle_id, event_type=request.form.get("event_type", ""),
     )
+    if request.form.get("event_type") == "probation_review":
+        saved = get_db().execute(
+            "SELECT cycle_id,legacy_case_id FROM dialog_events WHERE event_id=?", (event_id,)
+        ).fetchone()
+        if saved and saved['legacy_case_id'] and current_app.config.get('HR_GOAL_WORKFLOW'):
+            flash('Rückblick Probezeit erfasst. Ein bestehender Ausblick bleibt als eigener Auftrag bestehen. Hier kannst du die Word-Vorlage erstellen.', 'success')
+            return redirect(url_for('main.person_word_correction', cycle_id=saved['cycle_id'],
+                case_id=saved['legacy_case_id'], kind='probation',
+                back=url_for('main.dialogs', cycle_id=saved['cycle_id'])))
     flash(f"Dialogereignis {event_id} wurde angelegt.", "success")
     return redirect(_planning_back() or (url_for("main.dialogs", cycle_id=cycle_id) if cycle_id else url_for("main.dialogs")))
 
@@ -456,7 +470,7 @@ def dispatch():
 def _dispatch_back(default=None):
     from urllib.parse import urlsplit
     value=request.values.get('back','');parsed=urlsplit(value)
-    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path=='/versand' or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich','/arbeit/dialogteile/'))):
+    if not parsed.scheme and not parsed.netloc and '\\' not in value and (parsed.path in ('/versand', '/dialoge') or parsed.path.startswith(('/versand/pakete/','/stammdaten/abgleich','/arbeit/dialogteile/','/mitarbeitende/','/fuehrungskraefte/'))):
         return value
     return default or url_for('main.dispatch',view='overview',cycle_id='')
 
@@ -1624,6 +1638,12 @@ def preview_word_mail(cycle_id):
         return {'error': 'Bitte eine Führungskraft für die Vorschau auswählen.'}, 400
     row = dict(cycle, manager_pn=manager['pn'], manager_name=manager['name'],
                manager_first_name=manager['first_name'], manager_salutation=manager['salutation'])
+    package = get_db().execute(
+        "SELECT manifest_json FROM word_dispatch_packages WHERE cycle_id=? AND manager_pn=? "
+        "AND discarded_at='' ORDER BY id DESC LIMIT 1", (cycle_id, manager['pn'])
+    ).fetchone()
+    if package:
+        row['manifest_json'] = package['manifest_json']
     try:
         subject, body = word_message(row, sender_email=current_app.config['HR_MAILBOX_EMAIL'],
             subject_template=request.form.get('subject_template', ''), body_template=request.form.get('body_template', ''))

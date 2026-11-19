@@ -1,4 +1,4 @@
-"""Grouped Outlook drafts with one ZIP of approved reviews per recipient."""
+"""Grouped Outlook drafts of approved reviews per recipient."""
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
@@ -9,6 +9,7 @@ from . import goal_followups as followups
 from .part_responsibilities import stamp
 from .outlook_lock import package_lock, serialized_goal_delivery
 from .word_dispatch import _mail_html
+from .mail_attachments import individual_attachments, outlook_attachments
 from .form_data import _filename_part
 from webapp.adapters.outlook import OutlookDraftAdapter
 
@@ -36,7 +37,7 @@ def prepare(connection,output_ids,template_paths,*,user_id=None):
         for (manager,email),items in groups.items():
             names='\n'.join(f"• {d['first_name']} {d['last_name']} (Ans. {d['employment_assignment']})" for _,d in items)
             subject=f'MD: {len(items)} aktualisierte Rückblicke'
-            body=f"Hallo {items[0][1]['manager_name']}\n\nIm Anhang erhältst du ein ZIP mit den aktualisierten Rückblicken für:\n{names}\n\nBitte entpacke das ZIP und verwende diese Fassungen. Falls du bisherige Formulare bereits bearbeitet hast, gleiche die Inhalte vor dem Ersetzen ab.\n\nFreundliche Grüsse\nHR"
+            body=f"Hallo {items[0][1]['manager_name']}\n\nIm Anhang erhältst du die aktualisierten Rückblicke für:\n{names}\n\nBitte verwende diese Fassungen. Falls du bisherige Formulare bereits bearbeitet hast, gleiche die Inhalte vor dem Ersetzen ab.\n\nFreundliche Grüsse\nHR"
             cur=connection.execute('''INSERT INTO hr_goal_dispatches(manager_pn,recipient_email,subject,body_text,user_id,created_at,updated_at)
                 VALUES (?,?,?,?,?,?,?)''',(manager,email,subject,body,user_id,stamp(),stamp()))
             group_id=cur.lastrowid
@@ -56,6 +57,11 @@ def get(connection,dispatch_id):
     if not row:
         raise ValueError('Versandgruppe nicht gefunden.')
     result=dict(row)
+    if result['status']=='prepared':
+        result['body_text'] = result['body_text'].replace(
+            'Im Anhang erhältst du ein ZIP mit den aktualisierten Rückblicken für:',
+            'Im Anhang erhältst du die aktualisierten Rückblicke für:',
+        ).replace('Bitte entpacke das ZIP und verwende diese Fassungen.', 'Bitte verwende diese Fassungen.')
     from .saved_redeliveries import provenance
     result['redelivery']=provenance(connection,dispatch_id)
     event=connection.execute("SELECT details_json FROM hr_goal_events WHERE dispatch_id=? AND action='outlook_started' ORDER BY id DESC LIMIT 1",(dispatch_id,)).fetchone()
@@ -165,6 +171,7 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
                 archive=Path(group['redelivery']['stored_path'])
                 attachment={**plan['attachment'],'filename':archive.name}
             else:attachment=_bundle_reviews(outputs,archive)
+            attachment['as_individual_files'] = individual_attachments(attachment['documents'])
             connection.execute("UPDATE hr_goal_dispatches SET status='processing',subject=?,body_text=?,sender_email=?,updated_at=? WHERE id=?",
                                (subject.strip(),body.strip(),sender_email,stamp(),dispatch_id))
             review.event(connection,'outlook_started',dispatch_id=dispatch_id,user_id=user_id,attachment=attachment)
@@ -173,9 +180,10 @@ def act(connection,dispatch_id,*,action,template_paths,lock_root,sender_email=''
             connection.rollback()
             raise
         try:
-            result=(adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,
-                recipient_email=group['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),
-                attachments=[archive])
+            with outlook_attachments(archive, attachment['documents']) as attachments:
+                result=(adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,
+                    recipient_email=group['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),
+                    attachments=attachments)
             if not result.encryption_flag_verified:
                 raise ValueError('Verschlüsselungsmarkierung nicht bestätigt. Bestehenden Outlook-Vorgang prüfen.')
             with connection:

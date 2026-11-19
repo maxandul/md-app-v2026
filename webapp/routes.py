@@ -266,7 +266,12 @@ def dialogs():
             )
             if selected_cycle_id else []
         ),
-        employee_choices=connection.execute("SELECT a.id,a.assignment_number,a.org_unit,a.position,e.first_name,e.last_name,a.person_number FROM employment_assignments a JOIN employees e ON e.pn=a.person_number WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number").fetchall(),
+        employee_choices=connection.execute("""
+            SELECT a.id,a.assignment_number,a.org_unit,a.position,a.entry_date,a.probation_end,
+                   e.first_name,e.last_name,a.person_number
+            FROM employment_assignments a JOIN employees e ON e.pn=a.person_number
+            WHERE a.active=1 ORDER BY e.last_name,e.first_name,a.org_unit,a.assignment_number
+        """).fetchall(),
         manager_choices=connection.execute("SELECT pn,first_name,last_name,org_unit FROM employees WHERE active=1 ORDER BY last_name,first_name,pn").fetchall(),
         event_types=EVENT_TYPE_LABELS,
         planning_back=_planning_back(),

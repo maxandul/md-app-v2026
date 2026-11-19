@@ -53,7 +53,8 @@ Führungslinien und Fristen prüfen. Phasenwechsel lösen keinen Versand aus.
 ## Rückblick Probezeit ergänzen
 
 Öffne unter **Mitarbeitende** die Person und wähle beim offenen Ausblick
-**Rückblick Probezeit ergänzen**. Prüfe den Zeitraum, die zuständige Führungskraft
+**Rückblick Probezeit ergänzen**. Die App schlägt Eintritt und Probezeitende der
+gewählten Anstellung als Zeitraum vor. Prüfe die Daten, die zuständige Führungskraft
 und die Rücklauffrist. Der bisherige Ausblick bleibt als eigener Auftrag bestehen.
 Nach dem Speichern führt **Word-Vorlage für den Probezeitrückblick erstellen**
 zur Einzelausgabe für die Führungskraft. Erstelle dort einen Outlook-Entwurf

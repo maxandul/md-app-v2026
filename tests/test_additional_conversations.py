@@ -61,16 +61,21 @@ class AdditionalConversationTest(unittest.TestCase):
             self.db.execute("UPDATE dialog_events SET required_scope='outlook_only' WHERE legacy_case_id=?",(self.case_id,))
             self.db.execute("""UPDATE document_obligations SET required=0,status='waived' WHERE document_kind='review'
                 AND dialog_event_id=(SELECT id FROM dialog_events WHERE legacy_case_id=?)""",(self.case_id,))
-            self.db.execute("UPDATE employment_assignments SET probation_end='2025-11-30' WHERE person_number='111113' AND assignment_number='1'")
+            self.db.execute("UPDATE employment_assignments SET entry_date='2025-08-01', probation_end='2025-11-30' "
+                            "WHERE person_number='111113' AND assignment_number='1'")
+        employment=self.db.execute("SELECT id FROM employment_assignments WHERE person_number='111113' AND assignment_number='1'").fetchone()[0]
+        manual=self.client.get('/dialoge')
+        self.assertRegex(manual.text,rf'<option value="{employment}"[^>]*data-entry-date="2025-08-01" data-probation-end="2025-11-30"')
         before=parts.resolve(self.db,self.case_id,'outlook')
         person_page=self.client.get('/mitarbeitende/111113')
         self.assertIn('Rückblick Probezeit ergänzen',person_page.text)
         self.assertIn('Word-Vorlage erstellen',person_page.text)
         page=self.client.get(f'/arbeit/dialogteile/{self.case_id}/zusaetzlich?type=probation_review')
         self.assertIn('Nur Rückblick Probezeit',page.text)
-        self.assertIn('value="2025-11-30"',page.text)
+        self.assertIn('name="period_start" type="date" value="2025-08-01"',page.text)
+        self.assertIn('name="period_end" type="date" value="2025-11-30"',page.text)
 
-        updates=dict(event_type='probation_review',required_scope='review_only',period_end='2025-11-30')
+        updates=dict(event_type='probation_review',required_scope='review_only',period_start='2025-08-01',period_end='2025-11-30')
         refused=self.preview(**updates,disposition='replace')
         self.assertIn('Der bisherige Auftrag bleibt bestehen',refused.text)
         self.assertNotIn('name="change_token"',refused.text)

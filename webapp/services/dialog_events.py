@@ -347,6 +347,8 @@ def _create_manual_event(
         raise ValueError("Unbekannte Dialogart.")
     if required_scope not in SCOPE_LABELS:
         raise ValueError("Unbekannter Gesprächsumfang.")
+    if event_type == "probation_review" and required_scope != "review_only":
+        raise ValueError("Für «Rückblick Probezeit» bitte «Nur Rückblick Probezeit» wählen. Bestehende Gesprächsaufträge bleiben separat bestehen.")
     if not employee_pn.strip() or not assignment_number.strip() or not manager_pn.strip():
         raise ValueError("Personalnummer, Ans. und vorgesetzte Person sind erforderlich.")
     if not 2020 <= review_year <= 2100:
@@ -429,6 +431,9 @@ def _create_manual_event(
         reason=reason.strip(),
         created_at=timestamp,
     )
+    if modern and event_type == "probation_review":
+        # This assignment belongs to the probezeit event, not the reporting line.
+        connection.execute("UPDATE manager_assignments SET active=0 WHERE id=?", (manager_assignment_id,))
     event_id = f"MAN-{review_year}-{employee_pn.strip()}-{uuid.uuid4().hex[:8]}"
     legacy_case_id = None
     if cycle_id is not None:

@@ -21,7 +21,7 @@ ein Phasenwechsel versendet keine Dateien.
 | Umfang | Rückblick, Ausblick und Probezeit anhand des Falls erzeugen; bestätigter Umfang hat Vorrang. Unterjährige Ereignisse bleiben getrennt nachvollziehbar. |
 | Word-Erzeugung | Freigegebene lokale Vorlagen mit Stammdaten, Zeiträumen, Nebenbeschäftigungen und vorhandenen Vorjahreszielen befüllen. Zielzeilen dynamisch ergänzen; leere Entwicklungszielfelder beibehalten. |
 | Versionierung | Neue Ausgabe aus aktuellen Quelldaten; frühere Ausgaben und lokal bearbeitete Dokumente nicht überschreiben. Konkurrierende Zielquellen zur Klärung anhalten. |
-| Versand | Eigener ZIP-Anhang je Führungskraft. Erzeugung, Outlook-Entwurf und bestätigter Versand getrennt dokumentieren. Veraltete Pakete nicht versenden. |
+| Versand | Pro Führungskraft bis zu fünf Dateien mit unterschiedlichen Namen einzeln anhängen, sonst ein ZIP. ZIP-Ausgaben für Download und Nachweis speichern. Erzeugung, Outlook-Entwurf und bestätigter Versand getrennt dokumentieren. Veraltete Pakete nicht versenden. |
 | Rücklauf | Beide Microsoft-PDF-Exportwege unterstützen. Grundangaben, Ziele und aktuelle Einschätzungen vor Übernahme prüfen; unklare Werte offen lassen. |
 | Nachreichung | Frühere Ausblicke als versionierte Zielquelle übernehmen; bei nächster Word-Erzeugung berücksichtigen. |
 | Nichtdurchführung | Nur den betroffenen Gesprächsteil mit Begründung schliessen; administrativen Nachweis speichern. Keine Beurteilung oder Unterschrift erfinden. |

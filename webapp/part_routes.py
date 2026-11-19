@@ -194,6 +194,13 @@ def additional(case_id):
     values=dict(manager_pn=first['manager_pn'],event_type='interim',required_scope='review_only',
         period_start=first['period_start'],period_end=first['period_end'],review_due_date='',outlook_due_date='',
         form_org_source='employee',disposition='',reason='')
+    if request.method == 'GET' and request.args.get('type') == 'probation_review':
+        employment = context['employment']
+        outlook = next((c['part'] for c in context['parts']
+                        if c['part']['kind'] == 'outlook' and c['part']['required']), first)
+        values.update(event_type='probation_review', disposition='keep', manager_pn=outlook['manager_pn'],
+                      period_start=employment['entry_date'], period_end=employment['probation_end'])
+
     def preview():
         plan=additions.plan(db,case_id,values)
         token=signer.dumps({'owner':session['additional_owner'],'case_id':case_id,'proposal':values,

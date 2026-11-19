@@ -5,7 +5,7 @@ from . import part_changes,part_responsibilities as parts,dialog_events
 from .outlook_lock import serialized_goal_delivery
 from .sap_staging import available
 
-TYPES={k:dialog_events.EVENT_TYPE_LABELS[k] for k in ('interim','transfer_review','departure_review')}
+TYPES={k:dialog_events.EVENT_TYPE_LABELS[k] for k in ('interim','transfer_review','departure_review','probation_review')}
 SCOPES={k:dialog_events.SCOPE_LABELS[k] for k in ('full','review_only','outlook_only')}
 KINDS={'full':{'review','outlook'},'review_only':{'review'},'outlook_only':{'outlook'}}
 
@@ -25,6 +25,9 @@ def plan(db,case_id,proposal):
     if not available(db):raise ValueError('Für diesen Ablauf zuerst das aktuelle Datenmodell übernehmen.')
     value=context(db,case_id);first=value['parts'][0]['part'];p=dict(proposal)
     if p['event_type'] not in TYPES or p['required_scope'] not in SCOPES:raise ValueError('Bitte Gesprächsart und Umfang wählen.')
+    probation = p['event_type'] == 'probation_review'
+    if probation and (p['required_scope'] != 'review_only' or p['disposition'] != 'keep'):
+        raise ValueError('Der Rückblick Probezeit wird als zusätzlicher Auftrag erfasst. Der bisherige Auftrag bleibt bestehen.')
     if p['disposition'] not in ('keep','replace'):raise ValueError('Bitte ausdrücklich entscheiden, was mit dem bisherigen Auftrag geschieht.')
     if p['form_org_source'] not in ('employee','manager'):raise ValueError('Bitte die Formular-OE wählen.')
     if not p['reason'].strip():raise ValueError('Bitte den Anlass und die Entscheidung zum bisherigen Auftrag begründen.')
@@ -39,7 +42,7 @@ def plan(db,case_id,proposal):
     employment=value['employment']
     if (employment['entry_date'] and p['period_start']<employment['entry_date']) or (employment['exit_date'] and p['period_end']>employment['exit_date']):
         raise ValueError('Der Zeitraum muss innerhalb der gewählten Anstellung liegen.')
-    if 'review' in KINDS[p['required_scope']]:
+    if 'review' in KINDS[p['required_scope']] and not probation:
         from .form_data import validate_review_period
         validate_review_period(p['period_start'],p['period_end'],first['review_year'],employment['entry_date'],employment['exit_date'])
     defaults=dialog_events.default_due_dates(first['review_year'])
@@ -80,7 +83,8 @@ def apply(db,case_id,proposal,*,expected,request_key,user_id=None):
         new_id=dialog_events._create_manual_event(db,employee_pn=first['employee_pn'],assignment_number=first['employment_assignment'],
             review_year=first['review_year'],cycle_id=first['cycle_id'],commit=False,**values)
         # This assignment belongs to the conversation, not to the current reporting line.
-        db.execute('UPDATE manager_assignments SET active=0 WHERE id=(SELECT manager_assignment_id FROM dialog_events WHERE event_id=?)',(new_id,))
+        if p['event_type'] != 'probation_review':
+            db.execute('UPDATE manager_assignments SET active=0 WHERE id=(SELECT manager_assignment_id FROM dialog_events WHERE event_id=?)',(new_id,))
         if p['disposition']=='replace':
             now=parts.stamp()
             db.execute("UPDATE dialog_events SET status='cancelled',sap_leading=0,source_reason=source_reason || ?,updated_at=? WHERE legacy_case_id=?",('\nErübrigt durch '+new_id+': '+p['reason'],now,case_id))

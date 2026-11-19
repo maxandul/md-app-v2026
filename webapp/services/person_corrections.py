@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from .word_packages import create_word_package
 from .word_dispatch import _mail_html, _stamp
+from .mail_attachments import outlook_attachments, package_documents
 from .outlook_lock import package_lock
 from webapp.adapters.outlook import OutlookDraftAdapter
 
@@ -45,6 +46,11 @@ def prepare(connection, *, case, kinds, template_paths, output_dir):
     greeting = {'frau':'Liebe','herr':'Lieber'}.get((case['manager_salutation'] or '').casefold(),'Hallo')
     subject = f"MD-Korrektur: {case['first_name']} {case['last_name']} – {names}"
     body = f"{greeting} {case['manager_first_name']}\n\nIm Anhang erhältst du neu erzeugte Formulare für {case['first_name']} {case['last_name']} (Ans. {case['employment_assignment']}): {names}.\n\nBitte verwende diese für die genannten Gesprächsteile. Falls du die bisherigen Formulare bereits bearbeitet hast, gleiche die Inhalte vor dem Ersetzen ab.\n\nFreundliche Grüsse\nHR"
+    if kinds == ['probation']:
+        subject = f"Rückblick Probezeit – {case['first_name']} {case['last_name']}"
+        body = (f"{greeting} {case['manager_first_name']}\n\nIm Anhang erhältst du die Vorlage für den Rückblick "
+                f"auf die Probezeit von {case['first_name']} {case['last_name']}. Bitte sende den ausgefüllten "
+                "Rückblick als PDF S/MIME-verschlüsselt an HR.\n\nFreundliche Grüsse\nHR")
     now = _stamp()
     cur = connection.execute('''INSERT INTO word_person_corrections(case_id,stored_path,manifest_json,recipient_email,subject,body_text,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)''', (case['case_id'],str(path),json.dumps(manifest,ensure_ascii=False),case['recipient_email'] or '',subject,body,now,now))
     connection.commit()
@@ -112,7 +118,8 @@ def act(connection, *, correction_id, action, template_paths, sender_email, subj
                     raise ValueError('Grundlagen dieser Formulare haben sich geändert. Bitte neu erzeugen.')
         connection.execute("UPDATE word_person_corrections SET status='processing',subject=?,body_text=?,updated_at=? WHERE id=?",(subject.strip(),body.strip(),_stamp(),correction_id));connection.commit()
         try:
-            result = (adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,recipient_email=row['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),attachments=[Path(row['stored_path'])])
+            with outlook_attachments(row['stored_path'], package_documents(manifest)) as attachments:
+                result = (adapter or OutlookDraftAdapter()).create_encrypted_draft(sender_email=sender_email,recipient_email=row['recipient_email'],subject=subject.strip(),body_html=_mail_html(body),attachments=attachments)
             if not result.encryption_flag_verified: raise ValueError('Verschlüsselungsmarkierung nicht bestätigt. Outlook prüfen.')
             connection.execute("UPDATE word_person_corrections SET status='draft_created',outlook_entry_id=?,updated_at=? WHERE id=?",(result.entry_id,_stamp(),correction_id));connection.commit()
         except Exception as exc:

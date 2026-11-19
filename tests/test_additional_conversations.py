@@ -55,6 +55,54 @@ class AdditionalConversationTest(unittest.TestCase):
         self.assertFalse(errors);self.assertEqual(len(ids),1)
         page=self.client.get(response.location);self.assertEqual(page.status_code,200);self.assertIn('Unterlagen für den neuen Auftrag',page.text)
 
+    def test_add_probation_from_open_outlook_and_prepare_only_the_new_form(self):
+        with self.db:
+            self.db.execute("UPDATE dialog_cases SET official_scope='outlook_only',suggested_scope='outlook_only' WHERE case_id=?",(self.case_id,))
+            self.db.execute("UPDATE dialog_events SET required_scope='outlook_only' WHERE legacy_case_id=?",(self.case_id,))
+            self.db.execute("""UPDATE document_obligations SET required=0,status='waived' WHERE document_kind='review'
+                AND dialog_event_id=(SELECT id FROM dialog_events WHERE legacy_case_id=?)""",(self.case_id,))
+            self.db.execute("UPDATE employment_assignments SET probation_end='2025-11-30' WHERE person_number='111113' AND assignment_number='1'")
+        before=parts.resolve(self.db,self.case_id,'outlook')
+        person_page=self.client.get('/mitarbeitende/111113')
+        self.assertIn('Rückblick Probezeit ergänzen',person_page.text)
+        self.assertIn('Word-Vorlage erstellen',person_page.text)
+        page=self.client.get(f'/arbeit/dialogteile/{self.case_id}/zusaetzlich?type=probation_review')
+        self.assertIn('Nur Rückblick Probezeit',page.text)
+        self.assertIn('value="2025-11-30"',page.text)
+
+        updates=dict(event_type='probation_review',required_scope='review_only',period_end='2025-11-30')
+        refused=self.preview(**updates,disposition='replace')
+        self.assertIn('Der bisherige Auftrag bleibt bestehen',refused.text)
+        self.assertNotIn('name="change_token"',refused.text)
+        preview=self.preview(**updates)
+        self.assertIn('Bleibt vorgesehen',preview.text)
+        saved=self.apply(self.proof(preview))
+        self.assertEqual(parts.resolve(self.db,self.case_id,'outlook'),before)
+        new=self.saved()['new_case_id']
+        self.assertEqual([(p['kind'],p['event_type']) for p in parts.case_parts(self.db,new)],[('review','probation_review')])
+        result=self.client.get(saved.location)
+        self.assertIn('Word-Vorlage für den Probezeitrückblick erstellen',result.text)
+        self.assertIn(f'/cycles/{self.cycle_id}/cases/{new}/word-correction?kind=probation',result.text)
+        word_url=f'/cycles/{self.cycle_id}/cases/{new}/word-correction'
+        output=self.client.post(word_url,data={'csrf_token':self.csrf,'kind':'probation'},follow_redirects=True)
+        self.assertEqual(output.status_code,200)
+        self.assertIn('S/MIME-Outlook-Entwurf erstellen',output.text)
+        row=self.db.execute('SELECT * FROM word_person_corrections WHERE case_id=?',(new,)).fetchone()
+        self.assertTrue(row['subject'].startswith('Rückblick Probezeit'))
+        self.assertEqual([doc['kind'] for doc in json.loads(row['manifest_json'])['documents']],['probation'])
+
+    def test_manual_probation_event_leads_directly_to_the_word_template(self):
+        employment=self.db.execute("SELECT id FROM employment_assignments WHERE person_number='111113' AND assignment_number='1'").fetchone()[0]
+        response=self.client.post('/dialog-events',data={
+            'csrf_token':self.csrf,'employment_id':employment,'manager_pn':'111114','review_year':2025,
+            'event_type':'probation_review','required_scope':'review_only','cycle_id':self.cycle_id,
+            'period_start':'2025-01-01','period_end':'2025-11-30',
+        },follow_redirects=True)
+        self.assertEqual(response.status_code,200)
+        self.assertIn('Ein bestehender Ausblick bleibt als eigener Auftrag bestehen',response.text)
+        self.assertIn('value="probation" checked',response.text)
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM word_person_corrections').fetchone()[0],0)
+
     def test_replace_retires_whole_old_order_preserves_sent_files_and_is_repeatable(self):
         from pathlib import Path
         packet=self.prepared('send');row=self.db.execute('SELECT * FROM word_dispatch_packages WHERE id=?',(packet,)).fetchone();raw=Path(row['stored_path']).read_bytes()
